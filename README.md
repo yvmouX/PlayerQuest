@@ -27,7 +27,6 @@ task1: # 任务ID
   name: # 任务名称，展示给玩家
   type: # 任务类型
   target: # 任务目标
-  reward: # 任务奖励
   condition: # 允许做该任务的条件
     -
   trigger:

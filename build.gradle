@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.gradleup.shadow") version "9.0.0-rc3"
 }
 
 group = 'com.playerPlugin'
@@ -12,10 +13,14 @@ repositories {
         name = "spigotmc-repo"
         url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
     }
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    implementation("com.github.yvmouX:YLib:1.0.0-beta4")
+    implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
+    implementation 'com.googlecode.json-simple:json-simple:1.1.1'
 }
 
 tasks {
@@ -25,6 +30,10 @@ tasks {
         // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21")
     }
+}
+
+shadowJar {
+    relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
 }
 
 def targetJavaVersion = 21
