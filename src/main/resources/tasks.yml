@@ -24,3 +24,25 @@ craft_diamond_sword_task:
       - 'command: say I am dead, man!'
       - 'kill: 你因为任务失败而死亡并且被扣去了1级经验'
 
+# 示例：合成金苹果
+craft_golden_apple_task:
+  name: "合成金苹果"
+  type: short
+  target:
+    for: golden_apple
+    how: craft
+    number: 1
+  condition: none
+  trigger:
+    on_task_start:
+      - 'message: 欢迎开始合成金苹果任务！'
+      - 'console: give {player} gold_block 8'
+      - 'console: give {player} apple 1'
+    on_task_finish:
+      - 'money: 20'
+      - 'xp: 200'
+      - 'message: 你获得了20金币和200经验值！'
+    on_task_fail:
+      - 'message: 任务失败了，再接再厉！'
+
+# 示例：破坏方块
