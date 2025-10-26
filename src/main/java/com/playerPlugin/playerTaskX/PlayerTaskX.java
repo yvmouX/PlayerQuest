@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.commands.ReloadCmd;
-import com.playerPlugin.playerTaskX.configs.ConfigManger;
+import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
@@ -26,7 +26,7 @@ public final class PlayerTaskX extends JavaPlugin {
     @Override
     public void onEnable() {
         register();
-        new ConfigManger(this, new TaskConfig(this)).saveAllDefaultConfigs();
+        new ConfigManager(this, new TaskConfig(this)).saveAllDefaultConfigs();
         log.info(Logger.prefix + "插件已启用");
     }
 

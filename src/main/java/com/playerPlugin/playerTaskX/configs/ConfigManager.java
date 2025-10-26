@@ -2,11 +2,11 @@ package com.playerPlugin.playerTaskX.configs;
 
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 
-public class ConfigManger {
+public class ConfigManager {
     private final PlayerTaskX plugin;
     private final TaskConfig taskConfig;
 
-    public ConfigManger(PlayerTaskX plugin, TaskConfig taskConfig) {
+    public ConfigManager(PlayerTaskX plugin, TaskConfig taskConfig) {
         this.plugin = plugin;
         this.taskConfig = taskConfig;
     }
