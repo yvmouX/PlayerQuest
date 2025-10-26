@@ -2,6 +2,9 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
+import com.playerPlugin.playerTaskX.commands.ReloadCmd;
+import com.playerPlugin.playerTaskX.configs.ConfigManger;
+import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -23,6 +26,7 @@ public final class PlayerTaskX extends JavaPlugin {
     @Override
     public void onEnable() {
         register();
+        new ConfigManger(this, new TaskConfig(this)).saveAllDefaultConfigs();
         log.info(Logger.prefix + "插件已启用");
     }
 
@@ -41,6 +45,9 @@ public final class PlayerTaskX extends JavaPlugin {
         updateHelper.checkUpdate(getDescription().getVersion());
 
         EventsRegister.register();
+
+        // 命令
+        getYLib().getCommandManager().registerCommands("playertaskx", new ReloadCmd(this));
     }
 
     private void unregister() {
