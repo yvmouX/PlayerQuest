@@ -47,7 +47,9 @@ public final class PlayerTaskX extends JavaPlugin {
         EventsRegister.register();
 
         // 命令
-        getYLib().getCommandManager().registerCommands("playertaskx", new ReloadCmd(this));
+        getYLib().getCommandManager().registerCommands("playertaskx",
+                new ReloadCmd(this, new TaskConfig(this))
+        );
     }
 
     private void unregister() {
