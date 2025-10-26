@@ -50,6 +50,12 @@ public final class PlayerTaskX extends JavaPlugin {
         getYLib().getCommandManager().registerCommands("playertaskx",
                 new ReloadCmd(this, new TaskConfig(this))
         );
+        getYLib().getCommandManager().registerCommands("ptx",
+                new ReloadCmd(this, new TaskConfig(this))
+        );
+        getYLib().getCommandManager().registerCommands("ptxa",
+                new ReloadCmd(this, new TaskConfig(this))
+        );
     }
 
     private void unregister() {
