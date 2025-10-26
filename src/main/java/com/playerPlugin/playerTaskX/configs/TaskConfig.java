@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.configs;
 
+import com.google.common.base.Charsets;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import kotlin.text.Charsets;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -18,7 +18,7 @@ public class TaskConfig {
 
     public TaskConfig(PlayerTaskX plugin) {
         this.plugin = plugin;
-        taskConfigFile = new File("tasks.yml");
+        taskConfigFile = new File(plugin.getDataFolder(), "tasks.yml");
     }
 
     /**
@@ -76,7 +76,7 @@ public class TaskConfig {
         if (defConfigStream == null) {
             return;
         }
-
+        
         newTaskConfig.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
     }
 }
