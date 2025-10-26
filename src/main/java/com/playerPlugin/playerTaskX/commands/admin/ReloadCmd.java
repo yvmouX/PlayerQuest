@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.commands;
+package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
