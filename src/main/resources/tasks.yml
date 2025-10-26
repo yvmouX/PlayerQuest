@@ -1,1 +1,26 @@
-111111111111111111
+craft_diamond_sword_task:
+  name: "合成钻石镐"
+  type: short
+  target:
+    for: diamond_sword
+    how: craft
+    number: 1
+  condition: none
+  trigger:
+    on_task_start:
+      - 'admin: give {player} diamond 1'
+      - 'console: give {player} stick 1'
+      - 'message: 任务开始'
+      - 'bc: 玩家 {player} 开始了任务 {this}'
+    on_task_finish:
+      - 'money: 10'
+      - 'point: 10'
+      - 'xp: 100'
+      - 'message: 你获取了10金币、10点券以及100经验'
+    on_task_fail:
+      - 'lever: -1'
+      - 'potion: slowness 1s 1l false'
+      - 'item: paper 1 &c死亡证明 因你死亡而发放于你 unbreaking:1'
+      - 'command: say I am dead, man!'
+      - 'kill: 你因为任务失败而死亡并且被扣去了1级经验'
+
