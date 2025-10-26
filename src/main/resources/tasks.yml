@@ -1,10 +1,10 @@
 craft_diamond_sword_task:
   name: "合成钻石镐"
-  type: short
+  type: forever
   target:
-    for: diamond_sword
-    how: craft
-    number: 1
+    target_id: diamond_sword
+    action: craft
+    count: 1
   condition: none
   trigger:
     on_task_start:
@@ -18,7 +18,7 @@ craft_diamond_sword_task:
       - 'xp: 100'
       - 'message: 你获取了10金币、10点券以及100经验'
     on_task_fail:
-      - 'lever: -1'
+      - 'level: -1'
       - 'potion: slowness 1s 1l false'
       - 'item: paper 1 &c死亡证明 因你死亡而发放于你 unbreaking:1'
       - 'command: say I am dead, man!'
@@ -27,11 +27,11 @@ craft_diamond_sword_task:
 # 示例：合成金苹果
 craft_golden_apple_task:
   name: "合成金苹果"
-  type: short
+  type: limit
   target:
-    for: golden_apple
-    how: craft
-    number: 1
+    target_id: golden_apple
+    action: craft
+    count: 1
   condition: none
   trigger:
     on_task_start:

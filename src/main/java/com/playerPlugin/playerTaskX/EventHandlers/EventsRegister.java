@@ -12,6 +12,7 @@ public class EventsRegister {
 
     public static void register() {
         PlayerTaskX instance = PlayerTaskX.getInstance();
+        // TODO 在此处添加新的事件监听器类
         Class<?>[] handlerClasses = {
             PlayerJoinHandler.class
         };

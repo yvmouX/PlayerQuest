@@ -9,6 +9,7 @@ import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.utils.Logger;
+import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -47,6 +48,8 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     private void register() {
+        new Metrics(this, 27726);
+
         // 更新
         UpdateHelper updateHelper = new UpdateHelper();
         updateHelper.checkUpdate(getDescription().getVersion());

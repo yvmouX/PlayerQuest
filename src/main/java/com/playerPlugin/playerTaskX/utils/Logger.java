@@ -63,4 +63,12 @@ public class Logger {
         if (italic) s = "§o" + s;
         console.sendMessage(prefix + (color == null ? ChatColor.RED : color) + "§l" + s);
     }
+
+    public void debug(String message) {
+        console.sendMessage(prefix + "§b" + message);
+    }
+
+    public void debug(ChatColor color, String s) {
+        console.sendMessage(prefix + (color == null ? ChatColor.GOLD : color) + s);
+    }
 }
