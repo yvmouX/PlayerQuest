@@ -76,7 +76,7 @@ public class TaskConfig {
         if (defConfigStream == null) {
             return;
         }
-        
+
         newTaskConfig.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
     }
 }
