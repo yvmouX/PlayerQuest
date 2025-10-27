@@ -44,7 +44,6 @@ task1: # 任务ID
   - 周期任务 cycle
   - 长期任务 long
   - 短期任务 short
-  - 触发任务（拓展功能）
 
 #### 任务目标-target
 
