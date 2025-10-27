@@ -150,6 +150,29 @@ public class TaskManager {
                 .toList();
     }
 
+    private Map<Task, String> getPlayerActiveTaskTargetActions(UUID uuid) {
+        Map<Task, String> activeTasks = new HashMap<>();
+        List<PlayerTask> playerTasks = getPlayerActiveTasks(uuid);
+        if (playerTasks != null) {
+            for (PlayerTask pt : playerTasks) {
+                activeTasks.put(pt.getTask(), pt.getTask().getTarget().getAction());
+            }
+        }
+        return activeTasks;
+
+    }
+
+    public List<Task> verifyTaskTargetActions(UUID uuid, String taskTargetAction) {
+        Map<Task, String> activeTasks = getPlayerActiveTaskTargetActions(uuid);
+        if (!activeTasks.isEmpty() && activeTasks.containsValue(taskTargetAction)) {
+            return activeTasks.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(taskTargetAction))
+                    .map(Map.Entry::getKey)
+                    .toList();
+        }
+        return List.of();
+    }
+
     /**
      * 检查并处理任务进度
      *
@@ -166,7 +189,7 @@ public class TaskManager {
 
             if (target == null) {
                 player.sendMessage("§c无法获取目标%s，这是一个不应出现的异常。\n" +
-                        "请及时联系管理员", target.toString());
+                        "请及时联系管理员");
                 continue;
             };
 
