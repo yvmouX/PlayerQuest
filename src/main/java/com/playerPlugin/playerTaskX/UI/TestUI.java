@@ -1,4 +1,7 @@
 package com.playerPlugin.playerTaskX.UI;
 
-public class TestUI {
+import me.devnatan.inventoryframework.View;
+import me.devnatan.inventoryframework.internal.*;
+
+public class TestUI extends View {
 }

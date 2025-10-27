@@ -14,7 +14,6 @@ repositories {
         url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
     }
     maven { url 'https://jitpack.io' }
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
 }
 
 dependencies {
@@ -23,6 +22,7 @@ dependencies {
     compileOnly 'org.xerial:sqlite-jdbc:3.42.0.0'
     compileOnly 'com.googlecode.json-simple:json-simple:1.1.1'
     implementation 'me.devnatan:inventory-framework-platform-paper:3.5.5'
+    implementation 'me.devnatan:inventory-framework-platform-bukkit:3.5.5'
 }
 
 tasks {
