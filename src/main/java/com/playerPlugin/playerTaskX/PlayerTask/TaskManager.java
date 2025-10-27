@@ -122,8 +122,8 @@ public class TaskManager {
         playerTaskList.add(playerTask);
         playerTasks.put(uuid, playerTaskList);
 
-        // 执行任务开始触发器 （pass） #TODO
-        //TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
+        // 执行任务开始触发器
+        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
 
         player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
