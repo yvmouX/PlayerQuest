@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
+import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.commands.AcceptCmd;
 import com.playerPlugin.playerTaskX.commands.MeCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
@@ -12,13 +13,15 @@ import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
     private static PlayerTaskX instance;
-
     public static Logger log;
+    private static ViewFrame viewFrame = null;
 
     public static YLib getYLib() {
         return ylib;
@@ -26,6 +29,14 @@ public final class PlayerTaskX extends JavaPlugin {
 
     public static PlayerTaskX getInstance() {
         return instance;
+    }
+
+    @Nullable
+    public static ViewFrame getViewFrame() {
+        if (viewFrame == null) {
+            return null;
+        }
+        return viewFrame;
     }
 
     @Override
@@ -82,10 +93,22 @@ public final class PlayerTaskX extends JavaPlugin {
                 new ReloadCmd(this, taskConfig),
                 new ListCmd()
         );
+
+        // UI界面
+        registerViews();
     }
 
     private void unregister() {
         log = null;
         instance = null;
+    }
+
+    private void registerViews() {
+        try {
+            viewFrame = ViewFrame.create(this);
+            viewFrame.with(new MainUI()).register();
+        } catch (Exception e) {
+            log.err("创建UI错误" + e);
+        }
     }
 }
