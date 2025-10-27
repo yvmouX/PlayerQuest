@@ -8,14 +8,14 @@ public class PlayerTask {
     private UUID uuid;
     private Task task;
     private int progress;
-    private int targetNumber;
+    private int targetCount;
     private PlayerTaskStatus status;
 
     public PlayerTask(UUID playerId, Task task) {
         this.uuid = playerId;
         this.task = task;
         this.progress = 0;
-        this.targetNumber = task.getTarget().getNumber();
+        this.targetCount = task.getTarget().getCount();
         this.status = PlayerTaskStatus.IN_PROGRESS;
     }
 
@@ -29,8 +29,8 @@ public class PlayerTask {
     public int getProgress() { return this.progress; }
     public void setProgress(int progress) { this.progress = progress; }
 
-    public int getTargetNumber() { return this.targetNumber; }
-    public void setTargetNumber(int targetNumber) { this.targetNumber = targetNumber; }
+    public int getTargetNumber() { return this.targetCount; }
+    public void setTargetNumber(int targetNumber) { this.targetCount = targetNumber; }
 
     public PlayerTaskStatus getStatus() { return this.status; }
     public void setStatus(PlayerTaskStatus status) { this.status = status; }
@@ -52,6 +52,6 @@ public class PlayerTask {
      * @return boolean
      */
     public boolean isComplete() {
-        return progress >= targetNumber;
+        return progress >= targetCount;
     }
 }
