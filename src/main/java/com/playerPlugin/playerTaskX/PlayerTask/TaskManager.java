@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
+import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import org.bukkit.configuration.ConfigurationSection;
@@ -48,16 +49,16 @@ public class TaskManager {
 
             // 加载任务名称、任务类型、任务条件
             String name = taskSection.getString("name", taskId);
-            String type = taskSection.getString("type", "short");
+            String type = taskSection.getString("type", "forever");
             String condition = taskSection.getString("condition", "none");
 
             // 加载目标
             ConfigurationSection targetSection = taskSection.getConfigurationSection("target");
             TaskTarget target = new TaskTarget();
             if (targetSection != null) {
-                target.setForTarget(targetSection.getString("for", ""));
-                target.setHow(targetSection.getString("how", ""));
-                target.setNumber(targetSection.getInt("number", 1));
+                target.setTarget_id(targetSection.getString("target_id", ""));
+                target.setAction(targetSection.getString("action", ""));
+                target.setCount(targetSection.getInt("count", 1));
             }
 
             // 加载触发器
@@ -76,6 +77,8 @@ public class TaskManager {
 
     /**
      * 获取所有任务
+     *
+     * @return {@link Map }<{@link String }, {@link Task }>
      */
     public Map<String, Task> getTasks() {
         return tasks;
@@ -90,6 +93,9 @@ public class TaskManager {
 
     /**
      * 玩家开始任务
+     *
+     * @param player 选手
+     * @param taskId 任务 ID
      */
     public void startTask(Player player, String taskId) {
         Task task = tasks.get(taskId);
@@ -124,6 +130,9 @@ public class TaskManager {
 
     /**
      * 获取玩家的任务列表
+     *
+     * @param uuid uuid
+     * @return {@link List }<{@link PlayerTask }>
      */
     public List<PlayerTask> getPlayerTasks(UUID uuid) {
         return playerTasks.getOrDefault(uuid, new ArrayList<>());
@@ -131,10 +140,85 @@ public class TaskManager {
 
     /**
      * 获取玩家进行中的任务
+     *
+     * @param uuid uuid
+     * @return {@link List }<{@link PlayerTask }>
      */
     public List<PlayerTask> getPlayerActiveTasks(UUID uuid) {
         return getPlayerTasks(uuid).stream()
                 .filter(pt -> pt.getStatus() == PlayerTaskStatus.IN_PROGRESS)
                 .toList();
+    }
+
+    /**
+     * 检查并处理任务进度
+     *
+     * @param player     选手
+     * @param actionType 作类型
+     * @param itemType   项目类型
+     */
+    public void checkTaskProgress(Player player, String actionType, String itemType) {
+        List<PlayerTask> activeTasks = getPlayerActiveTasks(player.getUniqueId());
+
+        for (PlayerTask playerTask : activeTasks) {
+            Task task = playerTask.getTask();
+            TaskTarget target = task.getTarget();
+
+            if (target == null) {
+                player.sendMessage("§c无法获取目标%s，这是一个不应出现的异常。\n" +
+                        "请及时联系管理员", target.toString());
+                continue;
+            };
+
+            // 检查动作类型和目标物品是否匹配
+            if (target.getAction().equalsIgnoreCase(actionType) &&
+                    target.getTarget_id().equalsIgnoreCase(itemType)) {
+
+                playerTask.addProgress(1);
+
+                // 检查是否完成
+                if (playerTask.isComplete()) {
+                    completeTask(player, playerTask);
+                }
+            }
+        }
+    }
+
+    /**
+     * 完成任务
+     *
+     * @param player     选手
+     * @param playerTask 玩家任务
+     */
+    private void completeTask(Player player, PlayerTask playerTask) {
+        playerTask.setStatus(PlayerTaskStatus.COMPLETED);
+        Task task = playerTask.getTask();
+
+        // 执行任务完成触发器
+        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFinish(), task);
+
+        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getName());
+    }
+
+    /**
+     * 让任务失败
+     *
+     * @param player     选手
+     * @param playerTask 玩家任务
+     */
+    public void failTask(Player player, PlayerTask playerTask) {
+        playerTask.setStatus(PlayerTaskStatus.FAILED);
+        Task task = playerTask.getTask();
+
+        // 执行任务失败触发器
+        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFail(), task);
+    }
+
+    /**
+     * 重新加载任务
+     */
+    public void reload() {
+        taskConfig.reloadTasksConfig();
+        loadTasks();
     }
 }
