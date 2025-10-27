@@ -1,17 +1,17 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Task;
 
 public class TaskTarget {
-    private String forTarget;
-    private String how;
-    private int number;
+    private String target_id;
+    private String action;
+    private int count;
 
     // Getters and Setters
-    public String getForTarget() { return forTarget; }
-    public void setForTarget(String forTarget) { this.forTarget = forTarget; }
+    public String getTarget_id() { return target_id; }
+    public void setTarget_id(String target_id) { this.target_id = target_id; }
 
-    public String getHow() { return how; }
-    public void setHow(String how) { this.how = how; }
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
 
-    public int getNumber() { return number; }
-    public void setNumber(int number) { this.number = number; }
+    public int getCount() { return count; }
+    public void setCount(int count) { this.count = count; }
 }
