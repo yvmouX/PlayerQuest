@@ -14,6 +14,7 @@ repositories {
         url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
     }
     maven { url 'https://jitpack.io' }
+    // FUCK
     maven {
         name = "tcoded-releases"
         url = "https://repo.tcoded.com/releases"
@@ -26,7 +27,7 @@ dependencies {
     compileOnly 'org.xerial:sqlite-jdbc:3.42.0.0'
     compileOnly 'com.googlecode.json-simple:json-simple:1.1.1'
     implementation 'me.devnatan:inventory-framework-platform-paper:3.5.5'
-    implementation 'me.devnatan:inventory-framework-platform-bukkit:3.5.5'
+    implementation('me.devnatan:inventory-framework-platform-bukkit:3.5.5')
 }
 
 tasks {
@@ -35,11 +36,30 @@ tasks {
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21")
+        jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
     }
 }
 
 shadowJar {
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
+    // !!!!!! DouBao AI
+    relocate("me.devnatan.inventoryframework", "com.playerPlugin.playerTaskX.lib.inventoryframework")
+
+    // 排除 inventory-framework 自带的 plugin.yml TODO 妈的气死我了，搞了半天
+    exclude { file ->
+        // 匹配依赖中的 plugin.yml（根据其路径特征）
+        file.name == 'plugin.yml' &&
+                (file.path.contains('me/devnatan/inventoryframework') ||
+                        file.path.contains('inventory-framework'))
+    }
+
+    // 确保只保留自己的 plugin.yml（双重保险）
+    from('src/main/resources/plugin.yml') {
+        into '/' // 强制放入根目录
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${project.name}-${project.version}-all.jar"
 }
 
 def targetJavaVersion = 21
