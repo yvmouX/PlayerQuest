@@ -5,6 +5,7 @@ import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.commands.AcceptCmd;
 import com.playerPlugin.playerTaskX.commands.MeCmd;
+import com.playerPlugin.playerTaskX.commands.OpenCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
@@ -79,11 +80,13 @@ public final class PlayerTaskX extends JavaPlugin {
         // 命令
         getYLib().getCommandManager().registerCommands("playertaskx",
                 new MeCmd(),
-                new AcceptCmd()
+                new AcceptCmd(),
+                new OpenCmd()
         );
         getYLib().getCommandManager().registerCommands("ptx",
                 new MeCmd(),
-                new AcceptCmd()
+                new AcceptCmd(),
+                new OpenCmd()
         );
         getYLib().getCommandManager().registerCommands("playertaskxadmin",
                 new ReloadCmd(this, taskConfig),
