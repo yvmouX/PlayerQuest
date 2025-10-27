@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 public class MainUI extends View {
+    // TODO 使其在配置文件 中自定义
     @Override
     public void onInit(ViewConfigBuilder config) {
         config.title("主界面")

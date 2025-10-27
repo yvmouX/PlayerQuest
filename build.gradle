@@ -27,9 +27,8 @@ dependencies {
     compileOnly 'org.xerial:sqlite-jdbc:3.42.0.0'
     compileOnly 'com.googlecode.json-simple:json-simple:1.1.1'
     // TODO WHY YOU REQUIRE THE FOLIALIB!!!!!!!!!!! FUCK
-    //implementation 'me.devnatan:inventory-framework-platform-paper:3.5.5'
-    implementation 'me.devnatan:inventory-framework-platform-bukkit:3.5.5'
-    implementation("com.tcoded:FoliaLib:0.5.1")
+    implementation 'me.devnatan:inventory-framework-platform-paper:3.5.5'
+    implementation('me.devnatan:inventory-framework-platform-bukkit:3.5.5')
 }
 
 tasks {
@@ -43,9 +42,24 @@ tasks {
 
 shadowJar {
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
-    // !!!!!!
-    relocate("com.tcoded.folialib", "com.playerPlugin.playerTaskX.lib.folialib")
-    relocate("me.devnatan.inventoryframework", "com.playerPlugin.playerTaskX.lib.inv")
+    // !!!!!! DouBao AI
+    relocate("me.devnatan.inventoryframework", "com.playerPlugin.playerTaskX.lib.inventoryframework")
+
+    // 排除 inventory-framework 自带的 plugin.yml TODO 妈的气死我了，搞了半天
+    exclude { file ->
+        // 匹配依赖中的 plugin.yml（根据其路径特征）
+        file.name == 'plugin.yml' &&
+                (file.path.contains('me/devnatan/inventoryframework') ||
+                        file.path.contains('inventory-framework'))
+    }
+
+    // 确保只保留自己的 plugin.yml（双重保险）
+    from('src/main/resources/plugin.yml') {
+        into '/' // 强制放入根目录
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${project.name}-${project.version}-all.jar"
 }
 
 def targetJavaVersion = 21
