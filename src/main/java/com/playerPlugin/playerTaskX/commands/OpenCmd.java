@@ -14,6 +14,7 @@ public class OpenCmd implements SubCommand {
         if (PlayerTaskX.getViewFrame() != null) {
             PlayerTaskX.getViewFrame().open(MainUI.class, (Player) sender);
             sender.sendMessage("成功打开ui");
+            return true;
         }
         sender.sendMessage("失败的man");
         return true;
