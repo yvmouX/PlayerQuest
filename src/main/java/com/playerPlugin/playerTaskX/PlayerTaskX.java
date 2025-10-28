@@ -10,6 +10,9 @@ import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
+import com.playerPlugin.playerTaskX.dataManager.SQLiteManager;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
+import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
 import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
@@ -99,6 +102,12 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // UI界面
         registerViews();
+
+        // 数据库
+        // TODO 数据类型暂时硬编码为 SQLITE
+        StorgeManager storgeManager = new StorgeManager(this, StorgeTypes.SQLITE, new SQLiteManager());
+        storgeManager.connect();
+        storgeManager.createTable();
     }
 
     private void unregister() {

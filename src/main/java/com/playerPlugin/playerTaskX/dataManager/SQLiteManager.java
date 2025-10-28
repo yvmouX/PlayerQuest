@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -9,11 +10,14 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
 import static com.playerPlugin.playerTaskX.dataManager.SQL.players_sql;
 import static com.playerPlugin.playerTaskX.dataManager.SQL.players_tasks_sql;
 
-public class SQLiteManager {
+// TODO 异常将由 StorgeManager.java 类进行处理
+public class SQLiteManager implements Storge {
     private Connection conn;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
@@ -21,40 +25,49 @@ public class SQLiteManager {
         return ZonedDateTime.now(ZoneId.of("Asia/Shanghai")).format(formatter);
     }
 
-    public void connectToSQLite() {
-        try {
-            Class.forName("org.sqlite.JDBC");
 
-            String url = "jdbc:sqlite:data.db";
-            conn = DriverManager.getConnection(url);
+    /**
+     * 连接到 SQLite
+     *
+     * @throws SQLException           sql异常
+     * @throws ClassNotFoundException class not found 异常
+     */
+    public void connect(File dataFolder) throws SQLException, ClassNotFoundException {
+        Class.forName("org.sqlite.JDBC");
 
-        } catch (ClassNotFoundException | SQLException e) {
-            log.err("Failed to connect to SQLite database: " + e.getMessage());
-        }
+        String dbPath = dataFolder + "/" + DATABASE;
+
+        String url = "jdbc:sqlite:" + dbPath;
+
+        conn = DriverManager.getConnection(url);
     }
 
-    public void createTable() {
-
+    /**
+     * 创建表
+     *
+     * @throws SQLException sql异常
+     */
+    public void createTable() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(players_sql);
             stmt.execute(players_tasks_sql);
-            log.debug("Table created successfully");
-        } catch (SQLException e) {
-            log.err("Failed to create table: " + e.getMessage());
+            getYLib().getLoggerTools().info("Table created successfully");
         }
     }
 
-    public void createNewPlayer(UUID uuid) {
+    /**
+     * 创建新玩家
+     *
+     * @param uuid uuid
+     * @throws SQLException sql异常
+     */
+    public void createNewPlayer(UUID uuid) throws SQLException {
         String current_time = getCurrentTime();
         String player_uuid = uuid.toString();
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(create_player_sql(current_time, current_time, player_uuid));
-            log.debug("New player created successfully");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
-
     private String create_player_sql(String createdAt, String updatedAt, String playerUuid) {
         if (createdAt == null || updatedAt == null || playerUuid == null) {
             throw new IllegalArgumentException("Parameters cannot be null");
@@ -63,6 +76,10 @@ public class SQLiteManager {
     }
 
 
+    /**
+     * 关闭
+     *
+     */
     public void close() {
         try {
             if (conn != null) {
