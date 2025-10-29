@@ -3,3 +3,5 @@
 *.bat
 /run
 /build
+/.settings
+/.vscode
