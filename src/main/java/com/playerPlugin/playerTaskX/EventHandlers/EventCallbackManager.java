@@ -1,4 +1,6 @@
-package com.playerPlugin.playerTaskX.services;
+package com.playerPlugin.playerTaskX.EventHandlers;
+
+import com.playerPlugin.playerTaskX.EventHandlers.services.EventCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +20,12 @@ public class EventCallbackManager {
     private final Map<Class<?>, List<EventCallback<?>>> callbacks = new ConcurrentHashMap<>();
     
     private EventCallbackManager() {}
-    
+
+    /**
+     * 获取实例
+     *
+     * @return {@link EventCallbackManager }
+     */
     public static EventCallbackManager getInstance() {
         if (eventCallbackManager == null) {
             synchronized (EventCallbackManager.class) {

@@ -1,24 +1,30 @@
 package com.playerPlugin.playerTaskX.EventHandlers;
 
-import com.playerPlugin.playerTaskX.EventHandlers.handlers.PlayerBreakHandler;
 import com.playerPlugin.playerTaskX.EventHandlers.handlers.PlayerJoinHandler;
+import com.playerPlugin.playerTaskX.EventHandlers.handlers.task.TaskEventHandler;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.services.EventCallbackManager;
-import com.playerPlugin.playerTaskX.services.BreakService;
+import com.playerPlugin.playerTaskX.EventHandlers.services.impl.BreakService;
 import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
 import org.bukkit.event.Listener;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 
 public class EventsRegister {
+    private static volatile EventCallbackManager callbackManager;
+
+    public static EventCallbackManager getCallbackManager() {return callbackManager;}
 
 
+    /**
+     * 注册
+     *
+     */
     public static void register() {
         PlayerTaskX instance = PlayerTaskX.getInstance();
         // 注册事件监听器
         Class<?>[] handlerClasses = {
                 PlayerJoinHandler.class,
-                PlayerBreakHandler.class
+                TaskEventHandler.class,
         };
 
         for (Class<?> handlerClass : handlerClasses) {
@@ -40,7 +46,7 @@ public class EventsRegister {
      * 注册事件回调服务
      */
     private static void registerEventCallbacks() {
-        EventCallbackManager callbackManager = EventCallbackManager.getInstance();
+        callbackManager = EventCallbackManager.getInstance();
 
         try {
             // 注册破坏方块事件的回调服务

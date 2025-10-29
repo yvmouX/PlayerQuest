@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.services;
+package com.playerPlugin.playerTaskX.EventHandlers.services;
 
 /**
  * 事件回调接口
