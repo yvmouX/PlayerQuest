@@ -9,22 +9,47 @@ import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 public class TaskManager {
-    private static TaskManager instance;
+    private static volatile TaskManager instance;
     private final TaskConfig taskConfig;
     private final Map<String, Task> tasks = new HashMap<>(); // 存储定义的所有任务 (任务ID, Task类)
     private final Map<UUID, List<PlayerTask>> playerTasks = new HashMap<>(); // 存储
 
     public TaskManager(TaskConfig taskConfig) {
-        instance = this;
+        if (instance != null) {
+            throw new IllegalStateException("TaskManager 已经初始化");
+        }
         this.taskConfig = taskConfig;
         loadTasks();
     }
 
+    public static void init(TaskConfig taskConfig) {
+        if (taskConfig == null) {
+            throw new NullPointerException("TaskConfig 不能是 null");
+        };
+        if (instance == null) {
+            synchronized (TaskManager.class) {
+                if (instance == null) {
+                    instance = new TaskManager(taskConfig);
+                }
+            }
+        } else  {
+            throw new IllegalStateException("TaskManager 已经初始化");
+        }
+    }
+
     public static TaskManager getInstance() {
+        if (instance == null) {
+            synchronized (TaskManager.class) {
+                if (instance == null) {
+                    throw new IllegalStateException("TaskManager 未初始化，请先调用init(TaskConfig taskConfig)");
+                }
+            }
+        }
         return instance;
     }
 
@@ -87,6 +112,8 @@ public class TaskManager {
     /**
      * 根据ID获取任务
      */
+    @Nullable
+    @javax.annotation.Nullable
     public Task getTask(String taskId) {
         return tasks.get(taskId);
     }

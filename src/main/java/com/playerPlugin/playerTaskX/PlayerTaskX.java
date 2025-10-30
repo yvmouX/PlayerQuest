@@ -8,6 +8,7 @@ import com.playerPlugin.playerTaskX.commands.MeCmd;
 import com.playerPlugin.playerTaskX.commands.OpenCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
+import com.playerPlugin.playerTaskX.commands.admin.StartCmd;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.dataManager.SQLiteManager;
@@ -71,7 +72,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         //任务配置
         TaskConfig taskConfig = new TaskConfig(this);
-        new TaskManager(taskConfig);
+        TaskManager.init(taskConfig);
 
         // 配置文件
         ConfigManager configManager = new ConfigManager(this, taskConfig);
@@ -93,11 +94,13 @@ public final class PlayerTaskX extends JavaPlugin {
         );
         getYLib().getCommandManager().registerCommands("playertaskxadmin",
                 new ReloadCmd(this, taskConfig),
-                new ListCmd()
+                new ListCmd(),
+                new StartCmd()
         );
         getYLib().getCommandManager().registerCommands("ptxa",
                 new ReloadCmd(this, taskConfig),
-                new ListCmd()
+                new ListCmd(),
+                new StartCmd()
         );
 
         // UI界面

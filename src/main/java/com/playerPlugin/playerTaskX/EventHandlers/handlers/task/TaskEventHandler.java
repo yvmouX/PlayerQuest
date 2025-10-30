@@ -1,9 +1,7 @@
 package com.playerPlugin.playerTaskX.EventHandlers.handlers.task;
 
 import com.playerPlugin.playerTaskX.EventHandlers.EventCallbackManager;
-import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;

@@ -16,7 +16,7 @@ public class ReloadCmd implements SubCommand {
     }
 
     @Override
-    @CommandOptions(name = "reload_all", permission = "playertaskx.command.reload", onlyPlayer = false, alias = {}, register = true, usage = "/playertaskx reload")
+    @CommandOptions(name = "reload_all", permission = "playertaskx.admin.command.reload", onlyPlayer = false, alias = {}, register = true, usage = "/playertaskx reload")
     public boolean execute(CommandSender sender, String[] args) {
         plugin.reloadConfig();
         taskConfig.reloadTasksConfig();
