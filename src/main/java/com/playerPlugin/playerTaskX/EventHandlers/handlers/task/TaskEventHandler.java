@@ -11,7 +11,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 
 public class TaskEventHandler implements Listener {
-    EventCallbackManager cbm = EventsRegister.getCallbackManager();
+    EventCallbackManager cbm = EventCallbackManager.getInstance();
 
     @EventHandler
     public void onPlayerBreak(BlockBreakEvent event) {
