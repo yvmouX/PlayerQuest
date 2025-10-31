@@ -1,9 +1,11 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTargets;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
@@ -11,6 +13,8 @@ import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
@@ -131,6 +135,59 @@ public class SQLiteManager implements Storge {
                 log.info("玩家任务数据已存在（未重复插入）：" + playerUuid + "，任务ID：" + taskId); // INSERT OR IGNORE 会返回 0
             }
         }
+    }
+
+    /**
+     * 加载玩家任务
+     *
+     * @param uuid 玩家 UUID
+     * @return 玩家任务列表
+     * @throws SQLException sql异常
+     */
+    public List<PlayerTask> loadPlayerTasks(UUID uuid) throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            throw new SQLException("Connection is not open. Call connect() first.");
+        }
+        List<PlayerTask> playerTaskList = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT * FROM players_tasks WHERE player_uuid = ?;"
+            )) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Task task = TaskManager.getInstance().getTask(rs.getString("task_id"));
+                    if (task == null) continue;
+                    PlayerTask playerTask = new PlayerTask(
+                        UUID.fromString(rs.getString("player_uuid")),
+                        task
+                    );
+                    playerTaskList.add(playerTask);
+                }
+            }
+        }
+        return playerTaskList;
+    }
+
+    /**
+     * 获取所有任务中玩家的uuid （players_tasks 表中）
+     * @return
+     * @throws SQLException
+     */
+    public List<UUID> getAllPlayerUUID() throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            throw new SQLException("Connection is not open. Call connect() first.");
+        }
+        List<UUID> uuidList = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT player_uuid FROM players_tasks;"
+            )) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    uuidList.add(UUID.fromString(rs.getString("player_uuid")));
+                }
+            }
+        }
+        return uuidList;
     }
 
     /**

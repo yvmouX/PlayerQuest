@@ -5,12 +5,14 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 public class Task {
     private String id;
     private TaskTypes type;
+    private String name;
     private TaskTarget target;
     public String condition;
     private TaskTrigger trigger;
 
-    public Task(String taskId, String taskName, TaskTypes taskType, TaskTarget taskTarget, String taskCondition, TaskTrigger taskTrigger) {
+    public Task(String taskId, String name, TaskTypes taskType, TaskTarget taskTarget, String taskCondition, TaskTrigger taskTrigger) {
         this.id = taskId;
+        this.name = name;
         this.type = taskType;
         this.target = taskTarget;
         this.condition = taskCondition;
@@ -23,6 +25,9 @@ public class Task {
 
     public TaskTypes getType() { return type; }
     public void setType(TaskTypes type) { this.type = type; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
     public TaskTarget getTarget() { return target; }
     public void setTarget(TaskTarget target) { this.target = target; }

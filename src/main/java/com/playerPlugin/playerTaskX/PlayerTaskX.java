@@ -73,17 +73,23 @@ public final class PlayerTaskX extends JavaPlugin {
     private void register() {
         new Metrics(this, 27726);
 
-        // 更新
-        UpdateHelper updateHelper = new UpdateHelper();
-        updateHelper.checkUpdate(getDescription().getVersion());
-
         // 任务配置
         TaskConfig taskConfig = new TaskConfig(this);
         // 配置文件
         ConfigManager configManager = new ConfigManager(this, taskConfig);
         configManager.saveAllDefaultConfigs();
-        // 必须在 configManager.saveAllDefaultConfigs() 后调用
+
+        // 数据库初始化（在TaskManager之前）
+        // TODO 数据类型暂时硬编码为 SQLITE
+        StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
+        StorgeManager.getInstance().connect();
+        StorgeManager.getInstance().createTable();
+
+        // 必须在 configManager.saveAllDefaultConfigs() 和 数据库初始化 后调用
         TaskManager.init(taskConfig);
+        
+        // 加载所有玩家任务数据（必须在TaskManager初始化后）
+        TaskManager.getInstance().loadAllPlayerTasks();
 
         // 事件
         EventsRegister.register();
@@ -113,11 +119,10 @@ public final class PlayerTaskX extends JavaPlugin {
         // UI界面
         registerViews();
 
-        // 数据库
-        // TODO 数据类型暂时硬编码为 SQLITE
-        StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
-        StorgeManager.getInstance().connect();
-        StorgeManager.getInstance().createTable();
+        // 更新
+        UpdateHelper updateHelper = new UpdateHelper();
+        updateHelper.checkUpdate(getDescription().getVersion());
+
     }
 
     private void unregister() {

@@ -11,6 +11,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -126,6 +127,34 @@ public class TaskManager {
     }
 
     /**
+     * 从数据库加载玩家数据 （所有玩家）
+     */
+    public void loadPlayerData(UUID uuid) {
+        List<PlayerTask> playerTaskList = StorgeManager.getInstance().loadPlayerTasks(uuid);
+        playerTasks.put(uuid, playerTaskList);
+    }
+
+    /**
+     * 从数据库加载所有玩家任务数据
+     */
+    public void loadAllPlayerTasks() {
+        System.out.println("wo zhi xing le");
+        // 获取所有玩家
+        List<UUID> uuidList = StorgeManager.getInstance().getAllPlayerUUID();
+        if (uuidList.isEmpty()) {
+            PlayerTaskX.getYLib().getLoggerTools().warn("数据库中没有玩家数据！");
+            return;
+        }
+
+        // 加载所有玩家任务数据
+        for (UUID uuid : uuidList) {
+            loadPlayerData(uuid);
+        }
+        PlayerTaskX.getYLib().getLoggerTools().info("已加载所有玩家任务数据！");
+    }
+
+
+    /**
      * 玩家开始任务
      *
      * @param player 选手
@@ -160,7 +189,7 @@ public class TaskManager {
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
         StorgeManager.getInstance().createNewPlayer(playerTask);
 
-        player.sendMessage("§a你已开始任务: §e" + task.getId());
+        player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
 
     /**
@@ -255,7 +284,7 @@ public class TaskManager {
         // 执行任务完成触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFinish(), task);
 
-        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getId());
+        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getName());
     }
 
     /**

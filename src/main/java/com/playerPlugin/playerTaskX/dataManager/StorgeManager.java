@@ -4,6 +4,9 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class StorgeManager {
     private static volatile StorgeManager instance;
@@ -102,6 +105,49 @@ public class StorgeManager {
                 // TODO
             }
         }
+    }
+
+    /**
+     * 加载玩家数据
+     */
+    public List<PlayerTask> loadPlayerTasks(UUID uuid) {
+        switch (type) {
+            case SQLITE -> {
+                try {
+                    return sqLiteManager.loadPlayerTasks(uuid);
+                } catch (SQLException e){
+                    PlayerTaskX.getYLib().getLoggerTools().error("加载玩家数据失败" + e.getMessage());
+                    return new ArrayList<>();
+                }
+            }
+            case MYSQL -> {
+                // TODO
+                return new ArrayList<>();
+            }
+        }
+        return List.of();
+    }
+
+    /**
+     * 获取所有任务中玩家的uuid （players_tasks 表中）
+     * @return
+     */
+    public List<UUID> getAllPlayerUUID() {
+        switch (type) {
+            case SQLITE -> {
+                try {
+                    return sqLiteManager.getAllPlayerUUID();
+                } catch (SQLException e){
+                    PlayerTaskX.getYLib().getLoggerTools().error("获取所有玩家UUID失败" + e.getMessage());
+                    return new ArrayList<>();
+                }
+            }
+            case MYSQL -> {
+                // TODO
+                return new ArrayList<>();
+            }
+        }
+        return List.of();
     }
 
 
