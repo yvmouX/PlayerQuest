@@ -7,7 +7,7 @@ import java.util.UUID;
 public interface Storge {
     void connect(File dataFolder) throws SQLException, ClassNotFoundException;
 
-    void createTable()  throws SQLException;
+    void initDatabase()  throws SQLException;
 
     void createNewPlayer(UUID uuid)  throws SQLException;
 

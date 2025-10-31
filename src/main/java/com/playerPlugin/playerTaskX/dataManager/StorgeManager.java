@@ -38,7 +38,7 @@ public class StorgeManager {
         switch (type) {
             case SQLITE -> {
                 try {
-                    sqLiteManager.createTable();
+                    sqLiteManager.initDatabase();
                     PlayerTaskX.getYLib().getLoggerTools().info("成功创建 SQLite 数据表！");
                 } catch (SQLException e){
                     PlayerTaskX.getYLib().getLoggerTools().error("创建 SQLite 数据表 失败" + e.getMessage());

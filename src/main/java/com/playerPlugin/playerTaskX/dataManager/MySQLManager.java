@@ -12,7 +12,7 @@ public class MySQLManager implements Storge {
     }
 
     @Override
-    public void createTable() throws SQLException {
+    public void initDatabase() throws SQLException {
 
     }
 
