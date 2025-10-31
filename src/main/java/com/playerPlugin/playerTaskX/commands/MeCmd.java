@@ -56,7 +56,7 @@ public class MeCmd implements SubCommand {
             };
 
             player.sendMessage(String.format("§e%s §7- %s §7(%d/%d)",
-                    pt.getTask().getName(),
+                    pt.getTask().getId(),
                     statusStr,
                     pt.getProgress(),
                     pt.getTargetNumber()));

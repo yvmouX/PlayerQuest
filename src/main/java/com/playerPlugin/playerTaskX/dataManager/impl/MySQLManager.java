@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
+import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
@@ -19,7 +20,7 @@ public class MySQLManager implements Storge {
     }
 
     @Override
-    public void createNewPlayer(UUID uuid) throws SQLException {
+    public void createNewPlayer(PlayerTask task) throws SQLException {
 
     }
 

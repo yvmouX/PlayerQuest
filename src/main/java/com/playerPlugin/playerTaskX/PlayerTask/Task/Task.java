@@ -1,16 +1,16 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Task;
 
+import com.playerPlugin.playerTaskX.PlayerTask.TaskTypes;
+
 public class Task {
     private String id;
-    private String name;
-    private String type;
+    private TaskTypes type;
     private TaskTarget target;
     public String condition;
     private TaskTrigger trigger;
 
-    public Task(String taskId, String taskName, String taskType, TaskTarget taskTarget, String taskCondition, TaskTrigger taskTrigger) {
+    public Task(String taskId, String taskName, TaskTypes taskType, TaskTarget taskTarget, String taskCondition, TaskTrigger taskTrigger) {
         this.id = taskId;
-        this.name = taskName;
         this.type = taskType;
         this.target = taskTarget;
         this.condition = taskCondition;
@@ -21,11 +21,8 @@ public class Task {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public TaskTypes getType() { return type; }
+    public void setType(TaskTypes type) { this.type = type; }
 
     public TaskTarget getTarget() { return target; }
     public void setTarget(TaskTarget target) { this.target = target; }

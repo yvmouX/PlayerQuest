@@ -1,5 +1,10 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
+import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.PlayerTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskTargets;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskTypes;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
@@ -42,8 +47,11 @@ public class SQLiteManager implements Storge {
             }
         }
 
-        String dbPath = new File(dataFolder, DATABASE).getPath();
-        String url = "jdbc:sqlite:" + dbPath;
+        File dbFile = new File(dataFolder, DATABASE);
+        String path = dbFile.getAbsolutePath();
+        getYLib().getLoggerTools().info("===== SQLite 数据库绝对路径：" + path + " =====");
+
+        String url = "jdbc:sqlite:" + path;
 
         // 可以在 url 后加上参数，例如 busy_timeout=5000
         conn = DriverManager.getConnection(url);
@@ -89,33 +97,56 @@ public class SQLiteManager implements Storge {
     /**
      * 创建新玩家（使用 PreparedStatement 绑定参数）
      *
-     * @param uuid uuid
+     * @param task 任务
      * @throws SQLException sql异常
      */
-    public void createNewPlayer(UUID uuid) throws SQLException {
+    public void createNewPlayer(PlayerTask task) throws SQLException {
         if (conn == null || conn.isClosed()) {
             throw new SQLException("Connection is not open. Call connect() first.");
         }
         String createdAt = getCurrentTime();
         String updatedAt = createdAt;
-        String playerUuid = uuid.toString();
+        UUID playerUuid = task.getUUID();
+        String taskId = task.getTask().getId();
+        TaskTypes taskType = task.getTask().getType();
+        TaskTargets taskTarget = task.getTask().getTarget().getAction();
+        String taskStatus = PlayerTaskStatus.IN_PROGRESS.toString();
 
-        String sql = create_player_sql(); // 返回带 ? 的 SQL
-
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        // conn.setAutoCommit(false);
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO players_tasks (created_at, updated_at, player_uuid, task_id, task_type, task_target, task_status) VALUES (?, ?, ?, ?, ?, ?, ?);"
+            )) {
             ps.setString(1, createdAt);
             ps.setString(2, updatedAt);
-            ps.setString(3, playerUuid);
-            ps.executeUpdate();
+            ps.setString(3, playerUuid.toString());
+            ps.setString(4, taskId);
+            ps.setString(5, taskType.toString());
+            ps.setString(6, taskTarget.toString());
+            ps.setString(7, taskStatus);
+            int affectedRows = ps.executeUpdate(); // 获取影响行数
+            
+            // conn.commit();
+            if (affectedRows > 0) {
+                log.info("成功插入玩家任务数据：" + playerUuid + "，任务ID：" + taskId + "，影响行数：" + affectedRows);
+            } else {
+                log.info("玩家任务数据已存在（未重复插入）：" + playerUuid + "，任务ID：" + taskId); // INSERT OR IGNORE 会返回 0
+            }
         }
-    }
-
-    /**
-     * 返回插入玩家的 SQL（使用占位符）
-     */
-    private String create_player_sql() {
-        // 使用 INSERT OR IGNORE 可以避免重复主键/unique 导致异常（若你希望抛错可以换成普通 INSERT）
-        return "INSERT OR IGNORE INTO players (created_at, updated_at, player_uuid) VALUES (?, ?, ?);";
+        // } catch (SQLException e) {
+        //     try {
+        //         conn.rollback();
+        //     } catch (SQLException rollbackEx) {
+        //         log.err("回滚事务失败：" + rollbackEx.getMessage());
+        //     }
+        //     log.err("插入玩家任务数据失败：" + e.getMessage());
+        //     throw e;
+        // } finally {
+        //     try {
+        //         conn.setAutoCommit(true);
+        //     } catch (SQLException autoCommitEx) {
+        //         log.err("重置自动提交失败：" + autoCommitEx.getMessage());
+        //     }
+        // }
     }
 
     /**

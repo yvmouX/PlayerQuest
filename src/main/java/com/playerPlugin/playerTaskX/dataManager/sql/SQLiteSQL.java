@@ -60,8 +60,7 @@ public class SQLiteSQL {
                     " task_status TEXT NOT NULL DEFAULT 'UN_STARTED' CHECK(task_status IN ('UN_STARTED','IN_PROGRESS','COMPLETED','UN_COMPLETED','FAILED'))," +
                     " accept_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)," +
                     " finish_at DATETIME," +
-                    " expire_at DATETIME," +
-                    " UNIQUE (player_uuid, task_id)" +
+                    " expire_at DATETIME" +
                     ");";
 
     public static final String SQLITE_PLAYERS_TASKS_INDEXES =

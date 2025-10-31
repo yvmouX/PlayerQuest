@@ -1,4 +1,5 @@
 package com.playerPlugin.playerTaskX.dataManager;
+import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 
@@ -6,14 +7,49 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 public class StorgeManager {
+    private static volatile StorgeManager instance;
     private final PlayerTaskX plugin;
     private final StorgeTypes type;
     private final SQLiteManager sqLiteManager;
 
     public StorgeManager(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager) {
+        if (instance != null) {
+            throw new IllegalStateException("StorgeManger already instantiated");
+        }
         this.plugin = plugin;
         this.type = storge;
         this.sqLiteManager = sqLiteManager;
+    }
+
+    public static void init(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager) {
+        if (plugin == null) {
+            throw new NullPointerException("plugin can't be null");
+        }
+        if (storge == null) {
+            throw new NullPointerException("storge can't be null");
+        }
+        if (sqLiteManager == null) {
+            throw new NullPointerException("sqLiteManager can't be null");
+        }
+
+        if (instance == null) {
+            synchronized (StorgeManager.class) {
+                if (instance == null) {
+                    instance = new StorgeManager(plugin, storge, sqLiteManager);
+                }
+            }
+        }
+    }
+
+    public static StorgeManager getInstance() {
+        if (instance == null) {
+            synchronized (StorgeManager.class) {
+                if (instance == null) {
+                    throw  new NullPointerException("instance can't be null");
+                }
+            }
+        }
+        return instance;
     }
 
     public void connect() {
@@ -54,11 +90,11 @@ public class StorgeManager {
         }
     }
 
-    public void createNewPlayer(UUID uuid) {
+    public void createNewPlayer(PlayerTask task) {
         switch (type) {
             case SQLITE -> {
                 try {
-                    sqLiteManager.createNewPlayer(uuid);
+                    sqLiteManager.createNewPlayer(task);
                 } catch (SQLException e){
                     PlayerTaskX.getYLib().getLoggerTools().error("创建玩家数据失败" + e.getMessage());
                 }

@@ -43,6 +43,5 @@ public class MysqlSQL {
             "accept_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '任务接受时间'," +
             "finish_at DATETIME COMMENT '任务完成时间，未完成为 NULL'," +
             "expire_at DATETIME COMMENT '任务过期时间，永久任务为 NULL'," +
-            "UNIQUE KEY idx_player_task (player_uuid, task_id) COMMENT '避免同一玩家重复接受同一任务'" +
             ");";
 }

@@ -6,6 +6,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -74,7 +75,7 @@ public class TaskManager {
 
             // 加载任务名称、任务类型、任务条件
             String name = taskSection.getString("name", taskId);
-            String type = taskSection.getString("type", "forever");
+            String type = taskSection.getString("type", "FOREVER").toUpperCase(Locale.ENGLISH);
             String condition = taskSection.getString("condition", "none");
 
             // 加载目标
@@ -82,7 +83,8 @@ public class TaskManager {
             TaskTarget target = new TaskTarget();
             if (targetSection != null) {
                 target.setTarget_id(targetSection.getString("target_id", ""));
-                target.setAction(targetSection.getString("action", ""));
+                // TODO 验证数据类型
+                target.setAction(TaskTargets.valueOf(targetSection.getString("action", "").toUpperCase(Locale.ENGLISH)));
                 target.setCount(targetSection.getInt("count", 1));
             }
 
@@ -95,7 +97,8 @@ public class TaskManager {
                 trigger.setOnTaskFail(triggerSection.getStringList("on_task_fail"));
             }
 
-            Task task = new Task(taskId, name, type, target, condition, trigger);
+            // TODO 验证数据类型
+            Task task = new Task(taskId, name, TaskTypes.valueOf(type), target, condition, trigger);
             tasks.put(taskId, task);
         }
     }
@@ -147,12 +150,13 @@ public class TaskManager {
 
         PlayerTask playerTask = new PlayerTask(uuid, task);
         playerTaskList.add(playerTask);
-        playerTasks.put(uuid, playerTaskList);
 
+        playerTasks.put(uuid, playerTaskList);
         // 执行任务开始触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
+        StorgeManager.getInstance().createNewPlayer(playerTask);
 
-        player.sendMessage("§a你已开始任务: §e" + task.getName());
+        player.sendMessage("§a你已开始任务: §e" + task.getId());
     }
 
     /**
@@ -182,7 +186,7 @@ public class TaskManager {
         List<PlayerTask> playerTasks = getPlayerActiveTasks(uuid);
         if (playerTasks != null) {
             for (PlayerTask pt : playerTasks) {
-                activeTasks.put(pt.getTask(), pt.getTask().getTarget().getAction());
+                activeTasks.put(pt.getTask(), pt.getTask().getTarget().getAction().toString());
             }
         }
         return activeTasks;
@@ -221,7 +225,7 @@ public class TaskManager {
             };
 
             // 检查动作类型和目标物品是否匹配
-            if (target.getAction().equalsIgnoreCase(actionType) &&
+            if (target.getAction().toString().equalsIgnoreCase(actionType) &&
                     target.getTarget_id().equalsIgnoreCase(itemType)) {
 
                 playerTask.addProgress(1);
@@ -247,7 +251,7 @@ public class TaskManager {
         // 执行任务完成触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFinish(), task);
 
-        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getName());
+        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getId());
     }
 
     /**

@@ -24,7 +24,7 @@ public class TaskTriggerExecutor {
             
             // 替换占位符
             command = command.replace("{player}", player.getName());
-            command = command.replace("{this}", task.getName());
+            command = command.replace("{this}", task.getId());
             
             executeCommand(player, command);
         }

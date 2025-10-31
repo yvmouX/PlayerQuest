@@ -58,6 +58,13 @@ public final class PlayerTaskX extends JavaPlugin {
     @Override
     public void onDisable() {
         if (log != null) {
+            log.info(Logger.prefix + "正在关闭插件...");
+            try {
+                StorgeManager.getInstance().close();
+                log.info(Logger.prefix + "数据库连接已关闭");
+            } catch (Exception e) {
+                log.err(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());
+            }
             log.info(Logger.prefix + "插件已禁用");
         }
         unregister();
@@ -70,13 +77,13 @@ public final class PlayerTaskX extends JavaPlugin {
         UpdateHelper updateHelper = new UpdateHelper();
         updateHelper.checkUpdate(getDescription().getVersion());
 
-        //任务配置
+        // 任务配置
         TaskConfig taskConfig = new TaskConfig(this);
-        TaskManager.init(taskConfig);
-
         // 配置文件
         ConfigManager configManager = new ConfigManager(this, taskConfig);
         configManager.saveAllDefaultConfigs();
+        // 必须在 configManager.saveAllDefaultConfigs() 后调用
+        TaskManager.init(taskConfig);
 
         // 事件
         EventsRegister.register();
@@ -108,9 +115,9 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 数据库
         // TODO 数据类型暂时硬编码为 SQLITE
-        StorgeManager storgeManager = new StorgeManager(this, StorgeTypes.SQLITE, new SQLiteManager());
-        storgeManager.connect();
-        storgeManager.createTable();
+        StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
+        StorgeManager.getInstance().connect();
+        StorgeManager.getInstance().createTable();
     }
 
     private void unregister() {
