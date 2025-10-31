@@ -1,4 +1,6 @@
-package com.playerPlugin.playerTaskX.dataManager;
+package com.playerPlugin.playerTaskX.dataManager.impl;
+
+import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
 import java.sql.SQLException;

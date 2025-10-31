@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.dataManager;
+package com.playerPlugin.playerTaskX.dataManager.sql;
 
 /**
  * SQLite SQL

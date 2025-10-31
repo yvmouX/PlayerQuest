@@ -11,7 +11,7 @@ import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.commands.admin.StartCmd;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
-import com.playerPlugin.playerTaskX.dataManager.SQLiteManager;
+import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
 import com.playerPlugin.playerTaskX.utils.Logger;
