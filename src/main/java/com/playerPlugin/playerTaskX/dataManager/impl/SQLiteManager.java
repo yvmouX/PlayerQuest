@@ -17,8 +17,8 @@ import java.util.UUID;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
-import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_players_table;
-import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_players_tasks_table;
+import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_task_statistics_sql;
+import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_players_tasks_sql;
 
 // TODO 异常将由 StorgeManager.java 类进行处理
 // TODO 这部分AI写的，有空可以检查一下 2025.10.31
@@ -79,8 +79,8 @@ public class SQLiteManager implements Storge {
         try {
             // 如果你的 players_sql / players_tasks_sql 中只包含 CREATE TABLE 语句，
             // 直接执行即可；若你把索引写在同一常量里（多语句），executeMultipleSql 会拆分执行。
-            executeMultipleSql(sqlite_players_table);
-            executeMultipleSql(sqlite_players_tasks_table);
+            executeMultipleSql(sqlite_task_statistics_sql);
+            executeMultipleSql(sqlite_players_tasks_sql);
 
             // 如果你在 SQL 类中添加了索引/触发器常量（比如 SQLITE_PLAYERS_INDEXES 等），
             // 也在这里执行它们（示例： executeMultipleSql(SQL.SQLITE_PLAYERS_INDEXES); ）

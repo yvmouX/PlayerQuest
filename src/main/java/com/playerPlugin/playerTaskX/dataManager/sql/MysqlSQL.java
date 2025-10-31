@@ -7,7 +7,7 @@ package com.playerPlugin.playerTaskX.dataManager.sql;
  * &#064;date  2025/10/31
  */
 public class MysqlSQL {
-    public static final String players_sql = "CREATE TABLE IF NOT EXISTS players (" +
+    public static final String mysql_task_statistics_sql = "CREATE TABLE IF NOT EXISTS task_statistics (" +
             "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
             "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
             "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间'," +
@@ -30,7 +30,7 @@ public class MysqlSQL {
             "total_task_count INTEGER NOT NULL DEFAULT 0 COMMENT '总任务完成次数'" +
             ");";
 
-    public static final String players_tasks_sql = "CREATE TABLE IF NOT EXISTS players_tasks (" +
+    public static final String mysql_players_tasks_sql = "CREATE TABLE IF NOT EXISTS players_tasks (" +
             "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
             "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
             "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间'," +

@@ -8,8 +8,8 @@ package com.playerPlugin.playerTaskX.dataManager.sql;
  */
 // TODO 这部分AI写的，有空可以检查一下
 public class SQLiteSQL {
-    public static final String sqlite_players_table =
-            "CREATE TABLE IF NOT EXISTS players (" +
+    public static final String sqlite_task_statistics_sql =
+            "CREATE TABLE IF NOT EXISTS task_statistics (" +
                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                     " created_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)," +
                     " updated_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)," +
@@ -46,7 +46,7 @@ public class SQLiteSQL {
                     "END;";
 
     // SQLite version of players_tasks table + indexes + trigger
-    public static final String sqlite_players_tasks_table =
+    public static final String sqlite_players_tasks_sql =
             "CREATE TABLE IF NOT EXISTS players_tasks (" +
                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                     " created_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)," +
