@@ -1,5 +1,9 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTargets;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;

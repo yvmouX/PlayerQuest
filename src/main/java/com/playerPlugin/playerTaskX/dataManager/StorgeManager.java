@@ -1,5 +1,5 @@
 package com.playerPlugin.playerTaskX.dataManager;
-import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
-import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;

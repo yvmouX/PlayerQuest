@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.commands;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

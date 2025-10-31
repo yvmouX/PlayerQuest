@@ -1,9 +1,9 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
-import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.PlayerTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskTargets;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskTypes;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTargets;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;

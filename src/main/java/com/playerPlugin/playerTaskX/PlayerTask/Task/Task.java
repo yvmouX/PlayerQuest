@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Task;
 
-import com.playerPlugin.playerTaskX.PlayerTask.TaskTypes;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 
 public class Task {
     private String id;

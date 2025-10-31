@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.PlayerTask;
+package com.playerPlugin.playerTaskX.PlayerTask.Enum;
 
 public enum TaskTargets {
     CRAFT,
