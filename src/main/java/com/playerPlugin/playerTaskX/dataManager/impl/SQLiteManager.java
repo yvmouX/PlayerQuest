@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX.dataManager.impl;
 
 import com.playerPlugin.playerTaskX.PlayerTask.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.PlayerTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskTargets;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskTypes;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
@@ -132,21 +131,6 @@ public class SQLiteManager implements Storge {
                 log.info("玩家任务数据已存在（未重复插入）：" + playerUuid + "，任务ID：" + taskId); // INSERT OR IGNORE 会返回 0
             }
         }
-        // } catch (SQLException e) {
-        //     try {
-        //         conn.rollback();
-        //     } catch (SQLException rollbackEx) {
-        //         log.err("回滚事务失败：" + rollbackEx.getMessage());
-        //     }
-        //     log.err("插入玩家任务数据失败：" + e.getMessage());
-        //     throw e;
-        // } finally {
-        //     try {
-        //         conn.setAutoCommit(true);
-        //     } catch (SQLException autoCommitEx) {
-        //         log.err("重置自动提交失败：" + autoCommitEx.getMessage());
-        //     }
-        // }
     }
 
     /**

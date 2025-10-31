@@ -1,7 +1,5 @@
 package com.playerPlugin.playerTaskX.structs;
 
-import java.util.Map;
-
 record PlayersStruct(
         String player_uuid,
         String task_id,

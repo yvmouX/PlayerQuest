@@ -1,12 +1,6 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Trigger;
 
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-
-import java.util.Locale;
 
 public class TaskTriggerSpecial {
     /**

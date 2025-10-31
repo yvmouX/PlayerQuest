@@ -5,7 +5,6 @@ import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
 import java.sql.SQLException;
-import java.util.UUID;
 
 public class MySQLManager implements Storge {
     // TODO
