@@ -19,11 +19,14 @@ import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
+import net.milkbowl.vault.economy.Economy;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
+    private static Economy economy = null;
     private static PlayerTaskX instance;
     public static Logger log;
     private static ViewFrame viewFrame = null;
@@ -34,6 +37,10 @@ public final class PlayerTaskX extends JavaPlugin {
 
     public static PlayerTaskX getInstance() {
         return instance;
+    }
+
+    public static Economy getEconomy() {
+        return economy;
     }
 
     @Nullable
@@ -72,6 +79,11 @@ public final class PlayerTaskX extends JavaPlugin {
 
     private void register() {
         new Metrics(this, 27726);
+
+        // 初始化Vault
+        if (!setupEconomy()) {
+            log.err(Logger.prefix + "Vault未安装");
+        }
 
         // 任务配置
         TaskConfig taskConfig = new TaskConfig(this);
@@ -137,5 +149,17 @@ public final class PlayerTaskX extends JavaPlugin {
         } catch (Exception e) {
             log.err("创建UI错误" + e);
         }
+    }
+
+    private boolean setupEconomy() {
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            return false;
+        }
+        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            return false;
+        }
+        economy = rsp.getProvider();
+        return true;
     }
 }
