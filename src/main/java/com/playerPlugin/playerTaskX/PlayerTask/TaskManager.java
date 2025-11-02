@@ -314,5 +314,6 @@ public class TaskManager {
     public void reload() {
         taskConfig.reloadTasksConfig();
         loadTasks();
+        loadAllPlayerTasks();
     }
 }
