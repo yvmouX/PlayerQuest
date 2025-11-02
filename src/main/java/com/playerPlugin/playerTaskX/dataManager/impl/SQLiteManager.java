@@ -114,7 +114,6 @@ public class SQLiteManager implements Storge {
             throw new SQLException("Connection is not open. Call connect() first.");
         }
         String createdAt = getCurrentTime();
-        String updatedAt = createdAt;
         UUID playerUuid = task.getUUID();
         String taskId = task.getTask().getId();
         String taskStatus = PlayerTaskStatus.IN_PROGRESS.toString();
@@ -123,7 +122,7 @@ public class SQLiteManager implements Storge {
             "INSERT INTO players_tasks (created_at, updated_at, player_uuid, task_id, task_status) VALUES (?, ?, ?, ?, ?);"
             )) {
             ps.setString(1, createdAt);
-            ps.setString(2, updatedAt);
+            ps.setString(2, createdAt);
             ps.setString(3, playerUuid.toString());
             ps.setString(4, taskId);
             ps.setString(5, taskStatus);
