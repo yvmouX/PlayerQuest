@@ -40,6 +40,11 @@ public class UpdateHelper {
     }
 
     private void compareVersion(String currentVersion, String latestVersion) {
+        if (latestVersion == null) {
+            log.info(ChatColor.RED, "无法获取最新版本信息");
+            return;
+        }
+
         int latest;
         int current;
         ArrayList<String> currentVersionList = new ArrayList<>(Arrays.asList(currentVersion.split("\\.")));
