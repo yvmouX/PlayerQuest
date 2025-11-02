@@ -4,6 +4,7 @@ import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.PlayerTaskX;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -59,14 +60,15 @@ public class MeCmd implements SubCommand {
                     pt.getTask().getName(),
                     statusStr,
                     pt.getProgress(),
-                    pt.getTargetNumber()));
+                    114514)); // TODO 显示任务总进度
             // TODO: 2025/10/26 显示任务详情 调试用
-            player.sendMessage(String.format("§7目标：%s/%s §7(%d)",
-                    pt.getTask().getTarget().getTarget_id(),
-                    pt.getTask().getTarget().getAction().toString(),
-                    pt.getTask().getTarget().getCount()));
-            player.sendMessage(String.format("§7类型：%s",
-                    pt.getTask().getType()));
+            // 目标列表
+            player.sendMessage("§7目标列表：");
+            for (String target_id : pt.getTask().getTarget().getTarget_id()) {
+                player.sendMessage(String.format("§7- %s §7(%s)",
+                        target_id,
+                        pt.getTask().getTarget().getAction().get(target_id)));
+            }
         }
 
         return true;

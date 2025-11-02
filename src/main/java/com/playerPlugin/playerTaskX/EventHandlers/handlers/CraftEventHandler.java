@@ -25,6 +25,7 @@ public class CraftEventHandler implements Listener {
         String itemType = event.getRecipe().getResult().getType().name().toLowerCase();
         
         // 检查任务进度
+        //taskManager.checkTaskProgress(player, "craft", itemType);
         taskManager.checkTaskProgress(player, "craft", itemType);
 
         return new CraftEvent(
