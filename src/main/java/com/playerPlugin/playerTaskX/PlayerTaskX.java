@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.UI.MainUI;
+import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.commands.user.AcceptCmd;
 import com.playerPlugin.playerTaskX.commands.user.MeCmd;
@@ -67,6 +68,11 @@ public final class PlayerTaskX extends JavaPlugin {
     public void onDisable() {
         if (log != null) {
             log.info(Logger.prefix + "正在关闭插件...");
+            // 关闭任务管理器，保存所有数据
+            if (TaskManager.getInstance() != null) {
+                TaskManager.getInstance().shutdown();
+                log.info(Logger.prefix + "任务数据已保存");
+            }
             try {
                 StorgeManager.getInstance().close();
                 log.info(Logger.prefix + "数据库连接已关闭");
@@ -101,7 +107,10 @@ public final class PlayerTaskX extends JavaPlugin {
         // 必须在 configManager.saveAllDefaultConfigs() 和 数据库初始化 后调用
         TaskManager.init(taskConfig);
         
-        // 加载所有玩家任务数据（必须在TaskManager初始化后）
+        // 初始化缓存系统（必须在TaskManager初始化后）
+        PlayerTaskCache.init(this);
+        
+        // 加载所有玩家任务数据（必须在TaskManager和缓存初始化后）
         TaskManager.getInstance().loadAllPlayerTasks();
 
         // 事件

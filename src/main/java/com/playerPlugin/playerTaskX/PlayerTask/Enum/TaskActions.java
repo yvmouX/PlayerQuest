@@ -17,6 +17,7 @@ public enum TaskActions {
     TRIGGER,
     DROP,
     TAKE,
+    PLACE,
     NONE;
 
     public static boolean isValid(String value) {

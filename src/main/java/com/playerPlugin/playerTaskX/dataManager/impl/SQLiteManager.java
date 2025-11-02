@@ -15,6 +15,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -85,6 +86,7 @@ public class SQLiteManager implements Storge {
             // 直接执行即可；若你把索引写在同一常量里（多语句），executeMultipleSql 会拆分执行。
             executeMultipleSql(sqlite_task_statistics_sql);
             executeMultipleSql(sqlite_players_tasks_sql);
+            executeMultipleSql(sqlite_task_item_progress_sql);
 
             // 如果你在 SQL 类中添加了索引/触发器常量（比如 SQLITE_PLAYERS_INDEXES 等），
             // 也在这里执行它们（示例： executeMultipleSql(SQL.SQLITE_PLAYERS_INDEXES); ）
@@ -102,6 +104,8 @@ public class SQLiteManager implements Storge {
     public void createNewPlayer(PlayerTask task) throws SQLException {
 
     }
+    
+
 
     /**
      * 创建新玩家（使用 PreparedStatement 绑定参数）
@@ -189,18 +193,159 @@ public class SQLiteManager implements Storge {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    int playerTaskId = rs.getInt("id");
                     Task task = TaskManager.getInstance().getTask(rs.getString("task_id"));
                     if (task == null) continue;
                     PlayerTask playerTask = new PlayerTask(
                         UUID.fromString(rs.getString("player_uuid")),
                         task
                     );
+                    // 设置任务进度和状态
+                    playerTask.setProgress(rs.getInt("task_progress"));
+                    playerTask.setStatus(PlayerTaskStatus.valueOf(rs.getString("task_status")));
+                    
+                    // 加载每个项目的进度
+                    loadItemProgress(playerTaskId, playerTask);
+                    
                     playerTaskList.add(playerTask);
                 }
             }
         }
         return playerTaskList;
     }
+    
+    /**
+     * 加载任务项目进度
+     * 
+     * @param playerTaskId 玩家任务ID
+     * @param playerTask 玩家任务对象
+     * @throws SQLException sql异常
+     */
+    private void loadItemProgress(int playerTaskId, PlayerTask playerTask) throws SQLException {
+        String sql = "SELECT item_type, progress FROM task_item_progress WHERE player_task_id = ?";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, playerTaskId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                String itemType = rs.getString("item_type");
+                int itemProgress = rs.getInt("progress");
+                playerTask.setItemProgress(itemType, itemProgress);
+            }
+        }
+    }
+
+
+    /**
+     * 更新玩家任务数据
+     *
+     * @param task 任务
+     * @throws SQLException sql异常
+     */
+    public void updatePlayerTask(PlayerTask task) throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            throw new SQLException("Connection is not open. Call connect() first.");
+        }
+        String updatedAt = getCurrentTime();
+        UUID playerUuid = task.getUUID();
+        String taskId = task.getTask().getId();
+        String taskStatus = task.getStatus().toString();
+        int progress = task.getProgress();
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE players_tasks SET updated_at = ?, task_status = ?, task_progress = ? WHERE player_uuid = ? AND task_id = ?;"
+        )) {
+            ps.setString(1, updatedAt);
+            ps.setString(2, taskStatus);
+            ps.setInt(3, progress);
+            ps.setString(4, playerUuid.toString());
+            ps.setString(5, taskId);
+            int affectedRows = ps.executeUpdate();
+
+            if (affectedRows > 0) {
+                // 获取玩家任务ID
+                int playerTaskId = getPlayerTaskId(playerUuid, taskId);
+                if (playerTaskId > 0) {
+                    // 更新项目进度
+                    updateItemProgress(playerTaskId, task);
+                }
+                log.info("成功更新玩家任务数据：" + playerUuid + "，任务ID：" + taskId + "，状态：" + taskStatus + "，进度：" + progress);
+            } else {
+                log.warn("未找到要更新的玩家任务数据：" + playerUuid + "，任务ID：" + taskId);
+            }
+        }
+    }
+    
+    /**
+     * 获取玩家任务ID
+     * 
+     * @param playerUuid 玩家UUID
+     * @param taskId 任务ID
+     * @return 玩家任务ID
+     * @throws SQLException sql异常
+     */
+    private int getPlayerTaskId(UUID playerUuid, String taskId) throws SQLException {
+        String sql = "SELECT id FROM players_tasks WHERE player_uuid = ? AND task_id = ?";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, playerUuid.toString());
+            pstmt.setString(2, taskId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
+        }
+        
+        return -1;
+    }
+    
+    /**
+     * 更新项目进度
+     * 
+     * @param playerTaskId 玩家任务ID
+     * @param playerTask 玩家任务
+     * @throws SQLException sql异常
+     */
+    private void updateItemProgress(int playerTaskId, PlayerTask playerTask) throws SQLException {
+        // 获取所有项目进度
+        Map<String, Integer> itemProgressMap = playerTask.getItemProgressMap();
+        if (itemProgressMap == null || itemProgressMap.isEmpty()) {
+            return;
+        }
+        
+        // 使用事务确保所有更新都成功或都失败
+        conn.setAutoCommit(false);
+        try {
+            // 准备插入或更新语句
+            String upsertSql = "INSERT INTO task_item_progress (player_task_id, item_type, progress) VALUES (?, ?, ?) " +
+                              "ON CONFLICT (player_task_id, item_type) DO UPDATE SET progress = ?";
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
+                for (Map.Entry<String, Integer> entry : itemProgressMap.entrySet()) {
+                    String itemType = entry.getKey();
+                    int progress = entry.getValue();
+                    
+                    pstmt.setInt(1, playerTaskId);
+                    pstmt.setString(2, itemType);
+                    pstmt.setInt(3, progress);
+                    pstmt.setInt(4, progress);
+                    
+                    pstmt.addBatch();
+                }
+                
+                pstmt.executeBatch();
+                conn.commit();
+            }
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(true);
+        }
+    }
+
 
     /**
      * 获取所有任务中玩家的uuid （players_tasks 表中）

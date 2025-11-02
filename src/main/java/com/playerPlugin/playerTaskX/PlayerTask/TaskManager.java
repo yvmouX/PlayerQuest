@@ -5,31 +5,42 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskActions;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskRequireList;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
-import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TaskManager {
     private static volatile TaskManager instance;
     private final TaskConfig taskConfig;
-    private final Map<String, Task> tasks = new HashMap<>(); // 存储定义的所有任务 (任务ID, Task类)
-    private final Map<UUID, List<PlayerTask>> playerTasks = new HashMap<>(); // 存储
+    private final Map<String, Task> tasks = new ConcurrentHashMap<>(); // 存储定义的所有任务 (任务ID, Task类)
+    // 不再直接使用HashMap存储玩家任务，改用缓存系统
+    // private final Map<UUID, List<PlayerTask>> playerTasks = new HashMap<>(); // 存储
 
     // TODO 调试用
     public Map<String, Task> getTasksMap() {
         return tasks;
     }
+    
+    // 修改为从缓存获取玩家任务
     public Map<UUID, List<PlayerTask>> getPlayerTasksMap() {
-        return playerTasks;
+        // 这里只返回当前在线玩家的任务，避免返回整个缓存
+        Map<UUID, List<PlayerTask>> result = new HashMap<>();
+        for (Player player : PlayerTaskX.getInstance().getServer().getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            result.put(uuid, PlayerTaskCache.getInstance().getPlayerTasks(uuid));
+        }
+        return result;
     }
 
     public TaskManager(TaskConfig taskConfig) {
@@ -118,8 +129,10 @@ public class TaskManager {
                     );
                     target.setRequire(Map.of(
                                     targetId,
-                                    new HashSet<>(targetSection.getStringList("require"))
-                            )
+                                            new TaskRequireList(
+                                                    new HashSet<>(targetSection.getStringList("require"))
+                                            )
+                                    )
                     );
                 });
             }
@@ -158,30 +171,23 @@ public class TaskManager {
     }
 
     /**
-     * 从数据库加载玩家数据 （所有玩家）
+     * 从数据库加载玩家数据 （单个玩家）
      */
     public void loadPlayerData(UUID uuid) {
-        List<PlayerTask> playerTaskList = StorgeManager.getInstance().loadPlayerTasks(uuid);
-        playerTasks.put(uuid, playerTaskList);
+        // 使用缓存系统重新加载玩家数据
+        PlayerTaskCache.getInstance().reloadPlayerData(uuid);
     }
 
     /**
      * 从数据库加载所有玩家任务数据
+     * 注意：此方法不再预加载所有玩家数据，而是按需加载
      */
     public void loadAllPlayerTasks() {
-        System.out.println("wo zhi xing le");
-        // 获取所有玩家
-        List<UUID> uuidList = StorgeManager.getInstance().getAllPlayerUUID();
-        if (uuidList.isEmpty()) {
-            PlayerTaskX.getYLib().getLoggerTools().warn("数据库中没有玩家数据！");
-            return;
+        // 获取所有在线玩家并加载他们的数据
+        for (Player player : PlayerTaskX.getInstance().getServer().getOnlinePlayers()) {
+            loadPlayerData(player.getUniqueId());
         }
-
-        // 加载所有玩家任务数据
-        for (UUID uuid : uuidList) {
-            loadPlayerData(uuid);
-        }
-        PlayerTaskX.getYLib().getLoggerTools().info("已加载所有玩家任务数据！");
+        PlayerTaskX.getYLib().getLoggerTools().info("已加载所有在线玩家任务数据！");
     }
 
 
@@ -200,7 +206,7 @@ public class TaskManager {
         };
 
         UUID uuid = player.getUniqueId();
-        List<PlayerTask> playerTaskList = playerTasks.getOrDefault(uuid, new ArrayList<>());
+        List<PlayerTask> playerTaskList = PlayerTaskCache.getInstance().getPlayerTasks(uuid);
 
         // 检查是否已经有该任务。包括已完成
         boolean hasTask = playerTaskList.stream()
@@ -213,12 +219,12 @@ public class TaskManager {
         }
 
         PlayerTask playerTask = new PlayerTask(uuid, task);
-        playerTaskList.add(playerTask);
-
-        playerTasks.put(uuid, playerTaskList);
+        
+        // 使用缓存系统添加任务
+        PlayerTaskCache.getInstance().addPlayerTask(playerTask);
+        
         // 执行任务开始触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
-        StorgeManager.getInstance().createNewPlayer(playerTask);
 
         player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
@@ -230,7 +236,7 @@ public class TaskManager {
      * @return {@link List }<{@link PlayerTask }>
      */
     public List<PlayerTask> getPlayerTasks(UUID uuid) {
-        return playerTasks.getOrDefault(uuid, new ArrayList<>());
+        return PlayerTaskCache.getInstance().getPlayerTasks(uuid);
     }
 
     /**
@@ -312,6 +318,9 @@ public class TaskManager {
         playerTask.setStatus(PlayerTaskStatus.COMPLETED);
         Task task = playerTask.getTask();
 
+        // 更新缓存
+        PlayerTaskCache.getInstance().updatePlayerTask(playerTask);
+
         // 执行任务完成触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFinish(), task);
 
@@ -328,6 +337,9 @@ public class TaskManager {
         playerTask.setStatus(PlayerTaskStatus.FAILED);
         Task task = playerTask.getTask();
 
+        // 更新缓存
+        PlayerTaskCache.getInstance().updatePlayerTask(playerTask);
+
         // 执行任务失败触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFail(), task);
     }
@@ -339,5 +351,14 @@ public class TaskManager {
         taskConfig.reloadTasksConfig();
         loadTasks();
         loadAllPlayerTasks();
+    }
+    
+    /**
+     * 关闭任务管理器
+     * 确保所有数据保存到数据库
+     */
+    public void shutdown() {
+        // 关闭缓存管理器，保存所有数据
+        PlayerTaskCache.getInstance().shutdown();
     }
 }

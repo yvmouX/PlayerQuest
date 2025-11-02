@@ -2,10 +2,13 @@ package com.playerPlugin.playerTaskX.EventHandlers;
 
 import com.playerPlugin.playerTaskX.EventHandlers.handlers.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.EventHandlers.handlers.task.TaskEventHandler;
+import com.playerPlugin.playerTaskX.EventHandlers.services.impl.PlaceService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.EventHandlers.services.impl.BreakService;
 import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
+import org.bukkit.block.Block;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 
@@ -51,6 +54,10 @@ public class EventsRegister {
         try {
             // 注册破坏方块事件的回调服务
             callbackManager.registerCallback(BreakEvent.class, new BreakService());
+            // 注册放置方块事件的回调服务
+            callbackManager.registerCallback(BlockPlaceEvent.class, new PlaceService());
+
+
 
             log.info("已注册所有事件回调服务");
         } catch (Exception e) {

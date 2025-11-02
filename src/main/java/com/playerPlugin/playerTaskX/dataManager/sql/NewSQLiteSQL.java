@@ -66,7 +66,8 @@ public class NewSQLiteSQL {
                     " task_status TEXT NOT NULL DEFAULT 'UN_STARTED' CHECK(task_status IN ('UN_STARTED','IN_PROGRESS','COMPLETED','UN_COMPLETED','FAILED'))," +
                     " accept_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)," +
                     " finish_at DATETIME," +
-                    " expire_at DATETIME" +
+                    " expire_at DATETIME," +
+                    " UNIQUE(player_uuid, task_id)" +
                     ");";
 
     public static final String SQLITE_PLAYERS_TASKS_INDEXES =
@@ -81,4 +82,15 @@ public class NewSQLiteSQL {
                     "BEGIN " +
                     "  UPDATE players_tasks SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; " +
                     "END;";
+            
+    // 新增表格用于存储每个项目的进度
+    public static final String sqlite_task_item_progress_sql =
+            "CREATE TABLE IF NOT EXISTS task_item_progress (" +
+                    " id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    " player_task_id INTEGER NOT NULL," +
+                    " item_type TEXT NOT NULL," +
+                    " progress INTEGER NOT NULL DEFAULT 0," +
+                    " FOREIGN KEY (player_task_id) REFERENCES players_tasks(id)," +
+                    " UNIQUE(player_task_id, item_type)" +
+                    ");";
 }

@@ -129,6 +129,25 @@ public class StorgeManager {
     }
 
     /**
+     * 更新玩家任务数据
+     *
+     */
+    public void updatePlayerTask(PlayerTask task) {
+        switch (type) {
+            case SQLITE -> {
+                try {
+                    sqLiteManager.updatePlayerTask(task);
+                } catch (SQLException e){
+                    PlayerTaskX.getYLib().getLoggerTools().error("更新玩家数据失败" + e.getMessage());
+                }
+            }
+            case MYSQL -> {
+                // TODO
+            }
+        }
+    }
+
+    /**
      * 获取所有任务中玩家的uuid （players_tasks 表中）
      * @return
      */
@@ -149,6 +168,8 @@ public class StorgeManager {
         }
         return List.of();
     }
+
+
 
 
     public void close() {
