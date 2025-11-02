@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.commands;
+package com.playerPlugin.playerTaskX.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
@@ -60,6 +60,13 @@ public class MeCmd implements SubCommand {
                     statusStr,
                     pt.getProgress(),
                     pt.getTargetNumber()));
+            // TODO: 2025/10/26 显示任务详情 调试用
+            player.sendMessage(String.format("§7目标：%s/%s §7(%d)",
+                    pt.getTask().getTarget().getTarget_id(),
+                    pt.getTask().getTarget().getAction().toString(),
+                    pt.getTask().getTarget().getCount()));
+            player.sendMessage(String.format("§7类型：%s",
+                    pt.getTask().getType()));
         }
 
         return true;

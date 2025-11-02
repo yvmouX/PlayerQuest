@@ -24,6 +24,14 @@ public class TaskManager {
     private final Map<String, Task> tasks = new HashMap<>(); // 存储定义的所有任务 (任务ID, Task类)
     private final Map<UUID, List<PlayerTask>> playerTasks = new HashMap<>(); // 存储
 
+    // TODO 调试用
+    public Map<String, Task> getTasksMap() {
+        return tasks;
+    }
+    public Map<UUID, List<PlayerTask>> getPlayerTasksMap() {
+        return playerTasks;
+    }
+
     public TaskManager(TaskConfig taskConfig) {
         if (instance != null) {
             throw new IllegalStateException("TaskManager 已经初始化");

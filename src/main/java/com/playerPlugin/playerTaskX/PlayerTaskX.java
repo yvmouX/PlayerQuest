@@ -3,9 +3,10 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.UI.MainUI;
-import com.playerPlugin.playerTaskX.commands.AcceptCmd;
-import com.playerPlugin.playerTaskX.commands.MeCmd;
-import com.playerPlugin.playerTaskX.commands.OpenCmd;
+import com.playerPlugin.playerTaskX.commands.CommandRegister;
+import com.playerPlugin.playerTaskX.commands.user.AcceptCmd;
+import com.playerPlugin.playerTaskX.commands.user.MeCmd;
+import com.playerPlugin.playerTaskX.commands.user.OpenCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.commands.admin.StartCmd;
@@ -107,26 +108,7 @@ public final class PlayerTaskX extends JavaPlugin {
         EventsRegister.register();
         
         // 命令
-        getYLib().getCommandManager().registerCommands("playertaskx",
-                new MeCmd(),
-                new AcceptCmd(),
-                new OpenCmd()
-        );
-        getYLib().getCommandManager().registerCommands("ptx",
-                new MeCmd(),
-                new AcceptCmd(),
-                new OpenCmd()
-        );
-        getYLib().getCommandManager().registerCommands("playertaskxadmin",
-                new ReloadCmd(this, taskConfig),
-                new ListCmd(),
-                new StartCmd()
-        );
-        getYLib().getCommandManager().registerCommands("ptxa",
-                new ReloadCmd(this, taskConfig),
-                new ListCmd(),
-                new StartCmd()
-        );
+        new CommandRegister(this, ylib, taskConfig).registerCommands();
 
         // UI界面
         registerViews();
