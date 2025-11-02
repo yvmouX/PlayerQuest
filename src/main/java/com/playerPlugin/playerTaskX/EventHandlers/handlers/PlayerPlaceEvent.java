@@ -1,8 +1,6 @@
 package com.playerPlugin.playerTaskX.EventHandlers.handlers;
 
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.structs.eventStructs.PlaceEvent;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
