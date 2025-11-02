@@ -3,9 +3,10 @@ package com.playerPlugin.playerTaskX.dataManager.impl;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTargets;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskActions;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 
 import java.io.File;
@@ -20,8 +21,8 @@ import java.util.UUID;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
-import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_task_statistics_sql;
-import static com.playerPlugin.playerTaskX.dataManager.sql.SQLiteSQL.sqlite_players_tasks_sql;
+import static com.playerPlugin.playerTaskX.dataManager.sql.NewSQLiteSQL.sqlite_task_statistics_sql;
+import static com.playerPlugin.playerTaskX.dataManager.sql.NewSQLiteSQL.sqlite_players_tasks_sql;
 
 // TODO 异常将由 StorgeManager.java 类进行处理
 // TODO 这部分AI写的，有空可以检查一下 2025.10.31
@@ -97,13 +98,18 @@ public class SQLiteManager implements Storge {
         }
     }
 
+    @Override
+    public void createNewPlayer(PlayerTask task) throws SQLException {
+
+    }
+
     /**
      * 创建新玩家（使用 PreparedStatement 绑定参数）
      *
      * @param task 任务
      * @throws SQLException sql异常
      */
-    public void createNewPlayer(PlayerTask task) throws SQLException {
+    public void newCreateNewPlayer(PlayerTask task) throws SQLException {
         if (conn == null || conn.isClosed()) {
             throw new SQLException("Connection is not open. Call connect() first.");
         }
@@ -111,23 +117,18 @@ public class SQLiteManager implements Storge {
         String updatedAt = createdAt;
         UUID playerUuid = task.getUUID();
         String taskId = task.getTask().getId();
-        TaskTypes taskType = task.getTask().getType();
-        TaskTargets taskTarget = task.getTask().getTarget().getAction();
         String taskStatus = PlayerTaskStatus.IN_PROGRESS.toString();
 
-        // conn.setAutoCommit(false);
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO players_tasks (created_at, updated_at, player_uuid, task_id, task_type, task_target, task_status) VALUES (?, ?, ?, ?, ?, ?, ?);"
+            "INSERT INTO players_tasks (created_at, updated_at, player_uuid, task_id, task_status) VALUES (?, ?, ?, ?, ?);"
             )) {
             ps.setString(1, createdAt);
             ps.setString(2, updatedAt);
             ps.setString(3, playerUuid.toString());
             ps.setString(4, taskId);
-            ps.setString(5, taskType.toString());
-            ps.setString(6, taskTarget.toString());
-            ps.setString(7, taskStatus);
+            ps.setString(5, taskStatus);
             int affectedRows = ps.executeUpdate(); // 获取影响行数
-            
+
             // conn.commit();
             if (affectedRows > 0) {
                 log.info("成功插入玩家任务数据：" + playerUuid + "，任务ID：" + taskId + "，影响行数：" + affectedRows);
@@ -136,6 +137,39 @@ public class SQLiteManager implements Storge {
             }
         }
     }
+//    public void createNewPlayer(PlayerTask task) throws SQLException {
+//        if (conn == null || conn.isClosed()) {
+//            throw new SQLException("Connection is not open. Call connect() first.");
+//        }
+//        String createdAt = getCurrentTime();
+//        String updatedAt = createdAt;
+//        UUID playerUuid = task.getUUID();
+//        String taskId = task.getTask().getId();
+//        TaskTypes taskType = task.getTask().getType();
+//        TaskActions taskTarget = task.getTask().getTarget().getAction();
+//        String taskStatus = PlayerTaskStatus.IN_PROGRESS.toString();
+//
+//        // conn.setAutoCommit(false);
+//        try (PreparedStatement ps = conn.prepareStatement(
+//            "INSERT INTO players_tasks (created_at, updated_at, player_uuid, task_id, task_type, task_target, task_status) VALUES (?, ?, ?, ?, ?, ?, ?);"
+//            )) {
+//            ps.setString(1, createdAt);
+//            ps.setString(2, updatedAt);
+//            ps.setString(3, playerUuid.toString());
+//            ps.setString(4, taskId);
+//            ps.setString(5, taskType.toString());
+//            ps.setString(6, taskTarget.toString());
+//            ps.setString(7, taskStatus);
+//            int affectedRows = ps.executeUpdate(); // 获取影响行数
+//
+//            // conn.commit();
+//            if (affectedRows > 0) {
+//                log.info("成功插入玩家任务数据：" + playerUuid + "，任务ID：" + taskId + "，影响行数：" + affectedRows);
+//            } else {
+//                log.info("玩家任务数据已存在（未重复插入）：" + playerUuid + "，任务ID：" + taskId); // INSERT OR IGNORE 会返回 0
+//            }
+//        }
+//    }
 
     /**
      * 加载玩家任务

@@ -2,10 +2,21 @@ craft_diamond_sword_task:
   name: "合成钻石镐"
   type: forever
   target:
-    target_id: diamond_sword
-    action: craft
-    count: 1
-  condition: none
+    1:
+      action: CRAFT
+      require:
+        - DIAMOND_SWORD-1
+        - CAKE-6
+    2:
+      action: CRAFT
+      require:
+        - STONE_PICKAXE-1
+    3:
+      action: CRAFT
+      require:
+        - STONE-12
+  condition:
+    - 'player: yvmou_'
   trigger:
     on_task_start:
       - 'admin: give {player} diamond 1'
@@ -23,26 +34,3 @@ craft_diamond_sword_task:
       - 'item: paper 1 &c死亡证明 因你死亡而发放于你 unbreaking:1'
       - 'command: say I am dead, man!'
       - 'kill: 你因为任务失败而死亡并且被扣去了1级经验'
-
-# 示例：合成金苹果
-craft_golden_apple_task:
-  name: "合成金苹果"
-  type: limit
-  target:
-    target_id: golden_apple
-    action: craft
-    count: 1
-  condition: none
-  trigger:
-    on_task_start:
-      - 'message: 欢迎开始合成金苹果任务！'
-      - 'console: give {player} gold_block 8'
-      - 'console: give {player} apple 1'
-    on_task_finish:
-      - 'money: 20'
-      - 'xp: 200'
-      - 'message: 你获得了20金币和200经验值！'
-    on_task_fail:
-      - 'message: 任务失败了，再接再厉！'
-
-# 示例：破坏方块

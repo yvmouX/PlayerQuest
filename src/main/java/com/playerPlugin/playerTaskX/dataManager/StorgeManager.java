@@ -96,7 +96,7 @@ public class StorgeManager {
         switch (type) {
             case SQLITE -> {
                 try {
-                    sqLiteManager.createNewPlayer(task);
+                    sqLiteManager.newCreateNewPlayer(task);
                 } catch (SQLException e){
                     PlayerTaskX.getYLib().getLoggerTools().error("创建玩家数据失败" + e.getMessage());
                 }

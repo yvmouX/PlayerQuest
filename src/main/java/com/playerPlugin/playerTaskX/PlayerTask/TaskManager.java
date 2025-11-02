@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTargets;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskActions;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
@@ -94,10 +94,34 @@ public class TaskManager {
             ConfigurationSection targetSection = taskSection.getConfigurationSection("target");
             TaskTarget target = new TaskTarget();
             if (targetSection != null) {
-                target.setTarget_id(targetSection.getString("target_id", ""));
-                // TODO 验证数据类型
-                target.setAction(TaskTargets.valueOf(targetSection.getString("action", "").toUpperCase(Locale.ENGLISH)));
-                target.setCount(targetSection.getInt("count", 1));
+                Set<String> targetIds = targetSection.getKeys(false);
+                target.setTarget_id(targetSection.getKeys(false));
+
+                targetIds.forEach(targetId -> {
+                    ConfigurationSection aTargetSection =  targetSection.getConfigurationSection(targetId);
+                    if (aTargetSection == null) {
+                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标: " + targetId + " 目标配置不存在");
+                        return;
+                    }
+                    // 验证动作是否合法
+                    String actionStr = aTargetSection.getString("action", "");
+                    if (!TaskActions.isValid(actionStr)) {
+                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标: " + targetId + " 动作: " + actionStr + " 不合法");
+                        return;
+                    }
+                    TaskActions action = TaskActions.fromString(actionStr);
+
+                    target.setAction(Map.of
+                            (
+                                    targetId,
+                                    action)
+                    );
+                    target.setRequire(Map.of(
+                                    targetId,
+                                    new HashSet<>(targetSection.getStringList("require"))
+                            )
+                    );
+                });
             }
 
             // 加载触发器
@@ -243,40 +267,40 @@ public class TaskManager {
         }
         return List.of();
     }
-
-    /**
-     * 检查并处理任务进度
-     *
-     * @param player     选手
-     * @param actionType 作类型
-     * @param itemType   项目类型
-     */
-    public void checkTaskProgress(Player player, String actionType, String itemType) {
-        List<PlayerTask> activeTasks = getPlayerActiveTasks(player.getUniqueId());
-
-        for (PlayerTask playerTask : activeTasks) {
-            Task task = playerTask.getTask();
-            TaskTarget target = task.getTarget();
-
-            if (target == null) {
-                player.sendMessage("§c无法获取目标%s，这是一个不应出现的异常。\n" +
-                        "请及时联系管理员");
-                continue;
-            };
-
-            // 检查动作类型和目标物品是否匹配
-            if (target.getAction().toString().equalsIgnoreCase(actionType) &&
-                    target.getTarget_id().equalsIgnoreCase(itemType)) {
-
-                playerTask.addProgress(1);
-
-                // 检查是否完成
-                if (playerTask.isComplete()) {
-                    completeTask(player, playerTask);
-                }
-            }
-        }
-    }
+//
+//    /**
+//     * 检查并处理任务进度
+//     *
+//     * @param player     选手
+//     * @param actionType 作类型
+//     * @param itemType   项目类型
+//     */
+//    public void checkTaskProgress(Player player, String actionType, String itemType) {
+//        List<PlayerTask> activeTasks = getPlayerActiveTasks(player.getUniqueId());
+//
+//        for (PlayerTask playerTask : activeTasks) {
+//            Task task = playerTask.getTask();
+//            TaskTarget target = task.getTarget();
+//
+//            if (target == null) {
+//                player.sendMessage("§c无法获取目标%s，这是一个不应出现的异常。\n" +
+//                        "请及时联系管理员");
+//                continue;
+//            };
+//
+//            // 检查动作类型和目标物品是否匹配
+//            if (target.getAction().toString().equalsIgnoreCase(actionType) &&
+//                    target.getTarget_id().equalsIgnoreCase(itemType)) {
+//
+//                playerTask.addProgress(1);
+//
+//                // 检查是否完成
+//                if (playerTask.isComplete()) {
+//                    completeTask(player, playerTask);
+//                }
+//            }
+//        }
+//    }
 
     /**
      * 完成任务
