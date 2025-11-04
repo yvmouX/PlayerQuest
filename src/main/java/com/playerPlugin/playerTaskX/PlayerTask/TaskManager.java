@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.MaterialRequirement;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
@@ -22,7 +22,7 @@ import java.util.*;
 
 public class TaskManager {
     private static volatile TaskManager instance;
-    private final PlayerTaskCache playerTaskCache = PlayerTaskCache.getInstance();
+    private PlayerTaskCache playerTaskCache;
     private final TaskConfig taskConfig;
     private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
 
@@ -42,6 +42,8 @@ public class TaskManager {
             throw new IllegalStateException("TaskManager 已经初始化");
         }
         this.taskConfig = taskConfig;
+        PlayerTaskCache.init(PlayerTaskX.getInstance());
+        this.playerTaskCache = PlayerTaskCache.getInstance();
         loadTasksToCache();
     }
 
@@ -197,7 +199,7 @@ public class TaskManager {
                 PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务名称不能为空。");
                 continue;
             }
-            String taskType = config.getString(taskId + ".taskType");
+            String taskType = config.getString(taskId + ".type");
             if (taskType == null) {
                 PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务类型不能为空。");
                 continue;
@@ -249,7 +251,7 @@ public class TaskManager {
                             PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " Material: " + m + " 无效。");
                             continue;
                         }
-                        tt.requires.add(new MaterialRequirement(material, amount));
+                        tt.requires.add(new Requirement(material, amount));
                     }
                     task.targets.add(tt);
                 }

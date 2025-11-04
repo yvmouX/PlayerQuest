@@ -32,7 +32,7 @@ public final class PlayerTaskX extends JavaPlugin {
     private static Economy economy = null;
     private static PlayerTaskX instance;
     public static Logger log;
-    public static LoggerTools logger = YLib.getyLib().getLoggerTools();
+    public static LoggerTools logger;
     private static ViewFrame viewFrame = null;
 
     public static YLib getYLib() {
@@ -61,6 +61,7 @@ public final class PlayerTaskX extends JavaPlugin {
         log = new Logger();
         instance = this;
         ylib = new YLib(this);
+        logger = ylib.getLoggerTools();
 
         register();
         log.info(Logger.prefix + "插件已启用");
@@ -71,13 +72,21 @@ public final class PlayerTaskX extends JavaPlugin {
         if (log != null) {
             log.info(Logger.prefix + "正在关闭插件...");
             // 关闭任务管理器，保存所有数据
-            if (TaskManager.getInstance() != null) {
+            try {
                 TaskManager.getInstance().shutdown();
                 log.info(Logger.prefix + "任务数据已保存");
+            } catch (IllegalStateException e) {
+                // TaskManager 未初始化（插件在 onEnable 早期失败），跳过关闭
+                log.info(Logger.prefix + "任务管理器未初始化，跳过保存");
             }
             try {
-                StorgeManager.getInstance().close();
-                log.info(Logger.prefix + "数据库连接已关闭");
+                final StorgeManager sm = StorgeManager.getInstance();
+                if (sm != null) {
+                    sm.close();
+                    log.info(Logger.prefix + "数据库连接已关闭");
+                } else {
+                    log.info(Logger.prefix + "数据库管理器未初始化，跳过关闭");
+                }
             } catch (Exception e) {
                 log.err(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());
             }
@@ -107,9 +116,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 必须在 configManager.saveAllDefaultConfigs() 和 数据库初始化 后调用
         TaskManager.init(taskConfig);
-        
-        // 初始化缓存系统（必须在TaskManager初始化后）
-        PlayerTaskCache.init(this);
 
         // 事件
         EventsRegister.register();

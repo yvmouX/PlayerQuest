@@ -22,7 +22,7 @@ public class BreakService implements EventCallback<BreakEvent> {
         Player player = event.player();
         String blockType = event.material().name();
         
-        log.debug("统计数据更新: 玩家 " + player + " 破坏了 " + blockType);
+        //log.debug("统计数据更新: 玩家 " + player + " 破坏了 " + blockType);
     }
 
 }

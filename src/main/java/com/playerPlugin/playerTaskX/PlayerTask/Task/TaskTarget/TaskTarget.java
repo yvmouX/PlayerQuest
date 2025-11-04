@@ -6,5 +6,5 @@ import java.util.List;
 
 public class TaskTarget {
     public PTXActionType action;
-    public List<MaterialRequirement> requires;
+    public List<Requirement> requires;
 }
