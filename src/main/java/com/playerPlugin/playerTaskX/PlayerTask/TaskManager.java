@@ -130,16 +130,6 @@ public class TaskManager {
     }
 
 
-
-    /**
-     * 从数据库加载玩家数据到缓存中
-     *
-     * @param playerTask 玩家任务
-     */
-    public void loadPlayerDataFromDatabase(PlayerTask playerTask) {
-        PlayerTaskCache.getInstance().updatePlayerTaskToCache(playerTask, true);
-    }
-
     /**
      * 关闭任务管理器
      * 确保所有数据保存到数据库
@@ -256,16 +246,19 @@ public class TaskManager {
                     task.targets.add(tt);
                 }
             }
-            tasks.add(task);
-
             // trigger
-            ConfigurationSection triggerSec = config.getConfigurationSection("trigger");
+            ConfigurationSection triggerSec = config.getConfigurationSection(taskId + ".trigger");
             TaskTrigger trigger = new TaskTrigger();
             if (triggerSec != null) {
                 trigger.setOnTaskStart(triggerSec.getStringList("on_task_start"));
                 trigger.setOnTaskFinish(triggerSec.getStringList("on_task_finish"));
                 trigger.setOnTaskFail(triggerSec.getStringList("on_task_fail"));
             }
+            task.targets = new ArrayList<>();
+            task.trigger = trigger;
+
+            // 加入任务集合
+            tasks.add(task);
         }
     }
 

@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.List;
+import java.util.Objects;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 import static com.playerPlugin.playerTaskX.consts.common.Repo_URL;
@@ -40,8 +41,12 @@ public class PlayerJoinHandler implements Listener {
         }
 
         if (inProgressTaskIds != null) {
+            System.out.println(inProgressTaskIds); // TODO 使用debug消息处理器
             inProgressTaskIds.forEach(taskId -> {
-                TaskManager.getInstance().loadPlayerDataFromDatabase(TaskManager.getInstance().toPlayerTask(player.getUniqueId(), taskId));
+                TaskManager.getInstance().getPlayerTaskCache().updatePlayerTaskToCache(
+                        Objects.requireNonNull(TaskManager.getInstance().toPlayerTask(player.getUniqueId(), taskId)),
+                        false
+                );
             });
         }
         player.sendMessage(Logger.prefix + String.format("§a已加载玩家%s任务数据！", player.getName()));

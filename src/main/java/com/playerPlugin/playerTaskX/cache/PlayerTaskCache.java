@@ -18,6 +18,8 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+
 /**
  * 玩家任务缓存管理器
  * 结合LRU缓存策略和写入缓冲区，提高性能和可靠性
@@ -195,16 +197,16 @@ public class PlayerTaskCache {
         List<PlayerTask> tasks = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
 
         // 更新或添加任务
-        boolean taskFound = false;
+        boolean update = false;
         for (int i = 0; i < tasks.size(); i++) {
             if (tasks.get(i).getTask().getId().equals(playerTask.getTask().getId())) {
                 tasks.set(i, playerTask); // 更新现有任务
-                taskFound = true;
+                update = true;
                 break;
             }
         }
 
-        if (!taskFound) {
+        if (!update) {
             tasks.add(playerTask); // 添加新任务
         }
 
@@ -212,8 +214,16 @@ public class PlayerTaskCache {
         dirtyEntries.add(uuid);
 
         // 如果立即保存，立即保存到数据库
-        if (immediateSave) {
+        if (immediateSave && update) {
             savePlayerTasks(Collections.singletonList(playerTask));
+        } else if (immediateSave) {
+            startPlayerTask(Collections.singletonList(playerTask));
+        }
+
+        if (update) {
+            logger.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+        } else {
+            logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
         }
     }
 
@@ -259,6 +269,18 @@ public class PlayerTaskCache {
             StorgeManager.getPlayerTaskDAO().updateTasks(playerTasks);
         } catch (SQLException e) {
             PlayerTaskX.getYLib().getLoggerTools().error("批量保存玩家任务到数据库失败", e);
+        }
+    }
+
+    private void startPlayerTask(List<PlayerTask> playerTasks) {
+        if (playerTasks == null || playerTasks.isEmpty()) {
+            return;
+        }
+
+        try {
+            StorgeManager.getPlayerTaskDAO().startTask(playerTasks);
+        } catch (SQLException e) {
+            PlayerTaskX.getYLib().getLoggerTools().error("批量开始玩家任务失败", e);
         }
     }
 

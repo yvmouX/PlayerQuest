@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.EventHandlers.handlers;
+package com.playerPlugin.playerTaskX.EventHandlers.handlers.task;
 
 import com.playerPlugin.playerTaskX.structs.eventStructs.FishingEvent;
 import org.bukkit.event.EventHandler;

@@ -30,22 +30,24 @@ public class PlayerTaskDAO {
      * 开始任务
      * 状态: 0:进行中, 1:完成, 2:失败
      *
-     * @param uuid    玩家 uuid
-     * @param taskId 任务 id
+     * @param tasks 任务列表
      */
-    public void startTask(String uuid, String taskId) throws SQLException {
+    public void startTask(List<PlayerTask> tasks) throws SQLException {
         String sql = "INSERT OR IGNORE INTO player_tasks (player_uuid, task_id, status, start_time) VALUES (?, ?, 0, ?)";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            ps.setString(2, taskId);
-            ps.setLong(3, System.currentTimeMillis());
-            int a = ps.executeUpdate();
+            for (PlayerTask task : tasks) {
+                ps.setString(1, task.getUUID().toString());
+                ps.setString(2, task.getTask().getId());
+                ps.setLong(3, System.currentTimeMillis());
+                ps.addBatch();
+            }
+            int[] a = ps.executeBatch();
 
             // TODO 调试内容
-            if (a > 0) {
-                PlayerTaskX.getYLib().getLoggerTools().info("成功插入玩家任务数据：" + uuid + " " + taskId + "影响行数：" + a);
+            if (a.length > 0) {
+                PlayerTaskX.getYLib().getLoggerTools().info("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + a);
             } else {
-                PlayerTaskX.getYLib().getLoggerTools().info("插入玩家任务数据失败：" + uuid + " " + taskId + "影响行数：" + a);
+                PlayerTaskX.getYLib().getLoggerTools().info("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + a);
             }
         }
     }
@@ -61,9 +63,9 @@ public class PlayerTaskDAO {
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
             for (PlayerTask task : tasks) {
                 int statusId = switch (task.getStatus()) {
-                    case IN_PROGRESS -> 2;
+                    case IN_PROGRESS -> 0;
                     case COMPLETED -> 1;
-                    case FAILED -> 0;
+                    case FAILED -> 2;
                 };
                 ps.setInt(1, statusId);
                 ps.setString(2, task.getUUID().toString());

@@ -6,12 +6,12 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import java.util.List;
 
 public class Task {
-    public String id  = null;
-    public PTXTaskType type = null;
-    public String name  = null;
-    public List<TaskTarget> targets  = null;
+    public String id;
+    public PTXTaskType type;
+    public String name;
+    public List<TaskTarget> targets;
     //public List<TaskCondition> conditions = null;
-    public TaskTrigger trigger = null;
+    public TaskTrigger trigger;
 
     // Getter and Setter methods
     public String getId() { return id; }
