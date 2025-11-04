@@ -9,6 +9,6 @@ public record BreakEvent(
         Player player,
         Block block,
         Material material,
-        Location location
+        Location blockLocation
 ) {
 }

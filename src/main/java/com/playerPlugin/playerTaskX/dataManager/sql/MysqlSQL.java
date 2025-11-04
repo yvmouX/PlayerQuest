@@ -7,6 +7,7 @@ package com.playerPlugin.playerTaskX.dataManager.sql;
  * &#064;date  2025/10/31
  */
 public class MysqlSQL {
+
     public static final String mysql_task_statistics_sql = "CREATE TABLE IF NOT EXISTS task_statistics (" +
             "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
             "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
