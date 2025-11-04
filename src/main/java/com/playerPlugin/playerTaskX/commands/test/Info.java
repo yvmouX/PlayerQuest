@@ -16,9 +16,9 @@ public class Info implements SubCommand {
             sender.sendMessage("Map<String, Task> " + task.toString());
         });
 
-        TaskManager.getInstance().getPlayerTasksMap().values().forEach(task -> {
-            sender.sendMessage("Map<UUID, List<PlayerTask>> " + task.toString());
-        });
+//        TaskManager.getInstance().getPlayerTasksMap().values().forEach(task -> {
+//            sender.sendMessage("Map<UUID, List<PlayerTask>> " + task.toString());
+//        });
         return false;
     }
 }

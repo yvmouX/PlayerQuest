@@ -1,54 +1,48 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskActions;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.TaskTypes;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskRequireList;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.MaterialRequirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
+import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TaskManager {
     private static volatile TaskManager instance;
+    private final PlayerTaskCache playerTaskCache = PlayerTaskCache.getInstance();
     private final TaskConfig taskConfig;
-    private final Map<String, Task> tasks = new ConcurrentHashMap<>(); // 存储定义的所有任务 (任务ID, Task类)
-    // 不再直接使用HashMap存储玩家任务，改用缓存系统
-    // private final Map<UUID, List<PlayerTask>> playerTasks = new HashMap<>(); // 存储
+    private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
 
-    // TODO 调试用
-    public Map<String, Task> getTasksMap() {
-        return tasks;
+
+    /**
+     * 获取玩家任务缓存
+     *
+     * @return {@link PlayerTaskCache }
+     */
+    public PlayerTaskCache getPlayerTaskCache() {
+        return playerTaskCache;
     }
-    
-    // 修改为从缓存获取玩家任务
-    public Map<UUID, List<PlayerTask>> getPlayerTasksMap() {
-        // 这里只返回当前在线玩家的任务，避免返回整个缓存
-        Map<UUID, List<PlayerTask>> result = new HashMap<>();
-        for (Player player : PlayerTaskX.getInstance().getServer().getOnlinePlayers()) {
-            UUID uuid = player.getUniqueId();
-            result.put(uuid, PlayerTaskCache.getInstance().getPlayerTasks(uuid));
-        }
-        return result;
-    }
+
 
     public TaskManager(TaskConfig taskConfig) {
         if (instance != null) {
             throw new IllegalStateException("TaskManager 已经初始化");
         }
         this.taskConfig = taskConfig;
-        loadTasks();
+        loadTasksToCache();
     }
 
     public static void init(TaskConfig taskConfig) {
@@ -77,282 +71,73 @@ public class TaskManager {
         return instance;
     }
 
-    /**
-     * 从配置文件加载所有任务
-     * <p>
-     *     将所有于 tasks.yml 定义的任务存储在 @tasks
-     * </p>
-     */
-    public void loadTasks() {
-        tasks.clear();
-        FileConfiguration config = taskConfig.getTasksConfig();
-        Set<String> AllTaskId = config.getKeys(false);
 
-        // 循环获取 tasks.yml 中的所有任务
-        for (String taskId : AllTaskId) {
-            ConfigurationSection taskSection = config.getConfigurationSection(taskId);
-            if (taskSection == null) {
-                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。");
-                continue;
-            }
-
-            // 加载任务名称、任务类型、任务条件
-            String name = taskSection.getString("name", taskId);
-            String type = taskSection.getString("type", "FOREVER").toUpperCase(Locale.ENGLISH);
-            String condition = taskSection.getString("condition", "none");
-
-            // 加载目标
-            ConfigurationSection targetSection = taskSection.getConfigurationSection("target");
-            TaskTarget target = new TaskTarget();
-            if (targetSection != null) {
-                Set<String> targetIds = targetSection.getKeys(false);
-                target.setTarget_id(targetSection.getKeys(false));
-
-                targetIds.forEach(targetId -> {
-                    ConfigurationSection aTargetSection =  targetSection.getConfigurationSection(targetId);
-                    if (aTargetSection == null) {
-                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标: " + targetId + " 目标配置不存在");
-                        return;
-                    }
-                    // 验证动作是否合法
-                    String actionStr = aTargetSection.getString("action", "");
-                    if (!TaskActions.isValid(actionStr)) {
-                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标: " + targetId + " 动作: " + actionStr + " 不合法");
-                        return;
-                    }
-                    TaskActions action = TaskActions.fromString(actionStr);
-
-                    target.setAction(Map.of
-                            (
-                                    targetId,
-                                    action)
-                    );
-                    target.setRequire(Map.of(
-                                    targetId,
-                                            new TaskRequireList(
-                                                    new HashSet<>(targetSection.getStringList("require"))
-                                            )
-                                    )
-                    );
-                });
-            }
-
-            // 加载触发器
-            ConfigurationSection triggerSection = taskSection.getConfigurationSection("trigger");
-            TaskTrigger trigger = new TaskTrigger();
-            if (triggerSection != null) {
-                trigger.setOnTaskStart(triggerSection.getStringList("on_task_start"));
-                trigger.setOnTaskFinish(triggerSection.getStringList("on_task_finish"));
-                trigger.setOnTaskFail(triggerSection.getStringList("on_task_fail"));
-            }
-
-            // TODO 验证数据类型
-            Task task = new Task(taskId, name, TaskTypes.valueOf(type), target, condition, trigger);
-            tasks.put(taskId, task);
-        }
-    }
 
     /**
-     * 获取所有任务
+     * 根据任务ID获取任务（Task.class）
      *
-     * @return {@link Map }<{@link String }, {@link Task }>
+     * @param taskId 任务 ID
+     * @return {@link Task }
      */
-    public Map<String, Task> getTasks() {
-        return tasks;
-    }
-
-    /**
-     * 根据ID获取任务
-     */
-    @Nullable
-    @javax.annotation.Nullable
     public Task getTask(String taskId) {
-        return tasks.get(taskId);
+        return tasks.stream().filter(task -> task.getId().equals(taskId)).findFirst().orElse(null);
     }
 
     /**
-     * 从数据库加载玩家数据 （单个玩家）
+     * 获取所有任务（Task.class）
+     *
+     * @return {@link Collection }<{@link Task }>
      */
-    public void loadPlayerData(UUID uuid) {
-        // 使用缓存系统重新加载玩家数据
-        PlayerTaskCache.getInstance().reloadPlayerData(uuid);
+    public Collection<Task> getAllTasks() {
+        return tasks.stream().toList();
     }
 
     /**
-     * 从数据库加载所有玩家任务数据
-     * 注意：此方法不再预加载所有玩家数据，而是按需加载
-     */
-    public void loadAllPlayerTasks() {
-        // 获取所有在线玩家并加载他们的数据
-        for (Player player : PlayerTaskX.getInstance().getServer().getOnlinePlayers()) {
-            loadPlayerData(player.getUniqueId());
-        }
-        PlayerTaskX.getYLib().getLoggerTools().info("已加载所有在线玩家任务数据！");
-    }
-
-
-    /**
-     * 玩家开始任务
+     * 开始任务
      *
      * @param player 选手
      * @param taskId 任务 ID
      */
     public void startTask(Player player, String taskId) {
-        Task task = tasks.get(taskId);
+        final PlayerTaskCache cache = getPlayerTaskCache();
+        UUID uuid = player.getUniqueId();
+        Task task = getTask(taskId);
+
         if (task == null) {
-            player.sendMessage("§c任务开始失败\n" +
-                    "这是一个不应出现的错误，请及时联系管理员！");
+            player.sendMessage("§c任务开始失败,任务%s不存在", taskId);
             return;
         };
 
-        UUID uuid = player.getUniqueId();
-        List<PlayerTask> playerTaskList = PlayerTaskCache.getInstance().getPlayerTasks(uuid);
+        // 获取玩家任务列表检查是否已经有该任务。包括已完成任务
+        cache.getPlayerInProgressTaskIds(uuid).forEach(taskID -> {
+            if (taskID.equals(task.getId())) {
+                player.sendMessage("§c你已经接受或者完成过任务: §e" + task.getName() + "！");
+            }
+        });
 
-        // 检查是否已经有该任务。包括已完成
-        boolean hasTask = playerTaskList.stream()
-                .anyMatch(pt -> pt.getTask().getId().equals(taskId) && 
-                       pt.getStatus() != PlayerTaskStatus.COMPLETED);
+        // 向缓存添加任务
+        PlayerTaskCache.getInstance().updatePlayerTaskToCache(
+                new PlayerTask(uuid, task),
+                true
+        );
 
-        if (hasTask) {
-            player.sendMessage("§c你已经接受或者完成过这个任务了！");
-            return;
-        }
-
-        PlayerTask playerTask = new PlayerTask(uuid, task);
-        
-        // 使用缓存系统添加任务
-        PlayerTaskCache.getInstance().addPlayerTask(playerTask);
-        
         // 执行任务开始触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
 
         player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
 
-    /**
-     * 获取玩家的任务列表
-     *
-     * @param uuid uuid
-     * @return {@link List }<{@link PlayerTask }>
-     */
-    public List<PlayerTask> getPlayerTasks(UUID uuid) {
-        return PlayerTaskCache.getInstance().getPlayerTasks(uuid);
-    }
+
 
     /**
-     * 获取玩家进行中的任务
+     * 从数据库加载玩家数据到缓存中
      *
-     * @param uuid uuid
-     * @return {@link List }<{@link PlayerTask }>
-     */
-    public List<PlayerTask> getPlayerActiveTasks(UUID uuid) {
-        return getPlayerTasks(uuid).stream()
-                .filter(pt -> pt.getStatus() == PlayerTaskStatus.IN_PROGRESS)
-                .toList();
-    }
-
-    private Map<Task, String> getPlayerActiveTaskTargetActions(UUID uuid) {
-        Map<Task, String> activeTasks = new HashMap<>();
-        List<PlayerTask> playerTasks = getPlayerActiveTasks(uuid);
-        if (playerTasks != null) {
-            for (PlayerTask pt : playerTasks) {
-                activeTasks.put(pt.getTask(), pt.getTask().getTarget().getAction().toString());
-            }
-        }
-        return activeTasks;
-
-    }
-
-    public List<Task> verifyTaskTargetActions(UUID uuid, String taskTargetAction) {
-        Map<Task, String> activeTasks = getPlayerActiveTaskTargetActions(uuid);
-        if (!activeTasks.isEmpty() && activeTasks.containsValue(taskTargetAction)) {
-            return activeTasks.entrySet().stream()
-                    .filter(entry -> entry.getValue().equals(taskTargetAction))
-                    .map(Map.Entry::getKey)
-                    .toList();
-        }
-        return List.of();
-    }
-//
-//    /**
-//     * 检查并处理任务进度
-//     *
-//     * @param player     选手
-//     * @param actionType 作类型
-//     * @param itemType   项目类型
-//     */
-//    public void checkTaskProgress(Player player, String actionType, String itemType) {
-//        List<PlayerTask> activeTasks = getPlayerActiveTasks(player.getUniqueId());
-//
-//        for (PlayerTask playerTask : activeTasks) {
-//            Task task = playerTask.getTask();
-//            TaskTarget target = task.getTarget();
-//
-//            if (target == null) {
-//                player.sendMessage("§c无法获取目标%s，这是一个不应出现的异常。\n" +
-//                        "请及时联系管理员");
-//                continue;
-//            };
-//
-//            // 检查动作类型和目标物品是否匹配
-//            if (target.getAction().toString().equalsIgnoreCase(actionType) &&
-//                    target.getTarget_id().equalsIgnoreCase(itemType)) {
-//
-//                playerTask.addProgress(1);
-//
-//                // 检查是否完成
-//                if (playerTask.isComplete()) {
-//                    completeTask(player, playerTask);
-//                }
-//            }
-//        }
-//    }
-
-    /**
-     * 完成任务
-     *
-     * @param player     选手
      * @param playerTask 玩家任务
      */
-    private void completeTask(Player player, PlayerTask playerTask) {
-        playerTask.setStatus(PlayerTaskStatus.COMPLETED);
-        Task task = playerTask.getTask();
-
-        // 更新缓存
-        PlayerTaskCache.getInstance().updatePlayerTask(playerTask);
-
-        // 执行任务完成触发器
-        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFinish(), task);
-
-        player.sendMessage("§a恭喜！你完成了任务: §e" + task.getName());
+    public void loadPlayerDataFromDatabase(PlayerTask playerTask) {
+        PlayerTaskCache.getInstance().updatePlayerTaskToCache(playerTask, true);
     }
 
-    /**
-     * 让任务失败
-     *
-     * @param player     选手
-     * @param playerTask 玩家任务
-     */
-    public void failTask(Player player, PlayerTask playerTask) {
-        playerTask.setStatus(PlayerTaskStatus.FAILED);
-        Task task = playerTask.getTask();
-
-        // 更新缓存
-        PlayerTaskCache.getInstance().updatePlayerTask(playerTask);
-
-        // 执行任务失败触发器
-        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskFail(), task);
-    }
-
-    /**
-     * 重新加载任务
-     */
-    public void reload() {
-        taskConfig.reloadTasksConfig();
-        loadTasks();
-        loadAllPlayerTasks();
-    }
-    
     /**
      * 关闭任务管理器
      * 确保所有数据保存到数据库
@@ -361,4 +146,126 @@ public class TaskManager {
         // 关闭缓存管理器，保存所有数据
         PlayerTaskCache.getInstance().shutdown();
     }
+
+    /**
+     * 检查 taskID 是否有效
+     *
+     * @param taskId 任务 ID
+     * @return boolean
+     * @throws InvalidTask 无效任务
+     */
+    public boolean isTaskIdValid(String taskId) {
+        for (Task task : getAllTasks()) {
+            if (task.getId().equals(taskId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 将 taskID 转换为 PlayerTask
+     *
+     * @param taskId 任务 ID
+     * @return {@link PlayerTask }
+     */
+    @Nullable
+    @org.jetbrains.annotations.Nullable
+    public PlayerTask toPlayerTask(UUID uuid, String taskId) throws InvalidTask {
+        for (Task task : getAllTasks()) {
+            if (task.getId().equals(taskId)) {
+                return new PlayerTask(uuid, task);
+            }
+        }
+        throw new InvalidTask("任务ID: " + taskId + " 无效。");
+    }
+
+
+    /**
+     * 加载任务到内存中
+     *
+     */
+    private void loadTasksToCache() {
+        tasks.clear();
+
+        FileConfiguration config = taskConfig.getTasksConfig();
+
+        for (String taskId : config.getKeys(false)) {
+            // taskID && taskName && taskType
+            String taskName = config.getString(taskId + ".name");
+            if (taskName == null) {
+                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务名称不能为空。");
+                continue;
+            }
+            String taskType = config.getString(taskId + ".taskType");
+            if (taskType == null) {
+                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务类型不能为空。");
+                continue;
+            }
+            PTXTaskType taskTypeEnum = PTXTaskType.fromString(taskType);
+            if (taskTypeEnum == PTXTaskType.NONE) {
+                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
+                continue;
+            }
+            Task task = new Task();
+            task.id = taskId;
+            task.name = taskName;
+            task.type = taskTypeEnum;
+
+            // targets
+            ConfigurationSection targets = config.getConfigurationSection(taskId + ".targets");
+            if (targets != null) {
+                for (String t : targets.getKeys(false)) {
+                    ConfigurationSection tSec =  targets.getConfigurationSection(t);
+
+                    if (tSec == null) {
+                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 目标配置不能为空。");
+                        continue;
+                    }
+                    String actionType = tSec.getString("action");
+                    if (actionType == null) {
+                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 操作类型不能为空。");
+                        continue;
+                    }
+                    PTXActionType actionTypeEnum = PTXActionType.fromString(actionType);
+                    if (actionTypeEnum == PTXActionType.NONE) {
+                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 操作类型: " + actionType + " 无效。");
+                        continue;
+                    }
+
+                    TaskTarget tt = new TaskTarget();
+                    tt.action = actionTypeEnum;
+
+                    List<Map<?, ?>> requireList =  tSec.getMapList("require");
+                    for (Map<?, ?> reqMap : requireList) {
+                        String m = reqMap.get("material").toString().toUpperCase(Locale.ENGLISH);
+                        int amount = Integer.parseInt(reqMap.get("amount").toString());
+                        if (m.isEmpty()) {
+                            PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " amount: " + amount + " 无效。");
+                            continue;
+                        }
+                        Material material = Material.getMaterial(m);
+                        if (material == null) {
+                            PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " Material: " + m + " 无效。");
+                            continue;
+                        }
+                        tt.requires.add(new MaterialRequirement(material, amount));
+                    }
+                    task.targets.add(tt);
+                }
+            }
+            tasks.add(task);
+
+            // trigger
+            ConfigurationSection triggerSec = config.getConfigurationSection("trigger");
+            TaskTrigger trigger = new TaskTrigger();
+            if (triggerSec != null) {
+                trigger.setOnTaskStart(triggerSec.getStringList("on_task_start"));
+                trigger.setOnTaskFinish(triggerSec.getStringList("on_task_finish"));
+                trigger.setOnTaskFail(triggerSec.getStringList("on_task_fail"));
+            }
+        }
+    }
+
+
 }

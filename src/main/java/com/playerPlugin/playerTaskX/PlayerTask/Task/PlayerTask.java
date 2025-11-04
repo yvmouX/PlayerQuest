@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Task;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,7 +10,7 @@ public class PlayerTask {
     private UUID uuid;
     private Task task;
     private int progress; // 保留总进度字段，用于向后兼容
-    private PlayerTaskStatus status;
+    private PTXTaskStatus status;
     // 新增：存储每个项目的进度，格式为 <项目类型, 当前进度>
     private Map<String, Integer> itemProgress;
 
@@ -18,7 +18,7 @@ public class PlayerTask {
         this.uuid = playerId;
         this.task = task;
         this.progress = 0;
-        this.status = PlayerTaskStatus.IN_PROGRESS;
+        this.status = PTXTaskStatus.IN_PROGRESS;
         this.itemProgress = new HashMap<>();
     }
 
@@ -32,8 +32,8 @@ public class PlayerTask {
     public int getProgress() { return this.progress; }
     public void setProgress(int progress) { this.progress = progress; }
 
-    public PlayerTaskStatus getStatus() { return this.status; }
-    public void setStatus(PlayerTaskStatus status) { this.status = status; }
+    public PTXTaskStatus getStatus() { return this.status; }
+    public void setStatus(PTXTaskStatus status) { this.status = status; }
     
     // 新增：获取项目进度Map
     public Map<String, Integer> getItemProgress() {

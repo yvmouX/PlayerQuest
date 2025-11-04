@@ -1,29 +1,33 @@
 package com.playerPlugin.playerTaskX.cache;
 
+import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
+import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskDAO;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 玩家任务缓存管理器
  * 结合LRU缓存策略和写入缓冲区，提高性能和可靠性
- *
  * <p>
- *     1.只保存在线玩家的任务数据
- *     2.定期为离线玩家的任务数据保存到数据库
+ * 1.只保存在线玩家的任务数据
+ * 2.定期为离线玩家的任务数据保存到数据库
  * </p>
+ *
+ * @author yvmoux
+ * &#064;date  2025/11/03@date 2025/11/03
  */
 public class PlayerTaskCache {
     private static volatile PlayerTaskCache instance;
-    private final PlayerTaskX plugin;
     
     // 缓存配置
     private static final int MAX_CACHE_SIZE = 100;
@@ -35,13 +39,12 @@ public class PlayerTaskCache {
     
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
+
+    private List<UniversalTask> universalTask;
+
     
-    // 定时任务执行器
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    
-    private PlayerTaskCache(PlayerTaskX plugin) {
-        this.plugin = plugin;
-        
+    private PlayerTaskCache() {
+        this.universalTask = new ArrayList<>();
         // 初始化LRU缓存
         this.cache = Collections.synchronizedMap(new LinkedHashMap<UUID, List<PlayerTask>>(MAX_CACHE_SIZE, 0.75f, true) {
             @Override
@@ -50,7 +53,7 @@ public class PlayerTaskCache {
                 // 但如果是脏数据，先保存到数据库
                 if (size() > MAX_CACHE_SIZE) {
                     if (dirtyEntries.contains(eldest.getKey())) {
-                        savePlayerTasks(eldest.getKey(), eldest.getValue());
+                        savePlayerTasks(eldest.getValue());
                         dirtyEntries.remove(eldest.getKey());
                     }
                     return true;
@@ -58,14 +61,54 @@ public class PlayerTaskCache {
                 return false;
             }
         });
-        
-        // 启动定时保存任务
-        PlayerTaskX.getYLib().getScheduler().runTimer(this::saveAllDirty, 0, SAVE_INTERVAL_SECONDS);
-        
-        // 启动定时清理任务
-        PlayerTaskX.getYLib().getScheduler().runTimer(this::cleanupOfflinePlayers, 0, CLEANUP_INTERVAL_SECONDS);
+        startTimerTasks();
     }
-    
+
+    private void startTimerTasks() {
+        // 启动定时保存任务 每30秒保存一次脏数据到数据库
+        UniversalTask universalTask1 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+            if (dirtyEntries.isEmpty()) {
+                return;
+            }
+
+            // 复制一份数据集合，避免并发修改
+            Set<UUID> currentDirty = new HashSet<>(dirtyEntries);
+
+            // 异步保存到数据库
+            PlayerTaskX.getYLib().getScheduler().runAsync(() -> {
+                for (UUID uuid : currentDirty) {
+                    List<PlayerTask> tasks = cache.get(uuid);
+                    if (tasks != null) {
+                        savePlayerTasks(tasks); // 保存任务到数据库
+                        // 从脏数据集合中移除
+                        dirtyEntries.remove(uuid);
+                    }
+                }
+            });
+        }, 0, SAVE_INTERVAL_SECONDS);
+        universalTask.add(universalTask1);
+
+        // 启动定时清理任务 清理离线玩家的缓存
+        UniversalTask universalTask2 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+            Set<UUID> cachedPlayers = new HashSet<>(cache.keySet());
+
+            for (UUID uuid : cachedPlayers) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player == null || !player.isOnline()) {
+                    // 玩家离线，检查是否有脏数据需要保存
+                    if (dirtyEntries.contains(uuid)) {
+                        savePlayerTasks(cache.get(uuid));
+                        dirtyEntries.remove(uuid);
+                    }
+                    // 从缓存中移除
+                    cache.remove(uuid);
+                }
+            }
+        }, 0, CLEANUP_INTERVAL_SECONDS);
+        universalTask.add(universalTask2);
+    }
+
+
     /**
      * 初始化缓存管理器
      * @param plugin 插件实例
@@ -78,7 +121,7 @@ public class PlayerTaskCache {
         if (instance == null) {
             synchronized (PlayerTaskCache.class) {
                 if (instance == null) {
-                    instance = new PlayerTaskCache(plugin);
+                    instance = new PlayerTaskCache();
                 }
             }
         }
@@ -94,197 +137,115 @@ public class PlayerTaskCache {
         }
         return instance;
     }
-    
+
+
     /**
-     * 获取玩家任务列表
-     * 优先从缓存获取，缓存没有则从数据库加载
+     * 获取指定玩家进行中的任务ID列表
+     * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
      * @param uuid 玩家UUID
-     * @return 玩家任务列表
+     * @return 进行中任务ID列表
      */
-    public List<PlayerTask> getPlayerTasks(UUID uuid) {
-        // 从缓存获取
+    public List<String> getPlayerInProgressTaskIds(UUID uuid) {
         List<PlayerTask> tasks = cache.get(uuid);
         if (tasks != null) {
-            return new ArrayList<>(tasks); // 返回副本，避免外部修改缓存
+            return tasks.stream()
+                    .filter(pt -> pt.getStatus() == PTXTaskStatus.IN_PROGRESS)
+                    .map(pt -> pt.getTask().getId())
+                    .toList();
         }
-        
-        // 缓存未命中，从数据库加载
-        tasks = StorgeManager.getInstance().loadPlayerTasks(uuid);
-        if (tasks != null) {
-            cache.put(uuid, new ArrayList<>(tasks)); // 存入缓存
-        } else {
-            tasks = new ArrayList<>();
+
+        try {
+            return StorgeManager.getPlayerTaskDAO().getInProgressTaskIds(uuid.toString());
+        } catch (SQLException e) {
+            PlayerTaskX.getYLib().getLoggerTools().error("从数据库加载进行中任务失败：" + uuid, e);
+            return new ArrayList<>();
         }
-        
-        return tasks;
     }
     
     /**
-     * 更新玩家任务
+     * 更新玩家任务 / 添加新任务
+     *
+     * <p>
+     *     如果缓存中不存在该玩家的任务列表，则添加新任务到缓存列表中
+     *     如果缓存中存在该玩家的任务列表，则更新该任务
+     * </p>
+     *
      * @param playerTask 玩家任务
+     * @param immediateSave 是否立即保存到数据库
      */
-    public void updatePlayerTask(PlayerTask playerTask) {
+    public void updatePlayerTaskToCache(PlayerTask playerTask, boolean immediateSave) {
         UUID uuid = playerTask.getUUID();
+
+        // 如果缓存中不存在该玩家的任务列表，则创建一个新的
         List<PlayerTask> tasks = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
-        
+
         // 更新或添加任务
-        boolean updated = false;
+        boolean taskFound = false;
         for (int i = 0; i < tasks.size(); i++) {
             if (tasks.get(i).getTask().getId().equals(playerTask.getTask().getId())) {
-                tasks.set(i, playerTask);
-                updated = true;
+                tasks.set(i, playerTask); // 更新现有任务
+                taskFound = true;
                 break;
             }
         }
-        
-        if (!updated) {
-            tasks.add(playerTask);
+
+        if (!taskFound) {
+            tasks.add(playerTask); // 添加新任务
         }
-        
-        // 标记为脏数据
+
+        // 标记为脏数据，稍后保存到数据库
         dirtyEntries.add(uuid);
-    }
-    
-    /**
-     * 添加新的玩家任务
-     * @param playerTask 玩家任务
-     */
-    public void addPlayerTask(PlayerTask playerTask) {
-        UUID uuid = playerTask.getUUID();
-        List<PlayerTask> tasks = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
-        
-        // 检查是否已存在相同任务
-        boolean exists = tasks.stream()
-                .anyMatch(pt -> pt.getTask().getId().equals(playerTask.getTask().getId()));
-        
-        if (!exists) {
-            tasks.add(playerTask);
-            dirtyEntries.add(uuid);
-            
-            // 立即保存到数据库
-            StorgeManager.getInstance().createNewPlayer(playerTask);
+
+        // 如果立即保存，立即保存到数据库
+        if (immediateSave) {
+            savePlayerTasks(Collections.singletonList(playerTask));
         }
     }
-    
-    /**
-     * 保存所有脏数据到数据库
-     */
-    private void saveAllDirty() {
-        if (dirtyEntries.isEmpty()) {
-            return;
-        }
-        
-        // 复制一份脏数据集合，避免并发修改
-        Set<UUID> currentDirty = new HashSet<>(dirtyEntries);
-        
-        // 异步保存到数据库
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            for (UUID uuid : currentDirty) {
-                List<PlayerTask> tasks = cache.get(uuid);
-                if (tasks != null) {
-                    for (PlayerTask task : tasks) {
-                        StorgeManager.getInstance().updatePlayerTask(task);
-                    }
-                    // 从脏数据集合中移除
-                    dirtyEntries.remove(uuid);
-                }
-            }
-        });
-    }
-    
-    /**
-     * 清理离线玩家的缓存
-     */
-    private void cleanupOfflinePlayers() {
-        Set<UUID> cachedPlayers = new HashSet<>(cache.keySet());
-        
-        for (UUID uuid : cachedPlayers) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null || !player.isOnline()) {
-                // 玩家离线，检查是否有脏数据需要保存
-                if (dirtyEntries.contains(uuid)) {
-                    savePlayerTasks(uuid, cache.get(uuid));
-                    dirtyEntries.remove(uuid);
-                }
-                // 从缓存中移除
-                cache.remove(uuid);
-            }
-        }
-    }
-    
-    /**
-     * 保存玩家任务到数据库
-     * @param uuid 玩家UUID
-     * @param tasks 任务列表
-     */
-    private void savePlayerTasks(UUID uuid, List<PlayerTask> tasks) {
-        if (tasks == null || tasks.isEmpty()) {
-            return;
-        }
-        
-        for (PlayerTask task : tasks) {
-            StorgeManager.getInstance().updatePlayerTask(task);
-        }
-    }
-    
+
     /**
      * 关闭缓存管理器
      * 保存所有数据到数据库
      */
     public void shutdown() {
-        // 保存所有缓存数据
-        for (Map.Entry<UUID, List<PlayerTask>> entry : cache.entrySet()) {
-            if (dirtyEntries.contains(entry.getKey())) {
-                savePlayerTasks(entry.getKey(), entry.getValue());
+        // 收集所有脏数据并进行一次性批量保存
+        List<PlayerTask> allDirtyTasks = new ArrayList<>();
+        for (UUID uuid : dirtyEntries) {
+            List<PlayerTask> tasks = cache.get(uuid);
+            if (tasks != null) {
+                allDirtyTasks.addAll(tasks);
             }
         }
-        
+
+        if (!allDirtyTasks.isEmpty()) {
+            savePlayerTasks(allDirtyTasks);
+        }
+        dirtyEntries.clear();
+
         // 关闭调度器
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
+        if (universalTask != null) {
+            for (UniversalTask task : universalTask) {
+                task.cancel();
             }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
+            universalTask.clear();
+        }
+
+    }
+
+    /**
+     * 保存玩家任务到数据库
+     * @param playerTasks 任务
+     */
+    private void savePlayerTasks(List<PlayerTask> playerTasks) {
+        if (playerTasks == null || playerTasks.isEmpty()) {
+            return;
+        }
+
+        try {
+            StorgeManager.getPlayerTaskDAO().updateTasks(playerTasks);
+        } catch (SQLException e) {
+            PlayerTaskX.getYLib().getLoggerTools().error("批量保存玩家任务到数据库失败", e);
         }
     }
-    
-    /**
-     * 重新加载玩家数据
-     * @param uuid 玩家UUID
-     */
-    public void reloadPlayerData(UUID uuid) {
-        // 如果有脏数据，先保存
-        if (dirtyEntries.contains(uuid)) {
-            savePlayerTasks(uuid, cache.get(uuid));
-            dirtyEntries.remove(uuid);
-        }
-        
-        // 从缓存中移除
-        cache.remove(uuid);
-        
-        // 重新加载
-        List<PlayerTask> tasks = StorgeManager.getInstance().loadPlayerTasks(uuid);
-        if (tasks != null && !tasks.isEmpty()) {
-            cache.put(uuid, tasks);
-        }
-    }
-    
-    /**
-     * 获取当前缓存大小
-     * @return 缓存大小
-     */
-    public int getCacheSize() {
-        return cache.size();
-    }
-    
-    /**
-     * 获取脏数据数量
-     * @return 脏数据数量
-     */
-    public int getDirtyEntriesCount() {
-        return dirtyEntries.size();
-    }
+
+
 }
