@@ -31,7 +31,7 @@ public class ListCmd implements SubCommand {
         }
 
         sender.sendMessage("§6=== 所有可用任务 ===");
-        taskManager.getTasks().forEach((id, task) -> {
+        taskManager.getTasksMap().forEach((id, task) -> {
             sender.sendMessage(String.format("§e%s §7- §f%s", id, task.getName()));
         });
 

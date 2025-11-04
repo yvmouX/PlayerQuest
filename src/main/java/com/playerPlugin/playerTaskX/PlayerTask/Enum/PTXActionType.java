@@ -2,9 +2,7 @@ package com.playerPlugin.playerTaskX.PlayerTask.Enum;
 
 import java.util.Locale;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
-
-public enum TaskActions {
+public enum PTXActionType {
     CRAFT,
     KILL,
     BREAK,
@@ -20,22 +18,22 @@ public enum TaskActions {
     PLACE,
     NONE;
 
-    public static boolean isValid(String value) {
+    private static boolean isValid(String value) {
         if (value == null || value.isEmpty()) {
             return false;
         }
         try {
-            TaskActions.valueOf(value.toUpperCase(Locale.ENGLISH));
+            PTXActionType.valueOf(value.toUpperCase(Locale.ENGLISH));
             return true;
         } catch (IllegalArgumentException e) {
             return false;
         }
     }
 
-    public static TaskActions fromString(String value) {
+    public static PTXActionType fromString(String value) {
         if (isValid(value)) {
-            return TaskActions.valueOf(value.toUpperCase(Locale.ENGLISH));
+            return PTXActionType.valueOf(value.toUpperCase(Locale.ENGLISH));
         }
-        return TaskActions.NONE;
+        return PTXActionType.NONE;
     }
 }

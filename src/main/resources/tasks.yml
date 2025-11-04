@@ -10,7 +10,7 @@ craft_diamond_sword_task:
           amount: 6
     - action: CRAFT
       requires:
-        - material: STONE_PICKAXE
+        - material: STONE_PICKAXE~~
           amount: 1
     - action: CRAFT
       requires:

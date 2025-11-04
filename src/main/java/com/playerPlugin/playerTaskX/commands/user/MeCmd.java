@@ -39,7 +39,7 @@ public class MeCmd implements SubCommand {
             return true;
         }
 
-        List<PlayerTask> tasks = taskManager.getPlayerTasks(player.getUniqueId());
+        List<PlayerTask> tasks = taskManager.getPlayerTaskList(player.getUniqueId());
 
         if (tasks.isEmpty()) {
             player.sendMessage("§e你当前没有任务。");
@@ -52,7 +52,6 @@ public class MeCmd implements SubCommand {
                 case IN_PROGRESS -> "§a进行中";
                 case COMPLETED -> "§2已完成";
                 case FAILED -> "§c失败";
-                case UN_STARTED -> "§7未开始";
                 default -> "§7未知";
             };
 
@@ -61,14 +60,6 @@ public class MeCmd implements SubCommand {
                     statusStr,
                     pt.getProgress(),
                     114514)); // TODO 显示任务总进度
-            // TODO: 2025/10/26 显示任务详情 调试用
-            // 目标列表
-            player.sendMessage("§7目标列表：");
-            for (String target_id : pt.getTask().getTarget().getTarget_id()) {
-                player.sendMessage(String.format("§7- %s §7(%s)",
-                        target_id,
-                        pt.getTask().getTarget().getAction().get(target_id)));
-            }
         }
 
         return true;

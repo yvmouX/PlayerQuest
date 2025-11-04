@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
+import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
@@ -31,6 +32,7 @@ public final class PlayerTaskX extends JavaPlugin {
     private static Economy economy = null;
     private static PlayerTaskX instance;
     public static Logger log;
+    public static LoggerTools logger = YLib.getyLib().getLoggerTools();
     private static ViewFrame viewFrame = null;
 
     public static YLib getYLib() {
@@ -102,16 +104,12 @@ public final class PlayerTaskX extends JavaPlugin {
         // TODO 数据类型暂时硬编码为 SQLITE
         StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
         StorgeManager.getInstance().connect();
-        StorgeManager.getInstance().createTable();
 
         // 必须在 configManager.saveAllDefaultConfigs() 和 数据库初始化 后调用
         TaskManager.init(taskConfig);
         
         // 初始化缓存系统（必须在TaskManager初始化后）
         PlayerTaskCache.init(this);
-        
-        // 加载所有玩家任务数据（必须在TaskManager和缓存初始化后）
-        TaskManager.getInstance().loadAllPlayerTasks();
 
         // 事件
         EventsRegister.register();
