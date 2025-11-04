@@ -39,9 +39,9 @@ public class MeCmd implements SubCommand {
             return true;
         }
 
-        List<PlayerTask> tasks = taskManager.getPlayerTaskList(player.getUniqueId());
+        List<PlayerTask> tasks = taskManager.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
 
-        if (tasks.isEmpty()) {
+        if (tasks == null) {
             player.sendMessage("§e你当前没有任务。");
             return true;
         }

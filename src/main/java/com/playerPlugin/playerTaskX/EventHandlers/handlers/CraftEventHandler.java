@@ -26,7 +26,7 @@ public class CraftEventHandler implements Listener {
         
         // 检查任务进度
         //taskManager.checkTaskProgress(player, "craft", itemType);
-        taskManager.checkTaskProgress(player, "craft", itemType);
+        //taskManager.checkTaskProgress(player, "craft", itemType);
 
         return new CraftEvent(
                 player,

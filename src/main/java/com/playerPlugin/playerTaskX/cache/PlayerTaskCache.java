@@ -10,7 +10,10 @@ import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskDAO;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -160,6 +163,18 @@ public class PlayerTaskCache {
             PlayerTaskX.getYLib().getLoggerTools().error("从数据库加载进行中任务失败：" + uuid, e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * 获取指定玩家进行中的任务列表
+     * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
+     * @param uuid 玩家UUID
+     * @return 进行中任务列表
+     */
+    @Nullable
+    @org.jetbrains.annotations.Nullable
+    public List<PlayerTask> getPlayerInProgressTasks(UUID uuid) {
+        return cache.get(uuid);
     }
     
     /**

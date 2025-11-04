@@ -12,8 +12,8 @@ public class Info implements SubCommand {
     @CommandOptions(
             name = "info", permission = "", onlyPlayer = true, alias = {}, register = true, usage = "/ptxtest info")
     public boolean execute(CommandSender sender, String[] args) {
-        TaskManager.getInstance().getTasksMap().values().forEach(task -> {
-            sender.sendMessage("Map<String, Task> " + task.toString());
+        TaskManager.getInstance().getAllTasks().forEach(task -> {
+            sender.sendMessage("Task " + task.toString());
         });
 
 //        TaskManager.getInstance().getPlayerTasksMap().values().forEach(task -> {
