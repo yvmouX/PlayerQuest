@@ -7,6 +7,7 @@ import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
 import com.playerPlugin.playerTaskX.utils.Logger;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
@@ -28,8 +29,7 @@ public class PlayerJoinHandler implements Listener {
             }
         }
     }
-
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         List<String> inProgressTaskIds = null;
