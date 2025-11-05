@@ -24,8 +24,9 @@ import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 
 public class TaskManager {
     private static volatile TaskManager instance;
-    private PlayerTaskCache playerTaskCache;
+    private final PlayerTaskCache playerTaskCache;
     private final TaskConfig taskConfig;
+    private TaskProgressManger taskProgressManger;
     private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
 
 
@@ -38,15 +39,23 @@ public class TaskManager {
         return playerTaskCache;
     }
 
+    public TaskConfig getTaskConfig() {
+        return taskConfig;
+    }
+
+    public TaskProgressManger getTaskProgressManger() {
+        return taskProgressManger;
+    }
+
 
     public TaskManager(TaskConfig taskConfig) {
         if (instance != null) {
             throw new IllegalStateException("TaskManager 已经初始化");
         }
         this.taskConfig = taskConfig;
-        PlayerTaskCache.init(PlayerTaskX.getInstance());
-        this.playerTaskCache = PlayerTaskCache.getInstance();
+        this.playerTaskCache = new PlayerTaskCache();
         loadTasksToCache();
+        taskProgressManger = new TaskProgressManger();
     }
 
     public static void init(TaskConfig taskConfig) {
@@ -120,10 +129,12 @@ public class TaskManager {
         });
 
         // 向缓存添加任务
-        PlayerTaskCache.getInstance().updatePlayerTaskToCache(
+        getPlayerTaskCache().updatePlayerTaskToCache(
                 new PlayerTask(uuid, task),
                 true
         );
+        // 添加任务进度
+
 
         // 执行任务开始触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
@@ -131,14 +142,13 @@ public class TaskManager {
         player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
 
-
     /**
      * 关闭任务管理器
      * 确保所有数据保存到数据库
      */
     public void shutdown() {
         // 关闭缓存管理器，保存所有数据
-        PlayerTaskCache.getInstance().shutdown();
+        getPlayerTaskCache().shutdown();
     }
 
     /**
@@ -185,7 +195,7 @@ public class TaskManager {
 
         Task task = new Task(null, null, null, new ArrayList<>(), null);
 
-        FileConfiguration config = taskConfig.getTasksConfig();
+        FileConfiguration config = getTaskConfig().getTasksConfig();
 
         for (String taskId : config.getKeys(false)) {
             // taskID && taskName && taskType

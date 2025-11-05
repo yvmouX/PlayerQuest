@@ -39,11 +39,12 @@ public class PlayerTaskCache {
     
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 删除 数据库 缓存 逻辑
 
-    private List<UniversalTask> universalTask;
+    private final List<UniversalTask> universalTask;
 
     
-    private PlayerTaskCache() {
+    public PlayerTaskCache() {
         this.universalTask = new ArrayList<>();
         // 初始化LRU缓存
         this.cache = Collections.synchronizedMap(new LinkedHashMap<UUID, List<PlayerTask>>(MAX_CACHE_SIZE, 0.75f, true) {
@@ -106,36 +107,6 @@ public class PlayerTaskCache {
             }
         }, 0, CLEANUP_INTERVAL_SECONDS);
         universalTask.add(universalTask2);
-    }
-
-
-    /**
-     * 初始化缓存管理器
-     * @param plugin 插件实例
-     */
-    public static void init(PlayerTaskX plugin) {
-        if (plugin == null) {
-            throw new NullPointerException("plugin can't be null");
-        }
-        
-        if (instance == null) {
-            synchronized (PlayerTaskCache.class) {
-                if (instance == null) {
-                    instance = new PlayerTaskCache();
-                }
-            }
-        }
-    }
-    
-    /**
-     * 获取缓存管理器实例
-     * @return 缓存管理器实例
-     */
-    public static PlayerTaskCache getInstance() {
-        if (instance == null) {
-            throw new IllegalStateException("PlayerTaskCache not initialized");
-        }
-        return instance;
     }
 
 
@@ -220,6 +191,15 @@ public class PlayerTaskCache {
         } else {
             logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
         }
+    }
+
+    public void addFinishedPlayer(UUID uuid) {
+        if (cache.get(uuid) == null) {
+          logger.warn("尝试添加已完成玩家缓存，但玩家缓存不存在：" + uuid);
+          return;
+        }
+        finishedEntries.add(uuid);
+        logger.info("当前执行：添加已完成玩家缓存，玩家ID：" + uuid);
     }
 
     /**

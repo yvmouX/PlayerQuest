@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.EventHandlers.services.impl;
 import com.playerPlugin.playerTaskX.EventHandlers.services.EventCallback;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskProgressManger;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -10,6 +11,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 
 import java.util.List;
 import java.util.Map;
+
+import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 
 public class PlaceService implements EventCallback<BlockPlaceEvent> {
     @Override
@@ -21,6 +24,17 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
     }
 
     private void checkTaskProgress(Player player, Material placedBlockType) {
-        // TODO
+        List<PlayerTask> tasks = TaskManager.getInstance().getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
+        if (tasks == null) {
+            return;
+        }
+        for (PlayerTask task : tasks) {
+            TaskManager.getInstance().getTaskProgressManger().increasePlayerTaskProgress(task, placedBlockType, 1);
+            task.getTask().getTargets().forEach(target -> {
+                target.getRequires().forEach(requires -> {
+                    logger.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), requires.getCurrent(), requires.getAmount(), requires.getMaterial()));
+                });
+            });
+        }
     }
 }
