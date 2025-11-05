@@ -12,6 +12,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import java.util.List;
 import java.util.Map;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 
 public class PlaceService implements EventCallback<BlockPlaceEvent> {
@@ -26,12 +27,12 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
     }
 
     private void checkTaskProgress(Player player, Material placedBlockType) {
-        List<PlayerTask> tasks = TaskManager.getInstance().getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
+        List<PlayerTask> tasks = tm.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
         if (tasks == null) {
             return;
         }
         for (PlayerTask task : tasks) {
-            TaskManager.getInstance().getTaskProgressManger().increasePlayerTaskProgress(task, placedBlockType, 1);
+            tm.getTaskProgressManger().increasePlayerTaskProgress(task, placedBlockType, 1);
             task.getTask().getTargets().forEach(target -> {
                 target.getRequires().forEach(requires -> {
                     logger.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), requires.getCurrent(), requires.getAmount(), requires.getMaterial()));

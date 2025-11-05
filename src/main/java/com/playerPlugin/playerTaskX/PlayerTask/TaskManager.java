@@ -27,7 +27,7 @@ public class TaskManager {
     private static volatile TaskManager instance;
     private final PlayerTaskCache playerTaskCache;
     private final TaskConfig taskConfig;
-    private TaskProgressManger taskProgressManger;
+    private final TaskProgressManger taskProgressManger;
     private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
 
 

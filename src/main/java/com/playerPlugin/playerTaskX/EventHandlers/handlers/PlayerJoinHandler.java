@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import java.util.List;
 import java.util.Objects;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 import static com.playerPlugin.playerTaskX.consts.common.Repo_URL;
 import static com.playerPlugin.playerTaskX.consts.common.isLatest;
@@ -43,8 +44,8 @@ public class PlayerJoinHandler implements Listener {
         if (inProgressTaskIds != null) {
             System.out.println(inProgressTaskIds); // TODO 使用debug消息处理器
             inProgressTaskIds.forEach(taskId -> {
-                TaskManager.getInstance().getPlayerTaskCache().updatePlayerTaskToCache(
-                        Objects.requireNonNull(TaskManager.getInstance().toPlayerTask(player.getUniqueId(), taskId)),
+                tm.getPlayerTaskCache().updatePlayerTaskToCache(
+                        Objects.requireNonNull(tm.toPlayerTask(player.getUniqueId(), taskId)),
                         false
                 );
             });

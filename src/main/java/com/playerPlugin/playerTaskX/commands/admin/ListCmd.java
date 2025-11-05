@@ -5,6 +5,8 @@ import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+
 /**
  * 列表 cmd
  *
@@ -24,14 +26,8 @@ public class ListCmd implements SubCommand {
     }
 
     private boolean tasks(CommandSender sender) {
-        TaskManager taskManager = TaskManager.getInstance();
-        if (taskManager == null) {
-            sender.sendMessage("§c任务系统未初始化！");
-            return true;
-        }
-
         sender.sendMessage("§6=== 所有可用任务 ===");
-        taskManager.getAllTasks().forEach(task -> {
+        tm.getAllTasks().forEach(task -> {
             sender.sendMessage(String.format("§e%s §7- §f%s", task.getId(), task.getName()));
         });
 

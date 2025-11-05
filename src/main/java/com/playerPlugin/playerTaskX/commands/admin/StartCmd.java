@@ -10,6 +10,8 @@ import org.bukkit.entity.Player;
 
 import java.util.Objects;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+
 public class StartCmd implements SubCommand {
     @Override
     @CommandOptions(
@@ -21,15 +23,13 @@ public class StartCmd implements SubCommand {
             usage = "/playertaskxadmin start <taskID> <player>"
     )
     public boolean execute(CommandSender sender, String[] args) {
-        TaskManager taskManager = TaskManager.getInstance();
-
         if (Objects.equals(args[0], "start") && args.length != 3) {
             sender.sendMessage(ChatColor.RED + "Usage: /playertaskxadmin start <taskID> <player>");
             return false;
         }
 
         String taskID = args[1];
-        if (taskManager.getTask(taskID) == null) {
+        if (tm.getTask(taskID) == null) {
             sender.sendMessage(ChatColor.RED + "No such task: " + taskID);
             return false;
         }
@@ -40,7 +40,7 @@ public class StartCmd implements SubCommand {
             return false;
         }
 
-        taskManager.startTask(p, taskID);
+        tm.startTask(p, taskID);
 
         return true;
     }

@@ -6,6 +6,8 @@ import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+
 /**
  * 接受 CMD
  *
@@ -28,15 +30,9 @@ public class AcceptCmd implements SubCommand {
     private void accept(CommandSender sender, String[] args) {
         Player player = (Player) sender;
 
-        TaskManager taskManager = TaskManager.getInstance();
-        if (taskManager == null) {
-            player.sendMessage("§c任务管理器未初始化！\n" +
-                    "这是个不应该发生的错误，如果您看到这个消息，请及时服务器报告管理员！");
-            return;
-        }
 
         String taskId = args[1];
-        taskManager.startTask(player, taskId);
+        tm.startTask(player, taskId);
 
     }
 }

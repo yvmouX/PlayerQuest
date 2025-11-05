@@ -27,6 +27,8 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
+import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
     private static Economy economy = null;
@@ -73,7 +75,7 @@ public final class PlayerTaskX extends JavaPlugin {
             log.info(Logger.prefix + "正在关闭插件...");
             // 关闭任务管理器，保存所有数据
             try {
-                TaskManager.getInstance().shutdown();
+                tm.shutdown();
                 log.info(Logger.prefix + "任务数据已保存");
             } catch (IllegalStateException e) {
                 // TaskManager 未初始化（插件在 onEnable 早期失败），跳过关闭
