@@ -23,6 +23,7 @@ import java.util.*;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 
 public class TaskManager {
+    public static TaskManager tm;
     private static volatile TaskManager instance;
     private final PlayerTaskCache playerTaskCache;
     private final TaskConfig taskConfig;
@@ -52,6 +53,7 @@ public class TaskManager {
         if (instance != null) {
             throw new IllegalStateException("TaskManager 已经初始化");
         }
+        tm = this;
         this.taskConfig = taskConfig;
         this.playerTaskCache = new PlayerTaskCache();
         loadTasksToCache();
@@ -272,7 +274,7 @@ public class TaskManager {
                                 logger.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
                                 continue;
                             }
-                            requirements.add(new Requirement(material, amount, 1));
+                            requirements.add(new Requirement(material, amount, idx));
                         }
                     }
 
