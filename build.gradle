@@ -22,7 +22,8 @@ repositories {
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
-    implementation("com.github.yvmouX:YLib:1.0.0-beta4")
+    //implementation("com.github.yvmouX:YLib:1.0.0-beta4")
+    implementation files("lib/YLib-1.0.0-beta4.jar")
     compileOnly 'org.xerial:sqlite-jdbc:3.42.0.0'
     compileOnly 'com.googlecode.json-simple:json-simple:1.1.1'
     implementation 'me.devnatan:inventory-framework-platform-paper:3.5.5'
