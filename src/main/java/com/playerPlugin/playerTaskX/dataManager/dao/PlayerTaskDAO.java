@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+
 /**
  * 玩家任务 DAO
  *
@@ -45,9 +47,9 @@ public class PlayerTaskDAO {
 
             // TODO 调试内容
             if (a.length > 0) {
-                PlayerTaskX.getYLib().getLoggerTools().info("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + a);
+                logger.info("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + a);
             } else {
-                PlayerTaskX.getYLib().getLoggerTools().info("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + a);
+                logger.info("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + a);
             }
         }
     }

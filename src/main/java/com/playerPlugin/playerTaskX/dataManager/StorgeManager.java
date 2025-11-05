@@ -7,6 +7,8 @@ import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+
 public class StorgeManager {
     private static volatile StorgeManager instance;
     private final PlayerTaskX plugin;
@@ -39,21 +41,21 @@ public class StorgeManager {
 
     public static StorgeManager getInstance() {
         if (instance == null) {
-            PlayerTaskX.getYLib().getLoggerTools().error("StorgeManager is not initialized");
+            logger.error("StorgeManager is not initialized");
         }
         return instance;
     }
 
     public static PlayerTaskDAO getPlayerTaskDAO() {
         if (playerTaskDAO == null) {
-            PlayerTaskX.getYLib().getLoggerTools().error("PlayerTaskDAO is not initialized");
+            logger.error("PlayerTaskDAO is not initialized");
         }
         return playerTaskDAO;
     }
 
     public static PlayerTaskProgressDAO getPlayerTaskProgressDAO() {
         if (playerTaskProgressDAO == null) {
-            PlayerTaskX.getYLib().getLoggerTools().error("PlayerTaskProgressDAO is not initialized");
+            logger.error("PlayerTaskProgressDAO is not initialized");
         }
         return playerTaskProgressDAO;
     }
@@ -68,10 +70,10 @@ public class StorgeManager {
                 // 数据库
                 try {
                     sqLiteManager.connect(plugin);
-                    PlayerTaskX.getYLib().getLoggerTools().info("成功连接到 SQLite 数据库！");
+                    logger.info("成功连接到 SQLite 数据库！");
                 } catch (SQLException | ClassNotFoundException e) {
-                    PlayerTaskX.getYLib().getLoggerTools().error("连接到 SQLite 数据库失败：" + e.getMessage());
-                    PlayerTaskX.getYLib().getLoggerTools().error("插件已禁用！");
+                    logger.error("连接到 SQLite 数据库失败：" + e.getMessage());
+                    logger.error("插件已禁用！");
                     plugin.getServer().getPluginManager().disablePlugin(plugin);
                 }
             }

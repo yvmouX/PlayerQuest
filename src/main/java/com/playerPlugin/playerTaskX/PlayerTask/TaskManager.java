@@ -20,6 +20,8 @@ import org.bukkit.entity.Player;
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+
 public class TaskManager {
     private static volatile TaskManager instance;
     private PlayerTaskCache playerTaskCache;
@@ -173,6 +175,7 @@ public class TaskManager {
     }
 
 
+
     /**
      * 加载任务到内存中
      *
@@ -180,72 +183,95 @@ public class TaskManager {
     private void loadTasksToCache() {
         tasks.clear();
 
+        Task task = new Task(null, null, null, new ArrayList<>(), null);
+
         FileConfiguration config = taskConfig.getTasksConfig();
 
         for (String taskId : config.getKeys(false)) {
             // taskID && taskName && taskType
             String taskName = config.getString(taskId + ".name");
             if (taskName == null) {
-                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务名称不能为空。");
+                logger.error("加载任务: " + taskId + "失败。任务名称不能为空。");
                 continue;
             }
             String taskType = config.getString(taskId + ".type");
             if (taskType == null) {
-                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务类型不能为空。");
+                logger.error("加载任务: " + taskId + "失败。任务类型不能为空。");
                 continue;
             }
             PTXTaskType taskTypeEnum = PTXTaskType.fromString(taskType);
+            System.out.println("加载任务: " + taskId + " 任务类型: " + taskTypeEnum); // TODO DEBUG
             if (taskTypeEnum == PTXTaskType.NONE) {
-                PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
+                logger.error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
                 continue;
             }
-            Task task = new Task();
-            task.id = taskId;
-            task.name = taskName;
-            task.type = taskTypeEnum;
+
+            task.setId(taskId);
+            task.setType(taskTypeEnum);
+            task.setName(taskName);
 
             // targets
-            ConfigurationSection targets = config.getConfigurationSection(taskId + ".targets");
-            if (targets != null) {
-                for (String t : targets.getKeys(false)) {
-                    ConfigurationSection tSec =  targets.getConfigurationSection(t);
+            List<TaskTarget> targetsList = new ArrayList<>();
+            List<Map<?, ?>> targetsMapList = config.getMapList(taskId + ".targets");
+            System.out.println("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets"); // TODO DEBUG
+            if (!targetsMapList.isEmpty()) {
+                for (int idx = 0; idx < targetsMapList.size(); idx++) {
+                    Map<?, ?> targetMap = targetsMapList.get(idx);
+                    System.out.println("加载任务: " + taskId + " 目标索引: " + idx + " Action: " + targetMap.get("action")); // TODO DEBUG
 
-                    if (tSec == null) {
-                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 目标配置不能为空。");
+                    Object actionObj = targetMap.get("action");
+                    if (actionObj == null) {
+                        logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型不能为空。");
                         continue;
                     }
-                    String actionType = tSec.getString("action");
-                    if (actionType == null) {
-                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 操作类型不能为空。");
-                        continue;
-                    }
+                    String actionType = actionObj.toString();
                     PTXActionType actionTypeEnum = PTXActionType.fromString(actionType);
                     if (actionTypeEnum == PTXActionType.NONE) {
-                        PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " 操作类型: " + actionType + " 无效。");
+                        logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型: " + actionType + " 无效。");
                         continue;
                     }
 
-                    TaskTarget tt = new TaskTarget();
-                    tt.action = actionTypeEnum;
-
-                    List<Map<?, ?>> requireList =  tSec.getMapList("require");
-                    for (Map<?, ?> reqMap : requireList) {
-                        String m = reqMap.get("material").toString().toUpperCase(Locale.ENGLISH);
-                        int amount = Integer.parseInt(reqMap.get("amount").toString());
-                        if (m.isEmpty()) {
-                            PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " amount: " + amount + " 无效。");
-                            continue;
+                    List<Requirement> requirements = new ArrayList<>();
+                    Object requiresObj = targetMap.get("requires");
+                    if (requiresObj instanceof List<?> reqList) {
+                        for (Object o : reqList) {
+                            if (!(o instanceof Map<?, ?> reqMap)) {
+                                continue;
+                            }
+                            Object mObj = reqMap.get("material");
+                            Object amountObj = reqMap.get("amount");
+                            if (mObj == null || amountObj == null) {
+                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 需求配置缺少 material 或 amount。");
+                                continue;
+                            }
+                            String m = mObj.toString().toUpperCase(Locale.ENGLISH);
+                            logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " Amount: " + amountObj);
+                            int amount;
+                            try {
+                                amount = Integer.parseInt(amountObj.toString());
+                            } catch (NumberFormatException e) {
+                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amountObj + " 不是有效数字。");
+                                continue;
+                            }
+                            if (m.isEmpty()) {
+                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amount + " 无效。");
+                                continue;
+                            }
+                            Material material = Material.getMaterial(m);
+                            if (material == null) {
+                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
+                                continue;
+                            }
+                            requirements.add(new Requirement(material, amount, 1));
                         }
-                        Material material = Material.getMaterial(m);
-                        if (material == null) {
-                            PlayerTaskX.getYLib().getLoggerTools().error("加载任务: " + taskId + "目标索引: " + t + " Material: " + m + " 无效。");
-                            continue;
-                        }
-                        tt.requires.add(new Requirement(material, amount));
                     }
-                    task.targets.add(tt);
+
+                    targetsList.add(new TaskTarget(actionTypeEnum, requirements));
                 }
             }
+
+            task.setTargets(targetsList);
+
             // trigger
             ConfigurationSection triggerSec = config.getConfigurationSection(taskId + ".trigger");
             TaskTrigger trigger = new TaskTrigger();
@@ -254,8 +280,8 @@ public class TaskManager {
                 trigger.setOnTaskFinish(triggerSec.getStringList("on_task_finish"));
                 trigger.setOnTaskFail(triggerSec.getStringList("on_task_fail"));
             }
-            task.targets = new ArrayList<>();
-            task.trigger = trigger;
+
+            task.setTrigger(trigger);
 
             // 加入任务集合
             tasks.add(task);

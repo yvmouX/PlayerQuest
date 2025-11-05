@@ -3,16 +3,11 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
-import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskDAO;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.*;
@@ -162,7 +157,7 @@ public class PlayerTaskCache {
         try {
             return StorgeManager.getPlayerTaskDAO().getInProgressTaskIds(uuid.toString());
         } catch (SQLException e) {
-            PlayerTaskX.getYLib().getLoggerTools().error("从数据库加载进行中任务失败：" + uuid, e);
+            logger.error("从数据库加载进行中任务失败：" + uuid, e);
             return new ArrayList<>();
         }
     }
@@ -268,7 +263,7 @@ public class PlayerTaskCache {
         try {
             StorgeManager.getPlayerTaskDAO().updateTasks(playerTasks);
         } catch (SQLException e) {
-            PlayerTaskX.getYLib().getLoggerTools().error("批量保存玩家任务到数据库失败", e);
+            logger.error("批量保存玩家任务到数据库失败", e);
         }
     }
 
@@ -280,7 +275,7 @@ public class PlayerTaskCache {
         try {
             StorgeManager.getPlayerTaskDAO().startTask(playerTasks);
         } catch (SQLException e) {
-            PlayerTaskX.getYLib().getLoggerTools().error("批量开始玩家任务失败", e);
+            logger.error("批量开始玩家任务失败", e);
         }
     }
 

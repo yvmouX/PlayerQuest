@@ -6,12 +6,20 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import java.util.List;
 
 public class Task {
-    public String id;
-    public PTXTaskType type;
-    public String name;
-    public List<TaskTarget> targets;
+    private String id;
+    private PTXTaskType type;
+    private String name;
+    private List<TaskTarget> targets;
     //public List<TaskCondition> conditions = null;
-    public TaskTrigger trigger;
+    private TaskTrigger trigger;
+
+    public Task(String id, PTXTaskType type, String name, List<TaskTarget> targets, TaskTrigger trigger) {
+        this.id = id;
+        this.type = type;
+        this.name = name;
+        this.targets = targets;
+        this.trigger = trigger;
+    }
 
     // Getter and Setter methods
     public String getId() { return id; }
@@ -27,4 +35,5 @@ public class Task {
     public void setTargets(List<TaskTarget> targets) { this.targets = targets; }
 
     public TaskTrigger getTrigger() { return trigger; }
+    public void setTrigger(TaskTrigger trigger) { this.trigger = trigger; }
 }

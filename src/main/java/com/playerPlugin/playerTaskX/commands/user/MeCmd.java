@@ -58,7 +58,7 @@ public class MeCmd implements SubCommand {
             player.sendMessage(String.format("§e%s §7- %s §7(%d/%d)",
                     pt.getTask().getName(),
                     statusStr,
-                    pt.getProgress(),
+                    //pt.getProgress(),
                     114514)); // TODO 显示任务总进度
         }
 

@@ -51,6 +51,17 @@ public class PlayerTaskProgressDAO {
     }
 
 
+    /**
+     * 获取进度
+     *
+     * <p>
+     *     return 任务进度映射，键为目标索引，值为当前进度
+     * </p>
+     *
+     * @param uuid   uuid
+     * @param taskId 任务 ID
+     * @return {@link Map }<{@link Integer }, {@link Integer }>
+     */
     public Map<Integer, Integer> getProgress(String uuid, String taskId) {
         Map<Integer, Integer> progress = new HashMap<>();
         String sql = "SELECT target_index, current_amount FROM player_task_progress WHERE player_uuid = ? AND task_id = ?";
