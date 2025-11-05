@@ -45,22 +45,23 @@ public class MeCmd implements SubCommand {
             player.sendMessage("§e你当前没有任务。");
             return true;
         }
+        // # TODO 未完成
 
-        player.sendMessage("§6=== 你的任务列表 ===");
-        for (PlayerTask pt : tasks) {
-            String statusStr = switch (pt.getStatus()) {
-                case IN_PROGRESS -> "§a进行中";
-                case COMPLETED -> "§2已完成";
-                case FAILED -> "§c失败";
-                default -> "§7未知";
-            };
-
-            player.sendMessage(String.format("§e%s §7- %s §7(%d/%d)",
-                    pt.getTask().getName(),
-                    statusStr,
-                    //pt.getProgress(),
-                    114514)); // TODO 显示任务总进度
-        }
+//        player.sendMessage("§6=== 你的任务列表 ===");
+//        for (PlayerTask pt : tasks) {
+//            String statusStr = switch (pt.getStatus()) {
+//                case IN_PROGRESS -> "§a进行中";
+//                case COMPLETED -> "§2已完成";
+//                case FAILED -> "§c失败";
+//                default -> "§7未知";
+//            };
+//
+//            player.sendMessage(String.format("§e%s §7- %s §7(%d/%d)",
+//                    pt.getTask().getName(),
+//                    statusStr,
+//                    //pt.getProgress(),
+//                    114514)); // TODO 显示任务总进度
+//        }
 
         return true;
     }

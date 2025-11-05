@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Bukkit;
@@ -12,6 +13,7 @@ import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
 
@@ -66,6 +68,28 @@ public class PlayerTaskCache {
     }
 
     private void startTimerTasks() {
+        UniversalTask universalTask0 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+            // 检查是否有任务完成，如果所有目标都完成，则设置任务状态为完成
+            for (UUID uuid : finishedEntries) {
+                List<PlayerTask> tasks = cache.get(uuid);
+                if (tasks != null) {
+                    for (PlayerTask task : tasks) {
+                        AtomicBoolean allFinished = new AtomicBoolean(false);
+                        task.getTask().getTargets().forEach(target -> {
+                            allFinished.set(target.getRequires().stream().allMatch(Requirement::isFinished));
+                        });
+
+                        if (allFinished.get()) {
+                            task.setStatus(PTXTaskStatus.COMPLETED);
+                        }
+                    }
+                    // 从脏数据集合中移除
+                    finishedEntries.remove(uuid);
+                }
+            }
+        }, 0, SAVE_INTERVAL_SECONDS);
+        universalTask.add(universalTask0);
+
         // 启动定时保存任务 每30秒保存一次脏数据到数据库
         UniversalTask universalTask1 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
             if (dirtyEntries.isEmpty()) {

@@ -20,6 +20,8 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
         Player player = event.getPlayer();
         Material placedBlockType = event.getBlockPlaced().getType();
 
+        System.out.println("Placed block type: " + placedBlockType);
+
         checkTaskProgress(player, placedBlockType);
     }
 
