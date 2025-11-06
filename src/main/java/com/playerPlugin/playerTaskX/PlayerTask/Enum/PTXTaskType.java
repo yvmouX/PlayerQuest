@@ -8,7 +8,6 @@ public enum PTXTaskType {
     LIMIT,
     NONE;
 
-
     private static boolean isValid(String value) {
         if (value == null || value.isEmpty()) {
             return false;

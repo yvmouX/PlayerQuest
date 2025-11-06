@@ -70,17 +70,12 @@ public final class PlayerTaskX extends JavaPlugin {
             try {
                 tm.shutdown();
                 log.info(Logger.prefix + "任务数据已保存");
-            } catch (IllegalStateException e) {
-                // TaskManager 未初始化（插件在 onEnable 早期失败），跳过关闭
-                log.info(Logger.prefix + "任务管理器未初始化，跳过保存");
-            }
+            } catch (IllegalStateException ignored) { }
             try {
                 final StorgeManager sm = StorgeManager.getInstance();
                 if (sm != null) {
                     sm.close();
                     log.info(Logger.prefix + "数据库连接已关闭");
-                } else {
-                    log.info(Logger.prefix + "数据库管理器未初始化，跳过关闭");
                 }
             } catch (Exception e) {
                 log.err(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());

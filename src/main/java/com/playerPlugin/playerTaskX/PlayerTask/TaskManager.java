@@ -50,9 +50,10 @@ public class TaskManager {
 
 
     public TaskManager(TaskConfig taskConfig) {
-        if (instance != null) {
-            throw new IllegalStateException("TaskManager 已经初始化");
-        }
+        // 只在instance为null时执行，无需二次检测
+//        if (instance != null) {
+//            throw new IllegalStateException("TaskManager 已经初始化");
+//        }
         tm = this;
         this.taskConfig = taskConfig;
         this.playerTaskCache = new PlayerTaskCache();
@@ -62,7 +63,7 @@ public class TaskManager {
 
     public static void init(TaskConfig taskConfig) {
         if (taskConfig == null) {
-            throw new NullPointerException("TaskConfig 不能是 null");
+            throw new NullPointerException("TaskConfig 初始化失败，请检查tasks.yml");
         };
         if (instance == null) {
             synchronized (TaskManager.class) {
@@ -119,7 +120,7 @@ public class TaskManager {
         Task task = getTask(taskId);
 
         if (task == null) {
-            player.sendMessage("§c任务开始失败,任务%s不存在", taskId);
+            player.sendMessage("§c任务开始失败，任务 %s 不存在", taskId);
             return;
         };
 
