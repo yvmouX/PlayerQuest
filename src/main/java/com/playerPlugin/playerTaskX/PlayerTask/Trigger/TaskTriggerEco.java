@@ -2,6 +2,8 @@ package com.playerPlugin.playerTaskX.PlayerTask.Trigger;
 
 import org.bukkit.entity.Player;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.getEconomy;
+
 public class TaskTriggerEco {
     /**
      * 处理资金
@@ -10,9 +12,15 @@ public class TaskTriggerEco {
      * @param amount 量
      */
     protected static void handleMoney(Player player, String amount) {
-        // TODO 处理vault经济
         try {
             int money = Integer.parseInt(amount);
+
+            if (money > 0) {
+                getEconomy().depositPlayer(player, money);
+            } else {
+                getEconomy().withdrawPlayer(player, money);
+            }
+
         } catch (NumberFormatException e) {
             // 无效金额
         }
@@ -63,10 +71,11 @@ public class TaskTriggerEco {
         try {
             int level = Integer.parseInt(amount);
             if (level > 0) {
-                player.setLevel(player.getLevel() + level);
+                player.giveExpLevels(player.getLevel() + level);
             } else {
                 // TODO 需要防止扣成负值吗？
-                player.setLevel(Math.max(0, player.getLevel() + level));
+                // TODO 大概需要，防着点
+                player.giveExpLevels(Math.max(0, player.getLevel() + level));
             }
         } catch (NumberFormatException e) {
             // 无效等级
