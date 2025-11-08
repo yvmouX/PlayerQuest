@@ -6,7 +6,6 @@ import com.playerPlugin.playerTaskX.EventHandlers.services.impl.PlaceService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.EventHandlers.services.impl.BreakService;
 import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
-import org.bukkit.block.Block;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 

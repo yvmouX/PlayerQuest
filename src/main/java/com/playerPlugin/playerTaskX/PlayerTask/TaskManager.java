@@ -8,7 +8,6 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
-import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
@@ -20,7 +19,7 @@ import org.bukkit.entity.Player;
 import javax.annotation.Nullable;
 import java.util.*;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
 public class TaskManager {
     public static TaskManager tm;

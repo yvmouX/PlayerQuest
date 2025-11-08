@@ -27,7 +27,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private static Economy economy = null;
     private static PlayerTaskX instance;
     public static Logger log;
-    public static LoggerTools logger;
     private static ViewFrame viewFrame = null;
 
     public static YLib getYLib() {
@@ -56,7 +55,6 @@ public final class PlayerTaskX extends JavaPlugin {
         log = new Logger();
         instance = this;
         ylib = new YLib(this);
-        logger = ylib.getLoggerTools();
 
         register();
         log.info(Logger.prefix + "插件已启用");

@@ -7,7 +7,7 @@ import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
 public class StorgeManager {
     private static volatile StorgeManager instance;

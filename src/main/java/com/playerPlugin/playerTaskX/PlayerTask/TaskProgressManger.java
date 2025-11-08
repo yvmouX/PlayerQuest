@@ -1,8 +1,6 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
-import com.playerPlugin.playerTaskX.PlayerTask.listener.RequirementFinishListener;
 import org.bukkit.Material;
 
 import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;

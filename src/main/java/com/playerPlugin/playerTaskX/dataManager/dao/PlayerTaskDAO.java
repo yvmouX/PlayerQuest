@@ -1,9 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager.dao;
 
-import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
-import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 
 import java.sql.PreparedStatement;
@@ -13,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
 /**
  * 玩家任务 DAO

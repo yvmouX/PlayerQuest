@@ -15,7 +15,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
+
 
 /**
  * 玩家任务缓存管理器

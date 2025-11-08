@@ -1,7 +1,5 @@
 package com.playerPlugin.playerTaskX.dataManager.impl;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.Storge;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -10,7 +8,6 @@ import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;

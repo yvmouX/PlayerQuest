@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager.dao;
 
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
-import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

@@ -1,9 +1,7 @@
 package com.playerPlugin.playerTaskX.dataManager;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 
