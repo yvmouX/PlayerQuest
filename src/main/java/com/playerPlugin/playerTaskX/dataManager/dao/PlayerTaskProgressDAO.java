@@ -8,6 +8,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
+
 /**
  * 玩家任务进度DAO
  *
@@ -36,8 +38,8 @@ public class PlayerTaskProgressDAO {
         }
     }
 
-    public void increaseProgress(String uuid, String taskId, int targetIndex, int amount) {
-        String sql = "UPDATE player_task_progress SET current_amount = current_amount + ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
+    public void updateProgress(String uuid, String taskId, int targetIndex, int amount) {
+        String sql = "UPDATE player_task_progress SET current_amount = ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
             ps.setInt(1, amount);
             ps.setString(2, uuid);
@@ -45,7 +47,12 @@ public class PlayerTaskProgressDAO {
             ps.setInt(4, targetIndex);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(
+                    String.format(
+                            "Failed to update task progress for player %s in task %s at index %d: %s",
+                            uuid, taskId, targetIndex, e.getMessage()
+                    )
+            );
         }
     }
 

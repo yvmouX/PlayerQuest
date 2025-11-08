@@ -4,6 +4,7 @@ import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Bukkit;
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.scheduler;
 
 
 /**
@@ -88,6 +90,27 @@ public class PlayerTaskCache {
                     finishedEntries.remove(uuid);
                 }
             }
+
+            Set<UUID> cd = new HashSet<>(finishedEntries);
+
+            // 保存玩家进度到数据库 异步
+            scheduler.runAsync(() -> {
+                for (UUID uuid : cd) {
+                    List<PlayerTask> tasks = cache.get(uuid);
+                    if (tasks != null) {
+                        for (PlayerTask task : tasks) {
+                            for (TaskTarget t : task.getTask().getTargets()) {
+                                for (Requirement r : t.getRequires()) {
+                                    StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), r.getIndex(), r.getAmount());
+                                    finishedEntries.remove(uuid);
+                                }
+                            }
+                        }
+
+                    }
+                }
+            });
+
         }, 0, SAVE_INTERVAL_SECONDS);
         universalTask.add(universalTask0);
 
