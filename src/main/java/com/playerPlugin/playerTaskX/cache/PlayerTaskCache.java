@@ -88,6 +88,8 @@ public class PlayerTaskCache {
                     }
                     // 从脏数据集合中移除
                     finishedEntries.remove(uuid);
+                    logger.debug(String.format("finishedEntries remove: %s", uuid));
+                    logger.trace("finishedEntries", finishedEntries);
                 }
             }
 
@@ -103,6 +105,8 @@ public class PlayerTaskCache {
                                 for (Requirement r : t.getRequires()) {
                                     StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), r.getIndex(), r.getAmount());
                                     finishedEntries.remove(uuid);
+                                    logger.debug(String.format("finishedEntries remove: %s", uuid));
+                                    logger.trace("finishedEntries", finishedEntries);
                                 }
                             }
                         }

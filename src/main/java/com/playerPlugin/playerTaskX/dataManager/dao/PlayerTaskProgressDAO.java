@@ -46,6 +46,12 @@ public class PlayerTaskProgressDAO {
             ps.setString(3, taskId);
             ps.setInt(4, targetIndex);
             ps.executeUpdate();
+            logger.debug(
+                    String.format(
+                            "Updated task progress for player %s in task %s at index %d to %d",
+                            uuid, taskId, targetIndex, amount
+                    )
+            );
         } catch (SQLException e) {
             logger.error(
                     String.format(
