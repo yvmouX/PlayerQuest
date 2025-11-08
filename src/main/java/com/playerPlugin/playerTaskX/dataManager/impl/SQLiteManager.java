@@ -9,9 +9,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.getYLib;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
+import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
 // TODO 异常将由 StorgeManager.java 类进行处理
 // TODO 这部分AI写的，有空可以检查一下 2025.10.31
@@ -35,12 +35,12 @@ public class SQLiteManager implements Storge {
             if (!dataFolder.exists()) {
                 boolean ok = dataFolder.mkdirs();
                 if (!ok) {
-                    getYLib().getLoggerTools().warn("Failed to create data folder: " + dataFolder.getAbsolutePath());
+                    logger.warn("Failed to create data folder: " + dataFolder.getAbsolutePath());
                 }
             }
 
             File dbFile = new File(dataFolder, DATABASE);
-            getYLib().getLoggerTools().info("===== SQLite 数据库绝对路径：" + dbFile.getAbsolutePath() + " =====");
+           logger.info("===== SQLite 数据库绝对路径：" + dbFile.getAbsolutePath() + " =====");
             String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
 
             conn = DriverManager.getConnection(url);

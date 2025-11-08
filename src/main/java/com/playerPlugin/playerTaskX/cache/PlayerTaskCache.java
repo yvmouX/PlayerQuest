@@ -71,7 +71,7 @@ public class PlayerTaskCache {
     }
 
     private void startTimerTasks() {
-        UniversalTask universalTask0 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+        UniversalTask universalTask0 = scheduler.runTimer(() -> {
             // 检查是否有任务完成，如果所有目标都完成，则设置任务状态为完成
             for (UUID uuid : finishedEntries) {
                 List<PlayerTask> tasks = cache.get(uuid);
@@ -115,7 +115,7 @@ public class PlayerTaskCache {
         universalTask.add(universalTask0);
 
         // 启动定时保存任务 每30秒保存一次脏数据到数据库
-        UniversalTask universalTask1 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+        UniversalTask universalTask1 = scheduler.runTimer(() -> {
             if (dirtyEntries.isEmpty()) {
                 return;
             }
@@ -124,7 +124,7 @@ public class PlayerTaskCache {
             Set<UUID> currentDirty = new HashSet<>(dirtyEntries);
 
             // 异步保存到数据库
-            PlayerTaskX.getYLib().getScheduler().runAsync(() -> {
+            scheduler.runAsync(() -> {
                 for (UUID uuid : currentDirty) {
                     List<PlayerTask> tasks = cache.get(uuid);
                     if (tasks != null) {
@@ -138,7 +138,7 @@ public class PlayerTaskCache {
         universalTask.add(universalTask1);
 
         // 启动定时清理任务 清理离线玩家的缓存
-        UniversalTask universalTask2 = PlayerTaskX.getYLib().getScheduler().runTimer(() -> {
+        UniversalTask universalTask2 = scheduler.runTimer(() -> {
             Set<UUID> cachedPlayers = new HashSet<>(cache.keySet());
 
             for (UUID uuid : cachedPlayers) {

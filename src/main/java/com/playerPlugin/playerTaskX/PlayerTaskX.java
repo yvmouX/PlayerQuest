@@ -29,10 +29,6 @@ public final class PlayerTaskX extends JavaPlugin {
     public static Logger log;
     private static ViewFrame viewFrame = null;
 
-    public static YLib getYLib() {
-        return ylib;
-    }
-
     public static PlayerTaskX getInstance() {
         return instance;
     }
