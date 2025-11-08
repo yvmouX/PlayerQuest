@@ -1,16 +1,51 @@
 package com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
-
-import java.util.List;
+import com.playerPlugin.playerTaskX.PlayerTask.listener.TargetFinishListener;
 
 public class TaskTarget {
+    private int targetIndex;
     private PTXActionType action;
-    private List<Requirement> requires;
+    private Requirement requirement;
+    private int current;
+    private boolean finished = false;
 
-    public TaskTarget(PTXActionType action, List<Requirement> requires) {
+    private TargetFinishListener listener;
+
+    public TaskTarget(PTXActionType action, int targetIndex, Requirement requirement) {
         this.action = action;
-        this.requires = requires;
+        this.targetIndex = targetIndex;
+        this.requirement = requirement;
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+    public void setFinished(boolean finished) {
+        if (!this.finished && finished) {
+            if (listener != null) {
+                listener.onFinish(this);
+            }
+        }
+        this.finished = finished;
+    }
+
+    public void setListener(TargetFinishListener listener) {
+        this.listener = listener;
+    }
+
+    public int getCurrent() {
+        return current;
+    }
+    public void setCurrent(int current) {
+        this.current = current;
+    }
+
+    public int getIndex() {
+        return targetIndex;
+    }
+    public void setIndex(int targetIndex) {
+        this.targetIndex = targetIndex;
     }
 
     public PTXActionType getAction() {
@@ -20,10 +55,10 @@ public class TaskTarget {
         this.action = action;
     }
 
-    public List<Requirement> getRequires() {
-        return requires;
+    public Requirement getRequirement() {
+        return requirement;
     }
-    public void setRequires(List<Requirement> requires) {
-        this.requires = requires;
+    public void setRequirement(Requirement requirement) {
+        this.requirement = requirement;
     }
 }

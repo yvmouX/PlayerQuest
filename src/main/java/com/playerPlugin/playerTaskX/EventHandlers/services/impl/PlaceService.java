@@ -30,9 +30,7 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
         for (PlayerTask task : tasks) {
             tm.getTaskProgressManger().increasePlayerTaskProgress(task, placedBlockType, 1);
             task.getTask().getTargets().forEach(target -> {
-                target.getRequires().forEach(requires -> {
-                    logger.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), requires.getCurrent(), requires.getAmount(), requires.getMaterial()));
-                });
+                logger.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), target.getCurrent(), target.getRequirement().getAmount(), target.getRequirement().getMaterial()));
             });
         }
     }

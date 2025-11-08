@@ -10,7 +10,6 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
-import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -244,42 +243,42 @@ public class TaskManager {
                         continue;
                     }
 
-                    List<Requirement> requirements = new ArrayList<>();
-                    Object requiresObj = targetMap.get("requires");
-                    if (requiresObj instanceof List<?> reqList) {
-                        for (Object o : reqList) {
-                            if (!(o instanceof Map<?, ?> reqMap)) {
-                                continue;
-                            }
-                            Object mObj = reqMap.get("material");
-                            Object amountObj = reqMap.get("amount");
-                            if (mObj == null || amountObj == null) {
-                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 需求配置缺少 material 或 amount。");
-                                continue;
-                            }
-                            String m = mObj.toString().toUpperCase(Locale.ENGLISH);
-                            logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " Amount: " + amountObj);
-                            int amount;
-                            try {
-                                amount = Integer.parseInt(amountObj.toString());
-                            } catch (NumberFormatException e) {
-                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amountObj + " 不是有效数字。");
-                                continue;
-                            }
-                            if (m.isEmpty()) {
-                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amount + " 无效。");
-                                continue;
-                            }
-                            Material material = Material.getMaterial(m);
-                            if (material == null) {
-                                logger.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
-                                continue;
-                            }
-                            requirements.add(new Requirement(material, amount, idx));
+                    // require
+                    Requirement requirement = null;
+                    Object requiresObj = targetMap.get("require");
+                    if (requiresObj instanceof Map<?, ?> reqMap) {
+                        Object mObj = reqMap.get("material");
+                        Object amountObj = reqMap.get("amount");
+                        if (mObj == null || amountObj == null) {
+                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 需求配置缺少 material 或 amount。");
+                            continue;
                         }
+                        String m = mObj.toString().toUpperCase(Locale.ENGLISH);
+                        logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " Amount: " + amountObj);
+                        int amount;
+                        try {
+                            amount = Integer.parseInt(amountObj.toString());
+                        } catch (NumberFormatException e) {
+                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amountObj + " 不是有效数字。");
+                            continue;
+                        }
+                        if (m.isEmpty()) {
+                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amount + " 无效。");
+                            continue;
+                        }
+                        Material material = Material.getMaterial(m);
+                        if (material == null) {
+                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
+                            continue;
+                        }
+                        requirement = new Requirement(material, amount);
                     }
 
-                    targetsList.add(new TaskTarget(actionTypeEnum, requirements));
+                    // reward TODO
+
+
+
+                    targetsList.add(new TaskTarget(actionTypeEnum, idx, requirement));
                 }
             }
 

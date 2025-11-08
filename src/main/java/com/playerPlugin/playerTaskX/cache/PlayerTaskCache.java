@@ -3,9 +3,7 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
-import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -80,7 +78,7 @@ public class PlayerTaskCache {
                     for (PlayerTask task : tasks) {
                         AtomicBoolean allFinished = new AtomicBoolean(false);
                         task.getTask().getTargets().forEach(target -> {
-                            allFinished.set(target.getRequires().stream().allMatch(Requirement::isFinished));
+                            allFinished.set(target.isFinished());
                         });
 
                         if (allFinished.get()) {
@@ -107,10 +105,8 @@ public class PlayerTaskCache {
                     if (tasks != null) {
                         for (PlayerTask task : tasks) {
                             for (TaskTarget t : task.getTask().getTargets()) {
-                                for (Requirement r : t.getRequires()) {
-                                    StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), r.getIndex(), r.getAmount());
-                                    logger.debug(String.format("更新任务 %s 的需求 %s 的进度", task.getUUID().toString(), r.getIndex()));
-                                }
+                                StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), t.getIndex(), t.getCurrent());
+                                logger.debug(String.format("更新任务 %s 的目标 %s 的进度", task.getUUID().toString(), t.getIndex()));
                             }
                         }
 

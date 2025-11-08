@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import org.bukkit.Material;
 
 import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
@@ -21,17 +22,16 @@ public class TaskProgressManger {
                 case CRAFT -> {}
                 case BREED -> {}
                 case PLACE -> {
-                    target.getRequires().forEach(targetRequires -> {
-                        if (targetRequires.getMaterial() == material) {
-                            targetRequires.setCurrent(targetRequires.getCurrent() + progress);
-                            if (targetRequires.getCurrent() >= targetRequires.getAmount()) {
-                                targetRequires.setListener(requirement -> {
+                    Requirement r = target.getRequirement();
+                        if (r.getMaterial() == material) {
+                            target.setCurrent(target.getCurrent() + progress);
+                            if (target.getCurrent() >= r.getAmount()) {
+                                target.setListener(taskTarget -> {
                                     tm.getPlayerTaskCache().addFinishedPlayer(playerTask.getUUID());
                                 });
-                               targetRequires.setFinished(true);
+                                target.setFinished(true);
                             }
                         }
-                    });
                 }
                 case CONSUME -> {}
                 case ENCHANT -> {}
