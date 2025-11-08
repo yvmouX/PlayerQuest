@@ -10,7 +10,7 @@ craft_diamond_sword_task:
           amount: 6
     - action: CRAFT
       requires:
-        - material: STONE_PICKAXE~~
+        - material: STONE_PICKAXE
           amount: 1
     - action: CRAFT
       requires:
@@ -47,10 +47,10 @@ place_stone_task:
     - action: PLACE
       requires:
         - material: STONE
-          amount: 66
+          amount: 10
     - action: PLACE
       requires:
-        - material: GRASS
+        - material: GRASS_BLOCK
           amount: 15
   trigger:
     on_task_finish:

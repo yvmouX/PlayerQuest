@@ -34,11 +34,44 @@ public class PlayerTaskProgressDAO {
             }
             ps.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(
+                    String.format(
+                            "Failed to initialize task progress for player %s in task %s: %s",
+                            uuid, taskId, e.getMessage()
+                    )
+            );
+        }
+    }
+
+    private void initATaskProgress(String uuid, String taskId, int index) {
+        String SQL = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, 0)";
+        try (PreparedStatement ps = db.getConnection().prepareStatement(SQL)) {
+            ps.setString(1, uuid);
+            ps.setString(2, taskId);
+            ps.setInt(3, index);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.error(
+                    String.format(
+                            "Failed to initialize task progress for player %s in task %s: %s",
+                            uuid, taskId, e.getMessage()
+                    )
+            );
         }
     }
 
     public void updateProgress(String uuid, String taskId, int targetIndex, int amount) {
+        logger.debug(String.format("isValidTaskProgress is:" + isValidTaskProgress(uuid, taskId, targetIndex)));
+        if (!isValidTaskProgress(uuid, taskId, targetIndex)) { // TODO 暂时使用这种方法
+            initATaskProgress(uuid, taskId, targetIndex);
+            logger.info(
+                    String.format(
+                            "初始化玩家 %s 在任务 %s 需求索引 %d 的任务进度",
+                            uuid, taskId, targetIndex
+                    )
+            );
+        }
+
         String sql = "UPDATE player_task_progress SET current_amount = ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
             ps.setInt(1, amount);
@@ -48,7 +81,7 @@ public class PlayerTaskProgressDAO {
             ps.executeUpdate();
             logger.debug(
                     String.format(
-                            "Updated task progress for player %s in task %s at index %d to %d",
+                            "更新任务进度 玩家 %s 任务 %s 需求索引 %d 进度为 %d",
                             uuid, taskId, targetIndex, amount
                     )
             );
@@ -60,6 +93,27 @@ public class PlayerTaskProgressDAO {
                     )
             );
         }
+    }
+
+    private boolean isValidTaskProgress(String uuid, String taskId, int targetIndex) {
+        String sql = "SELECT COUNT(*) FROM player_task_progress WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setString(1, uuid);
+            ps.setString(2, taskId);
+            ps.setInt(3, targetIndex);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            logger.error(
+                    String.format(
+                            "Failed to check task progress for player %s in task %s at index %d: %s",
+                            uuid, taskId, targetIndex, e.getMessage()
+                    )
+            );
+        }
+        return false;
     }
 
 

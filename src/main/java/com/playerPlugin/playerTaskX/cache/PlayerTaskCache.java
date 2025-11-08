@@ -44,7 +44,7 @@ public class PlayerTaskCache {
     
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 删除 数据库 缓存 逻辑
+    private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 删除 数据库 缓存 逻辑 不代表任务完成，只要玩家单个目标玩家就会被添加到这个集合，后面会检查所有目标是否完成,如果所有目标都完成，会保存到数据库
 
     private final List<UniversalTask> universalTask;
 
@@ -72,6 +72,7 @@ public class PlayerTaskCache {
 
     private void startTimerTasks() {
         UniversalTask universalTask0 = scheduler.runTimer(() -> {
+            List<UUID> savaUUID = new ArrayList<>();
             // 检查是否有任务完成，如果所有目标都完成，则设置任务状态为完成
             for (UUID uuid : finishedEntries) {
                 List<PlayerTask> tasks = cache.get(uuid);
@@ -84,29 +85,31 @@ public class PlayerTaskCache {
 
                         if (allFinished.get()) {
                             task.setStatus(PTXTaskStatus.COMPLETED);
+                            savaUUID.add(task.getUUID());
                         }
                     }
                     // 从脏数据集合中移除
                     finishedEntries.remove(uuid);
-                    logger.debug(String.format("finishedEntries remove: %s", uuid));
                     logger.trace("finishedEntries", finishedEntries);
                 }
             }
 
-            Set<UUID> cd = new HashSet<>(finishedEntries);
+            if (savaUUID.isEmpty()) {
+                logger.warn("savaUUID 是空的");
+                return;
+            }
+            Set<UUID> copy = new HashSet<>(savaUUID);
 
             // 保存玩家进度到数据库 异步
             scheduler.runAsync(() -> {
-                for (UUID uuid : cd) {
+                for (UUID uuid : copy) {
                     List<PlayerTask> tasks = cache.get(uuid);
                     if (tasks != null) {
                         for (PlayerTask task : tasks) {
                             for (TaskTarget t : task.getTask().getTargets()) {
                                 for (Requirement r : t.getRequires()) {
                                     StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), r.getIndex(), r.getAmount());
-                                    finishedEntries.remove(uuid);
-                                    logger.debug(String.format("finishedEntries remove: %s", uuid));
-                                    logger.trace("finishedEntries", finishedEntries);
+                                    logger.debug(String.format("更新任务 %s 的需求 %s 的进度", task.getUUID().toString(), r.getIndex()));
                                 }
                             }
                         }
