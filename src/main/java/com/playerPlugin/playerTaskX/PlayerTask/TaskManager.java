@@ -212,7 +212,7 @@ public class TaskManager {
                 continue;
             }
             PTXTaskType taskTypeEnum = PTXTaskType.fromString(taskType);
-            System.out.println("加载任务: " + taskId + " 任务类型: " + taskTypeEnum); // TODO DEBUG
+            logger.info("加载任务: " + taskId + " 任务类型: " + taskTypeEnum);
             if (taskTypeEnum == PTXTaskType.NONE) {
                 logger.error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
                 continue;
@@ -225,12 +225,12 @@ public class TaskManager {
             // targets
             List<TaskTarget> targetsList = new ArrayList<>();
             List<Map<?, ?>> targetsMapList = config.getMapList(taskId + ".targets");
-            System.out.println("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets"); // TODO DEBUG
+            logger.info("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets");
             logger.trace("targetsMapList: " + targetsMapList);
             if (!targetsMapList.isEmpty()) {
                 for (int idx = 0; idx < targetsMapList.size(); idx++) {
                     Map<?, ?> targetMap = targetsMapList.get(idx);
-                    System.out.println("加载任务: " + taskId + " 目标索引: " + idx + " Action: " + targetMap.get("action")); // TODO DEBUG
+                    logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Action: " + targetMap.get("action"));
 
                     Object actionObj = targetMap.get("action");
                     if (actionObj == null) {

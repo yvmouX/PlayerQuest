@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,11 +43,10 @@ public class PlayerTaskDAO {
             }
             int[] a = ps.executeBatch();
 
-            // TODO 调试内容
             if (a.length > 0) {
-                logger.info("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + a);
+                logger.debug("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + Arrays.toString(a));
             } else {
-                logger.info("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + a);
+                logger.debug("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + Arrays.toString(a));
             }
         }
     }

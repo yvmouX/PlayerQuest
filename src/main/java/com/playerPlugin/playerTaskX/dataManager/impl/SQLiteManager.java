@@ -13,8 +13,6 @@ import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
 import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
-// TODO 异常将由 StorgeManager.java 类进行处理
-// TODO 这部分AI写的，有空可以检查一下 2025.10.31
 public class SQLiteManager implements Storge {
     private Connection conn;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");

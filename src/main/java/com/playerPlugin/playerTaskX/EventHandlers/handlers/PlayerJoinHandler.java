@@ -42,7 +42,7 @@ public class PlayerJoinHandler implements Listener {
         }
 
         if (inProgressTaskIds != null) {
-            System.out.println(inProgressTaskIds); // TODO 使用debug消息处理器
+            logger.debug(String.format("玩家 %s 加入游戏，正在进行的任务列表: %s", player.getName(), inProgressTaskIds));
             inProgressTaskIds.forEach(taskId -> {
                 tm.getPlayerTaskCache().updatePlayerTaskToCache(
                         Objects.requireNonNull(tm.toPlayerTask(player.getUniqueId(), taskId)),
