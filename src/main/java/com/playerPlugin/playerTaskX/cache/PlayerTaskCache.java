@@ -42,7 +42,7 @@ public class PlayerTaskCache {
     
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 删除 数据库 缓存 逻辑 不代表任务完成，只要玩家单个目标玩家就会被添加到这个集合，后面会检查所有目标是否完成,如果所有目标都完成，会保存到数据库
+    private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 不代表任务完成，只要玩家单个目标完成，玩家uuid就会被添加到这个集合，后面会检查所有目标是否完成,如果所有目标都完成，会保存到数据库
 
     private final List<UniversalTask> universalTask;
 
