@@ -226,6 +226,7 @@ public class TaskManager {
             List<TaskTarget> targetsList = new ArrayList<>();
             List<Map<?, ?>> targetsMapList = config.getMapList(taskId + ".targets");
             System.out.println("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets"); // TODO DEBUG
+            logger.trace("targetsMapList: " + targetsMapList);
             if (!targetsMapList.isEmpty()) {
                 for (int idx = 0; idx < targetsMapList.size(); idx++) {
                     Map<?, ?> targetMap = targetsMapList.get(idx);
@@ -246,6 +247,7 @@ public class TaskManager {
                     // require
                     Requirement requirement = null;
                     Object requiresObj = targetMap.get("require");
+                    logger.trace("requiresObj: " + requiresObj);
                     if (requiresObj instanceof Map<?, ?> reqMap) {
                         Object mObj = reqMap.get("material");
                         Object amountObj = reqMap.get("amount");

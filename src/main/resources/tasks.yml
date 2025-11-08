@@ -3,19 +3,17 @@ craft_diamond_sword_task:
   type: forever
   targets:
     - action: CRAFT
-      requires:
-        - material: DIAMOND_SWORD
-          amount: 1
-        - material: CAKE
-          amount: 6
+      require:
+        material: DIAMOND_SWORD
+        amount: 1
     - action: CRAFT
-      requires:
-        - material: STONE_PICKAXE
-          amount: 1
+      require:
+        material: STONE_PICKAXE
+        amount: 1
     - action: CRAFT
-      requires:
-        - material: STONE
-          amount: 12
+      require:
+        material: STONE
+        amount: 12
   conditions:
     - type: PLAYER_WHITELIST
       values: [yvmou_, yvmou2_]
@@ -41,17 +39,17 @@ place_stone_task:
   type: FOREVER
   targets:
     - action: PLACE
-      requires:
-        - material: STONE
-          amount: 5
+      require:
+        material: STONE
+        amount: 5
     - action: PLACE
-      requires:
-        - material: STONE
-          amount: 10
+      require:
+        material: STONE
+        amount: 10
     - action: PLACE
-      requires:
-        - material: GRASS_BLOCK
-          amount: 15
+      require:
+        material: GRASS_BLOCK
+        amount: 15
   trigger:
     on_task_finish:
       - "message: 恭喜你完成了放置石头任务！"
