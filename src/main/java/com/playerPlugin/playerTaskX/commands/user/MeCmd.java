@@ -8,9 +8,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
@@ -55,37 +53,34 @@ public class MeCmd implements SubCommand {
             };
 
             Map<TaskTarget, List<Requirement>> targetRequiresMap = new LinkedHashMap<>();
-            Map<Integer, Requirement> requirementsMap = new LinkedHashMap<>();
 
             pt.getTask().getTargets().forEach(target -> {
                 targetRequiresMap.put(target, target.getRequires());
-                target.getRequires().forEach(requires -> {
-                    requirementsMap.put(requires.getIndex(), requires);
-                });
             });
 
 
-            AtomicReference<String> b = new AtomicReference<>("");
+            List<String> b = new ArrayList<>();
 
             targetRequiresMap.forEach((target, requires) -> {
-                requirementsMap.forEach((index, req) -> {
+                for (Requirement req : requires) {
                     String finishStr = req.isFinished() ? "§a[已完成]" : "§c[未完成]";
                     String a = String.format("  §7→ 目标%d: 材料%s §7(需%d/%d个) %s",
-                            index,
+                            req.getIndex(),
                             req.getMaterial().name(),
                             req.getCurrent(),
                             req.getAmount(),
                             finishStr
                     );
-                    b.set(a);
-                });
+                    b.add(a);
+                }
+
             });
 
-            player.sendMessage(String.format("§e%s §7- %s\n %s",
-                    pt.getTask().getName(),
-                    statusStr,
-                    b.get()
-            ));
+            player.sendMessage(String.format("§e%s §7- %s", pt.getTask().getName(), statusStr));
+            for (String a : b) {
+                player.sendMessage(a);
+            }
+            player.sendMessage("");
         }
     }
 }
