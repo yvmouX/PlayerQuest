@@ -52,13 +52,6 @@ public class PlayerTaskCache {
         return cache;
     }
 
-    public void addCache(UUID uuid, PlayerTask task) {
-        List<PlayerTask> playerTaskList = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
-        playerTaskList.add(task);
-
-        dirtyEntries.add(uuid);
-    }
-
     /**
      * 添加可能完成任务的玩家
      *

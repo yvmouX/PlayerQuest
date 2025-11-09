@@ -176,7 +176,7 @@ public class TaskManager {
 
         // 向缓存添加任务
         if (canStart.get()) {
-            sm.getPlayerTaskCache().updatePlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
+            sm.getCacheDAO().getPlayerTaskCache().updatePlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
         }
 
         // 执行任务开始触发器
@@ -191,7 +191,7 @@ public class TaskManager {
      */
     public void shutdown() {
         // 关闭缓存管理器，保存所有数据
-        sm.getPlayerTaskCache().shutdown();
+        sm.getCacheDAO().getPlayerTaskCache().shutdown();
     }
 
     /**

@@ -26,8 +26,6 @@ public class StorgeManager {
     private static PlayerTaskDAO playerTaskDAO;
     private static PlayerTaskProgressDAO playerTaskProgressDAO;
     private static CacheDAO cacheDAO;
-    // cache
-    private static PlayerTaskCache playerTaskCache;
     // sqlite
     private final SQLiteManager sqLiteManager;
     // other
@@ -48,13 +46,10 @@ public class StorgeManager {
             synchronized (StorgeManager.class) {
                 if (instance == null) {
                     instance = new StorgeManager(plugin, storge, sqLiteManager);
-                    // 初始化数据库DAO
+                    // DAO
                     playerTaskProgressDAO = new PlayerTaskProgressDAO(instance);
                     playerTaskDAO = new PlayerTaskDAO(instance);
-                    // 初始化缓存DAO
-                    cacheDAO = new CacheDAO(playerTaskCache);
-                    // 初始化缓存
-                    playerTaskCache = new PlayerTaskCache();
+                    cacheDAO = new CacheDAO(new PlayerTaskCache());
                 }
             }
         }
@@ -79,13 +74,6 @@ public class StorgeManager {
             logger.error("PlayerTaskProgressDAO is not initialized");
         }
         return playerTaskProgressDAO;
-    }
-
-    public PlayerTaskCache getPlayerTaskCache() {
-        if (playerTaskCache == null) {
-            logger.error("PlayerTaskCache is not initialized");
-        }
-        return playerTaskCache;
     }
 
     public CacheDAO getCacheDAO() {
@@ -156,7 +144,7 @@ public class StorgeManager {
         }
 
         if (inProgressTaskIdList != null) {
-            sm.getPlayerTaskCache().updatePlayerTaskToCache(inProgressTaskIdList, false);
+            sm.getCacheDAO().getPlayerTaskCache().updatePlayerTaskToCache(inProgressTaskIdList, false);
             logger.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
         }
     }
