@@ -9,7 +9,7 @@ import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class EventsRegister {
     private static volatile EventCallbackManager callbackManager;
@@ -36,7 +36,7 @@ public class EventsRegister {
                 instance.getServer().getPluginManager().registerEvents(listener, instance);
                 log.info("已注册事件监听器: " + handlerClass.getSimpleName());
             } catch (Exception e) {
-                log.err("注册事件监听器失败: " + handlerClass.getSimpleName() + " - " + e.getMessage());
+                log.error("注册事件监听器失败: " + handlerClass.getSimpleName() + " - " + e.getMessage());
             }
         }
 
@@ -60,7 +60,7 @@ public class EventsRegister {
 
             log.info("已注册所有事件回调服务");
         } catch (Exception e) {
-            log.err("注册事件回调服务失败: " + e.getMessage());
+            log.error("注册事件回调服务失败: " + e.getMessage());
         }
     }
 }

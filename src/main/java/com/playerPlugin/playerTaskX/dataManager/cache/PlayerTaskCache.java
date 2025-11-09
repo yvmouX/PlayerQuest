@@ -102,12 +102,12 @@ public class PlayerTaskCache {
                     }
                     // 从脏数据集合中移除
                     finishedEntries.remove(uuid);
-                    logger.trace("finishedEntries", finishedEntries);
+                    log.trace("finishedEntries", finishedEntries);
                 }
             }
 
             if (savaUUID.isEmpty()) {
-                logger.warn("savaUUID 是空的");
+                log.warn("savaUUID 是空的");
                 return;
             }
             Set<UUID> copy = new HashSet<>(savaUUID);
@@ -218,9 +218,9 @@ public class PlayerTaskCache {
             }
 
             if (updated) {
-                logger.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+                log.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
             } else {
-                logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+                log.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
             }
         });
     }
@@ -267,9 +267,9 @@ public class PlayerTaskCache {
         try {
             sm.getDatabaseDAO().updateTasks(playerTasks);
             sm.getDatabaseDAO().updateProgress(playerTasks);
-            logger.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTasks.size());
+            log.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
-            logger.error("批量保存玩家任务到数据库失败", e);
+            log.error("批量保存玩家任务到数据库失败", e);
         }
     }
 
@@ -281,9 +281,9 @@ public class PlayerTaskCache {
         try {
             sm.getDatabaseDAO().startTask(playerTasks);
             sm.getDatabaseDAO().setProgress(playerTasks);
-            logger.debug("批量开始玩家任务成功，任务数量：" + playerTasks.size());
+            log.debug("批量开始玩家任务成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
-            logger.error("批量开始玩家任务失败", e);
+            log.error("批量开始玩家任务失败", e);
         }
     }
 

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 /**
  * 事件回调管理器
@@ -63,7 +63,7 @@ public class EventCallbackManager {
                 try {
                     ((EventCallback<T>) callback).onEvent(event);
                 } catch (Exception e) {
-                    log.err("执行事件回调时发生错误: " + callback.getClass().getSimpleName() + " - " + e.getMessage());
+                    log.error("执行事件回调时发生错误: " + callback.getClass().getSimpleName() + " - " + e.getMessage());
                 }
             }
         }

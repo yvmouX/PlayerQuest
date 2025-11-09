@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.UUID;
 
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class CacheDAO {
     private final PlayerTaskCache playerTaskCache;
@@ -61,7 +61,7 @@ public class CacheDAO {
      */
     public void addMaybeFinishedPlayer(UUID uuid) {
         if (playerTaskCache.getCache().get(uuid) == null) {
-            logger.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + uuid);
+            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + uuid);
             return;
         }
         playerTaskCache.addMaybeFinishedPlayer(uuid);

@@ -244,18 +244,18 @@ public class TaskManager {
             // taskID && taskName && taskType
             String taskName = config.getString(taskId + ".name");
             if (taskName == null) {
-                logger.error("加载任务: " + taskId + "失败。任务名称不能为空。");
+                log.error("加载任务: " + taskId + "失败。任务名称不能为空。");
                 continue;
             }
             String taskType = config.getString(taskId + ".type");
             if (taskType == null) {
-                logger.error("加载任务: " + taskId + "失败。任务类型不能为空。");
+                log.error("加载任务: " + taskId + "失败。任务类型不能为空。");
                 continue;
             }
             PTXTaskType taskTypeEnum = PTXTaskType.fromString(taskType);
-            logger.info("加载任务: " + taskId + " 任务类型: " + taskTypeEnum);
+            log.info("加载任务: " + taskId + " 任务类型: " + taskTypeEnum);
             if (taskTypeEnum == PTXTaskType.NONE) {
-                logger.error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
+                log.error("加载任务: " + taskId + "失败。任务类型: " + taskType + " 无效。");
                 continue;
             }
 
@@ -266,52 +266,52 @@ public class TaskManager {
             // targets
             List<TaskTarget> targetsList = new ArrayList<>();
             List<Map<?, ?>> targetsMapList = config.getMapList(taskId + ".targets");
-            logger.info("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets");
-            logger.trace("targetsMapList: " + targetsMapList);
+            log.info("加载任务: " + taskId + " 目标列表大小: " + targetsMapList.size() + " 路径: " + taskId + ".targets");
+            log.trace("targetsMapList: " + targetsMapList);
             if (!targetsMapList.isEmpty()) {
                 for (int idx = 0; idx < targetsMapList.size(); idx++) {
                     Map<?, ?> targetMap = targetsMapList.get(idx);
-                    logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Action: " + targetMap.get("action"));
+                    log.info("加载任务: " + taskId + " 目标索引: " + idx + " Action: " + targetMap.get("action"));
 
                     Object actionObj = targetMap.get("action");
                     if (actionObj == null) {
-                        logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型不能为空。");
+                        log.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型不能为空。");
                         continue;
                     }
                     String actionType = actionObj.toString();
                     PTXActionType actionTypeEnum = PTXActionType.fromString(actionType);
                     if (actionTypeEnum == PTXActionType.NONE) {
-                        logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型: " + actionType + " 无效。");
+                        log.error("加载任务: " + taskId + " 目标索引: " + idx + " 操作类型: " + actionType + " 无效。");
                         continue;
                     }
 
                     // require
                     Requirement requirement = null;
                     Object requiresObj = targetMap.get("require");
-                    logger.trace("requiresObj: " + requiresObj);
+                    log.trace("requiresObj: " + requiresObj);
                     if (requiresObj instanceof Map<?, ?> reqMap) {
                         Object mObj = reqMap.get("material");
                         Object amountObj = reqMap.get("amount");
                         if (mObj == null || amountObj == null) {
-                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " 需求配置缺少 material 或 amount。");
+                            log.error("加载任务: " + taskId + " 目标索引: " + idx + " 需求配置缺少 material 或 amount。");
                             continue;
                         }
                         String m = mObj.toString().toUpperCase(Locale.ENGLISH);
-                        logger.info("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " Amount: " + amountObj);
+                        log.info("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " Amount: " + amountObj);
                         int amount;
                         try {
                             amount = Integer.parseInt(amountObj.toString());
                         } catch (NumberFormatException e) {
-                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amountObj + " 不是有效数字。");
+                            log.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amountObj + " 不是有效数字。");
                             continue;
                         }
                         if (m.isEmpty()) {
-                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amount + " 无效。");
+                            log.error("加载任务: " + taskId + " 目标索引: " + idx + " amount: " + amount + " 无效。");
                             continue;
                         }
                         Material material = Material.getMaterial(m);
                         if (material == null) {
-                            logger.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
+                            log.error("加载任务: " + taskId + " 目标索引: " + idx + " Material: " + m + " 无效。");
                             continue;
                         }
                         requirement = new Requirement(material, amount);

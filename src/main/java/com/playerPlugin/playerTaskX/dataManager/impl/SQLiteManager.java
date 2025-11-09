@@ -9,9 +9,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 import static com.playerPlugin.playerTaskX.consts.common.DATABASE;
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class SQLiteManager implements Storge {
     private Connection conn;
@@ -33,12 +32,12 @@ public class SQLiteManager implements Storge {
             if (!dataFolder.exists()) {
                 boolean ok = dataFolder.mkdirs();
                 if (!ok) {
-                    logger.warn("Failed to create data folder: " + dataFolder.getAbsolutePath());
+                    log.warn("Failed to create data folder: " + dataFolder.getAbsolutePath());
                 }
             }
 
             File dbFile = new File(dataFolder, DATABASE);
-           logger.info("===== SQLite 数据库绝对路径：" + dbFile.getAbsolutePath() + " =====");
+           log.info("===== SQLite 数据库绝对路径：" + dbFile.getAbsolutePath() + " =====");
             String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
 
             conn = DriverManager.getConnection(url);
@@ -101,7 +100,7 @@ public class SQLiteManager implements Storge {
                 log.info("SQLite 数据库已关闭");
             }
         } catch (SQLException e) {
-            log.err("关闭 SQLite 数据库连接时出错：" + e.getMessage());
+            log.error("关闭 SQLite 数据库连接时出错：" + e.getMessage());
         } finally {
             conn = null;
         }

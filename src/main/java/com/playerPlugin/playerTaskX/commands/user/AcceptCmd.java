@@ -7,7 +7,7 @@ import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
 
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
@@ -37,7 +37,7 @@ public class AcceptCmd implements SubCommand {
         try {
             tm.startTask(player, taskId);
         } catch (SQLException e) {
-            logger.error("接受任务失败：" + taskId, e);
+            log.error("接受任务失败：" + taskId, e);
         }
 
 

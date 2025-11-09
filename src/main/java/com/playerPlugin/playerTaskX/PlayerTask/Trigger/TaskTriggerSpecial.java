@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class TaskTriggerSpecial {
     /**
@@ -40,7 +40,7 @@ public class TaskTriggerSpecial {
 
             PotionEffectType potion = PotionEffectType.getByName(potionName);
             if (potion == null) {
-                log.err("无效的药水类型：" + potionName);
+                log.error("无效的药水类型：" + potionName);
                 return;
             }
             boolean isHiddenParticle = particleFlag;

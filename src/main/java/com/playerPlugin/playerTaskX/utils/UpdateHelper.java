@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class UpdateHelper {
     public void checkUpdate(String currentVersion) {

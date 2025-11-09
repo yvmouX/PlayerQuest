@@ -54,21 +54,21 @@ public class StorgeManager {
 
     public static StorgeManager getInstance() {
         if (instance == null) {
-            logger.error("StorgeManager is not initialized");
+            log.error("StorgeManager is not initialized");
         }
         return instance;
     }
 
     public CacheDAO getCacheDAO() {
         if (cacheDAO == null) {
-            logger.error("CacheDAO is not initialized");
+            log.error("CacheDAO is not initialized");
         }
         return cacheDAO;
     }
 
     public DatabaseDAO getDatabaseDAO() {
         if (databaseDAO == null) {
-            logger.error("DatabaseDAO is not initialized");
+            log.error("DatabaseDAO is not initialized");
         }
         return databaseDAO;
     }
@@ -83,10 +83,10 @@ public class StorgeManager {
                 // 数据库
                 try {
                     sqLiteManager.connect(plugin);
-                    logger.info("成功连接到 SQLite 数据库！");
+                    log.info("成功连接到 SQLite 数据库！");
                 } catch (SQLException | ClassNotFoundException e) {
-                    logger.error("连接到 SQLite 数据库失败：" + e.getMessage());
-                    logger.error("插件已禁用！");
+                    log.error("连接到 SQLite 数据库失败：" + e.getMessage());
+                    log.error("插件已禁用！");
                     plugin.getServer().getPluginManager().disablePlugin(plugin);
                 }
             }
@@ -130,12 +130,12 @@ public class StorgeManager {
         try {
             inProgressTaskIdList = sm.getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
         } catch (SQLException e) {
-            logger.error("从数据库获取玩家 " + p.getName() + " 进行中的任务时失败：" + e.getMessage());
+            log.error("从数据库获取玩家 " + p.getName() + " 进行中的任务时失败：" + e.getMessage());
         }
 
         if (inProgressTaskIdList != null) {
             sm.getCacheDAO().getPlayerTaskCache().updatePlayerTaskToCache(inProgressTaskIdList, false);
-            logger.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
+            log.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
         }
     }
 

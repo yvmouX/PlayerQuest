@@ -17,7 +17,7 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
         Player player = event.getPlayer();
         Material placedBlockType = event.getBlockPlaced().getType();
 
-        logger.info("Placed block type: " + placedBlockType);
+        log.info("Placed block type: " + placedBlockType);
 
         checkTaskProgress(player, placedBlockType);
     }
@@ -30,7 +30,7 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
         for (PlayerTask task : tasks) {
             tm.getTaskProgressManger().increasePlayerTaskProgress(task, placedBlockType, 1);
             task.getTask().getTargets().forEach(target -> {
-                logger.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), target.getCurrent(), target.getRequirement().getAmount(), target.getRequirement().getMaterial()));
+                log.info(String.format("玩家 %s 任务 %s 放置 %d/%d 个 %s", player.getName(), task.getTask().getName(), target.getCurrent(), target.getRequirement().getAmount(), target.getRequirement().getMaterial()));
             });
         }
     }

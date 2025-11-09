@@ -16,7 +16,7 @@ import java.util.Objects;
 
 import static com.playerPlugin.playerTaskX.consts.common.Repo_URL;
 import static com.playerPlugin.playerTaskX.consts.common.isLatest;
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 import static com.playerPlugin.playerTaskX.utils.Help.sm;
 
 public class PlayerJoinHandler implements Listener {

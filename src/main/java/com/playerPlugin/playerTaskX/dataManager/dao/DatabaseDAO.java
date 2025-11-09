@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class DatabaseDAO {
     private final StorgeManager db;
@@ -36,9 +36,9 @@ public class DatabaseDAO {
             int[] a = ps.executeBatch();
 
             if (a.length > 0) {
-                logger.debug("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + Arrays.toString(a));
+                log.debug("成功插入玩家任务数据：" + tasks.size() + "影响行数：" + Arrays.toString(a));
             } else {
-                logger.debug("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + Arrays.toString(a));
+                log.debug("插入玩家任务数据失败：" + tasks.size() + "影响行数：" + Arrays.toString(a));
             }
         }
     }
@@ -104,7 +104,7 @@ public class DatabaseDAO {
                     ps.setInt(3, index);
                     ps.executeUpdate();
                 } catch (SQLException e) {
-                    logger.error(
+                    log.error(
                             String.format(
                                     "Failed to initialize task progress for player %s in task %s: %s",
                                     uuid, taskId, e.getMessage()
@@ -136,7 +136,7 @@ public class DatabaseDAO {
                     ps.setInt(4, currentAmount);
                     ps.executeUpdate();
                 } catch (SQLException e) {
-                    logger.error(
+                    log.error(
                             String.format(
                                     "Failed to initialize task progress for player %s in task %s: %s",
                                     uuid, taskId, e.getMessage()
@@ -156,10 +156,10 @@ public class DatabaseDAO {
                 int currentAmount = target.getCurrent();
 
                 boolean isValid = isValidTaskProgress(uuid, taskId, targetIndex);
-                logger.debug(String.format("isValidTaskProgress is:" + isValid));
+                log.debug(String.format("isValidTaskProgress is:" + isValid));
                 if (!isValid) { // TODO 暂时使用这种方法
                     initProgress(playerTasks);
-                    logger.info(
+                    log.info(
                             String.format(
                                     "初始化玩家 %s 在任务 %s 需求索引 %d 的任务进度",
                                     uuid, taskId, targetIndex
@@ -174,14 +174,14 @@ public class DatabaseDAO {
                     ps.setString(3, taskId);
                     ps.setInt(4, targetIndex);
                     ps.executeUpdate();
-                    logger.debug(
+                    log.debug(
                             String.format(
                                     "更新任务进度 玩家 %s 任务 %s 需求索引 %d 进度为 %d",
                                     uuid, taskId, targetIndex, currentAmount
                             )
                     );
                 } catch (SQLException e) {
-                    logger.error(
+                    log.error(
                             String.format(
                                     "Failed to update task progress for player %s in task %s at index %d: %s",
                                     uuid, taskId, targetIndex, e.getMessage()
@@ -204,7 +204,7 @@ public class DatabaseDAO {
                 return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            logger.error(
+            log.error(
                     String.format(
                             "Failed to check task progress for player %s in task %s at index %d: %s",
                             uuid, taskId, targetIndex, e.getMessage()

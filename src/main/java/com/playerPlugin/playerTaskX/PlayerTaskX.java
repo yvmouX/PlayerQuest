@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
-import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
 import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
@@ -21,13 +20,13 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
     private static Economy economy = null;
     private static PlayerTaskX instance;
-    public static Logger log;
     private static ViewFrame viewFrame = null;
 
     public static PlayerTaskX getInstance() {
@@ -48,8 +47,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // 首先初始化日志系统
-        log = new Logger();
         instance = this;
         ylib = new YLib(this);
 
@@ -73,7 +70,7 @@ public final class PlayerTaskX extends JavaPlugin {
                     log.info(Logger.prefix + "数据库连接已关闭");
                 }
             } catch (Exception e) {
-                log.err(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());
+                log.error(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());
             }
             log.info(Logger.prefix + "插件已禁用");
         }
@@ -85,7 +82,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 初始化Vault
         if (!setupEconomy()) {
-            log.err(Logger.prefix + "Vault未安装");
+            log.error(Logger.prefix + "Vault未安装");
         }
 
         // 任务配置
@@ -110,7 +107,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 事件
         EventsRegister.register();
-        
+
         // 命令
         new CommandRegister(this, ylib, taskConfig).registerCommands();
 
@@ -133,7 +130,7 @@ public final class PlayerTaskX extends JavaPlugin {
             viewFrame = ViewFrame.create(this);
             viewFrame.with(new MainUI()).register();
         } catch (Exception e) {
-            log.err("创建UI错误" + e);
+            log.error("创建UI错误" + e);
         }
     }
 
