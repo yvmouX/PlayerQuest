@@ -7,8 +7,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.dataManager.dao.CacheDAO;
-import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskDAO;
-import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskProgressDAO;
+import com.playerPlugin.playerTaskX.dataManager.dao.DatabaseDAO;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import org.bukkit.entity.Player;
 
@@ -23,9 +22,8 @@ import static com.playerPlugin.playerTaskX.utils.Help.*;
 public class StorgeManager {
     private static volatile StorgeManager instance;
     // dao
-    private static PlayerTaskDAO playerTaskDAO;
-    private static PlayerTaskProgressDAO playerTaskProgressDAO;
     private static CacheDAO cacheDAO;
+    private static DatabaseDAO databaseDAO;
     // sqlite
     private final SQLiteManager sqLiteManager;
     // other
@@ -47,9 +45,8 @@ public class StorgeManager {
                 if (instance == null) {
                     instance = new StorgeManager(plugin, storge, sqLiteManager);
                     // DAO
-                    playerTaskProgressDAO = new PlayerTaskProgressDAO(instance);
-                    playerTaskDAO = new PlayerTaskDAO(instance);
                     cacheDAO = new CacheDAO(new PlayerTaskCache());
+                    databaseDAO = new DatabaseDAO(instance);
                 }
             }
         }
@@ -62,25 +59,18 @@ public class StorgeManager {
         return instance;
     }
 
-    public PlayerTaskDAO getPlayerTaskDAO() {
-        if (playerTaskDAO == null) {
-            logger.error("PlayerTaskDAO is not initialized");
-        }
-        return playerTaskDAO;
-    }
-
-    public PlayerTaskProgressDAO getPlayerTaskProgressDAO() {
-        if (playerTaskProgressDAO == null) {
-            logger.error("PlayerTaskProgressDAO is not initialized");
-        }
-        return playerTaskProgressDAO;
-    }
-
     public CacheDAO getCacheDAO() {
         if (cacheDAO == null) {
             logger.error("CacheDAO is not initialized");
         }
         return cacheDAO;
+    }
+
+    public DatabaseDAO getDatabaseDAO() {
+        if (databaseDAO == null) {
+            logger.error("DatabaseDAO is not initialized");
+        }
+        return databaseDAO;
     }
 
     /**
@@ -200,7 +190,7 @@ public class StorgeManager {
                 // 处理任务目标，设置为玩家当前的进度
                 List<TaskTarget> handledTaskTargetList = tm.getTaskTargets(taskId);
                 for (TaskTarget taskTarget : handledTaskTargetList) {
-                    Map<Integer, Integer> progressMap = getPlayerTaskProgressDAO().getProgress(uuid.toString(), taskId);
+                    Map<Integer, Integer> progressMap = getDatabaseDAO().getProgress(uuid.toString(), taskId);
                     taskTarget.setCurrent(
                             progressMap.get(taskTarget.getIndex())
                     );

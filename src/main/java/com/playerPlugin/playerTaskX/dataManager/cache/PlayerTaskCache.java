@@ -118,7 +118,7 @@ public class PlayerTaskCache {
                 for (UUID uuid : copy) {
                     List<PlayerTask> tasks = cache.get(uuid);
                     if (tasks != null) {
-                        sm.getPlayerTaskProgressDAO().updateProgress(tasks);
+                        sm.getDatabaseDAO().updateProgress(tasks);
                     }
                 }
             });
@@ -266,8 +266,8 @@ public class PlayerTaskCache {
         }
 
         try {
-            sm.getPlayerTaskDAO().updateTasks(playerTasks);
-            sm.getPlayerTaskProgressDAO().updateProgress(playerTasks);
+            sm.getDatabaseDAO().updateTasks(playerTasks);
+            sm.getDatabaseDAO().updateProgress(playerTasks);
             logger.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
             logger.error("批量保存玩家任务到数据库失败", e);
@@ -280,8 +280,8 @@ public class PlayerTaskCache {
         }
 
         try {
-            sm.getPlayerTaskDAO().startTask(playerTasks);
-            sm.getPlayerTaskProgressDAO().setProgress(playerTasks);
+            sm.getDatabaseDAO().startTask(playerTasks);
+            sm.getDatabaseDAO().setProgress(playerTasks);
             logger.debug("批量开始玩家任务成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
             logger.error("批量开始玩家任务失败", e);
