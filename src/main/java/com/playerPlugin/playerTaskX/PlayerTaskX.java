@@ -12,6 +12,7 @@ import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
 import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.Metrics;
+import com.playerPlugin.playerTaskX.utils.Help;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
@@ -93,13 +94,19 @@ public final class PlayerTaskX extends JavaPlugin {
         ConfigManager configManager = new ConfigManager(this, taskConfig);
         configManager.saveAllDefaultConfigs();
 
-        // 数据库初始化（在TaskManager之前）
+        // 先初始化任务管理器（不依赖数据库）
+        TaskManager.init(taskConfig);
+
+        // 再初始化数据库管理器
         // TODO 数据类型暂时硬编码为 SQLITE
         StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
         StorgeManager.getInstance().connect();
 
-        // 必须在 configManager.saveAllDefaultConfigs() 和 数据库初始化 后调用
-        TaskManager.init(taskConfig);
+        Help.tm = TaskManager.getInstance();
+        Help.sm = StorgeManager.getInstance();
+
+        // 启动缓存定时任务（依赖于 TaskManager 和 StorgeManager 已完成初始化）
+        StorgeManager.getInstance().getCacheDAO().getPlayerTaskCache().init();
 
         // 事件
         EventsRegister.register();

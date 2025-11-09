@@ -9,7 +9,7 @@ import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 public class Help {
     public static UniversalScheduler scheduler = YLib.getyLib().getScheduler();
     public static LoggerTools logger = YLib.getyLib().getLoggerTools();
-
-    public static StorgeManager sm = StorgeManager.getInstance();
-    public static TaskManager tm = TaskManager.getInstance();
+    
+    public static StorgeManager sm;
+    public static TaskManager tm;
 }

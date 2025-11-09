@@ -80,7 +80,6 @@ public class PlayerTaskCache {
                 return false;
             }
         });
-        startTimerTasks();
     }
 
     private void startTimerTasks() {
@@ -288,5 +287,10 @@ public class PlayerTaskCache {
         }
     }
 
-
+    /**
+     * 初始化定时任务。需要在 StorgeManager 和 TaskManager 初始化完成后调用。
+     */
+    public void init() {
+        startTimerTasks();
+    }
 }
