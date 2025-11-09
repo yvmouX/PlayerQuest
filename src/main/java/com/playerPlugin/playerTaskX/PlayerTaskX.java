@@ -20,7 +20,7 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;

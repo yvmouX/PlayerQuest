@@ -1,12 +1,15 @@
 package com.playerPlugin.playerTaskX.dataManager.dao;
 
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static com.playerPlugin.playerTaskX.utils.Help.logger;
 
@@ -23,82 +26,118 @@ public class PlayerTaskProgressDAO {
         this.db = db;
     }
 
-    public void initializeTaskProgress(String uuid, String taskId, int targetCount) {
-        String sql = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, 0)";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            for (int i = 0; i < targetCount; i++) {
-                ps.setString(1, uuid);
-                ps.setString(2, taskId);
-                ps.setInt(3, i);
-                ps.addBatch();
-            }
-            ps.executeBatch();
-        } catch (SQLException e) {
-            logger.error(
-                    String.format(
-                            "Failed to initialize task progress for player %s in task %s: %s",
-                            uuid, taskId, e.getMessage()
-                    )
-            );
-        }
+    /**
+     * 初始化进度为0
+     *
+     * @param playerTasks 玩家任务
+     */
+    public void initProgress(List<PlayerTask> playerTasks) {
+        playerTasks.forEach(task -> {
+            task.getTask().getTargets().forEach(target -> {
+                UUID uuid = task.getUUID();
+                String taskId = task.getTask().getId();
+                int index = target.getIndex();
+
+                String sql = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, 0)";
+                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                    ps.setString(1, uuid.toString());
+                    ps.setString(2, taskId);
+                    ps.setInt(3, index);
+                    ps.executeUpdate();
+                } catch (SQLException e) {
+                    logger.error(
+                            String.format(
+                                    "Failed to initialize task progress for player %s in task %s: %s",
+                                    uuid, taskId, e.getMessage()
+                            )
+                    );
+                }
+            });
+        });
     }
 
-    private void initATaskProgress(String uuid, String taskId, int index) {
-        String SQL = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, 0)";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(SQL)) {
-            ps.setString(1, uuid);
-            ps.setString(2, taskId);
-            ps.setInt(3, index);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            logger.error(
-                    String.format(
-                            "Failed to initialize task progress for player %s in task %s: %s",
-                            uuid, taskId, e.getMessage()
-                    )
-            );
-        }
+    /**
+     * 设置任务
+     *
+     * @param playerTasks 玩家任务
+     */
+    public void setProgress(List<PlayerTask> playerTasks) {
+        playerTasks.forEach(task -> {
+            task.getTask().getTargets().forEach(target -> {
+                UUID uuid = task.getUUID();
+                String taskId = task.getTask().getId();
+                int index = target.getIndex();
+                int currentAmount = target.getCurrent();
+
+                String SQL = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement ps = db.getConnection().prepareStatement(SQL)) {
+                    ps.setString(1, uuid.toString());
+                    ps.setString(2, taskId);
+                    ps.setInt(3, index);
+                    ps.setInt(4, currentAmount);
+                    ps.executeUpdate();
+                } catch (SQLException e) {
+                    logger.error(
+                            String.format(
+                                    "Failed to initialize task progress for player %s in task %s: %s",
+                                    uuid, taskId, e.getMessage()
+                            )
+                    );
+                }
+            });
+        });
     }
 
-    public void updateProgress(String uuid, String taskId, int targetIndex, int amount) {
-        logger.debug(String.format("isValidTaskProgress is:" + isValidTaskProgress(uuid, taskId, targetIndex)));
-        if (!isValidTaskProgress(uuid, taskId, targetIndex)) { // TODO 暂时使用这种方法
-            initATaskProgress(uuid, taskId, targetIndex);
-            logger.info(
-                    String.format(
-                            "初始化玩家 %s 在任务 %s 需求索引 %d 的任务进度",
-                            uuid, taskId, targetIndex
-                    )
-            );
-        }
+    public void updateProgress(List<PlayerTask> playerTasks) {
+        playerTasks.forEach(task -> {
+            task.getTask().getTargets().forEach(target -> {
+                UUID uuid = task.getUUID();
+                String taskId = task.getTask().getId();
+                int targetIndex = target.getIndex();
+                int currentAmount = target.getCurrent();
 
-        String sql = "UPDATE player_task_progress SET current_amount = ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setInt(1, amount);
-            ps.setString(2, uuid);
-            ps.setString(3, taskId);
-            ps.setInt(4, targetIndex);
-            ps.executeUpdate();
-            logger.debug(
-                    String.format(
-                            "更新任务进度 玩家 %s 任务 %s 需求索引 %d 进度为 %d",
-                            uuid, taskId, targetIndex, amount
-                    )
-            );
-        } catch (SQLException e) {
-            logger.error(
-                    String.format(
-                            "Failed to update task progress for player %s in task %s at index %d: %s",
-                            uuid, taskId, targetIndex, e.getMessage()
-                    )
-            );
-        }
+                boolean isValid = isValidTaskProgress(uuid, taskId, targetIndex);
+                logger.debug(String.format("isValidTaskProgress is:" + isValid));
+                if (!isValid) { // TODO 暂时使用这种方法
+                    initProgress(playerTasks);
+                    logger.info(
+                            String.format(
+                                    "初始化玩家 %s 在任务 %s 需求索引 %d 的任务进度",
+                                    uuid, taskId, targetIndex
+                            )
+                    );
+                }
+
+                String sql = "UPDATE player_task_progress SET current_amount = ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
+                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                    ps.setInt(1, currentAmount);
+                    ps.setString(2, uuid.toString());
+                    ps.setString(3, taskId);
+                    ps.setInt(4, targetIndex);
+                    ps.executeUpdate();
+                    logger.debug(
+                            String.format(
+                                    "更新任务进度 玩家 %s 任务 %s 需求索引 %d 进度为 %d",
+                                    uuid, taskId, targetIndex, currentAmount
+                            )
+                    );
+                } catch (SQLException e) {
+                    logger.error(
+                            String.format(
+                                    "Failed to update task progress for player %s in task %s at index %d: %s",
+                                    uuid, taskId, targetIndex, e.getMessage()
+                            )
+                    );
+                }
+            });
+        });
+
     }
 
-    private boolean isValidTaskProgress(String uuid, String taskId, int targetIndex) {
+    private boolean isValidTaskProgress(UUID uuid, String taskId, int targetIndex) {
         String sql = "SELECT COUNT(*) FROM player_task_progress WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setString(1, uuid);
+            ps.setString(1, String.valueOf(uuid));
             ps.setString(2, taskId);
             ps.setInt(3, targetIndex);
             ResultSet rs = ps.executeQuery();

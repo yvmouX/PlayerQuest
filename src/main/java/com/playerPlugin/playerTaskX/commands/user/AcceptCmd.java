@@ -5,7 +5,7 @@ import cn.yvmou.ylib.api.command.SubCommand;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 接受 CMD

@@ -6,7 +6,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import org.bukkit.command.CommandSender;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 public class Info implements SubCommand {
 

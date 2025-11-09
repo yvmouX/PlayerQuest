@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -10,7 +9,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Objects;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 public class StartCmd implements SubCommand {
     @Override

@@ -1,9 +1,8 @@
-package com.playerPlugin.playerTaskX.cache;
+package com.playerPlugin.playerTaskX.dataManager.cache;
 
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -14,8 +13,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
-import static com.playerPlugin.playerTaskX.utils.Help.scheduler;
+import static com.playerPlugin.playerTaskX.utils.Help.*;
 
 
 /**
@@ -30,23 +28,21 @@ import static com.playerPlugin.playerTaskX.utils.Help.scheduler;
  * &#064;date  2025/11/03@date 2025/11/03
  */
 public class PlayerTaskCache {
-    private static volatile PlayerTaskCache instance;
-    
     // 缓存配置
     private static final int MAX_CACHE_SIZE = 100;
     private static final long SAVE_INTERVAL_SECONDS = 30 * 20; // 30秒保存一次
     private static final long CLEANUP_INTERVAL_SECONDS = 300; // 5分钟清理一次过期缓存
-    
+    private static volatile PlayerTaskCache instance;
     // LRU缓存 - 使用LinkedHashMap实现LRU策略
     private final Map<UUID, List<PlayerTask>> cache;
-    
+
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
     private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 不代表任务完成，只要玩家单个目标完成，玩家uuid就会被添加到这个集合，后面会检查所有目标是否完成,如果所有目标都完成，会保存到数据库
 
     private final List<UniversalTask> universalTask;
 
-    
+
     public PlayerTaskCache() {
         this.universalTask = new ArrayList<>();
         // 初始化LRU缓存
@@ -103,13 +99,7 @@ public class PlayerTaskCache {
                 for (UUID uuid : copy) {
                     List<PlayerTask> tasks = cache.get(uuid);
                     if (tasks != null) {
-                        for (PlayerTask task : tasks) {
-                            for (TaskTarget t : task.getTask().getTargets()) {
-                                StorgeManager.getPlayerTaskProgressDAO().updateProgress(task.getUUID().toString(), task.getTask().getId(), t.getIndex(), t.getCurrent());
-                                logger.debug(String.format("更新任务 %s 的目标 %s 的进度", task.getUUID().toString(), t.getIndex()));
-                            }
-                        }
-
+                        sm.getPlayerTaskProgressDAO().updateProgress(tasks);
                     }
                 }
             });
@@ -164,6 +154,7 @@ public class PlayerTaskCache {
     /**
      * 获取指定玩家进行中的任务ID列表
      * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
+     *
      * @param uuid 玩家UUID
      * @return 进行中任务ID列表
      */
@@ -177,7 +168,7 @@ public class PlayerTaskCache {
         }
 
         try {
-            return StorgeManager.getPlayerTaskDAO().getInProgressTaskIds(uuid.toString());
+            return sm.getPlayerTaskDAO().getInProgressTaskIds(uuid.toString());
         } catch (SQLException e) {
             logger.error("从数据库加载进行中任务失败：" + uuid, e);
             return new ArrayList<>();
@@ -187,6 +178,7 @@ public class PlayerTaskCache {
     /**
      * 获取指定玩家进行中的任务列表
      * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
+     *
      * @param uuid 玩家UUID
      * @return 进行中任务列表
      */
@@ -195,59 +187,65 @@ public class PlayerTaskCache {
     public List<PlayerTask> getPlayerInProgressTasks(UUID uuid) {
         return cache.get(uuid);
     }
-    
+
+
     /**
      * 更新玩家任务 / 添加新任务
      *
      * <p>
-     *     如果缓存中不存在该玩家的任务列表，则添加新任务到缓存列表中
-     *     如果缓存中存在该玩家的任务列表，则更新该任务
+     * 如果缓存中不存在该玩家的任务列表，则添加新任务到缓存中
+     * 如果缓存中存在该玩家的任务列表，则更新该任务
      * </p>
      *
-     * @param playerTask 玩家任务
-     * @param immediateSave 是否立即保存到数据库
+     * @param playerTaskList 玩家任务列表
+     * @param immediateSave  是否立即保存到数据库
      */
-    public void updatePlayerTaskToCache(PlayerTask playerTask, boolean immediateSave) {
-        UUID uuid = playerTask.getUUID();
+    public void updatePlayerTaskToCache(List<PlayerTask> playerTaskList, boolean immediateSave) {
+        playerTaskList.forEach(playerTask -> {
+            UUID uuid = playerTask.getUUID();
 
-        // 如果缓存中不存在该玩家的任务列表，则创建一个新的
-        List<PlayerTask> tasks = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
+            List<PlayerTask> taskList = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
 
-        // 更新或添加任务
-        boolean update = false;
-        for (int i = 0; i < tasks.size(); i++) {
-            if (tasks.get(i).getTask().getId().equals(playerTask.getTask().getId())) {
-                tasks.set(i, playerTask); // 更新现有任务
-                update = true;
-                break;
+            // 总结：taskList 不为空时更新任务
+            // 如果在 cache 中找不到该 uuid 的任务列表
+            // taskList.size() == 0 说明该玩家没有任务在 cache 中
+            // 此时 updated 为 false，代表未对该玩家在 cache 中的任务进行更新
+            boolean updated = false;
+            for (int i = 0; i < taskList.size(); i++) {
+                if (taskList.get(i).getTask().getId().equals(playerTask.getTask().getId())) {
+                    taskList.set(i, playerTask);
+                    updated = true;
+                    break;
+                }
             }
-        }
 
-        if (!update) {
-            tasks.add(playerTask); // 添加新任务
-        }
+            // 若 updated 为 false，说明该玩家在 cache 中没有该任务
+            // 则将该任务添加到 cache 中
+            if (!updated) {
+                taskList.add(playerTask);
+            }
 
-        // 标记为脏数据，稍后保存到数据库
-        dirtyEntries.add(uuid);
+            // 如果 immediateSave 为 true，则立即保存到数据库
+            // 否则，将该玩家添加到脏数据集合中，稍后保存到数据库
+            if (immediateSave) {
+                savePlayerTasks(Collections.singletonList(playerTask));
+            } else {
+                dirtyEntries.add(uuid);
+            }
 
-        // 如果立即保存，立即保存到数据库
-        if (immediateSave && update) {
-            savePlayerTasks(Collections.singletonList(playerTask));
-        } else if (immediateSave) {
-            startPlayerTask(Collections.singletonList(playerTask));
-        }
-
-        if (update) {
-            logger.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
-        } else {
-            logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
-        }
+            if (updated) {
+                logger.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+            } else {
+                logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+            }
+        });
     }
+
 
     public void addFinishedPlayer(UUID uuid) {
         if (cache.get(uuid) == null) {
-          logger.warn("尝试添加已完成玩家缓存，但玩家缓存不存在：" + uuid);
-          return;
+            logger.warn("尝试添加已完成玩家缓存，但玩家缓存不存在：" + uuid);
+            return;
         }
         finishedEntries.add(uuid);
         logger.info("当前执行：添加已完成玩家缓存，玩家ID：" + uuid);
@@ -284,6 +282,7 @@ public class PlayerTaskCache {
 
     /**
      * 保存玩家任务到数据库
+     *
      * @param playerTasks 任务
      */
     private void savePlayerTasks(List<PlayerTask> playerTasks) {
@@ -292,7 +291,9 @@ public class PlayerTaskCache {
         }
 
         try {
-            StorgeManager.getPlayerTaskDAO().updateTasks(playerTasks);
+            sm.getPlayerTaskDAO().updateTasks(playerTasks);
+            sm.getPlayerTaskProgressDAO().updateProgress(playerTasks);
+            logger.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
             logger.error("批量保存玩家任务到数据库失败", e);
         }
@@ -304,7 +305,9 @@ public class PlayerTaskCache {
         }
 
         try {
-            StorgeManager.getPlayerTaskDAO().startTask(playerTasks);
+            sm.getPlayerTaskDAO().startTask(playerTasks);
+            sm.getPlayerTaskProgressDAO().setProgress(playerTasks);
+            logger.debug("批量开始玩家任务成功，任务数量：" + playerTasks.size());
         } catch (SQLException e) {
             logger.error("批量开始玩家任务失败", e);
         }

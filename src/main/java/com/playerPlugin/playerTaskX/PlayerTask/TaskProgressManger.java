@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import org.bukkit.Material;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.sm;
 
 public class TaskProgressManger {
     public TaskProgressManger() {
@@ -27,7 +27,7 @@ public class TaskProgressManger {
                             target.setCurrent(target.getCurrent() + progress);
                             if (target.getCurrent() >= r.getAmount()) {
                                 target.setListener(taskTarget -> {
-                                    tm.getPlayerTaskCache().addFinishedPlayer(playerTask.getUUID());
+                                    sm.getPlayerTaskCache().addFinishedPlayer(playerTask.getUUID());
                                 });
                                 target.setFinished(true);
                             }

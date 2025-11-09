@@ -2,10 +2,9 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 列表 cmd

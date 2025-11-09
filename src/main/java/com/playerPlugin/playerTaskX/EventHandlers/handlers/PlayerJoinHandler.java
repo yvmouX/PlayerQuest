@@ -14,10 +14,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import java.util.List;
 import java.util.Objects;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
 import static com.playerPlugin.playerTaskX.consts.common.Repo_URL;
 import static com.playerPlugin.playerTaskX.consts.common.isLatest;
 import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.sm;
 
 public class PlayerJoinHandler implements Listener {
     @EventHandler
@@ -31,25 +31,9 @@ public class PlayerJoinHandler implements Listener {
             }
         }
     }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        List<String> inProgressTaskIds = null;
-        try {
-            inProgressTaskIds = StorgeManager.getPlayerTaskDAO().getInProgressTaskIds(player.getUniqueId().toString());
-        } catch (Exception e) {
-            logger.error("加载玩家" + player.getName() + "任务数据时出错！", e);
-        }
-
-        if (inProgressTaskIds != null) {
-            logger.debug(String.format("玩家 %s 加入游戏，正在进行的任务列表: %s", player.getName(), inProgressTaskIds));
-            inProgressTaskIds.forEach(taskId -> {
-                tm.getPlayerTaskCache().updatePlayerTaskToCache(
-                        Objects.requireNonNull(tm.toPlayerTask(player.getUniqueId(), taskId)),
-                        false
-                );
-            });
-        }
-        player.sendMessage(Logger.prefix + String.format("§a已加载玩家%s任务数据！", player.getName()));
+        sm.databaseToCache(event.getPlayer());
     }
 }

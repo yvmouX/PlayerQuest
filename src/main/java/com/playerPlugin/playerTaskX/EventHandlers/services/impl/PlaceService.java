@@ -8,8 +8,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 
 import java.util.List;
 
-import static com.playerPlugin.playerTaskX.PlayerTask.TaskManager.tm;
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.*;
 
 public class PlaceService implements EventCallback<BlockPlaceEvent> {
     @Override
@@ -23,7 +22,7 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
     }
 
     private void checkTaskProgress(Player player, Material placedBlockType) {
-        List<PlayerTask> tasks = tm.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
+        List<PlayerTask> tasks = sm.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
         if (tasks == null) {
             return;
         }

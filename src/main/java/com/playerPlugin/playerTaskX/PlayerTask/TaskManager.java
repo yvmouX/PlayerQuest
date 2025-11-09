@@ -8,7 +8,6 @@ import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
-import com.playerPlugin.playerTaskX.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
 import org.bukkit.Material;
@@ -18,26 +17,17 @@ import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.*;
 
 public class TaskManager {
-    public static TaskManager tm;
     private static volatile TaskManager instance;
-    private final PlayerTaskCache playerTaskCache;
     private final TaskConfig taskConfig;
     private final TaskProgressManger taskProgressManger;
     private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
 
 
-    /**
-     * 获取玩家任务缓存
-     *
-     * @return {@link PlayerTaskCache }
-     */
-    public PlayerTaskCache getPlayerTaskCache() {
-        return playerTaskCache;
-    }
 
     public TaskConfig getTaskConfig() {
         return taskConfig;
@@ -49,13 +39,7 @@ public class TaskManager {
 
 
     public TaskManager(TaskConfig taskConfig) {
-        // 只在instance为null时执行，无需二次检测
-//        if (instance != null) {
-//            throw new IllegalStateException("TaskManager 已经初始化");
-//        }
-        tm = this;
         this.taskConfig = taskConfig;
-        this.playerTaskCache = new PlayerTaskCache();
         loadTasksToCache();
         taskProgressManger = new TaskProgressManger();
     }
@@ -114,29 +98,27 @@ public class TaskManager {
      * @param taskId 任务 ID
      */
     public void startTask(Player player, String taskId) {
-        final PlayerTaskCache cache = getPlayerTaskCache();
         UUID uuid = player.getUniqueId();
         Task task = getTask(taskId);
 
         if (task == null) {
-            player.sendMessage("§c任务开始失败，任务 %s 不存在", taskId);
+            player.sendMessage("§c任务 %s 不存在", taskId);
             return;
         };
 
-        // 获取玩家任务列表检查是否已经有该任务。包括已完成任务
-        cache.getPlayerInProgressTaskIds(uuid).forEach(taskID -> {
+        // 从 cache 获取玩家进行中的任务列表检测是否已经有该任务。
+        AtomicBoolean canStart = new AtomicBoolean(true);
+        sm.getPlayerTaskCache().getPlayerInProgressTaskIds(uuid).forEach(taskID -> {
             if (taskID.equals(task.getId())) {
                 player.sendMessage("§c你已经接受或者完成过任务: §e" + task.getName() + "！");
+                canStart.set(false);
             }
         });
 
         // 向缓存添加任务
-        getPlayerTaskCache().updatePlayerTaskToCache(
-                new PlayerTask(uuid, task),
-                true
-        );
-        // 添加任务进度
-
+        if (canStart.get()) {
+            sm.getPlayerTaskCache().updatePlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
+        }
 
         // 执行任务开始触发器
         TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
@@ -150,7 +132,7 @@ public class TaskManager {
      */
     public void shutdown() {
         // 关闭缓存管理器，保存所有数据
-        getPlayerTaskCache().shutdown();
+        sm.getPlayerTaskCache().shutdown();
     }
 
     /**
