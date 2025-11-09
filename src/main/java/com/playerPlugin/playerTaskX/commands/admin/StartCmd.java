@@ -7,6 +7,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.sql.SQLException;
 import java.util.Objects;
 
 import static com.playerPlugin.playerTaskX.utils.Help.tm;
@@ -39,7 +40,12 @@ public class StartCmd implements SubCommand {
             return false;
         }
 
-        tm.startTask(p, taskID);
+        try {
+            tm.startTask(p, taskID);
+        } catch (SQLException e) {
+            sender.sendMessage(ChatColor.RED + "Error: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
 
         return true;
     }

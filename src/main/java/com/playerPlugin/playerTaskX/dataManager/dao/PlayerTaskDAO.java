@@ -1,17 +1,17 @@
 package com.playerPlugin.playerTaskX.dataManager.dao;
 
-import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static com.playerPlugin.playerTaskX.utils.Help.logger;
+import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 玩家任务 DAO
@@ -55,7 +55,6 @@ public class PlayerTaskDAO {
      * 更新任务列表
      *
      * @param tasks 任务列表
-     * @throws SQLException
      */
     public void updateTasks(List<PlayerTask> tasks) throws SQLException {
         String sql = "UPDATE player_tasks SET status = ? WHERE player_uuid = ? AND task_id = ?";
@@ -81,7 +80,7 @@ public class PlayerTaskDAO {
      * @param uuid   uuid
      * @param taskId 任务 ID
      */
-     public void finishTask(String uuid, String taskId) throws SQLException {
+    public void finishTask(String uuid, String taskId) throws SQLException {
         String sql = "UPDATE player_tasks SET status = 1, finish_time = ? WHERE player_uuid = ? AND task_id = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
             ps.setLong(1, System.currentTimeMillis());
@@ -91,44 +90,5 @@ public class PlayerTaskDAO {
         }
     }
 
-    /**
-     * 获取任务状态
-     * 状态: 0:进行中, 1:完成, 2:失败
-     *
-     * @param uuid   uuid
-     * @param taskId 任务 ID
-     * @return {@link Optional }<{@link Integer }>
-     */
-    public Optional<Integer> getTaskStatus(String uuid, String taskId) throws SQLException {
-        String sql = "SELECT status FROM player_tasks WHERE player_uuid = ? AND task_id = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            ps.setString(2, taskId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return Optional.of(rs.getInt("status"));
-            }
-        }
-        return Optional.empty();
-    }
 
-    /**
-     * 获取指定玩家的进行中任务ID列表
-     * 状态: 0:进行中
-     *
-     * @param uuid 玩家UUID
-     * @return 进行中任务ID列表
-     */
-    public List<String> getInProgressTaskIds(String uuid) throws SQLException {
-        List<String> result = new ArrayList<>();
-        String sql = "SELECT task_id FROM player_tasks WHERE player_uuid = ? AND status = 0";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                result.add(rs.getString("task_id"));
-            }
-        }
-        return result;
-    }
 }

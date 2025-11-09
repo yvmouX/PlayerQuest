@@ -1,17 +1,22 @@
 package com.playerPlugin.playerTaskX.dataManager;
 
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.cache.PlayerTaskCache;
+import com.playerPlugin.playerTaskX.dataManager.dao.CacheDAO;
 import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskDAO;
 import com.playerPlugin.playerTaskX.dataManager.dao.PlayerTaskProgressDAO;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import org.bukkit.entity.Player;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static com.playerPlugin.playerTaskX.utils.Help.*;
 
@@ -20,6 +25,7 @@ public class StorgeManager {
     // dao
     private static PlayerTaskDAO playerTaskDAO;
     private static PlayerTaskProgressDAO playerTaskProgressDAO;
+    private static CacheDAO cacheDAO;
     // cache
     private static PlayerTaskCache playerTaskCache;
     // sqlite
@@ -45,6 +51,8 @@ public class StorgeManager {
                     // 初始化数据库DAO
                     playerTaskProgressDAO = new PlayerTaskProgressDAO(instance);
                     playerTaskDAO = new PlayerTaskDAO(instance);
+                    // 初始化缓存DAO
+                    cacheDAO = new CacheDAO(playerTaskCache);
                     // 初始化缓存
                     playerTaskCache = new PlayerTaskCache();
                 }
@@ -78,6 +86,13 @@ public class StorgeManager {
             logger.error("PlayerTaskCache is not initialized");
         }
         return playerTaskCache;
+    }
+
+    public CacheDAO getCacheDAO() {
+        if (cacheDAO == null) {
+            logger.error("CacheDAO is not initialized");
+        }
+        return cacheDAO;
     }
 
     /**
@@ -133,21 +148,102 @@ public class StorgeManager {
      *
      */
     public void databaseToCache(Player p) {
-        List<String> inProgressTaskIdList = new LinkedList<>();
+        List<PlayerTask> inProgressTaskIdList = new LinkedList<>();
         try {
-            inProgressTaskIdList = getPlayerTaskDAO().getInProgressTaskIds(p.getUniqueId().toString());
+            inProgressTaskIdList = sm.getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
         } catch (SQLException e) {
             logger.error("从数据库获取玩家 " + p.getName() + " 进行中的任务时失败：" + e.getMessage());
         }
 
         if (inProgressTaskIdList != null) {
-            List<String> copy = new LinkedList<>(inProgressTaskIdList);
-            scheduler.runAsync(() -> {
-                for (String taskID : copy) {
-                    sm.getPlayerTaskCache().updatePlayerTaskToCache(List.of(Objects.requireNonNull(tm.toPlayerTask(p.getUniqueId(), taskID))), false);
-                }
-            });
+            sm.getPlayerTaskCache().updatePlayerTaskToCache(inProgressTaskIdList, false);
             logger.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
         }
+    }
+
+    public void cacheToDatabase(Player p) {
+        // TODO
+    }
+
+    /**
+     * 获取指定玩家的进行中任务ID列表
+     * 状态: 0:进行中
+     *
+     * @param uuid           玩家UUID
+     * @param requiredStatus 必需状态
+     * @return {@link List }<{@link String }>
+     * @throws SQLException sql异常
+     */
+    public List<String> getTaskIdListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
+        List<String> result = new ArrayList<>();
+        String sql = "SELECT * FROM player_tasks WHERE player_uuid = ? AND status = ?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, requiredStatus.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                if (isRequiredStatus(requiredStatus, rs)) continue;
+
+                result.add(rs.getString("task_id"));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从数据库获取任务列表
+     *
+     * @param uuid           uuid
+     * @param requiredStatus 必需状态
+     * @return {@link List }<{@link PlayerTask }>
+     * @throws SQLException sql异常
+     */
+    public List<PlayerTask> getTaskListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
+        List<PlayerTask> result = new ArrayList<>();
+        String sql = "SELECT * FROM player_tasks WHERE player_uuid = ? AND status = 0";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                if (isRequiredStatus(requiredStatus, rs)) continue;
+
+                String taskId = rs.getString("task_id");
+
+                // 处理任务目标，设置为玩家当前的进度
+                List<TaskTarget> handledTaskTargetList = tm.getTaskTargets(taskId);
+                for (TaskTarget taskTarget : handledTaskTargetList) {
+                    Map<Integer, Integer> progressMap = getPlayerTaskProgressDAO().getProgress(uuid.toString(), taskId);
+                    taskTarget.setCurrent(
+                            progressMap.get(taskTarget.getIndex())
+                    );
+                }
+
+                result.add(
+                        new PlayerTask(uuid,
+                                new Task
+                                        (
+                                                taskId,
+                                                tm.getTaskType(taskId),
+                                                tm.getTaskName(taskId),
+                                                handledTaskTargetList,
+                                                tm.getTaskTrigger(taskId)
+                                        )));
+            }
+        }
+        return result;
+    }
+
+    private boolean isRequiredStatus(PTXTaskStatus requiredStatus, ResultSet rs) throws SQLException {
+        PTXTaskStatus status = switch (rs.getInt("status")) {
+            case 0 -> PTXTaskStatus.IN_PROGRESS;
+            case 1 -> PTXTaskStatus.COMPLETED;
+            case 2 -> PTXTaskStatus.FAILED;
+            default -> throw new IllegalStateException("Unexpected value: " + rs.getInt("status"));
+        };
+
+        if (status != requiredStatus) {
+            return true;
+        }
+        return false;
     }
 }

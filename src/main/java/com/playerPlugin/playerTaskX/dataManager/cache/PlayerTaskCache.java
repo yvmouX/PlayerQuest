@@ -39,8 +39,34 @@ public class PlayerTaskCache {
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
     private final Set<UUID> finishedEntries = ConcurrentHashMap.newKeySet(); // TODO 不代表任务完成，只要玩家单个目标完成，玩家uuid就会被添加到这个集合，后面会检查所有目标是否完成,如果所有目标都完成，会保存到数据库
+    private final Set<UUID> maybeFinishedEntries = ConcurrentHashMap.newKeySet();
 
     private final List<UniversalTask> universalTask;
+
+    /**
+     * 获取缓存
+     *
+     * @return {@link Map }<{@link UUID }, {@link List }<{@link PlayerTask }>>
+     */
+    public Map<UUID, List<PlayerTask>> getCache() {
+        return cache;
+    }
+
+    public void addCache(UUID uuid, PlayerTask task) {
+        List<PlayerTask> playerTaskList = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
+        playerTaskList.add(task);
+
+        dirtyEntries.add(uuid);
+    }
+
+    /**
+     * 添加可能完成任务的玩家
+     *
+     * @param uuid uuid
+     */
+    public void addMaybeFinishedPlayer(UUID uuid) {
+        maybeFinishedEntries.add(uuid);
+    }
 
 
     public PlayerTaskCache() {
@@ -151,42 +177,8 @@ public class PlayerTaskCache {
     }
 
 
-    /**
-     * 获取指定玩家进行中的任务ID列表
-     * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
-     *
-     * @param uuid 玩家UUID
-     * @return 进行中任务ID列表
-     */
-    public List<String> getPlayerInProgressTaskIds(UUID uuid) {
-        List<PlayerTask> tasks = cache.get(uuid);
-        if (tasks != null) {
-            return tasks.stream()
-                    .filter(pt -> pt.getStatus() == PTXTaskStatus.IN_PROGRESS)
-                    .map(pt -> pt.getTask().getId())
-                    .toList();
-        }
 
-        try {
-            return sm.getPlayerTaskDAO().getInProgressTaskIds(uuid.toString());
-        } catch (SQLException e) {
-            logger.error("从数据库加载进行中任务失败：" + uuid, e);
-            return new ArrayList<>();
-        }
-    }
 
-    /**
-     * 获取指定玩家进行中的任务列表
-     * 优先从缓存中过滤进行中的任务；如果缓存不存在则从数据库查询
-     *
-     * @param uuid 玩家UUID
-     * @return 进行中任务列表
-     */
-    @Nullable
-    @org.jetbrains.annotations.Nullable
-    public List<PlayerTask> getPlayerInProgressTasks(UUID uuid) {
-        return cache.get(uuid);
-    }
 
 
     /**
@@ -239,16 +231,6 @@ public class PlayerTaskCache {
                 logger.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
             }
         });
-    }
-
-
-    public void addFinishedPlayer(UUID uuid) {
-        if (cache.get(uuid) == null) {
-            logger.warn("尝试添加已完成玩家缓存，但玩家缓存不存在：" + uuid);
-            return;
-        }
-        finishedEntries.add(uuid);
-        logger.info("当前执行：添加已完成玩家缓存，玩家ID：" + uuid);
     }
 
     /**

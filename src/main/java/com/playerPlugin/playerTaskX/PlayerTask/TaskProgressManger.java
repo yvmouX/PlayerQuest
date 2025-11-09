@@ -27,7 +27,7 @@ public class TaskProgressManger {
                             target.setCurrent(target.getCurrent() + progress);
                             if (target.getCurrent() >= r.getAmount()) {
                                 target.setListener(taskTarget -> {
-                                    sm.getPlayerTaskCache().addFinishedPlayer(playerTask.getUUID());
+                                    sm.getCacheDAO().addMaybeFinishedPlayer(playerTask.getUUID());
                                 });
                                 target.setFinished(true);
                             }

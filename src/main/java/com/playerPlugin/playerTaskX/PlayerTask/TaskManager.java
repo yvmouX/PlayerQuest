@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
@@ -16,6 +17,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -70,6 +72,62 @@ public class TaskManager {
         return instance;
     }
 
+    /**
+     * 获取任务名称
+     *
+     * @param taskId 任务 ID
+     * @return {@link String }
+     */
+    public String getTaskName(String taskId) {
+        Task task = getTask(taskId);
+        if (task == null) {
+            return null;
+        }
+        return task.getName();
+    }
+
+    /**
+     * 获取任务目标
+     *
+     * @param taskId 任务 ID
+     * @return {@link List }<{@link TaskTarget }>
+     */
+    public List<TaskTarget> getTaskTargets(String taskId) {
+        Task task = getTask(taskId);
+        if (task == null) {
+            return null;
+        }
+        return task.getTargets();
+    }
+
+    /**
+     * 获取任务触发器
+     *
+     * @param taskId 任务 ID
+     * @return {@link TaskTrigger }
+     */
+    public TaskTrigger getTaskTrigger(String taskId) {
+        Task task = getTask(taskId);
+        if (task == null) {
+            return null;
+        }
+        return task.getTrigger();
+    }
+
+    /**
+     * 获取任务类型
+     *
+     * @param taskId 任务 ID
+     * @return {@link PTXTaskType }
+     */
+    public PTXTaskType getTaskType(String taskId) {
+        Task task = getTask(taskId);
+        if (task == null) {
+            return null;
+        }
+        return task.getType();
+    }
+
 
 
     /**
@@ -97,7 +155,7 @@ public class TaskManager {
      * @param player 选手
      * @param taskId 任务 ID
      */
-    public void startTask(Player player, String taskId) {
+    public void startTask(Player player, String taskId) throws SQLException {
         UUID uuid = player.getUniqueId();
         Task task = getTask(taskId);
 
@@ -106,14 +164,15 @@ public class TaskManager {
             return;
         };
 
-        // 从 cache 获取玩家进行中的任务列表检测是否已经有该任务。
+        // 直接从 数据库 获取玩家进行中的任务列表
+        // 检测是否已经有该任务。
         AtomicBoolean canStart = new AtomicBoolean(true);
-        sm.getPlayerTaskCache().getPlayerInProgressTaskIds(uuid).forEach(taskID -> {
-            if (taskID.equals(task.getId())) {
+        for (String id : sm.getTaskIdListFromDatabase(uuid, PTXTaskStatus.IN_PROGRESS)) {
+            if (id.equals(taskId)) {
                 player.sendMessage("§c你已经接受或者完成过任务: §e" + task.getName() + "！");
                 canStart.set(false);
             }
-        });
+        }
 
         // 向缓存添加任务
         if (canStart.get()) {

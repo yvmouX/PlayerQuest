@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -33,7 +34,7 @@ public class MeCmd implements SubCommand {
     private void me(CommandSender sender) {
         Player player = (Player) sender;
 
-        List<PlayerTask> tasks = sm.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
+        List<PlayerTask> tasks = sm.getCacheDAO().getPlayerTaskListFormCache(player.getUniqueId());
 
         if (tasks == null || tasks.isEmpty()) {
             player.sendMessage("§e你当前没有任务。");

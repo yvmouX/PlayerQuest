@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.EventHandlers.services.impl;
 
 import com.playerPlugin.playerTaskX.EventHandlers.services.EventCallback;
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -22,7 +23,7 @@ public class PlaceService implements EventCallback<BlockPlaceEvent> {
     }
 
     private void checkTaskProgress(Player player, Material placedBlockType) {
-        List<PlayerTask> tasks = sm.getPlayerTaskCache().getPlayerInProgressTasks(player.getUniqueId());
+        List<PlayerTask> tasks = sm.getCacheDAO().getPlayerTaskListFormCache(player.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
         if (tasks == null) {
             return;
         }
