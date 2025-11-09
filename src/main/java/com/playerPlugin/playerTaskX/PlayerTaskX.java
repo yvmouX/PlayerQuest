@@ -9,7 +9,6 @@ import com.playerPlugin.playerTaskX.configs.TaskConfig;
 import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
-import com.playerPlugin.playerTaskX.utils.Logger;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.Help;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
@@ -51,28 +50,28 @@ public final class PlayerTaskX extends JavaPlugin {
         ylib = new YLib(this);
 
         register();
-        log.info(Logger.prefix + "插件已启用");
+        log.info("插件已启用");
     }
 
     @Override
     public void onDisable() {
         if (log != null) {
-            log.info(Logger.prefix + "正在关闭插件...");
+            log.info("正在关闭插件...");
             // 关闭任务管理器，保存所有数据
             try {
                 tm.shutdown();
-                log.info(Logger.prefix + "任务数据已保存");
+                log.info("任务数据已保存");
             } catch (IllegalStateException ignored) { }
             try {
                 final StorgeManager sm = StorgeManager.getInstance();
                 if (sm != null) {
                     sm.close();
-                    log.info(Logger.prefix + "数据库连接已关闭");
+                    log.info("数据库连接已关闭");
                 }
             } catch (Exception e) {
-                log.error(Logger.prefix + "关闭数据库连接时发生错误：" + e.getMessage());
+                log.error("关闭数据库连接时发生错误：" + e.getMessage());
             }
-            log.info(Logger.prefix + "插件已禁用");
+            log.info("插件已禁用");
         }
         unregister();
     }
@@ -82,7 +81,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 初始化Vault
         if (!setupEconomy()) {
-            log.error(Logger.prefix + "Vault未安装");
+            log.error("Vault未安装");
         }
 
         // 任务配置
