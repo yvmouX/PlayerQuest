@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
+import com.playerPlugin.playerTaskX.PlayerTask.listener.TaskFinishLister;
 import org.bukkit.Material;
 
 import static com.playerPlugin.playerTaskX.utils.Help.sm;
@@ -24,12 +25,8 @@ public class TaskProgressManger {
                 case PLACE -> {
                     Requirement r = target.getRequirement();
                         if (r.getMaterial() == material) {
-                            target.setCurrent(target.getCurrent() + progress);
-                            if (target.getCurrent() >= r.getAmount()) {
-                                target.setListener(taskTarget -> {
-                                    sm.getCacheDAO().addMaybeFinishedPlayer(playerTask.getUUID());
-                                });
-                                target.setFinished(true);
+                            if (target.incrementCurrent()) {
+                                sm.getCacheDAO().addMaybeFinishedPlayer(playerTask.getUUID());
                             }
                         }
                 }
