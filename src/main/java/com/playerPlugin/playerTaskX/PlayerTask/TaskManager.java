@@ -176,7 +176,7 @@ public class TaskManager {
 
         // 向缓存添加任务
         if (canStart.get()) {
-            sm.getCacheDAO().getPlayerTaskCache().updatePlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
+            sm.getCacheDAO().getPlayerTaskCache().addPlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
         }
 
         // 执行任务开始触发器

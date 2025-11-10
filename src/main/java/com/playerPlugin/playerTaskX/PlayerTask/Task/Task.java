@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 
 import java.util.List;
+import java.util.Objects;
 
 public class Task {
     private String id;
@@ -36,4 +37,12 @@ public class Task {
 
     public TaskTrigger getTrigger() { return trigger; }
     public void setTrigger(TaskTrigger trigger) { this.trigger = trigger; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Task that = (Task) o;
+        return Objects.equals(id, that.id) && type == that.type && Objects.equals(name, that.name) && Objects.equals(targets, that.targets) && Objects.equals(trigger, that.trigger);
+    }
 }

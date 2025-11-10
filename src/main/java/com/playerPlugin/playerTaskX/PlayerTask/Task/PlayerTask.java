@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public class PlayerTask {
@@ -27,5 +28,11 @@ public class PlayerTask {
     public PTXTaskStatus getStatus() { return this.status; }
     public void setStatus(PTXTaskStatus status) { this.status = status; }
 
-
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PlayerTask that = (PlayerTask) o;
+        return Objects.equals(uuid, that.uuid) && Objects.equals(task, that.task) && status == that.status;
+    }
 }

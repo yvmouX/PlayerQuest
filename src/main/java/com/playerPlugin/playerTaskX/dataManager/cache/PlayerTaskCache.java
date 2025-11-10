@@ -169,7 +169,26 @@ public class PlayerTaskCache {
     }
 
 
+    public void addPlayerTaskToCache(List<PlayerTask> playerTaskList, boolean immediateSave) {
+        for (PlayerTask playerTask : playerTaskList) {
+            UUID uuid = playerTask.getUUID();
 
+            List<PlayerTask> taskList = cache.computeIfAbsent(uuid, k -> new ArrayList<>());
+
+            // TODO
+            // 必须重写 PlayerTask 的 equals() 和 hashCode()
+            // taskList.contains(playerTask) 依赖 PlayerTask 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
+            if (!taskList.contains(playerTask)) {
+                taskList.add(playerTask);
+            }
+
+            if (immediateSave) {
+                startPlayerTask(List.of(playerTask));
+            } else  {
+                dirtyEntries.add(uuid);
+            }
+        }
+    }
 
 
 
