@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
-import com.playerPlugin.playerTaskX.PlayerTask.listener.TaskFinishLister;
 import org.bukkit.Material;
 
 import static com.playerPlugin.playerTaskX.utils.Help.sm;
@@ -12,6 +11,13 @@ public class TaskProgressManger {
 
     }
 
+    /**
+     * 增加玩家任务进度
+     *
+     * @param playerTask 玩家任务
+     * @param material   材料
+     * @param progress   进展数量
+     */
     public void increasePlayerTaskProgress(PlayerTask playerTask, Material material, int progress) {
         playerTask.getTask().getTargets().forEach(target -> {
             switch (target.getAction()) {
@@ -25,8 +31,8 @@ public class TaskProgressManger {
                 case PLACE -> {
                     Requirement r = target.getRequirement();
                         if (r.getMaterial() == material) {
-                            if (target.incrementCurrent()) {
-                                sm.getCacheDAO().addMaybeFinishedPlayer(playerTask.getUUID());
+                            if (target.incrementCurrent(progress)) {
+                                sm.getCacheDAO().addMaybeFinishedPlayer(playerTask);
                             }
                         }
                 }

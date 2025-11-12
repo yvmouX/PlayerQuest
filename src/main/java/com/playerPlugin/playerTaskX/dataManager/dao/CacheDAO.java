@@ -57,13 +57,13 @@ public class CacheDAO {
     /**
      * 添加可能完成任务的玩家到缓存
      *
-     * @param uuid uuid
+     * @param playerTask 玩家任务
      */
-    public void addMaybeFinishedPlayer(UUID uuid) {
-        if (playerTaskCache.getCache().get(uuid) == null) {
-            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + uuid);
+    public void addMaybeFinishedPlayer(PlayerTask playerTask) {
+        if (playerTaskCache.getCache().get(playerTask.getUUID()) == null) {
+            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + playerTask.getUUID());
             return;
         }
-        playerTaskCache.addMaybeFinishedPlayer(uuid);
+        playerTaskCache.addMaybeFinishedPlayer(playerTask);
     }
 }
