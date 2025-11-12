@@ -102,7 +102,7 @@ public final class PlayerTaskX extends JavaPlugin {
         Help.sm = StorgeManager.getInstance();
 
         // 启动缓存定时任务（依赖于 TaskManager 和 StorgeManager 已完成初始化）
-        StorgeManager.getInstance().getCacheDAO().getPlayerTaskCache().init();
+        StorgeManager.getInstance().getDataSyncTask().stopSync();
 
         // 事件
         EventsRegister.register();

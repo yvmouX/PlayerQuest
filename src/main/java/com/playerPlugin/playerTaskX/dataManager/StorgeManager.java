@@ -29,6 +29,7 @@ public class StorgeManager {
     // other
     private final PlayerTaskX plugin;
     private final StorgeTypes type;
+    private static DataSyncTask dataSyncTask;
 
     public StorgeManager(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager) {
         if (instance != null) {
@@ -47,6 +48,8 @@ public class StorgeManager {
                     // DAO
                     cacheDAO = new CacheDAO(new PlayerTaskCache());
                     databaseDAO = new DatabaseDAO(instance);
+                    // 数据同步任务
+                    dataSyncTask = new DataSyncTask(plugin, cacheDAO.getPlayerTaskCache(), databaseDAO);
                 }
             }
         }
@@ -71,6 +74,20 @@ public class StorgeManager {
             log.error("DatabaseDAO is not initialized");
         }
         return databaseDAO;
+    }
+
+    public SQLiteManager getSQLiteManager() {
+        if (sqLiteManager == null) {
+            log.error("SQLiteManager is not initialized");
+        }
+        return sqLiteManager;
+    }
+
+    public DataSyncTask getDataSyncTask() {
+        if (dataSyncTask == null) {
+            log.error("DataSyncTask is not initialized");
+        }
+        return dataSyncTask;
     }
 
     /**

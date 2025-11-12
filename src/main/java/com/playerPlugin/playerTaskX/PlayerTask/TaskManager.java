@@ -191,7 +191,7 @@ public class TaskManager {
      */
     public void shutdown() {
         // 关闭缓存管理器，保存所有数据
-        sm.getCacheDAO().getPlayerTaskCache().shutdown();
+        //sm.getCacheDAO().getPlayerTaskCache().shutdown();
     }
 
     /**

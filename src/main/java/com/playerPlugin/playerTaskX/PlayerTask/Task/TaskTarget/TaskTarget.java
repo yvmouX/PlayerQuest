@@ -49,12 +49,12 @@ public class TaskTarget {
     }
 
 
-    public boolean incrementCurrent() {
+    public boolean incrementCurrent(int amount) {
         if (current >= requirement.getAmount()) {
             finished = true;
             return true;
         }
-        current++;
+        current += amount;
         return false;
     }
 }
