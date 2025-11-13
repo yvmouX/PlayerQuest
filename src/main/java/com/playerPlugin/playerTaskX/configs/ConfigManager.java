@@ -1,30 +1,24 @@
 package com.playerPlugin.playerTaskX.configs;
 
-import com.playerPlugin.playerTaskX.PlayerTaskX;
-
 public class ConfigManager {
-    private final PlayerTaskX plugin;
-    private final TaskConfig taskConfig;
+    private TaskConfig taskConfig;
 
-    public ConfigManager(PlayerTaskX plugin, TaskConfig taskConfig) {
-        this.plugin = plugin;
+    private ConfigManager() {
+    }
+
+    public static ConfigManager getInstance() {
+        return ConfigManagerHolder.INSTANCE;
+    }
+
+    private static class ConfigManagerHolder {
+        private static final ConfigManager INSTANCE = new ConfigManager();
+    }
+
+    public void initTaskConfig(TaskConfig taskConfig) {
         this.taskConfig = taskConfig;
     }
 
-
-    /**
-     * 创建所有配置文件
-     * <p>
-     *     不会覆盖原有的配置，仅用作生成配置文件
-     * </p>
-     */
-    public void saveAllDefaultConfigs() {
-        plugin.saveDefaultConfig();
-        taskConfig.saveDefaultTaskConfig();
-    }
-
-    public void reloadAllDefaultConfigs() {
-        plugin.reloadConfig();
-        taskConfig.reloadTasksConfig();
+    public TaskConfig getTaskConfig() {
+        return taskConfig;
     }
 }

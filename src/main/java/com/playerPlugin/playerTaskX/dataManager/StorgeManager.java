@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.dataManager.dao.CacheDAO;
@@ -20,7 +21,7 @@ import java.util.*;
 import static com.playerPlugin.playerTaskX.utils.Help.*;
 
 public class StorgeManager {
-    private static volatile StorgeManager instance;
+    private final TaskManager tm;
     // dao
     private static CacheDAO cacheDAO;
     private static DatabaseDAO databaseDAO;
@@ -31,35 +32,17 @@ public class StorgeManager {
     private final StorgeTypes type;
     private static DataSyncTask dataSyncTask;
 
-    public StorgeManager(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager) {
-        if (instance != null) {
-            throw new IllegalStateException("StorgeManger already instantiated");
-        }
+    public StorgeManager(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager, TaskManager tm) {
         this.plugin = plugin;
         this.type = storge;
         this.sqLiteManager = sqLiteManager;
-    }
+        this.tm = tm;
 
-    public static void init(PlayerTaskX plugin, StorgeTypes storge, SQLiteManager sqLiteManager) {
-        if (instance == null) {
-            synchronized (StorgeManager.class) {
-                if (instance == null) {
-                    instance = new StorgeManager(plugin, storge, sqLiteManager);
-                    // DAO
-                    cacheDAO = new CacheDAO(new PlayerTaskCache());
-                    databaseDAO = new DatabaseDAO(instance);
-                    // 数据同步任务
-                    dataSyncTask = new DataSyncTask(plugin, cacheDAO.getPlayerTaskCache(), databaseDAO);
-                }
-            }
-        }
-    }
-
-    public static StorgeManager getInstance() {
-        if (instance == null) {
-            log.error("StorgeManager is not initialized");
-        }
-        return instance;
+        // DAO
+        cacheDAO = new CacheDAO(this, new PlayerTaskCache());
+        databaseDAO = new DatabaseDAO(this);
+        // 数据同步任务
+        dataSyncTask = new DataSyncTask(plugin, cacheDAO.getPlayerTaskCache(), databaseDAO);
     }
 
     public CacheDAO getCacheDAO() {
@@ -145,13 +128,13 @@ public class StorgeManager {
     public void databaseToCache(Player p) {
         List<PlayerTask> inProgressTaskIdList = new LinkedList<>();
         try {
-            inProgressTaskIdList = sm.getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
+            inProgressTaskIdList = getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
         } catch (SQLException e) {
             log.error("从数据库获取玩家 " + p.getName() + " 进行中的任务时失败：" + e.getMessage());
         }
 
         if (inProgressTaskIdList != null) {
-            sm.getCacheDAO().getPlayerTaskCache().updatePlayerTaskToCache(inProgressTaskIdList, false);
+            getCacheDAO().updatePlayerTaskToCache(inProgressTaskIdList, false);
             log.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
         }
     }

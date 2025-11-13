@@ -2,13 +2,13 @@ package com.playerPlugin.playerTaskX.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
 
 import static com.playerPlugin.playerTaskX.utils.Help.log;
-import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 接受 CMD
@@ -22,6 +22,11 @@ import static com.playerPlugin.playerTaskX.utils.Help.tm;
  * &#064;date  2025/10/26
  */
 public class AcceptCmd implements SubCommand {
+    private final TaskManager tm;
+    public AcceptCmd(TaskManager tm) {
+        this.tm = tm;
+    }
+
     @Override
     @CommandOptions(name = "accept", permission = "playertaskx.command.accept", onlyPlayer = true, alias = {}, register = true, usage = "playertaskx accept <任务ID>")
     public boolean execute(CommandSender sender, String[] args) {
@@ -35,7 +40,7 @@ public class AcceptCmd implements SubCommand {
 
         String taskId = args[1];
         try {
-            tm.startTask(player, taskId);
+            tm.getTaskProgressManger().startTask(player, taskId);
         } catch (SQLException e) {
             log.error("接受任务失败：" + taskId, e);
         }

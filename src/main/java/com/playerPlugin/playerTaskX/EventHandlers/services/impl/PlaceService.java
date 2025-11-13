@@ -3,15 +3,25 @@ package com.playerPlugin.playerTaskX.EventHandlers.services.impl;
 import com.playerPlugin.playerTaskX.EventHandlers.services.EventCallback;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockPlaceEvent;
 
 import java.util.List;
 
-import static com.playerPlugin.playerTaskX.utils.Help.*;
+import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 public class PlaceService implements EventCallback<BlockPlaceEvent> {
+    private final TaskManager tm;
+    private final StorgeManager sm;
+
+    public PlaceService(TaskManager tm, StorgeManager sm) {
+        this.tm = tm;
+        this.sm = sm;
+    }
+
     @Override
     public void onEvent(BlockPlaceEvent event) {
         Player player = event.getPlayer();

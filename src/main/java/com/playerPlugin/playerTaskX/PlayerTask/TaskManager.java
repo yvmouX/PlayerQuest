@@ -1,75 +1,50 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
-import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.playerPlugin.playerTaskX.utils.Help.*;
 
+/**
+ * 任务管理器
+ * <p>
+ *     包含 TaskConfig
+ * </p>
+ *
+ * @author yvmoux
+ * &#064;date  2025/11/13
+ */
 public class TaskManager {
-    private static volatile TaskManager instance;
-    private final TaskConfig taskConfig;
-    private final TaskProgressManger taskProgressManger;
     private final List<Task> tasks = new ArrayList<>(); // 存储定义的所有任务 (Task类)
+    private TaskProgressManger tpm;
 
+    private TaskManager() {
+    }
 
+    public static TaskManager init() {
+        return new TaskManager();
+    }
 
-    public TaskConfig getTaskConfig() {
-        return taskConfig;
+    public void initTaskProgressManger(TaskProgressManger tpm) {
+        this.tpm = tpm;
     }
 
     public TaskProgressManger getTaskProgressManger() {
-        return taskProgressManger;
-    }
-
-
-    public TaskManager(TaskConfig taskConfig) {
-        this.taskConfig = taskConfig;
-        loadTasksToCache();
-        taskProgressManger = new TaskProgressManger();
-    }
-
-    public static void init(TaskConfig taskConfig) {
-        if (taskConfig == null) {
-            throw new NullPointerException("TaskConfig 初始化失败，请检查tasks.yml");
-        };
-        if (instance == null) {
-            synchronized (TaskManager.class) {
-                if (instance == null) {
-                    instance = new TaskManager(taskConfig);
-                }
-            }
-        } else  {
-            throw new IllegalStateException("TaskManager 已经初始化");
-        }
-    }
-
-    public static TaskManager getInstance() {
-        if (instance == null) {
-            synchronized (TaskManager.class) {
-                if (instance == null) {
-                    throw new IllegalStateException("TaskManager 未初始化，请先调用init(TaskConfig taskConfig)");
-                }
-            }
-        }
-        return instance;
+        return tpm;
     }
 
     /**
@@ -150,42 +125,6 @@ public class TaskManager {
     }
 
     /**
-     * 开始任务
-     *
-     * @param player 选手
-     * @param taskId 任务 ID
-     */
-    public void startTask(Player player, String taskId) throws SQLException {
-        UUID uuid = player.getUniqueId();
-        Task task = getTask(taskId);
-
-        if (task == null) {
-            player.sendMessage("§c任务 %s 不存在", taskId);
-            return;
-        };
-
-        // 直接从 数据库 获取玩家进行中的任务列表
-        // 检测是否已经有该任务。
-        AtomicBoolean canStart = new AtomicBoolean(true);
-        for (String id : sm.getTaskIdListFromDatabase(uuid, PTXTaskStatus.IN_PROGRESS)) {
-            if (id.equals(taskId)) {
-                player.sendMessage("§c你已经接受或者完成过任务: §e" + task.getName() + "！");
-                canStart.set(false);
-            }
-        }
-
-        // 向缓存添加任务
-        if (canStart.get()) {
-            sm.getCacheDAO().getPlayerTaskCache().addPlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
-        }
-
-        // 执行任务开始触发器
-        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
-
-        player.sendMessage("§a你已开始任务: §e" + task.getName());
-    }
-
-    /**
      * 关闭任务管理器
      * 确保所有数据保存到数据库
      */
@@ -227,18 +166,17 @@ public class TaskManager {
         throw new InvalidTask("任务ID: " + taskId + " 无效。");
     }
 
-
-
     /**
      * 加载任务到内存中
      *
+     * @param taskConfig 任务配置
      */
-    private void loadTasksToCache() {
+    public void loadTasksToCache(TaskConfig taskConfig) {
         tasks.clear();
 
         Task task = new Task(null, null, null, new ArrayList<>(), null);
 
-        FileConfiguration config = getTaskConfig().getTasksConfig();
+        FileConfiguration config = taskConfig.getTasksConfig();
 
         for (String taskId : config.getKeys(false)) {
             // taskID && taskName && taskType

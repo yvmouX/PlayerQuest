@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -10,9 +11,12 @@ import org.bukkit.entity.Player;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import static com.playerPlugin.playerTaskX.utils.Help.tm;
-
 public class StartCmd implements SubCommand {
+    private final TaskManager tm;
+    public StartCmd(TaskManager tm) {
+        this.tm = tm;
+    }
+
     @Override
     @CommandOptions(
             name = "start",
@@ -41,7 +45,7 @@ public class StartCmd implements SubCommand {
         }
 
         try {
-            tm.startTask(p, taskID);
+            tm.getTaskProgressManger().startTask(p, taskID);
         } catch (SQLException e) {
             sender.sendMessage(ChatColor.RED + "Error: " + e.getMessage());
             throw new RuntimeException(e);
