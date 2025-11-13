@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.EventHandlers.handlers;
 
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -8,9 +9,13 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 import static com.playerPlugin.playerTaskX.consts.common.Repo_URL;
 import static com.playerPlugin.playerTaskX.consts.common.isLatest;
-import static com.playerPlugin.playerTaskX.utils.Help.sm;
 
 public class PlayerJoinHandler implements Listener {
+    private final StorgeManager sm;
+    public PlayerJoinHandler(StorgeManager sm) {
+        this.sm = sm;
+    }
+
     @EventHandler
     public void onAdminJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();

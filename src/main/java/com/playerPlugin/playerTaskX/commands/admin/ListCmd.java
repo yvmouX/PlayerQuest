@@ -2,9 +2,8 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import org.bukkit.command.CommandSender;
-
-import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 列表 cmd
@@ -17,6 +16,10 @@ import static com.playerPlugin.playerTaskX.utils.Help.tm;
  * &#064;date  2025/10/26
  */
 public class ListCmd implements SubCommand {
+    private final TaskManager tm;
+    public ListCmd(TaskManager tm) {
+        this.tm = tm;
+    }
     @Override
     @CommandOptions(name = "list", permission = "playertaskx.admin.command.list", onlyPlayer = false, alias = {}, register = true, usage = "/ptxa list")
     public boolean execute(CommandSender sender, String[] args) {
