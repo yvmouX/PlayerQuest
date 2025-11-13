@@ -50,12 +50,7 @@ public class TaskTriggerEco {
     protected static void handleXP(Player player, String amount) {
         try {
             int xp = Integer.parseInt(amount);
-            if (xp > 0) {
-                // TODO 测试此方法是否可以扣除负经验值
-                player.giveExp(xp);
-            } else {
-                player.giveExp(xp);
-            }
+            player.giveExp(xp);
         } catch (NumberFormatException e) {
             // 无效经验值
         }

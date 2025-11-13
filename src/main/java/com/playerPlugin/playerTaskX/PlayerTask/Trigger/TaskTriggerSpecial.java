@@ -4,7 +4,6 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlotGroup;
@@ -14,6 +13,16 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import static com.playerPlugin.playerTaskX.consts.common.ARMOR;
+import static com.playerPlugin.playerTaskX.consts.common.ARMOR_TOUGHNESS;
+import static com.playerPlugin.playerTaskX.consts.common.DAMAGE;
+import static com.playerPlugin.playerTaskX.consts.common.ENCHANTS;
+import static com.playerPlugin.playerTaskX.consts.common.EQUIPPED_DAMAGE;
+import static com.playerPlugin.playerTaskX.consts.common.EQUIPPED_HEALTH;
+import static com.playerPlugin.playerTaskX.consts.common.HEALTH;
+import static com.playerPlugin.playerTaskX.consts.common.LORE;
+import static com.playerPlugin.playerTaskX.consts.common.NAME;
+import static com.playerPlugin.playerTaskX.consts.common.UNBREAKABLE;
 import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 import java.util.Arrays;
@@ -108,13 +117,13 @@ public class TaskTriggerSpecial {
     private static ItemMeta getItemMeta(ItemMeta meta, Map<String, String> properties) {
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             switch (entry.getKey().toUpperCase(Locale.ENGLISH)) {
-                case "NAME":
+                case NAME:
                     meta.setDisplayName(entry.getValue().replace("&", "§"));
                     continue;
-                case "LORE":
+                case LORE:
                     meta.setLore(Arrays.asList(entry.getValue().split("\n")));
                     continue;
-                case "ENCHANTS":
+                case ENCHANTS:
                     String[] enchants = entry.getValue().split(",");
                     for (String enchant : enchants) {
                         String[] enchantParts = enchant.split(":");
@@ -130,7 +139,7 @@ public class TaskTriggerSpecial {
                         }
                     }
                     continue;
-                case "DAMAGE":
+                case DAMAGE:
 
                     meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(
                             NamespacedKey.minecraft("attack_damage"),
@@ -139,7 +148,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.ANY
                     ));
                     continue;
-                case "HEALTH":
+                case HEALTH:
                     meta.addAttributeModifier(Attribute.MAX_HEALTH, new AttributeModifier(
                             NamespacedKey.minecraft("max_health"),
                             Double.parseDouble(entry.getValue()),
@@ -147,7 +156,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.ANY
                     ));
                     continue;
-                case "EQUIPPED_DAMAGE":
+                case EQUIPPED_DAMAGE:
                     meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(
                             NamespacedKey.minecraft("attack_damage_main_hand"),
                             Double.parseDouble(entry.getValue()),
@@ -155,7 +164,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.MAINHAND
                     ));
                     continue;
-                case "EQUIPPED_HEALTH":
+                case EQUIPPED_HEALTH:
                     meta.addAttributeModifier(Attribute.MAX_HEALTH, new AttributeModifier(
                             NamespacedKey.minecraft("max_health_"),
                             Double.parseDouble(entry.getValue()),
@@ -163,8 +172,24 @@ public class TaskTriggerSpecial {
                             meta.getEquippable().getSlot().getGroup()
                     ));
                     continue;
-                case "UNBREAKABLE":
+                case UNBREAKABLE:
                     meta.setUnbreakable(true);
+                    continue;
+                case ARMOR:
+                    meta.addAttributeModifier(Attribute.ARMOR, new AttributeModifier(
+                            NamespacedKey.minecraft("armor"),
+                            Double.parseDouble(entry.getValue()),
+                            AttributeModifier.Operation.ADD_NUMBER,
+                            meta.getEquippable().getSlot().getGroup()
+                    ));
+                    continue;
+                case ARMOR_TOUGHNESS:
+                        meta.addAttributeModifier(Attribute.ARMOR_TOUGHNESS, new AttributeModifier(
+                            NamespacedKey.minecraft("armor_toughness"),
+                            Double.parseDouble(entry.getValue()),
+                            AttributeModifier.Operation.ADD_NUMBER,
+                            meta.getEquippable().getSlot().getGroup()
+                    ));
                     continue;
                 default:
                     String keyUpperCase = entry.getKey().toUpperCase(Locale.ENGLISH);
