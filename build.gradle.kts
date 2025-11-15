@@ -4,11 +4,11 @@ plugins {
     id("com.gradleup.shadow") version "9.0.0-rc3"
 }
 
-group = "com.playerPlugin"
-version = "1.0.0"
-
 allprojects {
     apply(plugin = "java")
+
+    group = "com.playerPlugin"
+    version = "1.0.0"
 
     // Java 版本配置
     val targetJavaVersion = 21
@@ -43,7 +43,7 @@ allprojects {
     dependencies {
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
         //implementation("com.github.yvmouX:YLib:1.0.0-beta4")
-        implementation(files("lib/YLib-1.0.0-beta5.jar"))
+        implementation(files(rootProject.file("lib/YLib-1.0.0-beta5.jar")))
         compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
         compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
         implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
@@ -53,13 +53,12 @@ allprojects {
     }
 }
 
-
+dependencies {
+    implementation(project(":core"))
+}
 
 tasks {
     runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21")
         jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
     }
