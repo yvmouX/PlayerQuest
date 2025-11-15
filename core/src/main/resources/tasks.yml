@@ -1,0 +1,55 @@
+craft_diamond_sword_task:
+  name: "合成钻石镐"
+  type: forever
+  targets:
+    - action: CRAFT
+      require:
+        material: DIAMOND_SWORD
+        amount: 1
+    - action: CRAFT
+      require:
+        material: STONE_PICKAXE
+        amount: 1
+    - action: CRAFT
+      require:
+        material: STONE
+        amount: 12
+  conditions:
+    - type: PLAYER_WHITELIST
+      values: [yvmou_, yvmou2_]
+  trigger:
+    on_task_start:
+      - "admin: give {player} diamond 1"
+      - "console: give {player} stick 1"
+      - "message: 任务开始"
+      - "bc: 玩家 {player} 开始了任务 {this}"
+    on_task_finish:
+      - "money: 10"
+      - "point: 10"
+      - "xp: 100"
+      - "message: 你获取了10金币、10点券以及100经验"
+    on_task_fail:
+      - "level: -1"
+      - "potion: slowness 1s 1l false"
+      - "item: paper 1 &c死亡证明 因你死亡而发放于你 unbreaking:1"
+      - "command: say I am dead, man!"
+      - "kill: 你因为任务失败而死亡并且被扣去了1级经验"
+place_stone_task:
+  name: "放置石头"
+  type: FOREVER
+  targets:
+    - action: PLACE
+      require:
+        material: STONE
+        amount: 5
+    - action: PLACE
+      require:
+        material: STONE
+        amount: 10
+    - action: PLACE
+      require:
+        material: GRASS_BLOCK
+        amount: 15
+  trigger:
+    on_task_finish:
+      - "message: 恭喜你完成了放置石头任务！"

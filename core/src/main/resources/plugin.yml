@@ -1,0 +1,6 @@
+name: playerTaskX
+version: '1.0.0'
+main: com.playerPlugin.playerTaskX.PlayerTaskX
+api-version: '1.21'
+prefix: "playerTaskX"
+folia-supported: true
