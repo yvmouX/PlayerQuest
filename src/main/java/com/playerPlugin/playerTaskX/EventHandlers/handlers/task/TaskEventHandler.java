@@ -1,9 +1,6 @@
 package com.playerPlugin.playerTaskX.EventHandlers.handlers.task;
 
 import com.playerPlugin.playerTaskX.EventHandlers.EventCallbackManager;
-import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
-import com.playerPlugin.playerTaskX.structs.eventStructs.EnchantEvent;
-import com.playerPlugin.playerTaskX.structs.eventStructs.FishingEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -14,7 +11,6 @@ import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
