@@ -1,14 +1,25 @@
 package com.playerPlugin.playerTaskX.PlayerTask;
 
+import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
+import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 
-import static com.playerPlugin.playerTaskX.utils.Help.sm;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TaskProgressManger {
-    public TaskProgressManger() {
-
+    private final StorgeManager sm;
+    private final TaskManager tm;
+    public TaskProgressManger(StorgeManager sm, TaskManager tm) {
+        this.sm = sm;
+        this.tm = tm;
     }
 
     /**
@@ -45,5 +56,41 @@ public class TaskProgressManger {
             }
         });
 
+    }
+
+    /**
+     * 开始任务
+     *
+     * @param player 选手
+     * @param taskId 任务 ID
+     */
+    public void startTask(Player player, String taskId) throws SQLException {
+        UUID uuid = player.getUniqueId();
+        Task task = tm.getTask(taskId);
+
+        if (task == null) {
+            player.sendMessage("§c任务 %s 不存在", taskId);
+            return;
+        };
+
+        // 直接从 数据库 获取玩家进行中的任务列表
+        // 检测是否已经有该任务。
+        AtomicBoolean canStart = new AtomicBoolean(true);
+        for (String id : sm.getTaskIdListFromDatabase(uuid, PTXTaskStatus.IN_PROGRESS)) {
+            if (id.equals(taskId)) {
+                player.sendMessage("§c你已经接受或者完成过任务: §e" + task.getName() + "！");
+                canStart.set(false);
+            }
+        }
+
+        // 向缓存添加任务
+        if (canStart.get()) {
+            sm.getCacheDAO().addPlayerTaskToCache(List.of(new PlayerTask(uuid, task)), true);
+        }
+
+        // 执行任务开始触发器
+        TaskTriggerExecutor.execute(player, task.getTrigger().getOnTaskStart(), task);
+
+        player.sendMessage("§a你已开始任务: §e" + task.getName());
     }
 }

@@ -4,13 +4,12 @@ import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.*;
-
-import static com.playerPlugin.playerTaskX.utils.Help.sm;
-import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 /**
  * 我CMD
@@ -24,6 +23,13 @@ import static com.playerPlugin.playerTaskX.utils.Help.tm;
  * &#064;date  2025/10/26
  */
 public class MeCmd implements SubCommand {
+    private final TaskManager tm;
+    private final StorgeManager sm;
+    public MeCmd(TaskManager tm, StorgeManager sm) {
+        this.tm = tm;
+        this.sm = sm;
+    }
+
     @Override
     @CommandOptions(name = "me", permission = "playertaskx.command.me", onlyPlayer = true, alias = {}, register = true, usage = "/playertaskx me")
     public boolean execute(CommandSender sender, String[] args) {

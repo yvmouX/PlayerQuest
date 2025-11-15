@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
+import com.playerPlugin.playerTaskX.PlayerTask.TaskProgressManger;
 import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
@@ -10,7 +11,6 @@ import com.playerPlugin.playerTaskX.dataManager.impl.SQLiteManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
 import com.playerPlugin.playerTaskX.utils.Metrics;
-import com.playerPlugin.playerTaskX.utils.Help;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
@@ -20,19 +20,20 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import static com.playerPlugin.playerTaskX.utils.Help.log;
-import static com.playerPlugin.playerTaskX.utils.Help.tm;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
     private static Economy economy = null;
-    private static PlayerTaskX instance;
     private static ViewFrame viewFrame = null;
+    private ConfigManager configManager = null;
+    private TaskManager taskManager = null;
+    private StorgeManager storgeManager = null;
 
-    public static PlayerTaskX getInstance() {
-        return instance;
-    }
-
+    @Nullable
     public static Economy getEconomy() {
+        if (economy == null) {
+            return null;
+        }
         return economy;
     }
 
@@ -46,90 +47,76 @@ public final class PlayerTaskX extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        instance = this;
-        ylib = new YLib(this);
-
         register();
         log.info("插件已启用");
     }
 
     @Override
     public void onDisable() {
-        if (log != null) {
-            log.info("正在关闭插件...");
-            // 关闭任务管理器，保存所有数据
-            try {
-                tm.shutdown();
-                log.info("任务数据已保存");
-            } catch (IllegalStateException ignored) { }
-            try {
-                final StorgeManager sm = StorgeManager.getInstance();
-                if (sm != null) {
-                    sm.close();
-                    log.info("数据库连接已关闭");
-                }
-            } catch (Exception e) {
-                log.error("关闭数据库连接时发生错误：" + e.getMessage());
-            }
-            log.info("插件已禁用");
-        }
         unregister();
+        log.info("插件已禁用");
     }
 
     private void register() {
+        // 1、注册必要的前置
+        ylib = new YLib(this);
         new Metrics(this, 27726);
 
-        // 初始化Vault
         if (!setupEconomy()) {
             log.error("Vault未安装");
         }
 
-        // 任务配置
-        TaskConfig taskConfig = new TaskConfig(this);
-        // 配置文件
-        ConfigManager configManager = new ConfigManager(this, taskConfig);
-        configManager.saveAllDefaultConfigs();
+        // 2、注册配置文件
+        configManager = ConfigManager.getInstance();
+        configManager.initTaskConfig(new TaskConfig(this));
+        TaskConfig taskConfig = configManager.getTaskConfig();
 
-        // 先初始化任务管理器（不依赖数据库）
-        TaskManager.init(taskConfig);
+        this.saveDefaultConfig();
+        taskConfig.saveDefaultTaskConfig();
 
-        // 再初始化数据库管理器
-        // TODO 数据类型暂时硬编码为 SQLITE
-        StorgeManager.init(this, StorgeTypes.SQLITE, new SQLiteManager());
-        StorgeManager.getInstance().connect();
+        // 3、注册 TaskManager
+        taskManager = TaskManager.init();
+        taskManager.loadTasksToCache(taskConfig);
 
-        Help.tm = TaskManager.getInstance();
-        Help.sm = StorgeManager.getInstance();
+        // 4、注册 StorgeManager 连接数据库 开始数据同步任务 TODO 数据类型暂时硬编码为 SQLITE
+        storgeManager = new StorgeManager(this, StorgeTypes.SQLITE, new SQLiteManager(), taskManager);
+        storgeManager.connect();
+        storgeManager.getDataSyncTask().startSync();
 
-        // 启动缓存定时任务（依赖于 TaskManager 和 StorgeManager 已完成初始化）
-        StorgeManager.getInstance().getDataSyncTask().stopSync();
+        // 5、注册 TaskProgressManger
+        taskManager.initTaskProgressManger(new TaskProgressManger(storgeManager, taskManager));
 
-        // 事件
-        EventsRegister.register();
+        // 6、注册事件
+        EventsRegister.register(this);
 
-        // 命令
-        new CommandRegister(this, ylib, taskConfig).registerCommands();
+        // 7、注册命令
+        new CommandRegister(this, ylib, taskConfig, storgeManager, taskManager).registerCommands();
 
-        // UI界面
-        registerViews();
+        // 8、注册UI界面
+        try {
+            viewFrame = ViewFrame.create(this);
+            viewFrame.with(new MainUI()).register();
+        } catch (Exception e) {
+            log.error("创建UI错误" + e);
+        }
 
-        // 更新
+        // 9、更新检查
         UpdateHelper updateHelper = new UpdateHelper();
         updateHelper.checkUpdate(getDescription().getVersion());
 
     }
 
     private void unregister() {
-        log = null;
-        instance = null;
-    }
-
-    private void registerViews() {
         try {
-            viewFrame = ViewFrame.create(this);
-            viewFrame.with(new MainUI()).register();
+            taskManager.shutdown();
+            log.info("任务数据已保存");
         } catch (Exception e) {
-            log.error("创建UI错误" + e);
+            log.error("关闭任务数据时发生错误：" + e.getMessage());
+        }
+        try {
+            storgeManager.close();
+        } catch (Exception e) {
+            log.error("关闭数据库连接时发生错误：" + e.getMessage());
         }
     }
 

@@ -16,6 +16,8 @@ import java.util.*;
 import static com.playerPlugin.playerTaskX.utils.Help.*;
 
 public class DataSyncTask extends UniversalRunnable {
+    private static final int MAX_CACHE_SIZE = 100;
+
     private final JavaPlugin plugin;
     private final PlayerTaskCache playerTaskCache;
     private final DatabaseDAO databaseDAO;
@@ -24,6 +26,32 @@ public class DataSyncTask extends UniversalRunnable {
         this.plugin = plugin;
         this.playerTaskCache = playerTaskCache;
         this.databaseDAO = databaseDAO;
+        playerTaskCache.init(c());
+    }
+
+    private Map<UUID, List<PlayerTask>> c() {
+        Map<UUID, List<PlayerTask>> a;
+        a = Collections.synchronizedMap(
+                new LinkedHashMap<UUID, List<PlayerTask>>(
+                        MAX_CACHE_SIZE, // 初始容量 100个玩家 TODO 配置文件自定义
+                        0.75f,
+                        true
+                ) {
+                    @Override
+                    protected boolean removeEldestEntry(Map.Entry<UUID, List<PlayerTask>> eldest) {
+                        // 当缓存超过最大容量时，移除最久未使用的条目
+                        // 但如果是脏数据，先保存到数据库
+                        if (size() > MAX_CACHE_SIZE) {
+                            if (playerTaskCache.getDirtyEntries().contains(eldest.getKey())) {
+                                saveCacheToDatabase(eldest.getValue(), false);
+                                playerTaskCache.getDirtyEntries().remove(eldest.getKey());
+                            }
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+        return a;
     }
 
     private final List<PlayerTask> finished = new ArrayList<>();
@@ -52,7 +80,7 @@ public class DataSyncTask extends UniversalRunnable {
         }
 
         if (!allDirty.isEmpty()) {
-            saveCacheToDatabase(allDirty);
+            saveCacheToDatabase(allDirty, false);
         }
         dirty.clear();
 
@@ -87,7 +115,7 @@ public class DataSyncTask extends UniversalRunnable {
                     List<PlayerTask> playerTaskList = copyCache.get(uuid);
                     if (playerTaskList != null) {
                         // 保存到数据库
-                        saveCacheToDatabase(playerTaskList);
+                        saveCacheToDatabase(playerTaskList, false);
                         // 从脏数据集合中移除
                         dirty.remove(uuid);
                     }
@@ -112,7 +140,7 @@ public class DataSyncTask extends UniversalRunnable {
                 Player p = plugin.getServer().getPlayer(uuid);
                 if (p == null || !p.isOnline()) {
                     if (dirty.contains(uuid)) {
-                        saveCacheToDatabase(cache.get(uuid));
+                        saveCacheToDatabase(cache.get(uuid), false);
                         dirty.remove(uuid);
                     }
                 }
@@ -158,15 +186,25 @@ public class DataSyncTask extends UniversalRunnable {
         playerTaskCache.getMaybeFinishedPlayers().clear();
     }
 
-    private void saveCacheToDatabase(@Nonnull List<PlayerTask> playerTaskList) {
+    private void saveCacheToDatabase(@Nonnull List<PlayerTask> playerTaskList, boolean firstSave) {
         if (playerTaskList.isEmpty()) return;
 
-        try {
-            databaseDAO.updateTasks(playerTaskList);
-            databaseDAO.updateProgress(playerTaskList);
-            log.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
-        } catch (SQLException e) {
-            log.error("批量保存玩家任务到数据库失败", e);
+        if (firstSave) {
+            try {
+                databaseDAO.startTask(playerTaskList);
+                databaseDAO.setProgress(playerTaskList);
+                log.info("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
+        } else {
+            try {
+                databaseDAO.updateTasks(playerTaskList);
+                databaseDAO.updateProgress(playerTaskList);
+                log.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
         }
     }
 }
