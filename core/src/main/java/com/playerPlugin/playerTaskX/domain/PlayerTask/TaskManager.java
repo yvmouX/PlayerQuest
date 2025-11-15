@@ -1,14 +1,13 @@
-package com.playerPlugin.playerTaskX.PlayerTask;
+package com.playerPlugin.playerTaskX.domain.PlayerTask;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXActionType;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTrigger;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXActionType;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskType;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.Requirement;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.configs.TaskConfig;
-import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.exceptions.InvalidTask;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;

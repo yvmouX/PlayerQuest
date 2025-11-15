@@ -2,9 +2,8 @@ package com.playerPlugin.playerTaskX.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

@@ -1,7 +1,7 @@
 //package com.playerPlugin.playerTaskX.dataManager.impl;
 //
-//import com.playerPlugin.playerTaskX.PlayerTask.Enum.PlayerTaskStatus;
-//import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+//import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PlayerTaskStatus;
+//import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
 //import com.playerPlugin.playerTaskX.dataManager.Storge;
 //
 //import java.io.File;

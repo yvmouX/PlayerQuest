@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.PlayerTask.Enum;
+package com.playerPlugin.playerTaskX.domain.PlayerTask.Enum;
 
 import java.util.Locale;
 

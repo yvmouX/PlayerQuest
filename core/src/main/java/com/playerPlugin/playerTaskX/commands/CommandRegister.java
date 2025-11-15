@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.commands;
 
 import cn.yvmou.ylib.YLib;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;

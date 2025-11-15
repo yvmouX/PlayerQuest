@@ -1,9 +1,7 @@
-package com.playerPlugin.playerTaskX.PlayerTask.Task;
+package com.playerPlugin.playerTaskX.domain.PlayerTask.Task;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskStatus;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.PlayerTask.Task;
+package com.playerPlugin.playerTaskX.domain.PlayerTask.Task;
 
 import org.bukkit.entity.Player;
 

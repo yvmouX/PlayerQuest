@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX.EventHandlers;
 import com.playerPlugin.playerTaskX.EventHandlers.handlers.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.EventHandlers.handlers.task.TaskEventHandler;
 import com.playerPlugin.playerTaskX.EventHandlers.services.impl.PlaceService;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.EventHandlers.services.impl.BreakService;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;

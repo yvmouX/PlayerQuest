@@ -2,8 +2,8 @@ package com.playerPlugin.playerTaskX.dataManager;
 
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.impl.scheduler.UniversalRunnable;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.TaskTarget;
 import com.playerPlugin.playerTaskX.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.dataManager.dao.DatabaseDAO;
 import org.bukkit.entity.Player;

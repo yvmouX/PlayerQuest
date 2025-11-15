@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.PlayerTask.Task;
+package com.playerPlugin.playerTaskX.domain.PlayerTask.Task;
 
 import java.util.ArrayList;
 import java.util.List;

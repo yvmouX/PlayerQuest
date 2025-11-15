@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.EventHandlers.EventsRegister;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskProgressManger;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskProgressManger;
 import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
@@ -12,7 +12,7 @@ import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeTypes;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.plugin.RegisteredServiceProvider;

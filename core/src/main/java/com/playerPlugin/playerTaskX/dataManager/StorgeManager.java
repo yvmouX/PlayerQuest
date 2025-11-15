@@ -1,10 +1,10 @@
 package com.playerPlugin.playerTaskX.dataManager;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.playerTaskX.dataManager.dao.CacheDAO;

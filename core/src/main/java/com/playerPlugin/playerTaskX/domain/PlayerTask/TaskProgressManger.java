@@ -1,10 +1,10 @@
-package com.playerPlugin.playerTaskX.PlayerTask;
+package com.playerPlugin.playerTaskX.domain.PlayerTask;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.Task;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.Requirement;
-import com.playerPlugin.playerTaskX.PlayerTask.Trigger.TaskTriggerExecutor;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.Task;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.Requirement;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;

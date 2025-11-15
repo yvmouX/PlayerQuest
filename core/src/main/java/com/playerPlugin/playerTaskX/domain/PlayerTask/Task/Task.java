@@ -1,7 +1,6 @@
-package com.playerPlugin.playerTaskX.PlayerTask.Task;
+package com.playerPlugin.playerTaskX.domain.PlayerTask.Task;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.PlayerTask.Task.TaskTarget.TaskTarget;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskType;
 
 import java.util.List;
 import java.util.Objects;

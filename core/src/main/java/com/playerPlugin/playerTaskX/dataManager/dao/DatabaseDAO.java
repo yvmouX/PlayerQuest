@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.dataManager.dao;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 
 import java.sql.PreparedStatement;

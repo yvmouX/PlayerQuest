@@ -1,14 +1,9 @@
 package com.playerPlugin.playerTaskX.dataManager.cache;
 
-import com.playerPlugin.playerTaskX.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
-import org.bukkit.plugin.java.JavaPlugin;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.Task.PlayerTask;
 
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.playerPlugin.playerTaskX.utils.Help.log;
 
 
 /**

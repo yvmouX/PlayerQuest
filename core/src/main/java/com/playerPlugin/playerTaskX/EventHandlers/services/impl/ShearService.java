@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.EventHandlers.services.impl;
 
 import com.playerPlugin.playerTaskX.EventHandlers.services.EventCallback;
-import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
+import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskManager;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
