@@ -6,6 +6,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
 
+@Deprecated(forRemoval = true)
 public record EnchantEvent(
         Player player,
         Map<Enchantment, Integer> enchantments,

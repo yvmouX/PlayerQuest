@@ -9,6 +9,7 @@ import com.playerPlugin.playerTaskX.EventHandlers.services.impl.BreakService;
 import com.playerPlugin.playerTaskX.dataManager.StorgeManager;
 import com.playerPlugin.playerTaskX.structs.eventStructs.BreakEvent;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 
 import static com.playerPlugin.playerTaskX.utils.Help.log;
@@ -60,7 +61,7 @@ public class EventsRegister {
 
         try {
             // 注册破坏方块事件的回调服务
-            callbackManager.registerCallback(BreakEvent.class, new BreakService());
+            callbackManager.registerCallback(BlockBreakEvent.class, new BreakService(tm, sm));
             // 注册放置方块事件的回调服务
             callbackManager.registerCallback(BlockPlaceEvent.class, new PlaceService(tm, sm));
 

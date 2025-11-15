@@ -4,6 +4,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerFishEvent;
 
+@Deprecated(forRemoval = true)
 public record FishingEvent(
     Player player,
     Entity caught, // null, Entity
