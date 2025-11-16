@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.PlayerTask.Trigger;
 import org.bukkit.entity.Player;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getEconomy;
+import static com.playerPlugin.playerTaskX.PlayerTaskX.getPlayerPointsAPI;
 
 public class TaskTriggerEco {
     /**
@@ -12,6 +13,11 @@ public class TaskTriggerEco {
      * @param amount 量
      */
     protected static void handleMoney(Player player, String amount) {
+        if (getEconomy() == null) {
+            // TODO 是否需要日志？
+            return;
+        }
+
         try {
             int money = Integer.parseInt(amount);
 
@@ -33,9 +39,21 @@ public class TaskTriggerEco {
      * @param amount 量
      */
     protected static void handlePoint(Player player, String amount) {
-        // TODO 处理点券
+        if (getPlayerPointsAPI() == null) {
+            // TODO 是否需要日志？
+            return;
+        }
+
         try {
             int points = Integer.parseInt(amount);
+
+            if (points > 0) {
+                getPlayerPointsAPI().give(player.getUniqueId(), points);
+            } else {
+                // 两个方法都只接受大于0的amount
+                getPlayerPointsAPI().take(player.getUniqueId(), -points);
+            }
+
         } catch (NumberFormatException e) {
             // 无效数量
         }
@@ -68,8 +86,6 @@ public class TaskTriggerEco {
             if (level > 0) {
                 player.giveExpLevels(player.getLevel() + level);
             } else {
-                // TODO 需要防止扣成负值吗？
-                // TODO 大概需要，防着点
                 player.giveExpLevels(Math.max(0, player.getLevel() + level));
             }
         } catch (NumberFormatException e) {

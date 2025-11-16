@@ -15,6 +15,9 @@ import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.PlayerTask.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
+import org.black_ixx.playerpoints.PlayerPoints;
+import org.black_ixx.playerpoints.PlayerPointsAPI;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
@@ -24,6 +27,7 @@ import static com.playerPlugin.playerTaskX.utils.Help.log;
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
     private static Economy economy = null;
+    private static PlayerPointsAPI ppAPI = null;
     private static ViewFrame viewFrame = null;
     private ConfigManager configManager = null;
     private TaskManager taskManager = null;
@@ -35,6 +39,14 @@ public final class PlayerTaskX extends JavaPlugin {
             return null;
         }
         return economy;
+    }
+
+    @Nullable
+    public static PlayerPointsAPI getPlayerPointsAPI() {
+        if (ppAPI == null) {
+            return null;
+        }
+        return ppAPI;
     }
 
     @Nullable
@@ -64,6 +76,10 @@ public final class PlayerTaskX extends JavaPlugin {
 
         if (!setupEconomy()) {
             log.error("Vault未安装");
+        }
+
+        if (!setupPlayerPoints()) {
+            log.error("PlayerPoints未安装");
         }
 
         // 2、注册配置文件
@@ -130,5 +146,13 @@ public final class PlayerTaskX extends JavaPlugin {
         }
         economy = rsp.getProvider();
         return true;
+    }
+
+    private boolean setupPlayerPoints() {
+        if (Bukkit.getPluginManager().isPluginEnabled("PlayerPoints")) {
+            ppAPI = PlayerPoints.getInstance().getAPI();
+            return true;
+        }
+        return false;
     }
 }
