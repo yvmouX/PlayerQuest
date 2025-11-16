@@ -5,6 +5,8 @@ import org.bukkit.entity.Player;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getEconomy;
 import static com.playerPlugin.playerTaskX.PlayerTaskX.getPlayerPointsAPI;
 
+import static com.playerPlugin.playerTaskX.utils.Help.log;
+
 public class TaskTriggerEco {
     /**
      * 处理资金
@@ -14,7 +16,7 @@ public class TaskTriggerEco {
      */
     protected static void handleMoney(Player player, String amount) {
         if (getEconomy() == null) {
-            // TODO 是否需要日志？
+            log.info("未安装Vault，无法使用经济功能");
             return;
         }
 
@@ -40,7 +42,7 @@ public class TaskTriggerEco {
      */
     protected static void handlePoint(Player player, String amount) {
         if (getPlayerPointsAPI() == null) {
-            // TODO 是否需要日志？
+            log.info("未安装PlayerPoints，无法使用点券功能");
             return;
         }
 
