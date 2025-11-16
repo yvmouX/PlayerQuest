@@ -38,6 +38,7 @@ allprojects {
         maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
         maven { url = uri("https://jitpack.io")}
         maven { url = uri("https://repo.tcoded.com/releases")}
+        maven { url = uri("https://repo.rosewooddev.io/repository/public/")}
     }
 
     dependencies {
@@ -50,6 +51,7 @@ allprojects {
         implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
         compileOnly("com.github.MilkBowl:VaultAPI:1.7")
         implementation("mysql:mysql-connector-java:8.0.33")
+        implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
     }
 }
 
