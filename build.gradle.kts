@@ -52,6 +52,7 @@ allprojects {
         compileOnly("com.github.MilkBowl:VaultAPI:1.7")
         implementation("mysql:mysql-connector-java:8.0.33")
         implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     }
 }
 

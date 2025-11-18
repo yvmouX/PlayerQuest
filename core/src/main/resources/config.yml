@@ -1,0 +1,18 @@
+http:
+  enabled: true
+  port: 8081
+  host: 127.0.0.1
+  token: "random_long_secret_here"
+storage:
+  type: sqlite
+  sqlite:
+    file: plugins/yourplugin/data.db
+  mysql:
+    url: jdbc:mysql://host:3306/db
+    user: root
+    password: secret
+extensions:
+  dir: plugins/yourplugin/extensions
+cache:
+  enabled: true
+  ttl: 300 # seconds

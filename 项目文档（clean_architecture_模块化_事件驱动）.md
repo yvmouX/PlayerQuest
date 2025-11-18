@@ -716,7 +716,7 @@ package com.yourplugin.api;              // 对外 API
 
 ----
 
-### 2.2 EventBus 完整伪代码（线程安全、支持同步/异步）
+### 2.2 EventBus 完整伪代码（线程安全、支持同步/异步）OVER
 
 ```java
 // 文件: com.yourplugin.core.event.EventBus.java

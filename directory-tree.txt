@@ -1,0 +1,119 @@
+PlayerTaskX/
+├── core/
+│   ├── src/
+│   │   ├── main/
+│   │       ├── java/
+│   │       │   ├── com/
+│   │       │       ├── playerPlugin/
+│   │       │           ├── playerTaskX/
+│   │       │               ├── EventHandlers/
+│   │       │               │   ├── handlers/
+│   │       │               │   │   ├── taskDefinition/
+│   │       │               │   │   │   └── TaskEventHandler.java
+│   │       │               │   │   └── PlayerJoinHandler.java
+│   │       │               │   ├── services/
+│   │       │               │   │   ├── impl/
+│   │       │               │   │   │   ├── BreakService.java
+│   │       │               │   │   │   ├── CraftService.java
+│   │       │               │   │   │   ├── EnchantService.java
+│   │       │               │   │   │   ├── FishingService.java
+│   │       │               │   │   │   ├── FoodLevelService.java
+│   │       │               │   │   │   ├── PlaceService.java
+│   │       │               │   │   │   ├── ShearService.java
+│   │       │               │   │   │   └── TameService.java
+│   │       │               │   │   └── EventCallback.java
+│   │       │               │   ├── EventCallbackManager.java
+│   │       │               │   └── EventsRegister.java
+│   │       │               ├── UI/
+│   │       │               │   └── MainUI.java
+│   │       │               ├── commands/
+│   │       │               │   ├── admin/
+│   │       │               │   │   ├── ListCmd.java
+│   │       │               │   │   ├── ReloadCmd.java
+│   │       │               │   │   └── StartCmd.java
+│   │       │               │   ├── user/
+│   │       │               │   │   ├── AcceptCmd.java
+│   │       │               │   │   ├── HelpCmd.java
+│   │       │               │   │   ├── MeCmd.java
+│   │       │               │   │   └── OpenCmd.java
+│   │       │               │   └── CommandRegister.java
+│   │       │               ├── configs/
+│   │       │               │   ├── ConfigManager.java
+│   │       │               │   └── TaskConfig.java
+│   │       │               ├── consts/
+│   │       │               │   ├── TaskTriggerCommands.java
+│   │       │               │   ├── TaskTriggerSpecialProperties.java
+│   │       │               │   └── common.java
+│   │       │               ├── dataManager/
+│   │       │               │   ├── cache/
+│   │       │               │   │   └── PlayerTaskCache.java
+│   │       │               │   ├── dao/
+│   │       │               │   │   ├── CacheDAO.java
+│   │       │               │   │   └── DatabaseDAO.java
+│   │       │               │   ├── impl/
+│   │       │               │   │   ├── MySQLManager.java
+│   │       │               │   │   └── SQLiteManager.java
+│   │       │               │   ├── sql/
+│   │       │               │   │   └── MysqlSQL.java
+│   │       │               │   ├── DataSyncTask.java
+│   │       │               │   ├── Storge.java
+│   │       │               │   ├── StorgeManager.java
+│   │       │               │   └── StorgeTypes.java
+│   │       │               ├── domain/
+│   │       │               │   ├── PlayerTask/
+│   │       │               │       ├── Enum/
+│   │       │               │       │   ├── PTXActionType.java
+│   │       │               │       │   ├── PTXTaskStatus.java
+│   │       │               │       │   └── PTXTaskType.java
+│   │       │               │       ├── Task/
+│   │       │               │       │   ├── PlayerTask.java
+│   │       │               │       │   ├── Requirement.java
+│   │       │               │       │   ├── Task.java
+│   │       │               │       │   ├── TaskCondition.java
+│   │       │               │       │   ├── TaskTarget.java
+│   │       │               │       │   └── TaskTrigger.java
+│   │       │               │       ├── Trigger/
+│   │       │               │       │   ├── TaskTriggerCommand.java
+│   │       │               │       │   ├── TaskTriggerEco.java
+│   │       │               │       │   ├── TaskTriggerExecutor.java
+│   │       │               │       │   ├── TaskTriggerMessage.java
+│   │       │               │       │   └── TaskTriggerSpecial.java
+│   │       │               │       ├── TaskManager.java
+│   │       │               │       └── TaskProgressManger.java
+│   │       │               ├── exceptions/
+│   │       │               │   └── InvalidTask.java
+│   │       │               ├── structs/
+│   │       │               │   ├── eventStructs/
+│   │       │               │       ├── BreakEvent.java
+│   │       │               │       ├── ConsumeEvent.java
+│   │       │               │       ├── CraftEvent.java
+│   │       │               │       ├── DeathEvent.java
+│   │       │               │       ├── EnchantEvent.java
+│   │       │               │       ├── FishingEvent.java
+│   │       │               │       ├── PlaceEvent.java
+│   │       │               │       ├── ShearEvent.java
+│   │       │               │       └── TameEvent.java
+│   │       │               ├── utils/
+│   │       │               │   ├── Help.java
+│   │       │               │   ├── Metrics.java
+│   │       │               │   └── UpdateHelper.java
+│   │       │               └── PlayerTaskX.java
+│   │       ├── resources/
+│   │           ├── config.yml
+│   │           ├── plugin.yml
+│   │           └── tasks.yml
+│   └── build.gradle.kts
+├── gradle/
+│   ├── wrapper/
+│       ├── gradle-wrapper.jar
+│       └── gradle-wrapper.properties
+├── lib/
+│   └── YLib-1.0.0-beta5.jar
+├── Command.md
+├── README.md
+├── build.gradle.kts
+├── gradle.properties
+├── gradlew
+├── settings.gradle.kts
+├── 项目文档_人工重写.md
+└── 项目文档（clean_architecture_模块化_事件驱动）.md
