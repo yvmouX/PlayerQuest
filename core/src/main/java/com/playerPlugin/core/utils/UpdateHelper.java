@@ -1,6 +1,6 @@
 package com.playerPlugin.core.utils;
 
-import com.playerPlugin.core.consts.common;
+import com.playerPlugin.common.Common;
 import org.bukkit.ChatColor;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -53,12 +53,12 @@ public class UpdateHelper {
             current = Integer.parseInt(currentVersionList.get(i));
             latest = Integer.parseInt(latestVersionList.get(i));
             if (current < latest) {
-                common.isLatest = false;
+                Common.isLatest = false;
                 log.info(ChatColor.GREEN, "有新版本可用，请前往 https://github.com/Findoutsider/PlayerTaskX/releases/latest 下载");
                 break;
             }
             if (current > latest) {
-                common.isLatest = true;
+                Common.isLatest = true;
                 break;
             }
         }

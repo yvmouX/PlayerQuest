@@ -9,7 +9,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static com.playerPlugin.core.consts.common.DATABASE;
+import static com.playerPlugin.common.Common.DATABASE;
 import static com.playerPlugin.core.utils.Help.log;
 
 public class SQLiteManager implements Storge {

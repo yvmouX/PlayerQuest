@@ -1,6 +1,6 @@
-package com.playerPlugin.core.consts;
+package com.playerPlugin.common;
 
-public class common {
+public class Common {
     public static boolean isLatest = true;
     public static final String Repo_URL = "https://api.github.com/repos/Findoutsider/PlayerTaskX/releases/latest";
     public static final String CONFIG = "config.yml";

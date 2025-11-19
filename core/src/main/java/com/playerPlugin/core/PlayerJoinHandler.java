@@ -7,8 +7,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
-import static com.playerPlugin.core.consts.common.Repo_URL;
-import static com.playerPlugin.core.consts.common.isLatest;
+import static com.playerPlugin.common.Common.Repo_URL;
+import static com.playerPlugin.common.Common.isLatest;
 
 public class PlayerJoinHandler implements Listener {
     private final StorgeManager sm;

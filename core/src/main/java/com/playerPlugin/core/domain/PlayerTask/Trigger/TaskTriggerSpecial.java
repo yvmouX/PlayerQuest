@@ -13,16 +13,16 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import static com.playerPlugin.core.consts.common.ARMOR;
-import static com.playerPlugin.core.consts.common.ARMOR_TOUGHNESS;
-import static com.playerPlugin.core.consts.common.DAMAGE;
-import static com.playerPlugin.core.consts.common.ENCHANTS;
-import static com.playerPlugin.core.consts.common.EQUIPPED_DAMAGE;
-import static com.playerPlugin.core.consts.common.EQUIPPED_HEALTH;
-import static com.playerPlugin.core.consts.common.HEALTH;
-import static com.playerPlugin.core.consts.common.LORE;
-import static com.playerPlugin.core.consts.common.NAME;
-import static com.playerPlugin.core.consts.common.UNBREAKABLE;
+import static com.playerPlugin.common.Common.ARMOR;
+import static com.playerPlugin.common.Common.ARMOR_TOUGHNESS;
+import static com.playerPlugin.common.Common.DAMAGE;
+import static com.playerPlugin.common.Common.ENCHANTS;
+import static com.playerPlugin.common.Common.EQUIPPED_DAMAGE;
+import static com.playerPlugin.common.Common.EQUIPPED_HEALTH;
+import static com.playerPlugin.common.Common.HEALTH;
+import static com.playerPlugin.common.Common.LORE;
+import static com.playerPlugin.common.Common.NAME;
+import static com.playerPlugin.common.Common.UNBREAKABLE;
 import static com.playerPlugin.core.utils.Help.log;
 
 import java.util.Arrays;
