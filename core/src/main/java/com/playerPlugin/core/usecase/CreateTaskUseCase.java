@@ -2,7 +2,7 @@ package com.playerPlugin.core.usecase;
 
 import com.playerPlugin.core.utils.DomainMapper;
 import com.paperPlugin.api.model.TaskDefinitionDTO;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.repository.TaskRepository;
 
 public class CreateTaskUseCase {

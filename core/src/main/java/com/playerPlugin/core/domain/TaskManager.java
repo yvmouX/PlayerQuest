@@ -1,10 +1,10 @@
-package com.playerPlugin.core.domain.PlayerTask;
+package com.playerPlugin.core.domain;
 
 import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskType;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskTarget;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskTrigger;
+import com.playerPlugin.core.domain.Task.TaskProgress;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskTarget;
+import com.playerPlugin.core.domain.Task.TaskTrigger;
 import com.playerPlugin.core.configs.TaskConfig;
 import com.playerPlugin.common.exceptions.InvalidTask;
 
@@ -142,17 +142,17 @@ public class TaskManager {
     }
 
     /**
-     * 将 taskID 转换为 PlayerTask
+     * 将 taskID 转换为 TaskProgress
      *
      * @param taskId 任务 ID
-     * @return {@link PlayerTask }
+     * @return {@link TaskProgress }
      */
     @Nullable
     @org.jetbrains.annotations.Nullable
-    public PlayerTask toPlayerTask(UUID uuid, String taskId) throws InvalidTask {
+    public TaskProgress toPlayerTask(UUID uuid, String taskId) throws InvalidTask {
         for (TaskDefinition taskDefinition : getAllTasks()) {
             if (taskDefinition.getId().equals(taskId)) {
-                return new PlayerTask(uuid, taskDefinition);
+                return new TaskProgress(uuid, taskDefinition);
             }
         }
         throw new InvalidTask("任务ID: " + taskId + " 无效。");

@@ -1,6 +1,6 @@
 package com.playerPlugin.core.dataManager.cache;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.core.domain.Task.TaskProgress;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,25 +20,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlayerTaskCache {
 
     // LRU缓存 - 使用LinkedHashMap实现LRU策略
-    private Map<UUID, List<PlayerTask>> cache;
+    private Map<UUID, List<TaskProgress>> cache;
 
     // 脏数据标记 - 记录需要保存到数据库的数据
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
-    private final Set<PlayerTask> maybeFinishedEntries = ConcurrentHashMap.newKeySet();
+    private final Set<TaskProgress> maybeFinishedEntries = ConcurrentHashMap.newKeySet();
 
     public PlayerTaskCache() {
     }
 
-    public void init(Map<UUID, List<PlayerTask>> playerTaskCache) {
+    public void init(Map<UUID, List<TaskProgress>> playerTaskCache) {
         this.cache = playerTaskCache;
     }
 
     /**
      * 获取缓存
      *
-     * @return {@link Map }<{@link UUID }, {@link List }<{@link PlayerTask }>>
+     * @return {@link Map }<{@link UUID }, {@link List }<{@link TaskProgress }>>
      */
-    public Map<UUID, List<PlayerTask>> getCache() {
+    public Map<UUID, List<TaskProgress>> getCache() {
         return cache;
     }
 
@@ -49,19 +49,19 @@ public class PlayerTaskCache {
     /**
      * 获取所有可能完成任务的玩家
      *
-     * @return {@link Set }<{@link PlayerTask }>
+     * @return {@link Set }<{@link TaskProgress }>
      */
-    public Set<PlayerTask> getMaybeFinishedPlayers() {
+    public Set<TaskProgress> getMaybeFinishedPlayers() {
         return maybeFinishedEntries;
     }
 
     /**
      * 添加可能完成任务的玩家
      *
-     * @param playerTask 玩家任务
+     * @param taskProgress 玩家任务
      */
-    public void addMaybeFinishedPlayer(PlayerTask playerTask) {
-        maybeFinishedEntries.add(playerTask);
+    public void addMaybeFinishedPlayer(TaskProgress taskProgress) {
+        maybeFinishedEntries.add(taskProgress);
     }
 
 }

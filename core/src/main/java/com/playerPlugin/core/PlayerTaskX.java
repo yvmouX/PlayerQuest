@@ -2,7 +2,7 @@ package com.playerPlugin.core;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.core.EventHandlers.EventsRegister;
-import com.playerPlugin.core.domain.PlayerTask.TaskProgressManger;
+import com.playerPlugin.core.domain.TaskProgressManger;
 import com.playerPlugin.core.UI.MainUI;
 import com.playerPlugin.core.configs.ConfigManager;
 import com.playerPlugin.core.configs.TaskConfig;
@@ -11,7 +11,7 @@ import com.playerPlugin.core.dataManager.StorgeManager;
 import com.playerPlugin.core.dataManager.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
-import com.playerPlugin.core.domain.PlayerTask.TaskManager;
+import com.playerPlugin.core.domain.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;

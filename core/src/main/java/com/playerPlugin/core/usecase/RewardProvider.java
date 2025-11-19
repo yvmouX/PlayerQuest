@@ -1,6 +1,6 @@
 package com.playerPlugin.core.usecase;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.Reward;
+import com.playerPlugin.core.domain.Task.Reward;
 
 import java.util.UUID;
 

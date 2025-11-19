@@ -1,17 +1,17 @@
 package com.playerPlugin.core.repository;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.core.domain.Task.TaskProgress;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface PlayerProgressRepository {
-    Optional<PlayerTask> find(UUID player, String taskId);
+    Optional<TaskProgress> find(UUID player, String taskId);
 
-    List<PlayerTask> findByPlayer(UUID player);
+    List<TaskProgress> findByPlayer(UUID player);
 
-    void save(PlayerTask progress);
+    void save(TaskProgress progress);
 
     void delete(UUID player, String taskId);
 }

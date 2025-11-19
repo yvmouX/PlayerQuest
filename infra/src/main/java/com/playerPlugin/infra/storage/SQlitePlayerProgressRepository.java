@@ -2,7 +2,7 @@ package com.playerPlugin.infra.storage;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.repository.PlayerProgressRepository;
 import com.playerPlugin.core.utils.DomainMapper;
 
@@ -29,7 +29,7 @@ public class SQlitePlayerProgressRepository implements PlayerProgressRepository 
     }
 
     @Override
-    public Optional<PlayerTask> find(UUID player, String taskId) {
+    public Optional<TaskProgress> find(UUID player, String taskId) {
         String sql = "SELECT progress_json, started_at, completed_at FROM player_progress WHERE player_uuid = ? AND task_id = ?";
         try (Connection c = ds.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, player.toString());
@@ -37,7 +37,7 @@ public class SQlitePlayerProgressRepository implements PlayerProgressRepository 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 String pj = rs.getString(1);
-                PlayerTask dto = json.readValue(pj, PlayerTask.class);
+                TaskProgress dto = json.readValue(pj, TaskProgress.class);
                 return Optional.of(DomainMapper.progressFromDTO(dto));
             }
         } catch (SQLException | IOException e) {
@@ -46,12 +46,12 @@ public class SQlitePlayerProgressRepository implements PlayerProgressRepository 
     }
 
     @Override
-    public List<PlayerTask> findByPlayer(UUID player) {
+    public List<TaskProgress> findByPlayer(UUID player) {
         return List.of();
     }
 
     @Override
-    public void save(PlayerTask progress) {
+    public void save(TaskProgress progress) {
         String pj;
         try {
             pj = json.writeValueAsString(DomainMapper.progressToDTO(progress));

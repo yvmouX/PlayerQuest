@@ -1,16 +1,16 @@
-package com.playerPlugin.core.domain.PlayerTask.Task;
+package com.playerPlugin.core.domain.Task;
 
-import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
+import com.playerPlugin.common.Enum.PTXTaskStatus;
 
 import java.util.Objects;
 import java.util.UUID;
 
-public class PlayerTask {
+public class TaskProgress {
     private UUID uuid;
     private TaskDefinition taskDefinition;
     private PTXTaskStatus status;
 
-    public PlayerTask(UUID playerId, TaskDefinition taskDefinition) {
+    public TaskProgress(UUID playerId, TaskDefinition taskDefinition) {
         this.uuid = playerId;
         this.taskDefinition = taskDefinition;
         this.status = PTXTaskStatus.IN_PROGRESS;
@@ -30,7 +30,7 @@ public class PlayerTask {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        PlayerTask that = (PlayerTask) o;
+        TaskProgress that = (TaskProgress) o;
         return Objects.equals(uuid, that.uuid) && Objects.equals(taskDefinition, that.taskDefinition) && status == that.status;
     }
 }

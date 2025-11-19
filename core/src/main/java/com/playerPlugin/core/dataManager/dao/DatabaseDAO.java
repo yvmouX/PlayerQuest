@@ -1,6 +1,6 @@
 package com.playerPlugin.core.dataManager.dao;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.dataManager.StorgeManager;
 
 import java.sql.PreparedStatement;
@@ -24,10 +24,10 @@ public class DatabaseDAO {
      *
      * @param tasks 任务列表
      */
-    public void startTask(List<PlayerTask> tasks) throws SQLException {
+    public void startTask(List<TaskProgress> tasks) throws SQLException {
         String sql = "INSERT OR IGNORE INTO player_tasks (player_uuid, task_id, status, start_time) VALUES (?, ?, 0, ?)";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            for (PlayerTask task : tasks) {
+            for (TaskProgress task : tasks) {
                 ps.setString(1, task.getUUID().toString());
                 ps.setString(2, task.getTask().getId());
                 ps.setLong(3, System.currentTimeMillis());
@@ -48,10 +48,10 @@ public class DatabaseDAO {
      *
      * @param tasks 任务列表
      */
-    public void updateTasks(List<PlayerTask> tasks) throws SQLException {
+    public void updateTasks(List<TaskProgress> tasks) throws SQLException {
         String sql = "UPDATE player_tasks SET status = ? WHERE player_uuid = ? AND task_id = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            for (PlayerTask task : tasks) {
+            for (TaskProgress task : tasks) {
                 int statusId = switch (task.getStatus()) {
                     case IN_PROGRESS -> 0;
                     case COMPLETED -> 1;
@@ -88,10 +88,10 @@ public class DatabaseDAO {
     /**
      * 初始化进度为0
      *
-     * @param playerTasks 玩家任务
+     * @param taskProgresses 玩家任务
      */
-    public void initProgress(List<PlayerTask> playerTasks) {
-        playerTasks.forEach(task -> {
+    public void initProgress(List<TaskProgress> taskProgresses) {
+        taskProgresses.forEach(task -> {
             task.getTask().getTargets().forEach(target -> {
                 UUID uuid = task.getUUID();
                 String taskId = task.getTask().getId();
@@ -118,10 +118,10 @@ public class DatabaseDAO {
     /**
      * 设置任务
      *
-     * @param playerTasks 玩家任务
+     * @param taskProgresses 玩家任务
      */
-    public void setProgress(List<PlayerTask> playerTasks) {
-        playerTasks.forEach(task -> {
+    public void setProgress(List<TaskProgress> taskProgresses) {
+        taskProgresses.forEach(task -> {
             task.getTask().getTargets().forEach(target -> {
                 UUID uuid = task.getUUID();
                 String taskId = task.getTask().getId();
@@ -147,8 +147,8 @@ public class DatabaseDAO {
         });
     }
 
-    public void updateProgress(List<PlayerTask> playerTasks) {
-        playerTasks.forEach(task -> {
+    public void updateProgress(List<TaskProgress> taskProgresses) {
+        taskProgresses.forEach(task -> {
             task.getTask().getTargets().forEach(target -> {
                 UUID uuid = task.getUUID();
                 String taskId = task.getTask().getId();
@@ -158,7 +158,7 @@ public class DatabaseDAO {
                 boolean isValid = isValidTaskProgress(uuid, taskId, targetIndex);
                 log.debug(String.format("isValidTaskProgress is:" + isValid));
                 if (!isValid) { // TODO 暂时使用这种方法
-                    initProgress(playerTasks);
+                    initProgress(taskProgresses);
                     log.info(
                             String.format(
                                     "初始化玩家 %s 在任务 %s 需求索引 %d 的任务进度",

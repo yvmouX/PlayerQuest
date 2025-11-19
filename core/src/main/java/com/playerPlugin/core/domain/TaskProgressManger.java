@@ -1,10 +1,10 @@
-package com.playerPlugin.core.domain.PlayerTask;
+package com.playerPlugin.core.domain;
 
 import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
-import com.playerPlugin.core.domain.PlayerTask.Task.Requirement;
-import com.playerPlugin.core.domain.PlayerTask.Trigger.TaskTriggerExecutor;
+import com.playerPlugin.core.domain.Task.TaskProgress;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.Requirement;
+import com.playerPlugin.core.domain.Trigger.TaskTriggerExecutor;
 import com.playerPlugin.core.dataManager.StorgeManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -25,12 +25,12 @@ public class TaskProgressManger {
     /**
      * 增加玩家任务进度
      *
-     * @param playerTask 玩家任务
+     * @param taskProgress 玩家任务
      * @param material   材料
      * @param progress   进展数量
      */
-    public void increasePlayerTaskProgress(PlayerTask playerTask, Material material, int progress) {
-        playerTask.getTask().getTargets().forEach(target -> {
+    public void increasePlayerTaskProgress(TaskProgress taskProgress, Material material, int progress) {
+        taskProgress.getTask().getTargets().forEach(target -> {
             switch (target.getAction()) {
                 case DROP ->  {}
                 case TAKE -> {}
@@ -43,7 +43,7 @@ public class TaskProgressManger {
                     Requirement r = target.getRequirement();
                         if (r.getMaterial() == material) {
                             if (target.incrementCurrent(progress)) {
-                                sm.getCacheDAO().addMaybeFinishedPlayer(playerTask);
+                                sm.getCacheDAO().addMaybeFinishedPlayer(taskProgress);
                             }
                         }
                 }
@@ -85,7 +85,7 @@ public class TaskProgressManger {
 
         // 向缓存添加任务
         if (canStart.get()) {
-            sm.getCacheDAO().addPlayerTaskToCache(List.of(new PlayerTask(uuid, taskDefinition)), true);
+            sm.getCacheDAO().addPlayerTaskToCache(List.of(new TaskProgress(uuid, taskDefinition)), true);
         }
 
         // 执行任务开始触发器

@@ -1,7 +1,7 @@
 package com.playerPlugin.core.usecase;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskCondition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskCondition;
 import com.playerPlugin.core.event.EventBus;
 import com.playerPlugin.core.extension.TaskType;
 import com.playerPlugin.core.extension.TaskTypeRegistry;

@@ -1,6 +1,6 @@
 package com.playerPlugin.infra.storage;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.repository.TaskRepository;
 
 import java.util.List;

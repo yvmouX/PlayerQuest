@@ -1,6 +1,6 @@
 package com.playerPlugin.core.repository;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 
 import java.util.List;
 import java.util.Optional;

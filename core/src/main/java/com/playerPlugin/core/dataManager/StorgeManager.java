@@ -1,10 +1,10 @@
 package com.playerPlugin.core.dataManager;
 
 import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskTarget;
-import com.playerPlugin.core.domain.PlayerTask.TaskManager;
+import com.playerPlugin.core.domain.Task.TaskProgress;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskTarget;
+import com.playerPlugin.core.domain.TaskManager;
 import com.playerPlugin.core.PlayerTaskX;
 import com.playerPlugin.core.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.core.dataManager.dao.CacheDAO;
@@ -126,7 +126,7 @@ public class StorgeManager {
      *
      */
     public void databaseToCache(Player p) {
-        List<PlayerTask> inProgressTaskIdList = new LinkedList<>();
+        List<TaskProgress> inProgressTaskIdList = new LinkedList<>();
         try {
             inProgressTaskIdList = getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
         } catch (SQLException e) {
@@ -173,11 +173,11 @@ public class StorgeManager {
      *
      * @param uuid           uuid
      * @param requiredStatus 必需状态
-     * @return {@link List }<{@link PlayerTask }>
+     * @return {@link List }<{@link TaskProgress }>
      * @throws SQLException sql异常
      */
-    public List<PlayerTask> getTaskListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
-        List<PlayerTask> result = new ArrayList<>();
+    public List<TaskProgress> getTaskListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
+        List<TaskProgress> result = new ArrayList<>();
         String sql = "SELECT * FROM player_tasks WHERE player_uuid = ? AND status = 0";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
@@ -197,7 +197,7 @@ public class StorgeManager {
                 }
 
                 result.add(
-                        new PlayerTask(uuid,
+                        new TaskProgress(uuid,
                                 new TaskDefinition
                                         (
                                                 taskId,

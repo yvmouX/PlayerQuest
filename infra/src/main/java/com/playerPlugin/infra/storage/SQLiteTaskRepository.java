@@ -3,7 +3,7 @@ package com.playerPlugin.infra.storage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperPlugin.api.model.TaskDefinitionDTO;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.repository.TaskRepository;
 import com.playerPlugin.core.utils.DomainMapper;
 

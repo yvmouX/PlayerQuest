@@ -1,7 +1,7 @@
 package com.playerPlugin.core.dataManager.dao;
 
 import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
+import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.dataManager.StorgeManager;
 import com.playerPlugin.core.dataManager.cache.PlayerTaskCache;
 
@@ -38,11 +38,11 @@ public class CacheDAO {
      *
      * @param uuid   玩家UUID
      * @param status 任务状态
-     * @return {@link List }<{@link PlayerTask }>
+     * @return {@link List }<{@link TaskProgress }>
      */
     @Nullable
     @org.jetbrains.annotations.Nullable
-    public List<PlayerTask> getPlayerTaskListFormCache(UUID uuid, PTXTaskStatus status) {
+    public List<TaskProgress> getPlayerTaskListFormCache(UUID uuid, PTXTaskStatus status) {
         return playerTaskCache.getCache().get(uuid).stream()
                 .filter(playerTask -> playerTask.getStatus() == status)
                 .toList();
@@ -52,11 +52,11 @@ public class CacheDAO {
      * 获取指定玩家的所有任务列表，从缓存中获取
      *
      * @param uuid uuid
-     * @return {@link List }<{@link PlayerTask }>
+     * @return {@link List }<{@link TaskProgress }>
      */
     @Nullable
     @org.jetbrains.annotations.Nullable
-    public List<PlayerTask> getPlayerTaskListFormCache(UUID uuid) {
+    public List<TaskProgress> getPlayerTaskListFormCache(UUID uuid) {
         return playerTaskCache.getCache().get(uuid).stream()
                 .toList();
     }
@@ -64,37 +64,37 @@ public class CacheDAO {
     /**
      * 添加可能完成任务的玩家到缓存
      *
-     * @param playerTask 玩家任务
+     * @param taskProgress 玩家任务
      */
-    public void addMaybeFinishedPlayer(PlayerTask playerTask) {
-        if (playerTaskCache.getCache().get(playerTask.getUUID()) == null) {
-            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + playerTask.getUUID());
+    public void addMaybeFinishedPlayer(TaskProgress taskProgress) {
+        if (playerTaskCache.getCache().get(taskProgress.getUUID()) == null) {
+            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + taskProgress.getUUID());
             return;
         }
-        playerTaskCache.addMaybeFinishedPlayer(playerTask);
+        playerTaskCache.addMaybeFinishedPlayer(taskProgress);
     }
 
     /**
      * 将玩家任务添加到缓存
      *
-     * @param playerTaskList 玩家任务列表
+     * @param taskProgressList 玩家任务列表
      * @param immediateSave  立即保存
      */
-    public void addPlayerTaskToCache(List<PlayerTask> playerTaskList, boolean immediateSave) {
-        for (PlayerTask playerTask : playerTaskList) {
-            UUID uuid = playerTask.getUUID();
+    public void addPlayerTaskToCache(List<TaskProgress> taskProgressList, boolean immediateSave) {
+        for (TaskProgress taskProgress : taskProgressList) {
+            UUID uuid = taskProgress.getUUID();
 
-            List<PlayerTask> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
+            List<TaskProgress> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
 
             // TODO
-            // 必须重写 PlayerTask 的 equals() 和 hashCode()
-            // taskList.contains(playerTask) 依赖 PlayerTask 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
-            if (!taskList.contains(playerTask)) {
-                taskList.add(playerTask);
+            // 必须重写 TaskProgress 的 equals() 和 hashCode()
+            // taskList.contains(taskProgress) 依赖 TaskProgress 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
+            if (!taskList.contains(taskProgress)) {
+                taskList.add(taskProgress);
             }
 
             if (immediateSave) {
-                saveCacheToDatabase(List.of(playerTask), true);
+                saveCacheToDatabase(List.of(taskProgress), true);
             } else {
                 playerTaskCache.getDirtyEntries().add(uuid);
             }
@@ -109,14 +109,14 @@ public class CacheDAO {
      * 如果缓存中存在该玩家的任务列表，则更新该任务
      * </p>
      *
-     * @param playerTaskList 玩家任务列表
+     * @param taskProgressList 玩家任务列表
      * @param immediateSave  是否立即保存到数据库
      */
-    public void updatePlayerTaskToCache(List<PlayerTask> playerTaskList, boolean immediateSave) {
-        playerTaskList.forEach(playerTask -> {
+    public void updatePlayerTaskToCache(List<TaskProgress> taskProgressList, boolean immediateSave) {
+        taskProgressList.forEach(playerTask -> {
             UUID uuid = playerTask.getUUID();
 
-            List<PlayerTask> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
+            List<TaskProgress> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
 
             // 总结：taskList 不为空时更新任务
             // 如果在 cache 中找不到该 uuid 的任务列表
@@ -153,22 +153,22 @@ public class CacheDAO {
         });
     }
 
-    private void saveCacheToDatabase(@Nonnull List<PlayerTask> playerTaskList, boolean firstSave) {
-        if (playerTaskList.isEmpty()) return;
+    private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
+        if (taskProgressList.isEmpty()) return;
 
         if (firstSave) {
             try {
-                sm.getDatabaseDAO().startTask(playerTaskList);
-                sm.getDatabaseDAO().setProgress(playerTaskList);
-                log.info("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+                sm.getDatabaseDAO().startTask(taskProgressList);
+                sm.getDatabaseDAO().setProgress(taskProgressList);
+                log.info("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
             } catch (SQLException e) {
                 log.error("批量保存玩家任务到数据库失败", e);
             }
         } else {
             try {
-                sm.getDatabaseDAO().updateTasks(playerTaskList);
-                sm.getDatabaseDAO().updateProgress(playerTaskList);
-                log.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+                sm.getDatabaseDAO().updateTasks(taskProgressList);
+                sm.getDatabaseDAO().updateProgress(taskProgressList);
+                log.debug("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
             } catch (SQLException e) {
                 log.error("批量保存玩家任务到数据库失败", e);
             }

@@ -2,8 +2,8 @@ package com.playerPlugin.core.dataManager;
 
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.impl.scheduler.UniversalRunnable;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskTarget;
+import com.playerPlugin.core.domain.Task.TaskProgress;
+import com.playerPlugin.core.domain.Task.TaskTarget;
 import com.playerPlugin.core.dataManager.cache.PlayerTaskCache;
 import com.playerPlugin.core.dataManager.dao.DatabaseDAO;
 import org.bukkit.entity.Player;
@@ -29,16 +29,16 @@ public class DataSyncTask extends UniversalRunnable {
         playerTaskCache.init(c());
     }
 
-    private Map<UUID, List<PlayerTask>> c() {
-        Map<UUID, List<PlayerTask>> a;
+    private Map<UUID, List<TaskProgress>> c() {
+        Map<UUID, List<TaskProgress>> a;
         a = Collections.synchronizedMap(
-                new LinkedHashMap<UUID, List<PlayerTask>>(
+                new LinkedHashMap<UUID, List<TaskProgress>>(
                         MAX_CACHE_SIZE, // 初始容量 100个玩家 TODO 配置文件自定义
                         0.75f,
                         true
                 ) {
                     @Override
-                    protected boolean removeEldestEntry(Map.Entry<UUID, List<PlayerTask>> eldest) {
+                    protected boolean removeEldestEntry(Map.Entry<UUID, List<TaskProgress>> eldest) {
                         // 当缓存超过最大容量时，移除最久未使用的条目
                         // 但如果是脏数据，先保存到数据库
                         if (size() > MAX_CACHE_SIZE) {
@@ -54,7 +54,7 @@ public class DataSyncTask extends UniversalRunnable {
         return a;
     }
 
-    private final List<PlayerTask> finished = new ArrayList<>();
+    private final List<TaskProgress> finished = new ArrayList<>();
     private final List<UniversalTask> universalTaskList = new ArrayList<>();
 
     @Override
@@ -70,12 +70,12 @@ public class DataSyncTask extends UniversalRunnable {
 
     public void stopSync() {
         Set<UUID> dirty = playerTaskCache.getDirtyEntries();
-        List<PlayerTask> allDirty = new ArrayList<>();
+        List<TaskProgress> allDirty = new ArrayList<>();
 
         for (UUID uuid : playerTaskCache.getDirtyEntries()) {
-            List<PlayerTask> playerTaskList = playerTaskCache.getCache().get(uuid);
-            if (playerTaskList != null) {
-                allDirty.addAll(playerTaskList);
+            List<TaskProgress> taskProgressList = playerTaskCache.getCache().get(uuid);
+            if (taskProgressList != null) {
+                allDirty.addAll(taskProgressList);
             }
         }
 
@@ -108,14 +108,14 @@ public class DataSyncTask extends UniversalRunnable {
             }
 
             Set<UUID> copyDirty = new HashSet<>(dirty);
-            Map<UUID, List<PlayerTask>> copyCache = playerTaskCache.getCache();
+            Map<UUID, List<TaskProgress>> copyCache = playerTaskCache.getCache();
 
             scheduler.runAsync(() -> {
                 for (UUID uuid : copyDirty) {
-                    List<PlayerTask> playerTaskList = copyCache.get(uuid);
-                    if (playerTaskList != null) {
+                    List<TaskProgress> taskProgressList = copyCache.get(uuid);
+                    if (taskProgressList != null) {
                         // 保存到数据库
-                        saveCacheToDatabase(playerTaskList, false);
+                        saveCacheToDatabase(taskProgressList, false);
                         // 从脏数据集合中移除
                         dirty.remove(uuid);
                     }
@@ -131,7 +131,7 @@ public class DataSyncTask extends UniversalRunnable {
      */
     private void clearCache() {
         UniversalTask u2 = scheduler.runTimer(() -> {
-            Map<UUID, List<PlayerTask>> cache = playerTaskCache.getCache();
+            Map<UUID, List<TaskProgress>> cache = playerTaskCache.getCache();
             Set<UUID> dirty = playerTaskCache.getDirtyEntries();
 
             Set<UUID> cachedPlayers = new HashSet<>(cache.keySet());
@@ -156,21 +156,21 @@ public class DataSyncTask extends UniversalRunnable {
      */
     private void syncProgressCacheToDatabase() {
         filterFinishedTasks();
-        for (PlayerTask playerTask : finished) {
-            databaseDAO.updateProgress(List.of(playerTask));
-            finished.remove(playerTask);
-            log.debug(String.format("玩家 %s 任务 %s 进度已同步到数据库", playerTask.getUUID(), playerTask.getTask().getId()));
+        for (TaskProgress taskProgress : finished) {
+            databaseDAO.updateProgress(List.of(taskProgress));
+            finished.remove(taskProgress);
+            log.debug(String.format("玩家 %s 任务 %s 进度已同步到数据库", taskProgress.getUUID(), taskProgress.getTask().getId()));
         }
     }
 
 
     private void filterFinishedTasks() {
         finished.clear();
-        Set<PlayerTask> playerTaskSet = new HashSet<>(playerTaskCache.getMaybeFinishedPlayers());
+        Set<TaskProgress> taskProgressSet = new HashSet<>(playerTaskCache.getMaybeFinishedPlayers());
 
-        for (PlayerTask playerTask : playerTaskSet) {
+        for (TaskProgress taskProgress : taskProgressSet) {
             boolean allFinished = true;
-            for (TaskTarget t : playerTask.getTask().getTargets()) {
+            for (TaskTarget t : taskProgress.getTask().getTargets()) {
                 if (t.isFinished()) {
                     continue;
                 }
@@ -178,7 +178,7 @@ public class DataSyncTask extends UniversalRunnable {
                 break;
             }
             if (allFinished) {
-                finished.add(playerTask);
+                finished.add(taskProgress);
             }
         }
 
@@ -186,22 +186,22 @@ public class DataSyncTask extends UniversalRunnable {
         playerTaskCache.getMaybeFinishedPlayers().clear();
     }
 
-    private void saveCacheToDatabase(@Nonnull List<PlayerTask> playerTaskList, boolean firstSave) {
-        if (playerTaskList.isEmpty()) return;
+    private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
+        if (taskProgressList.isEmpty()) return;
 
         if (firstSave) {
             try {
-                databaseDAO.startTask(playerTaskList);
-                databaseDAO.setProgress(playerTaskList);
-                log.info("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+                databaseDAO.startTask(taskProgressList);
+                databaseDAO.setProgress(taskProgressList);
+                log.info("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
             } catch (SQLException e) {
                 log.error("批量保存玩家任务到数据库失败", e);
             }
         } else {
             try {
-                databaseDAO.updateTasks(playerTaskList);
-                databaseDAO.updateProgress(playerTaskList);
-                log.debug("批量保存玩家任务到数据库成功，任务数量：" + playerTaskList.size());
+                databaseDAO.updateTasks(taskProgressList);
+                databaseDAO.updateProgress(taskProgressList);
+                log.debug("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
             } catch (SQLException e) {
                 log.error("批量保存玩家任务到数据库失败", e);
             }

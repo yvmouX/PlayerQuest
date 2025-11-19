@@ -1,7 +1,7 @@
 //package com.playerPlugin.playerTaskX.dataManager.impl;
 //
-//import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PlayerTaskStatus;
-//import com.playerPlugin.playerTaskX.domain.PlayerTask.TaskDefinition.PlayerTask;
+//import com.playerPlugin.playerTaskX.domain.TaskProgress.Enum.PlayerTaskStatus;
+//import com.playerPlugin.playerTaskX.domain.TaskProgress.TaskDefinition.TaskProgress;
 //import com.playerPlugin.playerTaskX.dataManager.Storge;
 //
 //import java.io.File;
@@ -68,7 +68,7 @@
 //    }
 //
 //    @Override
-//    public void createNewPlayer(PlayerTask task) throws SQLException {
+//    public void createNewPlayer(TaskProgress task) throws SQLException {
 //        if (conn == null || conn.isClosed()) {
 //            throw new SQLException("Connection is not open. Call connect() first.");
 //        }

@@ -1,7 +1,7 @@
 package com.playerPlugin.core.usecase;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.Reward;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.Reward;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.event.EventBus;
 
 import java.util.List;

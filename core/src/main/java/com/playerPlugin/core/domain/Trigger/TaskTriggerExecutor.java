@@ -1,6 +1,6 @@
-package com.playerPlugin.core.domain.PlayerTask.Trigger;
+package com.playerPlugin.core.domain.Trigger;
 
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import org.bukkit.entity.Player;
 
 import java.util.List;

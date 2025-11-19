@@ -2,8 +2,8 @@ package com.playerPlugin.infra.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.core.domain.PlayerTask.Task.PlayerTask;
-import com.playerPlugin.core.domain.PlayerTask.TaskManager;
+import com.playerPlugin.core.domain.Task.TaskProgress;
+import com.playerPlugin.core.domain.TaskManager;
 import com.playerPlugin.core.dataManager.StorgeManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -39,7 +39,7 @@ public class MeCmd implements SubCommand {
     private void me(CommandSender sender) {
         Player player = (Player) sender;
 
-        List<PlayerTask> tasks = sm.getCacheDAO().getPlayerTaskListFormCache(player.getUniqueId());
+        List<TaskProgress> tasks = sm.getCacheDAO().getPlayerTaskListFormCache(player.getUniqueId());
 
         if (tasks == null || tasks.isEmpty()) {
             player.sendMessage("§e你当前没有任务。");
@@ -48,7 +48,7 @@ public class MeCmd implements SubCommand {
 
         player.sendMessage("§6=== 你的任务列表 ===");
 
-        for (PlayerTask pt : tasks) {
+        for (TaskProgress pt : tasks) {
             String statusStr = switch (pt.getStatus()) {
                 case IN_PROGRESS -> "§a进行中";
                 case COMPLETED -> "§2已完成";

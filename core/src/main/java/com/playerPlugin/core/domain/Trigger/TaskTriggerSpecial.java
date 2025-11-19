@@ -1,4 +1,4 @@
-package com.playerPlugin.core.domain.PlayerTask.Trigger;
+package com.playerPlugin.core.domain.Trigger;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;

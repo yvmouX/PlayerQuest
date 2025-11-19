@@ -3,7 +3,7 @@ package com.playerPlugin.infra.cache;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
-import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 
 import java.util.ArrayList;
 import java.util.Collection;
