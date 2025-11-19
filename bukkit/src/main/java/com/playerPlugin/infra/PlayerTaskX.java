@@ -8,6 +8,7 @@ import com.playerPlugin.infra.dataManager.StorgeManager;
 import com.playerPlugin.infra.dataManager.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
+import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
@@ -15,6 +16,8 @@ import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.sql.SQLException;
 
 import static com.playerPlugin.core.utils.Help.log;
 
@@ -24,7 +27,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private PlayerPointsAPI ppAPI;
     private ViewFrame viewFrame;
     private ConfigManager configManager;
-    private TaskManager taskManager ;
     private StorgeManager storgeManager;
 
     @Override
@@ -52,7 +54,7 @@ public final class PlayerTaskX extends JavaPlugin {
             log.error("PlayerPoints未安装");
         }
 
-        // 2、注册配置文件
+        // 2、注册/保存配置文件
         configManager = ConfigManager.getInstance();
         configManager.initTaskConfig(new TaskConfig(this));
         TaskConfig taskConfig = configManager.getTaskConfig();
@@ -60,9 +62,18 @@ public final class PlayerTaskX extends JavaPlugin {
         this.saveDefaultConfig();
         taskConfig.saveDefaultTaskConfig();
 
-        // 3、注册 TaskManager
-        taskManager = TaskManager.init();
-        taskManager.loadTasksToCache(taskConfig);
+        // 加载任务到缓存
+        ReadConfigToCache readConfigToCache = new ReadConfigToCache();
+        readConfigToCache.loadTasksToCache(taskConfig);
+
+        // 创建 SQLITE 表
+        SQLiteRepositoryCreator creator = new SQLiteRepositoryCreator();
+        try {
+            creator.connect(this); // 连接并创建表
+        } catch (SQLException | ClassNotFoundException e) {
+            log.error("创建SQLITE表时发生错误：" + e.getMessage());
+        }
+
 
         // 4、注册 StorgeManager 连接数据库 开始数据同步任务 TODO 数据类型暂时硬编码为 SQLITE
         storgeManager = new StorgeManager(this, StorgeTypes.SQLITE, new SQLiteManager(), taskManager);

@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
 import static com.playerPlugin.common.Common.DATABASE;
 import static com.playerPlugin.core.utils.Help.log;
 
-public class SqLiteRepositoryCreator {
+public class SQLiteRepositoryCreator {
     private Connection conn;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
