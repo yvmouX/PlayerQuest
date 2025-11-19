@@ -7,3 +7,5 @@
 /.vscode
 /bin
 /core/build
+/api/build
+/common/build

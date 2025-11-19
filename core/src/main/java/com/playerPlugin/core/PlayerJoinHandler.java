@@ -1,4 +1,4 @@
-package com.playerPlugin.core.EventHandlers.handlers;
+package com.playerPlugin.core;
 
 import com.playerPlugin.core.dataManager.StorgeManager;
 import org.bukkit.entity.Player;
