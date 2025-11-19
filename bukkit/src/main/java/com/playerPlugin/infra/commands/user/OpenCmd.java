@@ -2,8 +2,8 @@ package com.playerPlugin.infra.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.core.PlayerTaskX;
-import com.playerPlugin.core.UI.MainUI;
+import com.playerPlugin.infra.PlayerTaskX;
+import com.playerPlugin.infra.UI.MainUI;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 

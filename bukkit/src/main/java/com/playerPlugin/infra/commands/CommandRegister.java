@@ -2,15 +2,15 @@ package com.playerPlugin.infra.commands;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.core.domain.TaskManager;
-import com.playerPlugin.core.PlayerTaskX;
+import com.playerPlugin.infra.PlayerTaskX;
 import com.playerPlugin.infra.commands.admin.ListCmd;
 import com.playerPlugin.infra.commands.admin.ReloadCmd;
 import com.playerPlugin.infra.commands.admin.StartCmd;
 import com.playerPlugin.infra.commands.user.AcceptCmd;
 import com.playerPlugin.infra.commands.user.MeCmd;
 import com.playerPlugin.infra.commands.user.OpenCmd;
-import com.playerPlugin.core.configs.TaskConfig;
-import com.playerPlugin.core.dataManager.StorgeManager;
+import com.playerPlugin.infra.configs.TaskConfig;
+import com.playerPlugin.infra.dataManager.StorgeManager;
 
 public class CommandRegister {
     private final PlayerTaskX plugin;
