@@ -3,7 +3,7 @@ package com.playerPlugin.infra.commands.user;
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.core.domain.Task.TaskProgress;
-import com.playerPlugin.core.domain.TaskManager;
+import com.playerPlugin.infra.TaskManager;
 import com.playerPlugin.infra.dataManager.StorgeManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

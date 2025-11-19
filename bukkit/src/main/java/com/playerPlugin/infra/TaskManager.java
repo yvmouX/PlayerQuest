@@ -1,12 +1,12 @@
-package com.playerPlugin.core.domain;
+package com.playerPlugin.infra;
 
-import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskType;
+import com.playerPlugin.common.Enum.PTXTaskType;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.TaskTarget;
 import com.playerPlugin.core.domain.Task.TaskTrigger;
-import com.playerPlugin.core.configs.TaskConfig;
 import com.playerPlugin.common.exceptions.InvalidTask;
+import com.playerPlugin.infra.configs.TaskConfig;
 
 import javax.annotation.Nullable;
 import java.util.*;

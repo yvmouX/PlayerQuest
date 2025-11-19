@@ -1,4 +1,4 @@
-package com.playerPlugin.core.domain;
+package com.playerPlugin.infra;
 
 import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.core.domain.Task.TaskProgress;
@@ -15,9 +15,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TaskProgressManger {
-    private final StorgeManager sm;
+    private final com.playerPlugin.infra.dataManager.StorgeManager sm;
     private final TaskManager tm;
-    public TaskProgressManger(StorgeManager sm, TaskManager tm) {
+    public TaskProgressManger(com.playerPlugin.infra.dataManager.StorgeManager sm, TaskManager tm) {
         this.sm = sm;
         this.tm = tm;
     }

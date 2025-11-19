@@ -1,16 +1,13 @@
 package com.playerPlugin.infra;
 
 import cn.yvmou.ylib.YLib;
-import com.playerPlugin.core.domain.TaskProgressManger;
 import com.playerPlugin.infra.UI.MainUI;
 import com.playerPlugin.infra.configs.ConfigManager;
 import com.playerPlugin.infra.configs.TaskConfig;
-import com.playerPlugin.infra.dataManager.impl.SQLiteManager;
 import com.playerPlugin.infra.dataManager.StorgeManager;
 import com.playerPlugin.infra.dataManager.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
-import com.playerPlugin.core.domain.TaskManager;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
@@ -18,42 +15,17 @@ import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.Nullable;
 
 import static com.playerPlugin.core.utils.Help.log;
 
 public final class PlayerTaskX extends JavaPlugin {
     private static YLib ylib;
-    private static Economy economy = null;
-    private static PlayerPointsAPI ppAPI = null;
-    private static ViewFrame viewFrame = null;
-    private ConfigManager configManager = null;
-    private TaskManager taskManager = null;
-    private StorgeManager storgeManager = null;
-
-    @Nullable
-    public static Economy getEconomy() {
-        if (economy == null) {
-            return null;
-        }
-        return economy;
-    }
-
-    @Nullable
-    public static PlayerPointsAPI getPlayerPointsAPI() {
-        if (ppAPI == null) {
-            return null;
-        }
-        return ppAPI;
-    }
-
-    @Nullable
-    public static ViewFrame getViewFrame() {
-        if (viewFrame == null) {
-            return null;
-        }
-        return viewFrame;
-    }
+    private Economy economy;
+    private PlayerPointsAPI ppAPI;
+    private ViewFrame viewFrame;
+    private ConfigManager configManager;
+    private TaskManager taskManager ;
+    private StorgeManager storgeManager;
 
     @Override
     public void onEnable() {
