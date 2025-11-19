@@ -1,6 +1,6 @@
 package com.paperPlugin.api;
 
-import com.paperPlugin.api.dto.TaskDefinitionDTO;
+import com.paperPlugin.api.model.TaskDefinitionDTO;
 
 import java.util.List;
 

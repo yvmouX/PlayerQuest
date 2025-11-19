@@ -1,4 +1,4 @@
-package com.playerPlugin.core.domain.PlayerTask.Enum;
+package com.playerPlugin.common.Enum;
 
 public enum PTXTaskStatus {
     IN_PROGRESS,

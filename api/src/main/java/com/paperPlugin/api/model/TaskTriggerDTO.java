@@ -1,4 +1,4 @@
-package com.paperPlugin.api.dto;
+package com.paperPlugin.api.model;
 
 import java.util.ArrayList;
 import java.util.List;

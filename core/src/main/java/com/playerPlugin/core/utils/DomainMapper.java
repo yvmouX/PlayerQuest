@@ -1,6 +1,6 @@
 package com.playerPlugin.core.utils;
 
-import com.paperPlugin.api.dto.TaskDefinitionDTO;
+import com.paperPlugin.api.model.TaskDefinitionDTO;
 import com.playerPlugin.core.domain.PlayerTask.Task.TaskDefinition;
 
 public class DomainMapper {

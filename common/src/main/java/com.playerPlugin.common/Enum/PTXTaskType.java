@@ -1,12 +1,12 @@
-package com.playerPlugin.core.domain.PlayerTask.Enum;
+package com.playerPlugin.common.Enum;
 
 import java.util.Locale;
 
 public enum PTXTaskType {
-    CYCLE,
-    FOREVER,
-    LIMIT,
-    NONE;
+    CYCLE, // 循环任务
+    FOREVER, // 永久任务
+    LIMIT, // 限时任务
+    NONE; // 无效
 
     private static boolean isValid(String value) {
         if (value == null || value.isEmpty()) {

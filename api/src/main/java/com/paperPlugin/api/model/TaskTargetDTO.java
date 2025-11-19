@@ -1,4 +1,4 @@
-package com.paperPlugin.api.dto;
+package com.paperPlugin.api.model;
 
 public class TaskTargetDTO {
     public int targetIndex;
