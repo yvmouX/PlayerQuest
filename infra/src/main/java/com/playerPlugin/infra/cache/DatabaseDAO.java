@@ -13,8 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-import static com.playerPlugin.core.utils.Help.log;
-
 public class DatabaseDAO {
     private final LoggerTools log;
     private final RepositoryCreator creator;

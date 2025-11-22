@@ -42,22 +42,54 @@ allprojects {
     }
 
     dependencies {
-        compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
         //implementation("com.github.yvmouX:YLib:1.0.0-beta4")
         implementation(files(rootProject.file("lib/YLib-1.0.0-beta5.jar")))
+    }
+}
+
+project(":common") {
+
+}
+
+project(":api") {
+    dependencies {
+        implementation(project(":common"))
+    }
+}
+
+project(":core") {
+    dependencies {
+        implementation(project(":common"))
+        implementation(project(":api"))
+    }
+}
+
+project(":infra") {
+    dependencies {
+        implementation(project(":common"))
+        implementation(project(":api"))
+        implementation(project(":core"))
+
         compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
-        compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
-        implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
-        implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
-        compileOnly("com.github.MilkBowl:VaultAPI:1.7")
         implementation("mysql:mysql-connector-java:8.0.33")
-        implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+        compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     }
 }
 
-dependencies {
-    implementation(project(":core"))
+project(":bukkit") {
+    dependencies {
+        implementation(project(":common"))
+        implementation(project(":api"))
+        implementation(project(":core"))
+        implementation(project(":infra"))
+
+        compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+        implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
+        implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
+        compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+        implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+    }
 }
 
 tasks {

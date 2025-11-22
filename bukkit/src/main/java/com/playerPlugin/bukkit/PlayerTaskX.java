@@ -3,18 +3,21 @@ package com.playerPlugin.bukkit;
 import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.tools.LoggerTools;
+import com.paperPlugin.api.events.TaskProgressEvent;
+import com.playerPlugin.bukkit.listeners.KillListener;
 import com.playerPlugin.core.event.SimpleEventBus;
 import com.playerPlugin.bukkit.UI.MainUI;
-import com.playerPlugin.bukkit.bridge.BukkitEventBridge;
 import com.playerPlugin.bukkit.commands.CommandRegister;
 import com.playerPlugin.bukkit.configs.ConfigManager;
 import com.playerPlugin.bukkit.configs.TaskConfig;
-import com.playerPlugin.infra.TaskProgressManger;
+import com.playerPlugin.core.repository.RepositoryCreator;
+import com.playerPlugin.infra.Infra;
 import com.playerPlugin.common.Enum.StorgeTypes;
-import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
-import com.playerPlugin.bukkit.listeners.EventsRegister;
-import com.playerPlugin.infra.cache.DataSyncTask;
+import com.playerPlugin.infra.cache.CacheDAO;
+import com.playerPlugin.infra.cache.DatabaseDAO;
+import com.playerPlugin.infra.cache.TaskCache;
+import com.playerPlugin.infra.storage.DataSyncTask;
 import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
@@ -87,15 +90,23 @@ public final class PlayerTaskX extends JavaPlugin {
             }
         }
         // 开始数据同步任务
-        new DataSyncTask().startSync();
-
-
-
-        // 5、注册 TaskProgressManger
-        new TaskProgressManger();
+        RepositoryCreator repositoryCreator = new Infra().getStorageCreator();
+        TaskCache taskCache = new TaskCache();
+        CacheDAO cacheDAO = new CacheDAO(log);
+        DatabaseDAO databaseDAO = new DatabaseDAO(log, repositoryCreator, cacheDAO);
+        new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
 
         // 6、注册事件
-        new EventsRegister(this, new BukkitEventBridge(new SimpleEventBus())).register();
+        // 初始化事件总线
+        SimpleEventBus eventBus = new SimpleEventBus();
+
+        // 注册事件处理程序
+        registerEventHandlers();
+
+        // 注册 Bukkit 事件监听器
+        KillListener killListener = new KillListener(eventBus);
+        getServer().getPluginManager().registerEvents(killListener, this);
+
 
         // 7、注册命令
         new CommandRegister(this, ylib, taskConfig, storgeManager, taskManager).registerCommands();
@@ -112,6 +123,23 @@ public final class PlayerTaskX extends JavaPlugin {
         UpdateHelper updateHelper = new UpdateHelper();
         updateHelper.checkUpdate(getDescription().getVersion());
 
+    }
+
+    private void registerEventHandlers() {
+        // 注册 TaskProgressEvent 的处理器
+        eventBus.register(TaskProgressEvent.class, event -> {
+            getLogger().info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
+                    event.getPlayerId(),
+                    event.getActionType(),
+                    event.getMobType(), // 假设你给 TaskProgressEvent 加了 getMobType 方法
+                    event.getProgress())); // 假设你给 TaskProgressEvent 加了 getProgress 方法
+
+            // 在这里可以触发任务更新、发送奖励等逻辑
+            // Player player = Bukkit.getPlayer(event.getPlayerId());
+            // if (player != null) {
+            //     player.sendMessage("你完成了一个击杀任务！");
+            // }
+        });
     }
 
     private void unregister() {

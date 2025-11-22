@@ -16,15 +16,11 @@ public class CommandRegister {
     private final PlayerTaskX plugin;
     private final YLib ylib;
     private final TaskConfig taskConfig;
-    private final StorgeManager sm;
-    private final TaskManager tm;
 
-    public CommandRegister(PlayerTaskX plugin, YLib ylib, TaskConfig taskConfig, StorgeManager sm, TaskManager tm) {
+    public CommandRegister(PlayerTaskX plugin, YLib ylib, TaskConfig taskConfig) {
         this.plugin = plugin;
         this.ylib = ylib;
         this.taskConfig = taskConfig;
-        this.sm = sm;
-        this.tm = tm;
     }
 
     public void registerCommands() {

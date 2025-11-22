@@ -1,7 +1,7 @@
-package com.playerPlugin.bukkit.listeners;
+package com.playerPlugin.bukkit;
 
-import com.playerPlugin.bukkit.PlayerTaskX;
 import com.playerPlugin.bukkit.bridge.BukkitEventBridge;
+import com.playerPlugin.bukkit.listeners.KillListener;
 
 public class EventsRegister {
     private final PlayerTaskX plugin;
@@ -13,6 +13,11 @@ public class EventsRegister {
     }
 
     public void register() {
+        registerEventHandlers();
         plugin.getServer().getPluginManager().registerEvents(new KillListener(bridge), plugin);
+    }
+
+    private void registerEventHandlers() {
+
     }
 }

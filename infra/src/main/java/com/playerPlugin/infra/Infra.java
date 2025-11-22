@@ -6,7 +6,6 @@ import com.playerPlugin.infra.storage.json.JsonRepositoryCreator;
 import com.playerPlugin.infra.storage.mysql.MySQLRepositoryCreator;
 import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import com.playerPlugin.infra.storage.yaml.YamlRepositoryCreator;
-import com.playerPlugin.infra.storage.yaml.YamlTaskProgressRepository;
 
 public class Infra {
     /**

@@ -1,55 +1,28 @@
-package com.playerPlugin.infra.cache;
+package com.playerPlugin.infra.storage;
 
+import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.impl.scheduler.UniversalRunnable;
+import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskTarget;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
+import com.playerPlugin.infra.cache.DatabaseDAO;
+import com.playerPlugin.infra.cache.TaskCache;
 
-import javax.annotation.Nonnull;
 import java.sql.SQLException;
 import java.util.*;
 
-import static com.playerPlugin.core.utils.Help.*;
-
 public class DataSyncTask extends UniversalRunnable {
-    private static final int MAX_CACHE_SIZE = 100;
-
-    private final JavaPlugin plugin;
-    private final ProgressCache progressCache;
+    private final LoggerTools log;
+    private final UniversalScheduler scheduler;
+    private final TaskCache taskCache;
     private final DatabaseDAO databaseDAO;
 
-    public DataSyncTask(JavaPlugin plugin, ProgressCache progressCache, DatabaseDAO databaseDAO) {
-        this.plugin = plugin;
-        this.progressCache = progressCache;
+    public DataSyncTask(LoggerTools log, UniversalScheduler scheduler, TaskCache taskCache, DatabaseDAO databaseDAO) {
+        this.log = log;
+        this.scheduler = scheduler;
+        this.taskCache = taskCache;
         this.databaseDAO = databaseDAO;
-        progressCache.init(c());
-    }
-
-    private Map<UUID, List<TaskProgress>> c() {
-        Map<UUID, List<TaskProgress>> a;
-        a = Collections.synchronizedMap(
-                new LinkedHashMap<UUID, List<TaskProgress>>(
-                        MAX_CACHE_SIZE, // 初始容量 100个玩家 TODO 配置文件自定义
-                        0.75f,
-                        true
-                ) {
-                    @Override
-                    protected boolean removeEldestEntry(Map.Entry<UUID, List<TaskProgress>> eldest) {
-                        // 当缓存超过最大容量时，移除最久未使用的条目
-                        // 但如果是脏数据，先保存到数据库
-                        if (size() > MAX_CACHE_SIZE) {
-                            if (progressCache.getDirtyEntries().contains(eldest.getKey())) {
-                                saveCacheToDatabase(eldest.getValue(), false);
-                                progressCache.getDirtyEntries().remove(eldest.getKey());
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-                });
-        return a;
     }
 
     private final List<TaskProgress> finished = new ArrayList<>();
@@ -67,11 +40,11 @@ public class DataSyncTask extends UniversalRunnable {
     }
 
     public void stopSync() {
-        Set<UUID> dirty = progressCache.getDirtyEntries();
+        Set<UUID> dirty = taskCache.getDirtyEntries();
         List<TaskProgress> allDirty = new ArrayList<>();
 
-        for (UUID uuid : progressCache.getDirtyEntries()) {
-            List<TaskProgress> taskProgressList = progressCache.getCache().get(uuid);
+        for (UUID uuid : taskCache.getDirtyEntries()) {
+            List<TaskProgress> taskProgressList = taskCache.getCache().get(uuid);
             if (taskProgressList != null) {
                 allDirty.addAll(taskProgressList);
             }
@@ -98,7 +71,7 @@ public class DataSyncTask extends UniversalRunnable {
      */
     private void syncCacheToDatabase() {
         UniversalTask u1 = scheduler.runTimer(() -> {
-            Set<UUID> dirty = progressCache.getDirtyEntries();
+            Set<UUID> dirty = taskCache.getDirtyEntries();
 
             if (dirty.isEmpty()) {
                 log.debug("没有脏数据需要同步");
@@ -106,7 +79,7 @@ public class DataSyncTask extends UniversalRunnable {
             }
 
             Set<UUID> copyDirty = new HashSet<>(dirty);
-            Map<UUID, List<TaskProgress>> copyCache = progressCache.getCache();
+            Map<UUID, List<TaskProgress>> copyCache = taskCache.getCache();
 
             scheduler.runAsync(() -> {
                 for (UUID uuid : copyDirty) {
@@ -124,25 +97,35 @@ public class DataSyncTask extends UniversalRunnable {
     }
 
     /**
-     * 定时清理缓存（20s）
+     * 定时清理已经离线的玩家缓存（20s）
      *
      */
-    private void clearCache() {
-        UniversalTask u2 = scheduler.runTimer(() -> {
-            Map<UUID, List<TaskProgress>> cache = progressCache.getCache();
-            Set<UUID> dirty = progressCache.getDirtyEntries();
+    private void clearCache(List<UUID> offlinePlayers) {
+        UniversalTask u2 = scheduler.runTimerAsync(() -> {
+            if (!offlinePlayers.isEmpty()) {
+                Map<UUID, List<TaskProgress>> cache = taskCache.getCache();
+                Set<UUID> dirty = taskCache.getDirtyEntries();
 
-            Set<UUID> cachedPlayers = new HashSet<>(cache.keySet());
+                List<UUID> processedPlayers = new ArrayList<>();
 
-            for (UUID uuid : cachedPlayers) {
-                Player p = plugin.getServer().getPlayer(uuid);
-                if (p == null || !p.isOnline()) {
-                    if (dirty.contains(uuid)) {
-                        saveCacheToDatabase(cache.get(uuid), false);
+                for (Map.Entry<UUID, List<TaskProgress>> entry : cache.entrySet()) {
+                    UUID uuid = entry.getKey();
+
+                    // 其实被添加到 dirty 集合中的玩家无非是由于离线导致的，这里额外判断一次是否是离线玩家，是为了保险起见
+                    // In fact, the players that are added to the dirty collection are caused by nothing more than being offline, and the extra judgment of whether they are offline players here is just for insurance purposes
+                    if (offlinePlayers.contains(uuid) && dirty.contains(uuid)) {
+                        saveCacheToDatabase(entry.getValue(), false);
+
+                        cache.remove(uuid);
+
                         dirty.remove(uuid);
+
+                        processedPlayers.add(uuid);
                     }
                 }
-                cache.remove(uuid);
+
+                offlinePlayers.removeAll(processedPlayers);
+                log.debug(String.format("已清理 %d 个玩家的缓存, 剩余 %d 个玩家", processedPlayers.size(), offlinePlayers.size()));
             }
         }, 20 * 20, 20 * 20);
         universalTaskList.add(u2);
@@ -164,7 +147,7 @@ public class DataSyncTask extends UniversalRunnable {
 
     private void filterFinishedTasks() {
         finished.clear();
-        Set<TaskProgress> taskProgressSet = new HashSet<>(progressCache.getMaybeFinishedPlayers());
+        Set<TaskProgress> taskProgressSet = new HashSet<>(taskCache.getMaybeFinishedPlayers());
 
         for (TaskProgress taskProgress : taskProgressSet) {
             boolean allFinished = true;
@@ -181,7 +164,7 @@ public class DataSyncTask extends UniversalRunnable {
         }
 
         // 清空 maybeFinishedPlayers 缓存，因为已完成的任务已筛选到 finished 中
-        progressCache.getMaybeFinishedPlayers().clear();
+        taskCache.getMaybeFinishedPlayers().clear();
     }
 
     private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
