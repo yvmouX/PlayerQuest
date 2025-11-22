@@ -13,10 +13,10 @@ import java.util.List;
 import java.util.UUID;
 
 public class CacheDAO {
-    private final TaskProgressCache cache;
+    private final ProgressCache cache;
     private final LoggerTools log;
 
-    public CacheDAO(TaskProgressCache cache, LoggerTools log) {
+    public CacheDAO(ProgressCache cache, LoggerTools log) {
         this.cache = cache;
         this.log = log;
     }
@@ -24,9 +24,9 @@ public class CacheDAO {
     /**
      * 获取任务进度缓存
      *
-     * @return {@link TaskProgressCache }
+     * @return {@link ProgressCache }
      */
-    public TaskProgressCache getTaskProgressCache() {
+    public ProgressCache getTaskProgressCache() {
         return cache;
     }
 

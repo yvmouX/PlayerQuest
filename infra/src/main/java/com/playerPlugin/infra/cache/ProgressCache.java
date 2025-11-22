@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author yvmoux
  * &#064;date  2025/11/03@date 2025/11/03
  */
-public class TaskProgressCache {
+public class ProgressCache {
 
     // LRU缓存 - 使用LinkedHashMap实现LRU策略
     private Map<UUID, List<TaskProgress>> cache;
@@ -26,7 +26,7 @@ public class TaskProgressCache {
     private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
     private final Set<TaskProgress> maybeFinishedEntries = ConcurrentHashMap.newKeySet();
 
-    public TaskProgressCache() {
+    public ProgressCache() {
     }
 
     public void init(Map<UUID, List<TaskProgress>> playerTaskCache) {
