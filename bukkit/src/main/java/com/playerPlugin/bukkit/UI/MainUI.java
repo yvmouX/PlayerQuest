@@ -1,4 +1,4 @@
-package com.playerPlugin.infra.UI;
+package com.playerPlugin.bukkit.UI;
 
 import me.devnatan.inventoryframework.View;
 import me.devnatan.inventoryframework.ViewConfigBuilder;

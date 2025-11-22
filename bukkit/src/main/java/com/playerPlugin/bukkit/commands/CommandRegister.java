@@ -1,15 +1,15 @@
-package com.playerPlugin.infra.commands;
+package com.playerPlugin.bukkit.commands;
 
 import cn.yvmou.ylib.YLib;
 import com.playerPlugin.infra.TaskManager;
-import com.playerPlugin.infra.PlayerTaskX;
-import com.playerPlugin.infra.commands.admin.ListCmd;
-import com.playerPlugin.infra.commands.admin.ReloadCmd;
-import com.playerPlugin.infra.commands.admin.StartCmd;
-import com.playerPlugin.infra.commands.user.AcceptCmd;
-import com.playerPlugin.infra.commands.user.MeCmd;
-import com.playerPlugin.infra.commands.user.OpenCmd;
-import com.playerPlugin.infra.configs.TaskConfig;
+import com.playerPlugin.bukkit.PlayerTaskX;
+import com.playerPlugin.bukkit.commands.admin.ListCmd;
+import com.playerPlugin.bukkit.commands.admin.ReloadCmd;
+import com.playerPlugin.bukkit.commands.admin.StartCmd;
+import com.playerPlugin.bukkit.commands.user.AcceptCmd;
+import com.playerPlugin.bukkit.commands.user.MeCmd;
+import com.playerPlugin.bukkit.commands.user.OpenCmd;
+import com.playerPlugin.bukkit.configs.TaskConfig;
 import com.playerPlugin.infra.dataManager.StorgeManager;
 
 public class CommandRegister {

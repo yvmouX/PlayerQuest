@@ -1,10 +1,12 @@
-package com.playerPlugin.infra;
+package com.playerPlugin.bukkit;
 
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.common.Enum.PTXActionType;
 import com.playerPlugin.common.Enum.PTXTaskType;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.TaskTarget;
 import com.playerPlugin.core.domain.Task.TaskTrigger;
-import com.playerPlugin.infra.configs.TaskConfig;
+import com.playerPlugin.bukkit.configs.TaskConfig;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
@@ -13,6 +15,12 @@ import java.util.Locale;
 import java.util.Map;
 
 public class ReadConfigToCache {
+    private final LoggerTools log;
+
+    public ReadConfigToCache(LoggerTools log) {
+        this.log = log;
+    }
+
     public void loadTasksToCache(TaskConfig taskConfig) {
         taskDefinitions.clear();
 

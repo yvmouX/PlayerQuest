@@ -1,7 +1,7 @@
-package com.playerPlugin.infra.configs;
+package com.playerPlugin.bukkit.configs;
 
 import com.google.common.base.Charsets;
-import com.playerPlugin.infra.PlayerTaskX;
+import com.playerPlugin.bukkit.PlayerTaskX;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 

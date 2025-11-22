@@ -1,4 +1,4 @@
-package com.playerPlugin.infra.commands.user;
+package com.playerPlugin.bukkit.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;

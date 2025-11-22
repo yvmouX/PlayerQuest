@@ -1,4 +1,4 @@
-package com.playerPlugin.infra.configs;
+package com.playerPlugin.bukkit.configs;
 
 public class ConfigManager {
     private TaskConfig taskConfig;

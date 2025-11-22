@@ -1,10 +1,9 @@
-package com.playerPlugin.infra.listeners;
+package com.playerPlugin.bukkit.listeners;
 
-import com.playerPlugin.infra.bridge.BukkitEventBridge;
+import com.playerPlugin.bukkit.bridge.BukkitEventBridge;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
  * 监听游戏事件

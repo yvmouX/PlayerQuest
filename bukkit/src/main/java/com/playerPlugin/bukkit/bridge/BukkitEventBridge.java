@@ -1,6 +1,7 @@
-package com.playerPlugin.infra.bridge;
+package com.playerPlugin.bukkit.bridge;
 
 import com.paperPlugin.api.events.TaskProgressEvent;
+import com.playerPlugin.common.Enum.PTXActionType;
 import com.playerPlugin.core.event.EventBus;
 
 import java.util.UUID;
@@ -27,7 +28,7 @@ public class BukkitEventBridge {
     public void pushKillEvent(UUID playerId, String mobType) {
         TaskProgressEvent event = new TaskProgressEvent(
                 playerId,
-                "KILL_MOB",
+                PTXActionType.KILL,
                 mobType,
                 1 // 默认每次击杀增加 1
         );
@@ -37,7 +38,7 @@ public class BukkitEventBridge {
     public void pushBreakEvent(UUID playerId, String blockType) {
         TaskProgressEvent event = new TaskProgressEvent(
                 playerId,
-                "BREAK_BLOCK",
+                PTXActionType.BREAK,
                 blockType,
                 1
         );
@@ -47,7 +48,7 @@ public class BukkitEventBridge {
     public void pushCraftEvent(UUID playerId, String itemType) {
         TaskProgressEvent event = new TaskProgressEvent(
                 playerId,
-                "CRAFT_ITEM",
+                PTXActionType.CRAFT,
                 itemType,
                 1
         );

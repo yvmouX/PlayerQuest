@@ -1,13 +1,17 @@
-package com.playerPlugin.infra;
+package com.playerPlugin.bukkit;
 
 import cn.yvmou.ylib.YLib;
-import com.playerPlugin.infra.UI.MainUI;
-import com.playerPlugin.infra.configs.ConfigManager;
-import com.playerPlugin.infra.configs.TaskConfig;
+import com.playerPlugin.core.event.SimpleEventBus;
+import com.playerPlugin.bukkit.UI.MainUI;
+import com.playerPlugin.bukkit.bridge.BukkitEventBridge;
+import com.playerPlugin.bukkit.commands.CommandRegister;
+import com.playerPlugin.bukkit.configs.ConfigManager;
+import com.playerPlugin.bukkit.configs.TaskConfig;
 import com.playerPlugin.infra.dataManager.StorgeManager;
 import com.playerPlugin.infra.dataManager.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
+import com.playerPlugin.bukkit.listeners.EventsRegister;
 import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
@@ -67,24 +71,26 @@ public final class PlayerTaskX extends JavaPlugin {
         readConfigToCache.loadTasksToCache(taskConfig);
 
         // 创建 SQLITE 表
-        SQLiteRepositoryCreator creator = new SQLiteRepositoryCreator();
-        try {
-            creator.connect(this); // 连接并创建表
-        } catch (SQLException | ClassNotFoundException e) {
-            log.error("创建SQLITE表时发生错误：" + e.getMessage());
+        StorgeTypes type;
+        type = StorgeTypes.SQLITE;
+        if (type == StorgeTypes.SQLITE) {
+            SQLiteRepositoryCreator creator = new SQLiteRepositoryCreator();
+            try {
+                creator.connect(this); // 连接并创建表
+            } catch (SQLException | ClassNotFoundException e) {
+                log.error("创建SQLITE表时发生错误：" + e.getMessage());
+            }
         }
-
-
-        // 4、注册 StorgeManager 连接数据库 开始数据同步任务 TODO 数据类型暂时硬编码为 SQLITE
-        storgeManager = new StorgeManager(this, StorgeTypes.SQLITE, new SQLiteManager(), taskManager);
-        storgeManager.connect();
+        // 开始数据同步任务
         storgeManager.getDataSyncTask().startSync();
 
+
+
         // 5、注册 TaskProgressManger
-        taskManager.initTaskProgressManger(new TaskProgressManger(storgeManager, taskManager));
+        new TaskProgressManger(storgeManager);
 
         // 6、注册事件
-        EventsRegister.register(this);
+        new EventsRegister(this, new BukkitEventBridge(new SimpleEventBus())).register();
 
         // 7、注册命令
         new CommandRegister(this, ylib, taskConfig, storgeManager, taskManager).registerCommands();

@@ -1,9 +1,9 @@
-package com.playerPlugin.infra.commands.admin;
+package com.playerPlugin.bukkit.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.infra.PlayerTaskX;
-import com.playerPlugin.infra.configs.TaskConfig;
+import com.playerPlugin.bukkit.PlayerTaskX;
+import com.playerPlugin.bukkit.configs.TaskConfig;
 import org.bukkit.command.CommandSender;
 
 public class ReloadCmd implements SubCommand {

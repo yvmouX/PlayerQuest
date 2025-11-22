@@ -1,4 +1,9 @@
-package com.playerPlugin.infra.adapter;
+package com.playerPlugin.bukkit.adapter;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
+import java.util.UUID;
 
 /**
  * 提供统一接口，与 Bukkit Player 解耦
