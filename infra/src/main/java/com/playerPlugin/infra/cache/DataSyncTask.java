@@ -1,11 +1,9 @@
-package com.playerPlugin.infra.dataManager;
+package com.playerPlugin.infra.cache;
 
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.impl.scheduler.UniversalRunnable;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskTarget;
-import com.playerPlugin.infra.cache.DatabaseDAO;
-import com.playerPlugin.infra.cache.ProgressCache;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -22,11 +20,11 @@ public class DataSyncTask extends UniversalRunnable {
     private final ProgressCache progressCache;
     private final DatabaseDAO databaseDAO;
 
-    public DataSyncTask(JavaPlugin plugin, ProgressCache playerTaskCache, DatabaseDAO databaseDAO) {
+    public DataSyncTask(JavaPlugin plugin, ProgressCache progressCache, DatabaseDAO databaseDAO) {
         this.plugin = plugin;
-        this.progressCache = playerTaskCache;
+        this.progressCache = progressCache;
         this.databaseDAO = databaseDAO;
-        playerTaskCache.init(c());
+        progressCache.init(c());
     }
 
     private Map<UUID, List<TaskProgress>> c() {

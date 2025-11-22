@@ -14,7 +14,7 @@ import com.playerPlugin.common.Enum.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
 import com.playerPlugin.bukkit.listeners.EventsRegister;
-import com.playerPlugin.infra.dataManager.DataSyncTask;
+import com.playerPlugin.infra.cache.DataSyncTask;
 import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
