@@ -1,5 +1,6 @@
 package com.playerPlugin.infra.storage.sqlite;
 
+import com.playerPlugin.core.repository.RepositoryCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -14,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 import static com.playerPlugin.common.Common.DATABASE;
 import static com.playerPlugin.core.utils.Help.log;
 
-public class SQLiteRepositoryCreator {
+public class SQLiteRepositoryCreator implements RepositoryCreator {
     private Connection conn;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
 

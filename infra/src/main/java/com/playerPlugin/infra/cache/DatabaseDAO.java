@@ -1,7 +1,12 @@
-package com.playerPlugin.infra.cache.dao;
+package com.playerPlugin.infra.cache;
 
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.common.Enum.PTXTaskStatus;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.TaskProgress;
-import com.playerPlugin.infra.dataManager.StorgeManager;
+import com.playerPlugin.core.domain.Task.TaskTarget;
+import com.playerPlugin.core.repository.RepositoryCreator;
+import org.bukkit.entity.Player;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,10 +16,14 @@ import java.util.*;
 import static com.playerPlugin.core.utils.Help.log;
 
 public class DatabaseDAO {
-    private final StorgeManager db;
+    private final LoggerTools log;
+    private final RepositoryCreator creator;
+    private final CacheDAO cache;
 
-    public DatabaseDAO(StorgeManager db) {
-        this.db = db;
+    public DatabaseDAO(LoggerTools log, RepositoryCreator creator, CacheDAO cache) {
+        this.log = log;
+        this.creator = creator;
+        this.cache = cache;
     }
 
 
@@ -26,7 +35,7 @@ public class DatabaseDAO {
      */
     public void startTask(List<TaskProgress> tasks) throws SQLException {
         String sql = "INSERT OR IGNORE INTO player_tasks (player_uuid, task_id, status, start_time) VALUES (?, ?, 0, ?)";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
             for (TaskProgress task : tasks) {
                 ps.setString(1, task.getUUID().toString());
                 ps.setString(2, task.getTask().getId());
@@ -50,7 +59,7 @@ public class DatabaseDAO {
      */
     public void updateTasks(List<TaskProgress> tasks) throws SQLException {
         String sql = "UPDATE player_tasks SET status = ? WHERE player_uuid = ? AND task_id = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
             for (TaskProgress task : tasks) {
                 int statusId = switch (task.getStatus()) {
                     case IN_PROGRESS -> 0;
@@ -74,7 +83,7 @@ public class DatabaseDAO {
      */
     public void finishTask(String uuid, String taskId) throws SQLException {
         String sql = "UPDATE player_tasks SET status = 1, finish_time = ? WHERE player_uuid = ? AND task_id = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
             ps.setLong(1, System.currentTimeMillis());
             ps.setString(2, uuid);
             ps.setString(3, taskId);
@@ -98,7 +107,7 @@ public class DatabaseDAO {
                 int index = target.getIndex();
 
                 String sql = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, 0)";
-                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
                     ps.setString(1, uuid.toString());
                     ps.setString(2, taskId);
                     ps.setInt(3, index);
@@ -129,7 +138,7 @@ public class DatabaseDAO {
                 int currentAmount = target.getCurrent();
 
                 String SQL = "INSERT OR IGNORE INTO player_task_progress (player_uuid, task_id, target_index, current_amount) VALUES (?, ?, ?, ?)";
-                try (PreparedStatement ps = db.getConnection().prepareStatement(SQL)) {
+                try (PreparedStatement ps = creator.getConnection().prepareStatement(SQL)) {
                     ps.setString(1, uuid.toString());
                     ps.setString(2, taskId);
                     ps.setInt(3, index);
@@ -168,7 +177,7 @@ public class DatabaseDAO {
                 }
 
                 String sql = "UPDATE player_task_progress SET current_amount = ? WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
-                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
                     ps.setInt(1, currentAmount);
                     ps.setString(2, uuid.toString());
                     ps.setString(3, taskId);
@@ -195,7 +204,7 @@ public class DatabaseDAO {
 
     private boolean isValidTaskProgress(UUID uuid, String taskId, int targetIndex) {
         String sql = "SELECT COUNT(*) FROM player_task_progress WHERE player_uuid = ? AND task_id = ? AND target_index = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
             ps.setString(1, String.valueOf(uuid));
             ps.setString(2, taskId);
             ps.setInt(3, targetIndex);
@@ -229,7 +238,7 @@ public class DatabaseDAO {
     public Map<Integer, Integer> getProgress(String uuid, String taskId) {
         Map<Integer, Integer> progress = new HashMap<>();
         String sql = "SELECT target_index, current_amount FROM player_task_progress WHERE player_uuid = ? AND task_id = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
             ps.setString(1, uuid);
             ps.setString(2, taskId);
             ResultSet rs = ps.executeQuery();
@@ -240,5 +249,110 @@ public class DatabaseDAO {
             e.printStackTrace();
         }
         return progress;
+    }
+
+    /**
+     * 从数据库加载数据到缓存
+     *
+     */
+    public void databaseToCache(Player p) {
+        List<TaskProgress> inProgressTaskIdList = new LinkedList<>();
+        try {
+            inProgressTaskIdList = getTaskListFromDatabase(p.getUniqueId(), PTXTaskStatus.IN_PROGRESS);
+        } catch (SQLException e) {
+            log.error("从数据库获取玩家 " + p.getName() + " 进行中的任务时失败：" + e.getMessage());
+        }
+
+        if (inProgressTaskIdList != null) {
+            getCacheDAO().updatePlayerTaskToCache(inProgressTaskIdList, false);
+            log.debug("已加载玩家 " + p.getName() + " 进行中的任务：" + inProgressTaskIdList + " 共 " + inProgressTaskIdList.size() + " 个");
+        }
+    }
+
+    public void cacheToDatabase(Player p) {
+        // TODO
+    }
+
+
+    /**
+     * 获取指定玩家的进行中任务ID列表
+     * 状态: 0:进行中
+     *
+     * @param uuid           玩家UUID
+     * @param requiredStatus 必需状态
+     * @return {@link List }<{@link String }>
+     * @throws SQLException sql异常
+     */
+    public List<String> getTaskIdListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
+        List<String> result = new ArrayList<>();
+        String sql = "SELECT * FROM player_tasks WHERE player_uuid = ? AND status = ?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, requiredStatus.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                if (isRequiredStatus(requiredStatus, rs)) continue;
+
+                result.add(rs.getString("task_id"));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从数据库获取任务列表
+     *
+     * @param uuid           uuid
+     * @param requiredStatus 必需状态
+     * @return {@link List }<{@link TaskProgress }>
+     * @throws SQLException sql异常
+     */
+    public List<TaskProgress> getTaskListFromDatabase(UUID uuid, PTXTaskStatus requiredStatus) throws SQLException {
+        List<TaskProgress> result = new ArrayList<>();
+        String sql = "SELECT * FROM player_tasks WHERE player_uuid = ? AND status = 0";
+        try (PreparedStatement ps = creator.getConnection().prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                if (isRequiredStatus(requiredStatus, rs)) continue;
+
+                String taskId = rs.getString("task_id");
+
+                // 处理任务目标，设置为玩家当前的进度
+                List<TaskTarget> handledTaskTargetList = tm.getTaskTargets(taskId);
+                for (TaskTarget taskTarget : handledTaskTargetList) {
+                    Map<Integer, Integer> progressMap = getDatabaseDAO().getProgress(uuid.toString(), taskId);
+                    taskTarget.setCurrent(
+                            progressMap.get(taskTarget.getIndex())
+                    );
+                }
+
+                result.add(
+                        new TaskProgress(uuid,
+                                new TaskDefinition
+                                        (
+                                                taskId,
+                                                tm.getTaskType(taskId),
+                                                tm.getTaskName(taskId),
+                                                handledTaskTargetList,
+                                                tm.getTaskTrigger(taskId)
+                                        )));
+            }
+        }
+        return result;
+    }
+
+    private boolean isRequiredStatus(PTXTaskStatus requiredStatus, ResultSet rs) throws SQLException {
+        PTXTaskStatus status = switch (rs.getInt("status")) {
+            case 0 -> PTXTaskStatus.IN_PROGRESS;
+            case 1 -> PTXTaskStatus.COMPLETED;
+            case 2 -> PTXTaskStatus.FAILED;
+            default -> throw new IllegalStateException("Unexpected value: " + rs.getInt("status"));
+        };
+
+        if (status != requiredStatus) {
+            return true;
+        }
+        return false;
     }
 }

@@ -1,11 +1,9 @@
 package com.playerPlugin.infra;
 
-import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.Requirement;
 import com.playerPlugin.core.domain.Trigger.TaskTriggerExecutor;
-import com.playerPlugin.core.dataManager.StorgeManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -16,10 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TaskProgressManger {
     private final com.playerPlugin.infra.dataManager.StorgeManager sm;
-    private final TaskManager tm;
-    public TaskProgressManger(com.playerPlugin.infra.dataManager.StorgeManager sm, TaskManager tm) {
+    public TaskProgressManger(com.playerPlugin.infra.dataManager.StorgeManager sm) {
         this.sm = sm;
-        this.tm = tm;
     }
 
     /**

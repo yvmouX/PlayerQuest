@@ -1,9 +1,8 @@
-package com.playerPlugin.infra.cache.dao;
+package com.playerPlugin.infra.cache;
 
-import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskStatus;
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.common.Enum.PTXTaskStatus;
 import com.playerPlugin.core.domain.Task.TaskProgress;
-import com.playerPlugin.infra.dataManager.StorgeManager;
-import com.playerPlugin.core.dataManager.cache.PlayerTaskCache;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -13,28 +12,26 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import static com.playerPlugin.core.utils.Help.log;
-
 public class CacheDAO {
-    private final StorgeManager sm;
-    private final PlayerTaskCache playerTaskCache;
+    private final TaskProgressCache cache;
+    private final LoggerTools log;
 
-    public CacheDAO(StorgeManager sm, PlayerTaskCache playerTaskCache) {
-        this.sm = sm;
-        this.playerTaskCache = playerTaskCache;
+    public CacheDAO(TaskProgressCache cache, LoggerTools log) {
+        this.cache = cache;
+        this.log = log;
     }
 
     /**
-     * 获取玩家任务缓存
+     * 获取任务进度缓存
      *
-     * @return {@link PlayerTaskCache }
+     * @return {@link TaskProgressCache }
      */
-    public PlayerTaskCache getPlayerTaskCache() {
-        return playerTaskCache;
+    public TaskProgressCache getTaskProgressCache() {
+        return cache;
     }
 
     /**
-     * 获取指定玩家和任务状态的任务列表，从缓存中获取
+     * 获取指定玩家和任务状态的任务进度列表，从缓存中获取
      *
      * @param uuid   玩家UUID
      * @param status 任务状态
@@ -42,22 +39,22 @@ public class CacheDAO {
      */
     @Nullable
     @org.jetbrains.annotations.Nullable
-    public List<TaskProgress> getPlayerTaskListFormCache(UUID uuid, PTXTaskStatus status) {
-        return playerTaskCache.getCache().get(uuid).stream()
-                .filter(playerTask -> playerTask.getStatus() == status)
+    public List<TaskProgress> getTaskProgressListFormCache(UUID uuid, PTXTaskStatus status) {
+        return cache.getCache().get(uuid).stream()
+                .filter(taskProgress -> taskProgress.getStatus() == status)
                 .toList();
     }
 
     /**
-     * 获取指定玩家的所有任务列表，从缓存中获取
+     * 获取指定玩家的所有任务进度列表，从缓存中获取
      *
      * @param uuid uuid
      * @return {@link List }<{@link TaskProgress }>
      */
     @Nullable
     @org.jetbrains.annotations.Nullable
-    public List<TaskProgress> getPlayerTaskListFormCache(UUID uuid) {
-        return playerTaskCache.getCache().get(uuid).stream()
+    public List<TaskProgress> getTaskProgressListFormCache(UUID uuid) {
+        return cache.getCache().get(uuid).stream()
                 .toList();
     }
 
@@ -66,25 +63,25 @@ public class CacheDAO {
      *
      * @param taskProgress 玩家任务
      */
-    public void addMaybeFinishedPlayer(TaskProgress taskProgress) {
-        if (playerTaskCache.getCache().get(taskProgress.getUUID()) == null) {
-            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedPlayers，但无法从缓存中获取到该玩家的任务列表：" + taskProgress.getUUID());
+    public void addMaybeFinishedTaskProgress(TaskProgress taskProgress) {
+        if (cache.getCache().get(taskProgress.getUUID()) == null) {
+            log.warn("尝试将可能完成任务的玩家添加到 maybeFinishedEntries，但无法从缓存中获取到该玩家的任务列表：" + taskProgress.getUUID());
             return;
         }
-        playerTaskCache.addMaybeFinishedPlayer(taskProgress);
+        cache.addMaybeFinishedPlayer(taskProgress);
     }
 
     /**
-     * 将玩家任务添加到缓存
+     * 将玩家任务进度添加到缓存
      *
-     * @param taskProgressList 玩家任务列表
+     * @param taskProgressList 玩家任务进度列表
      * @param immediateSave  立即保存
      */
     public void addPlayerTaskToCache(List<TaskProgress> taskProgressList, boolean immediateSave) {
         for (TaskProgress taskProgress : taskProgressList) {
             UUID uuid = taskProgress.getUUID();
 
-            List<TaskProgress> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
+            List<TaskProgress> taskList = cache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
 
             // TODO
             // 必须重写 TaskProgress 的 equals() 和 hashCode()
@@ -96,7 +93,7 @@ public class CacheDAO {
             if (immediateSave) {
                 saveCacheToDatabase(List.of(taskProgress), true);
             } else {
-                playerTaskCache.getDirtyEntries().add(uuid);
+                cache.getDirtyEntries().add(uuid);
             }
         }
     }
@@ -116,7 +113,7 @@ public class CacheDAO {
         taskProgressList.forEach(playerTask -> {
             UUID uuid = playerTask.getUUID();
 
-            List<TaskProgress> taskList = playerTaskCache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
+            List<TaskProgress> taskList = cache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
 
             // 总结：taskList 不为空时更新任务
             // 如果在 cache 中找不到该 uuid 的任务列表
@@ -142,7 +139,7 @@ public class CacheDAO {
             if (immediateSave) {
                 saveCacheToDatabase(Collections.singletonList(playerTask), false);
             } else {
-                playerTaskCache.getDirtyEntries().add(uuid);
+                cache.getDirtyEntries().add(uuid);
             }
 
             if (updated) {

@@ -1,5 +1,7 @@
 package com.playerPlugin.common;
 
+import com.playerPlugin.common.Enum.StorgeTypes;
+
 public class Common {
     public static boolean isLatest = true;
     public static final String Repo_URL = "https://api.github.com/repos/Findoutsider/PlayerTaskX/releases/latest";
@@ -16,4 +18,6 @@ public class Common {
     public static final String UNBREAKABLE = "UNBREAKABLE";
     public static final String ARMOR = "ARMOR";
     public static final String ARMOR_TOUGHNESS = "ARMOR_TOUGHNESS";
+
+    public static StorgeTypes DEFAULT_STORAGE;
 }

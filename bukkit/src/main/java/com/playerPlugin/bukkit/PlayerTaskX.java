@@ -1,17 +1,20 @@
 package com.playerPlugin.bukkit;
 
 import cn.yvmou.ylib.YLib;
+import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
+import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.core.event.SimpleEventBus;
 import com.playerPlugin.bukkit.UI.MainUI;
 import com.playerPlugin.bukkit.bridge.BukkitEventBridge;
 import com.playerPlugin.bukkit.commands.CommandRegister;
 import com.playerPlugin.bukkit.configs.ConfigManager;
 import com.playerPlugin.bukkit.configs.TaskConfig;
-import com.playerPlugin.infra.dataManager.StorgeManager;
-import com.playerPlugin.infra.dataManager.StorgeTypes;
+import com.playerPlugin.infra.TaskProgressManger;
+import com.playerPlugin.common.Enum.StorgeTypes;
 import com.playerPlugin.core.utils.Metrics;
 import com.playerPlugin.core.utils.UpdateHelper;
 import com.playerPlugin.bukkit.listeners.EventsRegister;
+import com.playerPlugin.infra.dataManager.DataSyncTask;
 import com.playerPlugin.infra.storage.sqlite.SQLiteRepositoryCreator;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
@@ -23,15 +26,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
 
-import static com.playerPlugin.core.utils.Help.log;
-
 public final class PlayerTaskX extends JavaPlugin {
-    private static YLib ylib;
+    private YLib ylib;
+    private LoggerTools log;
+    private UniversalScheduler scheduler;
     private Economy economy;
     private PlayerPointsAPI ppAPI;
     private ViewFrame viewFrame;
     private ConfigManager configManager;
-    private StorgeManager storgeManager;
+    public StorgeTypes storgeTypes;
 
     @Override
     public void onEnable() {
@@ -48,6 +51,9 @@ public final class PlayerTaskX extends JavaPlugin {
     private void register() {
         // 1、注册必要的前置
         ylib = new YLib(this);
+        log = ylib.getLoggerTools();
+        scheduler = ylib.getScheduler();
+
         new Metrics(this, 27726);
 
         if (!setupEconomy()) {
@@ -67,13 +73,12 @@ public final class PlayerTaskX extends JavaPlugin {
         taskConfig.saveDefaultTaskConfig();
 
         // 加载任务到缓存
-        ReadConfigToCache readConfigToCache = new ReadConfigToCache();
+        ReadConfigToCache readConfigToCache = new ReadConfigToCache(log);
         readConfigToCache.loadTasksToCache(taskConfig);
 
         // 创建 SQLITE 表
-        StorgeTypes type;
-        type = StorgeTypes.SQLITE;
-        if (type == StorgeTypes.SQLITE) {
+        storgeTypes = StorgeTypes.SQLITE;
+        if (storgeTypes == StorgeTypes.SQLITE) {
             SQLiteRepositoryCreator creator = new SQLiteRepositoryCreator();
             try {
                 creator.connect(this); // 连接并创建表
@@ -82,12 +87,12 @@ public final class PlayerTaskX extends JavaPlugin {
             }
         }
         // 开始数据同步任务
-        storgeManager.getDataSyncTask().startSync();
+        new DataSyncTask().startSync();
 
 
 
         // 5、注册 TaskProgressManger
-        new TaskProgressManger(storgeManager);
+        new TaskProgressManger();
 
         // 6、注册事件
         new EventsRegister(this, new BukkitEventBridge(new SimpleEventBus())).register();
