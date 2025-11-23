@@ -61,6 +61,18 @@ project(":core") {
     dependencies {
         implementation(project(":common"))
         implementation(project(":api"))
+
+        compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+        implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
+        implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
+        compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+        implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+
+        compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
+        implementation("mysql:mysql-connector-java:8.0.33")
+        compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
     }
 }
 

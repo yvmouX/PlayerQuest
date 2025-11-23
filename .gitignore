@@ -8,4 +8,4 @@
 /bin
 /core/build
 /api/build
-/common/build
+/core/src/main/java/com/playerPlugin/core/common/build

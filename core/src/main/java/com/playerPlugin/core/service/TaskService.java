@@ -25,7 +25,13 @@ public class TaskService implements TaskAPI {
         this.issueRewardUseCase = issueRewardUseCase;
     }
 
-    // TaskAPI 方法样例
+
+
+    /**
+     * 获取所有任务定义
+     *
+     * @return 任务定义DTO列表
+     */
     @Override
     public List<TaskDefinitionDTO> listTasks() {
         return taskRepo.loadAll().stream().map(DomainMapper::toDTO).collect(Collectors.toList());

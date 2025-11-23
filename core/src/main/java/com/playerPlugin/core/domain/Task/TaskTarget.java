@@ -1,6 +1,6 @@
 package com.playerPlugin.core.domain.Task;
 
-import com.playerPlugin.common.Enum.PTXActionType;
+import com.playerPlugin.core.common.Enum.PTXActionType;
 
 public class TaskTarget {
     private int targetIndex;

@@ -1,21 +1,19 @@
 package com.playerPlugin.core.domain.Task;
 
-import org.bukkit.Material;
-
 public class Requirement {
-    private Material material;
+    private String item;
     private int amount;
 
-    public Requirement(Material material, int amount) {
-        this.material = material;
+    public Requirement(String item, int amount) {
+        this.item = item;
         this.amount = amount;
     }
 
-    public Material getMaterial() {
-        return material;
+    public String getMaterial() {
+        return item;
     }
-    public void setMaterial(Material material) {
-        this.material = material;
+    public void setMaterial(String material) {
+        this.item = material;
     }
 
     public int getAmount() {

@@ -5,6 +5,12 @@ import com.playerPlugin.core.domain.PlayerTask.Enum.PTXTaskType;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 任务定义
+ *
+ * @author yvmoux
+ * @date 2025/11/23
+ */
 public class TaskDefinition {
     private final String id;
     private PTXTaskType type;
