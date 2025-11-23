@@ -6,8 +6,6 @@ import cn.yvmou.ylib.impl.scheduler.UniversalRunnable;
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskTarget;
-import com.playerPlugin.infra.cache.DatabaseDAO;
-import com.playerPlugin.infra.cache.TaskCache;
 
 import java.sql.SQLException;
 import java.util.*;

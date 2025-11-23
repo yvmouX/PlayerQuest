@@ -1,6 +1,6 @@
 package com.playerPlugin.core.storage.json;
 
-import com.playerPlugin.core.repository.RepositoryCreator;
+import com.playerPlugin.core.storage.RepositoryCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.Connection;

@@ -4,7 +4,6 @@ import org.bukkit.entity.Player;
 
 import static com.playerPlugin.core.PlayerTaskX.getEconomy;
 import static com.playerPlugin.core.PlayerTaskX.getPlayerPointsAPI;
-
 import static com.playerPlugin.core.utils.Help.log;
 
 public class TaskTriggerEco {

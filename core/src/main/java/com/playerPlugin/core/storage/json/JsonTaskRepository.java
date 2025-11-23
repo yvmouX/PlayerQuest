@@ -1,7 +1,7 @@
 package com.playerPlugin.core.storage.json;
 
 import com.playerPlugin.core.domain.Task.TaskDefinition;
-import com.playerPlugin.core.repository.TaskRepository;
+import com.playerPlugin.core.storage.TaskRepository;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,12 +1,12 @@
 package com.playerPlugin.core.usecase;
 
-import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.TaskCondition;
+import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.event.EventBus;
 import com.playerPlugin.core.extension.TaskType;
 import com.playerPlugin.core.extension.TaskTypeRegistry;
-import com.playerPlugin.core.repository.PlayerProgressRepository;
-import com.playerPlugin.core.repository.TaskRepository;
+import com.playerPlugin.core.storage.PlayerProgressRepository;
+import com.playerPlugin.core.storage.TaskRepository;
 import com.playerPlugin.core.utils.CoreEventUtil;
 
 import java.time.Instant;

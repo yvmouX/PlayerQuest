@@ -1,4 +1,4 @@
-package com.playerPlugin.core.repository;
+package com.playerPlugin.core.storage;
 
 import com.playerPlugin.core.domain.Task.TaskProgress;
 

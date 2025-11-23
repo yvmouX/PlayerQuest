@@ -5,7 +5,7 @@ import com.playerPlugin.core.common.Enum.PTXTaskStatus;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
 import com.playerPlugin.core.domain.Task.TaskProgress;
 import com.playerPlugin.core.domain.Task.TaskTarget;
-import com.playerPlugin.core.repository.RepositoryCreator;
+import com.playerPlugin.core.storage.RepositoryCreator;
 import org.bukkit.entity.Player;
 
 import java.sql.PreparedStatement;

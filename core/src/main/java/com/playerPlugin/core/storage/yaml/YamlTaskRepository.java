@@ -4,7 +4,7 @@ import cn.yvmou.ylib.tools.LoggerTools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
-import com.playerPlugin.core.repository.TaskRepository;
+import com.playerPlugin.core.storage.TaskRepository;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;

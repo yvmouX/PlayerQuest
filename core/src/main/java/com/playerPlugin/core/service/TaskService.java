@@ -2,7 +2,7 @@ package com.playerPlugin.core.service;
 
 import com.paperPlugin.api.TaskAPI;
 import com.paperPlugin.api.model.TaskDefinitionDTO;
-import com.playerPlugin.core.repository.TaskRepository;
+import com.playerPlugin.core.storage.TaskRepository;
 import com.playerPlugin.core.usecase.CreateTaskUseCase;
 import com.playerPlugin.core.usecase.IssueRewardUseCase;
 import com.playerPlugin.core.usecase.UpdateProgressUseCase;

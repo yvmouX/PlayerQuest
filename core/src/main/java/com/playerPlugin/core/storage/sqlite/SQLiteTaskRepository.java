@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperPlugin.api.model.TaskDefinitionDTO;
 import com.playerPlugin.core.domain.Task.TaskDefinition;
-import com.playerPlugin.core.repository.TaskRepository;
+import com.playerPlugin.core.storage.TaskRepository;
 import com.playerPlugin.core.utils.DomainMapper;
 
 import javax.sql.DataSource;

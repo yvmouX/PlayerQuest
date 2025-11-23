@@ -3,7 +3,7 @@ package com.playerPlugin.core.storage.sqlite;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.core.domain.Task.TaskProgress;
-import com.playerPlugin.core.repository.PlayerProgressRepository;
+import com.playerPlugin.core.storage.PlayerProgressRepository;
 import com.playerPlugin.core.utils.DomainMapper;
 
 import javax.sql.DataSource;

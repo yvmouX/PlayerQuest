@@ -13,25 +13,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import static com.playerPlugin.common.Common.ARMOR;
-import static com.playerPlugin.common.Common.ARMOR_TOUGHNESS;
-import static com.playerPlugin.common.Common.DAMAGE;
-import static com.playerPlugin.common.Common.ENCHANTS;
-import static com.playerPlugin.common.Common.EQUIPPED_DAMAGE;
-import static com.playerPlugin.common.Common.EQUIPPED_HEALTH;
-import static com.playerPlugin.common.Common.HEALTH;
-import static com.playerPlugin.common.Common.LORE;
-import static com.playerPlugin.common.Common.NAME;
-import static com.playerPlugin.common.Common.UNBREAKABLE;
-import static com.playerPlugin.core.utils.Help.log;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.playerPlugin.common.Common.*;
+import static com.playerPlugin.core.utils.Help.log;
 
 
 public class TaskTriggerSpecial {

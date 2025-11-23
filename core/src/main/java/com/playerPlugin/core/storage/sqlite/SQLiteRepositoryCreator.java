@@ -1,7 +1,7 @@
 package com.playerPlugin.core.storage.sqlite;
 
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.core.repository.RepositoryCreator;
+import com.playerPlugin.core.storage.RepositoryCreator;
 
 import java.io.File;
 import java.sql.Connection;

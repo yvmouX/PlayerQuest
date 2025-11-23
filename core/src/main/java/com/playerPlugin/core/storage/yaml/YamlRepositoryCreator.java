@@ -1,15 +1,13 @@
 package com.playerPlugin.core.storage.yaml;
 
-import com.playerPlugin.core.repository.RepositoryCreator;
-import org.bukkit.plugin.java.JavaPlugin;
+import com.playerPlugin.core.storage.RepositoryCreator;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class YamlRepositoryCreator implements RepositoryCreator {
+public class YamlRepositoryCreator implements RepositoryCreator<Void> {
     @Override
-    public void connect(JavaPlugin plugin) throws SQLException, ClassNotFoundException {
-
+    public void connect(Void value) throws SQLException, ClassNotFoundException {
     }
 
     @Override
