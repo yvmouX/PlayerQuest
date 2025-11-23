@@ -5,14 +5,15 @@ import com.playerPlugin.playerTaskX.storage.RepositoryCreator;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class YamlRepositoryCreator implements RepositoryCreator<Void> {
+public class YamlRepositoryCreator implements RepositoryCreator {
     @Override
-    public void connect(Void value) throws SQLException, ClassNotFoundException {
+    public void connect() throws SQLException, ClassNotFoundException {
+        // pass
     }
 
     @Override
     public void createTables() throws SQLException {
-
+        // pass
     }
 
     @Override
@@ -22,6 +23,6 @@ public class YamlRepositoryCreator implements RepositoryCreator<Void> {
 
     @Override
     public void close() {
-
+        // pass
     }
 }

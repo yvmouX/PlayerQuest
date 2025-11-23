@@ -1,9 +1,8 @@
 package com.playerPlugin.playerTaskX.common.Enum;
 
-public enum StorgeTypes {
+public enum PTXStorgeType {
     SQLITE,
     MYSQL,
     JSON,
-    YAML,
-
+    YAML
 }

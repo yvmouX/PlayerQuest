@@ -1,29 +1,40 @@
 package com.playerPlugin.playerTaskX.cache;
 
+import cn.yvmou.ylib.tools.LoggerTools;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
+import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.domain.Task.Requirement;
 import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.domain.Trigger.TaskTriggerExecutor;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 在 `TaskService.reload()` 时用 `TaskRepository.loadAll()` 更新缓存；在 `UpdateProgressUseCase` 中优先从缓存读取任务定义。
  */
 public class TaskCache {
-    private Map<UUID, List<TaskProgress>> cache;
+    private final LoggerTools log;
+    private final Map<UUID, List<TaskProgress>> progressByUUID; // 玩家UUID -> 任务进度列表
+    private final Set<UUID> dirtyUUIDs = ConcurrentHashMap.newKeySet();
+    private final Set<TaskProgress> maybeUUIDs = ConcurrentHashMap.newKeySet();
 
-    private final Set<UUID> dirtyEntries = ConcurrentHashMap.newKeySet();
-    private final Set<TaskProgress> maybeFinishedEntries = ConcurrentHashMap.newKeySet();
+    private final List<ConcurrentMap<String, TaskDefinition>> taskDefById = new ArrayList<>(); // List<任务ID -> 任务定义>
 
-    private final ConcurrentMap<String, TaskDefinition> byId = new ConcurrentHashMap<>();
-    private final Multimap<String, TaskDefinition> byType = Multimaps.synchronizedSetMultimap(HashMultimap.create());
-
-    public TaskCache() {
-        cache = Collections.synchronizedMap(
+    public TaskCache(LoggerTools log) {
+        this.log = log;
+        progressByUUID = Collections.synchronizedMap(
                 new LinkedHashMap<UUID, List<TaskProgress>>(
                         100, // 初始容量 100个玩家 TODO 配置文件自定义
                         0.75f,
@@ -34,9 +45,9 @@ public class TaskCache {
                         // 当缓存超过最大容量时，移除最久未使用的条目
                         // 但如果是脏数据，先保存到数据库
                         if (size() > 100) {
-                            if (getDirtyEntries().contains(eldest.getKey())) {
+                            if (dirtyUUIDs.contains(eldest.getKey())) {
                                 saveCacheToDatabase(eldest.getValue(), false);
-                                getDirtyEntries().remove(eldest.getKey());
+                                dirtyUUIDs.remove(eldest.getKey());
                             }
                             return true;
                         }
@@ -45,32 +56,222 @@ public class TaskCache {
                 });
     }
 
-    public Map<UUID, List<TaskProgress>>  getCache() {
-        return cache;
+    // Getter methods
+    public Map<UUID, List<TaskProgress>> getProgressByUUID() {return progressByUUID;}
+    public Set<UUID> getDirtyUUIDs() {return dirtyUUIDs;}
+    public Set<TaskProgress> getMaybeUUIDs() {return maybeUUIDs;}
+    public List<ConcurrentMap<String, TaskDefinition>> getTaskDefById() {return taskDefById;}
+
+
+
+    // DAO 方法
+
+
+
+    /**
+     * 将玩家任务进度添加到缓存中
+     *
+     * @param taskProgress 玩家任务进度
+     * @param immediateSave  立即保存
+     */
+    public void taskProgressToCache(TaskProgress taskProgress, boolean immediateSave) {
+        UUID uuid = taskProgress.getUUID();
+
+        List<TaskProgress> taskProgressList = progressByUUID.computeIfAbsent(uuid, k -> new ArrayList<>());
+
+        // TODO
+        // 必须重写 TaskProgress 的 equals() 和 hashCode()
+        // taskList.contains(taskProgress) 依赖 TaskProgress 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
+        if (!taskProgressList.contains(taskProgress)) {
+            taskProgressList.add(taskProgress);
+        }
+
+        if (immediateSave) {
+            saveCacheToDatabase(List.of(taskProgress), true);
+        } else {
+            dirtyUUIDs.add(uuid);
+        }
     }
 
-    public Set<UUID> getDirtyEntries() {
-        return dirtyEntries;
-    }
 
-    public Set<TaskProgress> getMaybeFinishedEntries() {
-        return maybeFinishedEntries;
-    }
-
-    public Optional<TaskDefinition> getById(String id) {
-        return Optional.ofNullable(byId.get(id));
-    }
-
-    public List<TaskDefinition> getByType(String type) {
-        return new ArrayList<>(byType.get(type));
-    }
-
-//    public void reload(Collection<TaskDefinition> tasks) {
-//        byId.clear();
-//        byType.clear();
-//        for (TaskDefinition t : tasks) {
-//            byId.put(t.getId(), t);
-//            byType.put(t.getType(), t);
+//    /**
+//     * 获取指定玩家和任务状态的任务进度列表，从缓存中获取
+//     *
+//     * @param uuid   玩家UUID
+//     * @param status 任务状态
+//     * @return {@link List }<{@link TaskProgress }>
+//     */
+//    @Nullable
+//    @org.jetbrains.annotations.Nullable
+//    public List<TaskProgress> getProgressList(UUID uuid, PTXTaskStatus status) {
+//        return getCache().get(uuid).stream()
+//                .filter(taskProgress -> taskProgress.getStatus() == status)
+//                .toList();
+//    }
+//
+//    /**
+//     * 添加可能完成任务的玩家到缓存
+//     *
+//     * @param taskProgress 玩家任务
+//     */
+//    public void addMaybeFinished(TaskProgress taskProgress) {
+//        if (getCache().get(taskProgress.getUUID()) == null) {
+//            log.warn("尝试将可能完成任务的玩家添加到 maybeFinished，但无法从缓存中获取到该玩家的任务列表：" + taskProgress.getUUID());
+//            return;
 //        }
+//        cache.addMaybeFinishedPlayer(taskProgress);
+//    }
+//
+//
+//
+//    /**
+//     * 更新玩家任务 / 添加新任务
+//     *
+//     * <p>
+//     * 如果缓存中不存在该玩家的任务列表，则添加新任务到缓存中
+//     * 如果缓存中存在该玩家的任务列表，则更新该任务
+//     * </p>
+//     *
+//     * @param taskProgressList 玩家任务列表
+//     * @param immediateSave  是否立即保存到数据库
+//     */
+//    public void updatePlayerTaskToCache(List<TaskProgress> taskProgressList, boolean immediateSave) {
+//        taskProgressList.forEach(playerTask -> {
+//            UUID uuid = playerTask.getUUID();
+//
+//            List<TaskProgress> taskList = cache.getCache().computeIfAbsent(uuid, k -> new ArrayList<>());
+//
+//            // 总结：taskList 不为空时更新任务
+//            // 如果在 cache 中找不到该 uuid 的任务列表
+//            // taskList.size() == 0 说明该玩家没有任务在 cache 中
+//            // 此时 updated 为 false，代表未对该玩家在 cache 中的任务进行更新
+//            boolean updated = false;
+//            for (int i = 0; i < taskList.size(); i++) {
+//                if (taskList.get(i).getTask().getId().equals(playerTask.getTask().getId())) {
+//                    taskList.set(i, playerTask);
+//                    updated = true;
+//                    break;
+//                }
+//            }
+//
+//            // 若 updated 为 false，说明该玩家在 cache 中没有该任务
+//            // 则将该任务添加到 cache 中
+//            if (!updated) {
+//                taskList.add(playerTask);
+//            }
+//
+//            // 如果 immediateSave 为 true，则立即保存到数据库
+//            // 否则，将该玩家添加到脏数据集合中，稍后保存到数据库
+//            if (immediateSave) {
+//                saveCacheToDatabase(Collections.singletonList(playerTask), false);
+//            } else {
+//                cache.getDirtyEntries().add(uuid);
+//            }
+//
+//            if (updated) {
+//                log.info("当前执行：更新到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+//            } else {
+//                log.info("当前执行：添加到缓存，任务ID：" + playerTask.getTask().getId() + "，状态：" + playerTask.getStatus() + "，立即保存：" + immediateSave);
+//            }
+//        });
+//    }
+
+    private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
+        if (taskProgressList.isEmpty()) return;
+
+        if (firstSave) {
+            try {
+                sm.getDatabaseDAO().startTask(taskProgressList);
+                sm.getDatabaseDAO().setProgress(taskProgressList);
+                log.info("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
+        } else {
+            try {
+                sm.getDatabaseDAO().updateTasks(taskProgressList);
+                sm.getDatabaseDAO().updateProgress(taskProgressList);
+                log.debug("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
+        }
+    }
+
+    public void init(Map<UUID, List<TaskProgress>> playerTaskCache) {
+        this.cache = playerTaskCache;
+    }
+
+//
+//    /**
+//     * 增加玩家任务进度
+//     *
+//     * @param taskProgress 玩家任务
+//     * @param material     材料
+//     * @param progress     进展数量
+//     */
+//    public void increasePlayerTaskProgress(TaskProgress taskProgress, Material material, int progress) {
+//        taskProgress.getTask().getTargets().forEach(target -> {
+//            switch (target.getAction()) {
+//                case DROP -> {}
+//                case TAKE -> {}
+//                case KILL -> {}
+//                case TAME -> {}
+//                case BREAK -> {}
+//                case CRAFT -> {}
+//                case BREED -> {}
+//                case PLACE -> {
+//                    Requirement r = target.getRequirement();
+//                    if (r.getMaterial() == material) {
+//                        if (target.incrementCurrent(progress)) {
+//                            sm.getCacheDAO().addMaybeFinishedPlayer(taskProgress);
+//                        }
+//                    }
+//                }
+//                case CONSUME -> {}
+//                case ENCHANT -> {}
+//                case FISHING -> {}
+//                case SCISSOR -> {}
+//                case TRIGGER -> {}
+//                case NONE -> {}
+//            }
+//        });
+//    }
+//
+//
+//    /**
+//     * 开始任务
+//     *
+//     * @param player 选手
+//     * @param taskId 任务 ID
+//     */
+//    public void startTask(Player player, String taskId) throws SQLException {
+//        UUID uuid = player.getUniqueId();
+//        TaskDefinition taskDefinition = tm.getTask(taskId);
+//
+//        if (taskDefinition == null) {
+//            player.sendMessage("§c任务 %s 不存在", taskId);
+//            return;
+//        }
+//
+//        // 直接从 数据库 获取玩家进行中的任务列表
+//        // 检测是否已经有该任务。
+//        AtomicBoolean canStart = new AtomicBoolean(true);
+//        for (String id : sm.getTaskIdListFromDatabase(uuid, PTXTaskStatus.IN_PROGRESS)) {
+//            if (id.equals(taskId)) {
+//                player.sendMessage("§c你已经接受或者完成过任务: §e" + taskDefinition.getName() + "！");
+//                canStart.set(false);
+//            }
+//        }
+//
+//        // 向缓存添加任务
+//        if (canStart.get()) {
+//            sm.getCacheDAO().addPlayerTaskToCache(List.of(new TaskProgress(uuid, taskDefinition)), true);
+//        }
+//
+//        // 执行任务开始触发器
+//        TaskTriggerExecutor.execute(player, taskDefinition.getTrigger().getOnTaskStart(), taskDefinition);
+//
+//        player.sendMessage("§a你已开始任务: §e" + taskDefinition.getName());
 //    }
 }

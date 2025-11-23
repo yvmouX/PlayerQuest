@@ -3,10 +3,20 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.playerTaskX.common.Enum.StorgeTypes;
+import com.playerPlugin.playerTaskX.UI.MainUI;
+import com.playerPlugin.playerTaskX.cache.CacheDAO;
+import com.playerPlugin.playerTaskX.cache.DatabaseDAO;
+import com.playerPlugin.playerTaskX.cache.TaskCache;
+import com.playerPlugin.playerTaskX.commands.CommandRegister;
+import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
+import com.playerPlugin.playerTaskX.configs.ConfigManager;
+import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.event.SimpleEventBus;
 import com.playerPlugin.playerTaskX.storage.DataSyncTask;
 import com.playerPlugin.playerTaskX.storage.RepositoryCreator;
+import com.playerPlugin.playerTaskX.storage.StorageFactory;
+import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteRepositoryCreator;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
@@ -19,21 +29,30 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
+import java.util.List;
 
 public final class PlayerTaskX extends JavaPlugin {
-    private YLib ylib;
     private LoggerTools log;
     private UniversalScheduler scheduler;
     private Economy economy;
+    private boolean isEconomyEnabled = true;
     private PlayerPointsAPI ppAPI;
+    private boolean isPlayerPointsEnabled = true;
     private ViewFrame viewFrame;
     private ConfigManager configManager;
-    public StorgeTypes storgeTypes;
+
+    private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取
 
     @Override
     public void onEnable() {
         register();
-        log.info("插件已启用");
+        log.info(String.format("插件已启用，版本: %s", getDescription().getVersion()) +
+                "\n数据库: " + currentStorgeType +
+                "\n前置：" +
+                        "\n - Vault: " + (isEconomyEnabled ? "已启用" : "未安装") +
+                        "\n - PlayerPoints: " + (isPlayerPointsEnabled ? "已启用" : "未安装")
+        );
+
     }
 
     @Override
@@ -43,46 +62,38 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     private void register() {
-        // 1、注册必要的前置
-        ylib = new YLib(this);
+        // 1、创建必要的前置
+        YLib ylib = new YLib(this);
         log = ylib.getLoggerTools();
         scheduler = ylib.getScheduler();
 
         new Metrics(this, 27726);
 
         if (!setupEconomy()) {
-            log.error("Vault未安装");
+            isEconomyEnabled = false;
         }
 
         if (!setupPlayerPoints()) {
-            log.error("PlayerPoints未安装");
+            isPlayerPointsEnabled = false;
         }
 
-        // 2、注册/保存配置文件
-        configManager = ConfigManager.getInstance();
-        configManager.initTaskConfig(new TaskConfig(this));
-        TaskConfig taskConfig = configManager.getTaskConfig();
-
-        this.saveDefaultConfig();
-        taskConfig.saveDefaultTaskConfig();
-
-        // 加载任务到缓存
-        ReadConfigToCache readConfigToCache = new ReadConfigToCache(log);
-        readConfigToCache.loadTasksToCache(taskConfig);
-
-        // 创建 SQLITE 表
-        storgeTypes = StorgeTypes.SQLITE;
-        if (storgeTypes == StorgeTypes.SQLITE) {
-            SQLiteRepositoryCreator creator = new SQLiteRepositoryCreator();
-            try {
-                creator.connect(this); // 连接并创建表
-            } catch (SQLException | ClassNotFoundException e) {
-                log.error("创建SQLITE表时发生错误：" + e.getMessage());
-            }
+        // 创建存储工厂
+        StorageFactory storageFactory = new StorageFactory(this, log, currentStorgeType);
+        try {
+            storageFactory.getStorageCreator().connect();
+        } catch (SQLException | ClassNotFoundException e) {
+            log.error("连接数据库时发生错误：" + e.getMessage());
         }
+
+        // 从 tasks 目录加载所有任务添加到缓存
+        List<TaskDefinition> taskDefList = storageFactory.getRepository().loadAll();
+        TaskCache cache = new TaskCache();
+        for (TaskDefinition taskDef : taskDefList) {
+            cache.getTaskDefList().add(taskDef);
+            log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
+        }
+
         // 开始数据同步任务
-        RepositoryCreator repositoryCreator = new Infra().getStorageCreator();
-        TaskCache taskCache = new TaskCache();
         CacheDAO cacheDAO = new CacheDAO(log);
         DatabaseDAO databaseDAO = new DatabaseDAO(log, repositoryCreator, cacheDAO);
         new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
@@ -97,6 +108,9 @@ public final class PlayerTaskX extends JavaPlugin {
         // 注册 Bukkit 事件监听器
         KillListener killListener = new KillListener(eventBus);
         getServer().getPluginManager().registerEvents(killListener, this);
+
+        // 注册玩家加入事件
+        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(new StorageFactory(this, log)), this);
 
 
         // 7、注册命令
