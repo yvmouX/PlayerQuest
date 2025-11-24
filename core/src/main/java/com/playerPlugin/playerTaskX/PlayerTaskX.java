@@ -4,8 +4,6 @@ import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.UI.MainUI;
-import com.playerPlugin.playerTaskX.cache.CacheDAO;
-import com.playerPlugin.playerTaskX.cache.DatabaseDAO;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
@@ -13,11 +11,9 @@ import com.playerPlugin.playerTaskX.configs.ConfigManager;
 import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.event.SimpleEventBus;
+import com.playerPlugin.playerTaskX.listeners.KillListener;
 import com.playerPlugin.playerTaskX.storage.DataSyncTask;
-import com.playerPlugin.playerTaskX.storage.RepositoryCreator;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
-import com.playerPlugin.playerTaskX.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteRepositoryCreator;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import me.devnatan.inventoryframework.ViewFrame;
@@ -30,6 +26,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class PlayerTaskX extends JavaPlugin {
     private LoggerTools log;
@@ -77,7 +75,7 @@ public final class PlayerTaskX extends JavaPlugin {
             isPlayerPointsEnabled = false;
         }
 
-        // 创建存储工厂
+        // 2、创建存储工厂
         StorageFactory storageFactory = new StorageFactory(this, log, currentStorgeType);
         try {
             storageFactory.getStorageCreator().connect();
@@ -85,17 +83,21 @@ public final class PlayerTaskX extends JavaPlugin {
             log.error("连接数据库时发生错误：" + e.getMessage());
         }
 
-        // 从 tasks 目录加载所有任务添加到缓存
+        // 3、从 tasks 目录加载所有任务添加到缓存
         List<TaskDefinition> taskDefList = storageFactory.getRepository().loadAll();
-        TaskCache cache = new TaskCache();
-        for (TaskDefinition taskDef : taskDefList) {
-            cache.getTaskDefList().add(taskDef);
-            log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
+        if (taskDefList == null || taskDefList.isEmpty()) {
+            log.warn("没有从存储库加载到任何任务定义");
+            return;
         }
+        TaskCache cache = new TaskCache(log);
+        ConcurrentMap<String, TaskDefinition> taskDefMap = new ConcurrentHashMap<>();
+        for (TaskDefinition taskDef : taskDefList) {
+            taskDefMap.putIfAbsent(taskDef.getId(), taskDef); // 避免重复添加, 如果两个任务有相同ID, 则保留第一个
+        }
+        cache.getTaskDefById().add(taskDefMap);
+        log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
 
-        // 开始数据同步任务
-        CacheDAO cacheDAO = new CacheDAO(log);
-        DatabaseDAO databaseDAO = new DatabaseDAO(log, repositoryCreator, cacheDAO);
+        // 4、开始数据同步任务
         new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
 
         // 6、注册事件
@@ -110,7 +112,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(killListener, this);
 
         // 注册玩家加入事件
-        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(new StorageFactory(this, log)), this);
+        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(storageFactory, cache), this);
 
 
         // 7、注册命令

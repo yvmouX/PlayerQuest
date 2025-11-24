@@ -1,28 +1,22 @@
 package com.playerPlugin.playerTaskX.cache;
 
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
-import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.domain.Task.Requirement;
 import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
-import com.playerPlugin.playerTaskX.domain.Trigger.TaskTriggerExecutor;
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 在 `TaskService.reload()` 时用 `TaskRepository.loadAll()` 更新缓存；在 `UpdateProgressUseCase` 中优先从缓存读取任务定义。
+ */
+
+/**
+ * Def缓存
+ * 玩家进度缓存
  */
 public class TaskCache {
     private final LoggerTools log;

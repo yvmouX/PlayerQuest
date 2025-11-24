@@ -1,7 +1,5 @@
 package com.playerPlugin.playerTaskX.common;
 
-import com.playerPlugin.playerTaskX.common.Enum.StorgeTypes;
-
 public class Common {
     public static boolean isLatest = true;
     public static final String Repo_URL = "https://api.github.com/repos/Findoutsider/PlayerTaskX/releases/latest";

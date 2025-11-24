@@ -4,8 +4,9 @@ import cn.yvmou.ylib.tools.LoggerTools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
-import com.playerPlugin.playerTaskX.service.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,13 +42,42 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
         }
     }
 
+    @Override
+    public Optional<TaskProgress> find(UUID player, String taskId) {
+        return Optional.empty();
+    }
 
-    /**
-     * 加载指定玩家的任务进度
-     *
-     * @param player 玩家
-     * @return {@link Optional }<{@link TaskProgress }>
-     */
+    @Override
+    public void save(TaskProgress progress) {
+
+    }
+
+    @Override
+    public void delete(UUID player, String taskId) {
+
+    }
+
+    public void createForPlayer(Player player, TaskDefinition taskDefinition) {
+        writeLock.lock();
+        Path path = null;
+        try {
+            path = dataDir.resolve(player.getUniqueId() + ".yml");
+            if (Files.exists(path)) {
+                log.warn(String.format("玩家 %s 的任务进度文件已存在，不会重复创建", player.getName()));
+                return;
+            }
+
+            TaskProgress taskProgress = new TaskProgress(player.getUniqueId(), taskDefinition);
+            yamlMapper.writeValue(path.toFile(), taskProgress);
+            log.debug(String.format("为玩家 %s 创建了任务进度文件 %s", player.getName(), path));
+        } catch (IOException e) {
+            log.error(String.format("为玩家 %s 创建任务进度文件时发生错误: %s", player.getName(), path), e);
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    @Override
     public Optional<TaskProgress> loadForPlayer(Player player) {
         readLock.lock();
         Path progressFile = null;

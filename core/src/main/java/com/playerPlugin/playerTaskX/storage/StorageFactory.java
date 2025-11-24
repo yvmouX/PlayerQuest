@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.storage;
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.service.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.json.JsonRepositoryCreator;
 import com.playerPlugin.playerTaskX.storage.json.JsonTaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.json.JsonTaskRepository;
