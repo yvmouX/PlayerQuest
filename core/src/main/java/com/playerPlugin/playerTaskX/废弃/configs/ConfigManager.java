@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.configs;
+package com.playerPlugin.playerTaskX.废弃.configs;
 
 public class ConfigManager {
     private TaskConfig taskConfig;

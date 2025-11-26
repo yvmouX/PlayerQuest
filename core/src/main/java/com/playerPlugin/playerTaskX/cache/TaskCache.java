@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.model.Task.TaskTarget;
@@ -13,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -44,18 +46,18 @@ public class TaskCache {
     private final Set<UUID> progressDirtyUUIDs = ConcurrentHashMap.newKeySet();
     private final Set<TaskProgress> progressMaybeUUIDs = ConcurrentHashMap.newKeySet();
 
-    private final List<ConcurrentMap<String, TaskDefinition>> taskDefById = new ArrayList<>(); // List<任务ID -> 任务定义>
+    private final List<ConcurrentMap<String, TaskDefinition>> taskDefById = new CopyOnWriteArrayList<>(); // List<任务ID -> 任务定义>
 
-    public Map<UUID, List<TaskProgress>> serProgressByUUID() {
+    public Map<UUID, List<TaskProgress>> setProgressByUUID() {
         return progressByUUID;
     }
-    public Set<UUID> serProgressDirtyUUIDs() {
+    public Set<UUID> setProgressDirtyUUIDs() {
         return progressDirtyUUIDs;
     }
-    public Set<TaskProgress> serProgressMaybeUUIDs() {
+    public Set<TaskProgress> setProgressMaybeUUIDs() {
         return progressMaybeUUIDs;
     }
-    public List<ConcurrentMap<String, TaskDefinition>> serTaskDefById() {
+    public List<ConcurrentMap<String, TaskDefinition>> setTaskDefById() {
         return taskDefById;
     }
 
@@ -109,7 +111,67 @@ public class TaskCache {
         }
     }
 
-    // 私有方法：数据同步
+    // ===================常用方法==========================
+    /**
+     * 获取指定玩家和任务状态的任务进度列表，从缓存中获取
+     *
+     * @param uuid   UUID
+     * @param status 任务状态
+     * @return @return {@link List }<{@link TaskProgress }>
+     */
+    @javax.annotation.Nullable
+    @org.jetbrains.annotations.Nullable
+    public List<TaskProgress> getProgressList(UUID uuid, PTXTaskStatus status) {
+        return progressByUUID.get(uuid).stream()
+                .filter(taskProgress -> taskProgress.getStatus() == status)
+                .toList();
+    }
+
+    /**
+     * 获取指定玩家的所有任务进度列表，从缓存中获取
+     *
+     * @param uuid UUID
+     * @return {@link List }<{@link TaskProgress }>
+     */
+    @javax.annotation.Nullable
+    @org.jetbrains.annotations.Nullable
+    public List<TaskProgress> getProgressList(UUID uuid) {
+        return progressByUUID.get(uuid);
+    }
+
+    /**
+     * 按ID获取任务定义
+     *
+     * @param id 任务ID
+     * @return {@link TaskDefinition }
+     */
+    @javax.annotation.Nullable
+    @org.jetbrains.annotations.Nullable
+    public TaskDefinition getTaskDef(String id) {
+        if (id == null || id.isBlank()) return null;
+        for (ConcurrentMap<String, TaskDefinition> map : taskDefById) {
+            TaskDefinition taskDef = map.get(id);
+            if (taskDef != null) return taskDef;
+        }
+        return null;
+    }
+
+    /**
+     * 获取任务定义列表
+     *
+     * @return {@link List }<{@link TaskDefinition }>
+     */
+    @javax.annotation.Nullable
+    @org.jetbrains.annotations.Nullable
+    public List<TaskDefinition> getTaskDefList() {
+        List<TaskDefinition> result = new ArrayList<>();
+        for (ConcurrentMap<String, TaskDefinition> map : taskDefById) {
+            result.addAll(map.values());
+        }
+        return result;
+    }
+
+    // ===================私有方法：数据同步==================
     private void startSync(long initialDelayTicks, long periodTicks) {
         if (running.getAndSet(true)) {
             log.warn("DataSyncTask already running");
@@ -297,35 +359,8 @@ public class TaskCache {
     }
 
 
-//    /**
-//     * 获取指定玩家和任务状态的任务进度列表，从缓存中获取
-//     *
-//     * @param uuid   玩家UUID
-//     * @param status 任务状态
-//     * @return {@link List }<{@link TaskProgress }>
-//     */
-//    @Nullable
-//    @org.jetbrains.annotations.Nullable
-//    public List<TaskProgress> getProgressList(UUID uuid, PTXTaskStatus status) {
-//        return getCache().get(uuid).stream()
-//                .filter(taskProgress -> taskProgress.getStatus() == status)
-//                .toList();
-//    }
-//
-//    /**
-//     * 添加可能完成任务的玩家到缓存
-//     *
-//     * @param taskProgress 玩家任务
-//     */
-//    public void addMaybeFinished(TaskProgress taskProgress) {
-//        if (getCache().get(taskProgress.getUUID()) == null) {
-//            log.warn("尝试将可能完成任务的玩家添加到 maybeFinished，但无法从缓存中获取到该玩家的任务列表：" + taskProgress.getUUID());
-//            return;
-//        }
-//        cache.addMaybeFinishedPlayer(taskProgress);
-//    }
-//
-//
+
+
 //
 //    /**
 //     * 更新玩家任务 / 添加新任务

@@ -7,11 +7,12 @@ import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.configs.ConfigManager;
+import com.playerPlugin.playerTaskX.event.EventBus;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.event.SimpleEventBus;
 import com.playerPlugin.playerTaskX.listeners.KillListener;
+import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
@@ -38,7 +39,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private PlayerPointsAPI ppAPI;
     private boolean isPlayerPointsEnabled = true;
     private ViewFrame viewFrame;
-    private ConfigManager configManager;
 
     private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取
 
@@ -97,7 +97,7 @@ public final class PlayerTaskX extends JavaPlugin {
         for (TaskDefinition taskDef : taskDefList) {
             taskDefMap.putIfAbsent(taskDef.getId(), taskDef); // 避免重复添加, 如果两个任务有相同ID, 则保留第一个
         }
-        cache.serTaskDefById().add(taskDefMap);
+        cache.setTaskDefById().add(taskDefMap);
         log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
 
         // 4、开始数据同步任务
@@ -105,10 +105,10 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 6、注册事件
         // 初始化事件总线
-        SimpleEventBus eventBus = new SimpleEventBus();
+        SimpleEventBus eventBus = new SimpleEventBus(log);
 
         // 注册事件处理程序
-        registerEventHandlers();
+        registerEventHandlers(eventBus);
 
         // 注册 Bukkit 事件监听器
         KillListener killListener = new KillListener(eventBus);
@@ -119,7 +119,8 @@ public final class PlayerTaskX extends JavaPlugin {
 
 
         // 7、注册命令
-        new CommandRegister(this, ylib, taskConfig).registerCommands();
+        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository);
+        new CommandRegister(ylib.getCommandManager(), cache, viewFrame, taskService).registerCommands();
 
         // 8、注册UI界面
         try {
@@ -130,15 +131,15 @@ public final class PlayerTaskX extends JavaPlugin {
         }
 
         // 9、更新检查
-        UpdateHelper updateHelper = new UpdateHelper();
+        UpdateHelper updateHelper = new UpdateHelper(log);
         updateHelper.checkUpdate(getDescription().getVersion());
 
     }
 
-    private void registerEventHandlers() {
+    private void registerEventHandlers(EventBus eventBus) {
         // 注册 TaskProgressEvent 的处理器
         eventBus.register(TaskProgressEvent.class, event -> {
-            getLogger().info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
+            log.info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
                     event.getPlayerId(),
                     event.getActionType(),
                     event.getMobType(), // 假设你给 TaskProgressEvent 加了 getMobType 方法
@@ -153,17 +154,6 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     private void unregister() {
-        try {
-            taskManager.shutdown();
-            log.info("任务数据已保存");
-        } catch (Exception e) {
-            log.error("关闭任务数据时发生错误：" + e.getMessage());
-        }
-        try {
-            storgeManager.close();
-        } catch (Exception e) {
-            log.error("关闭数据库连接时发生错误：" + e.getMessage());
-        }
     }
 
     private boolean setupEconomy() {

@@ -1,43 +1,46 @@
 package com.playerPlugin.playerTaskX.commands;
 
-import cn.yvmou.ylib.YLib;
-import com.playerPlugin.bukkit.configs.TaskConfig;
-import com.playerPlugin.playerTaskX.PlayerTaskX;
+import cn.yvmou.ylib.impl.command.CommandManager;
+import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.commands.admin.StartCmd;
 import com.playerPlugin.playerTaskX.commands.user.MeCmd;
 import com.playerPlugin.playerTaskX.commands.user.OpenCmd;
+import com.playerPlugin.playerTaskX.service.TaskService;
+import me.devnatan.inventoryframework.ViewFrame;
 
 public class CommandRegister {
-    private final PlayerTaskX plugin;
-    private final YLib ylib;
-    private final TaskConfig taskConfig;
+    private final CommandManager manager;
+    private final TaskCache cache;
+    private final ViewFrame frame;
+    private final TaskService service;
 
-    public CommandRegister(PlayerTaskX plugin, YLib ylib, TaskConfig taskConfig) {
-        this.plugin = plugin;
-        this.ylib = ylib;
-        this.taskConfig = taskConfig;
+    public CommandRegister(CommandManager manager, TaskCache cache, ViewFrame frame, TaskService service) {
+        this.manager = manager;
+        this.cache = cache;
+        this.frame = frame;
+        this.service = service;
     }
 
     public void registerCommands() {
-        ylib.getCommandManager().registerCommands("playertaskx",
-                new MeCmd(),
-                new OpenCmd()
+        manager.registerCommands("playertaskx",
+                new MeCmd(cache),
+                new OpenCmd(frame)
         );
-        ylib.getCommandManager().registerCommands("ptx",
-                new MeCmd(),
-                new OpenCmd()
+        manager.registerCommands("ptx",
+                new MeCmd(cache),
+                new OpenCmd(frame)
         );
-        ylib.getCommandManager().registerCommands("playertaskxadmin",
-                new ReloadCmd(plugin, taskConfig),
-                new ListCmd(),
-                new StartCmd()
+        manager.registerCommands("playertaskxadmin",
+                new ReloadCmd(),
+                new ListCmd(cache),
+                new StartCmd(cache, service)
         );
-        ylib.getCommandManager().registerCommands("ptxa",
-                new ReloadCmd(plugin, taskConfig),
-                new ListCmd(),
-                new StartCmd()
+        manager.registerCommands("ptxa",
+                new ReloadCmd(),
+                new ListCmd(cache),
+                new StartCmd(cache, service)
         );
     }
 }

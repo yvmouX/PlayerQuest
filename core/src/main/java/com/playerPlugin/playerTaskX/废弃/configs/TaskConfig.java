@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.configs;
+package com.playerPlugin.playerTaskX.废弃.configs;
 
 import com.google.common.base.Charsets;
 import com.playerPlugin.playerTaskX.PlayerTaskX;

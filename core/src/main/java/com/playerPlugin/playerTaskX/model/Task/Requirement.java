@@ -9,10 +9,10 @@ public class Requirement {
         this.amount = amount;
     }
 
-    public String getMaterial() {
+    public String getItem() {
         return item;
     }
-    public void setMaterial(String material) {
+    public void setItem(String material) {
         this.item = material;
     }
 

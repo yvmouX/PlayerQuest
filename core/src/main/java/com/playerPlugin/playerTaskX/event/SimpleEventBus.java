@@ -1,17 +1,20 @@
 package com.playerPlugin.playerTaskX.event;
 
+import cn.yvmou.ylib.tools.LoggerTools;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-import static com.playerPlugin.playerTaskX.utils.Help.log;
-
 public class SimpleEventBus implements EventBus{
+    private final LoggerTools log;
+
     private final ConcurrentMap<Class<?>, CopyOnWriteArrayList<Consumer<Object>>> handlers = new ConcurrentHashMap<>();
     private final ExecutorService executor;
 
-    public SimpleEventBus() {
+    public SimpleEventBus(LoggerTools log) {
+        this.log = log;
         this.executor = Executors.newCachedThreadPool(r -> {
             Thread t = new Thread(r, "playerTaskX-eventbus" + UUID.randomUUID());
             t.setDaemon(true);

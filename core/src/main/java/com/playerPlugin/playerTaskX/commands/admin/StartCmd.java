@@ -2,19 +2,22 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import com.playerPlugin.infra.TaskManager;
+import com.playerPlugin.playerTaskX.cache.TaskCache;
+import com.playerPlugin.playerTaskX.service.TaskService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.sql.SQLException;
 import java.util.Objects;
 
 public class StartCmd implements SubCommand {
-    private final TaskManager tm;
-    public StartCmd(TaskManager tm) {
-        this.tm = tm;
+    private final TaskCache cache;
+    private final TaskService service;
+
+    public StartCmd(TaskCache cache, TaskService service) {
+        this.cache = cache;
+        this.service = service;
     }
 
     @Override
@@ -33,7 +36,7 @@ public class StartCmd implements SubCommand {
         }
 
         String taskID = args[1];
-        if (tm.getTask(taskID) == null) {
+        if (cache.getTaskDef(taskID) == null) {
             sender.sendMessage(ChatColor.RED + "No such task: " + taskID);
             return false;
         }
@@ -45,8 +48,8 @@ public class StartCmd implements SubCommand {
         }
 
         try {
-            tm.getTaskProgressManger().startTask(p, taskID);
-        } catch (SQLException e) {
+            service.createProgress(p, taskID);
+        } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Error: " + e.getMessage());
             throw new RuntimeException(e);
         }

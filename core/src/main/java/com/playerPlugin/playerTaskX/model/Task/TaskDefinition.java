@@ -29,7 +29,6 @@ public class TaskDefinition {
 
     // Getter and Setter methods
     public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
 
     public PTXTaskType getType() { return type; }
     public void setType(PTXTaskType type) { this.type = type; }

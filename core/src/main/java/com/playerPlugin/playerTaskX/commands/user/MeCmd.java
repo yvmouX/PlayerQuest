@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.commands.user;
 import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -22,9 +23,10 @@ import java.util.List;
  * &#064;date  2025/10/26
  */
 public class MeCmd implements SubCommand {
-    private final YLib yLib;
-    public MeCmd(YLib yLib) {
-        this.yLib = yLib;
+    private final TaskCache cache;
+
+    public MeCmd(TaskCache cache) {
+        this.cache = cache;
     }
 
     @Override
@@ -35,16 +37,14 @@ public class MeCmd implements SubCommand {
     }
 
     private void me(CommandSender sender) {
-        Player player = (Player) sender;
-
-        List<TaskProgress> tasks = sm.getCacheDAO().getPlayerTaskListFormCache(player.getUniqueId());
+        List<TaskProgress> tasks = cache.getProgressList(((Player) sender).getUniqueId());
 
         if (tasks == null || tasks.isEmpty()) {
-            player.sendMessage("§e你当前没有任务。");
+            sender.sendMessage("§e你当前没有任务。");
             return;
         }
 
-        player.sendMessage("§6=== 你的任务列表 ===");
+        sender.sendMessage("§6=== 你的任务列表 ===");
 
         for (TaskProgress pt : tasks) {
             String statusStr = switch (pt.getStatus()) {
@@ -58,9 +58,9 @@ public class MeCmd implements SubCommand {
 
             pt.getTask().getTargets().forEach((target) -> {
                 String finishStr = target.isFinished() ? "§a[已完成]" : "§c[未完成]";
-                String a = String.format("  §7→ 目标%d: 材料%s §7(需%d/%d个) %s",
+                String a = String.format("  §7→ 目标%d: 需要%s §7(需%d/%d个) %s",
                         target.getIndex(),
-                        target.getRequirement().getMaterial().name(),
+                        target.getRequirement().getItem(),
                         target.getCurrent(),
                         target.getRequirement().getAmount(),
                         finishStr
@@ -68,11 +68,11 @@ public class MeCmd implements SubCommand {
                 b.add(a);
             });
 
-            player.sendMessage(String.format("§e%s §7- %s", pt.getTask().getName(), statusStr));
+            sender.sendMessage(String.format("§e%s §7- %s", pt.getTask().getName(), statusStr));
             for (String a : b) {
-                player.sendMessage(a);
+                sender.sendMessage(a);
             }
-            player.sendMessage("");
+            sender.sendMessage("");
         }
     }
 }
