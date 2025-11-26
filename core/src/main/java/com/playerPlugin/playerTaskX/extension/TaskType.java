@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.extension;
 
-import com.playerPlugin.playerTaskX.domain.Task.TaskCondition;
+import com.playerPlugin.playerTaskX.model.Task.TaskCondition;
 
 public interface TaskType {
     String id(); // unique id, e.g. "kill"

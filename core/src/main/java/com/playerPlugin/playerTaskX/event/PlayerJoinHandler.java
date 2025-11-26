@@ -2,9 +2,8 @@ package com.playerPlugin.playerTaskX.event;
 
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
-import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

@@ -46,6 +46,19 @@ public class TaskCache {
 
     private final List<ConcurrentMap<String, TaskDefinition>> taskDefById = new ArrayList<>(); // List<任务ID -> 任务定义>
 
+    public Map<UUID, List<TaskProgress>> serProgressByUUID() {
+        return progressByUUID;
+    }
+    public Set<UUID> serProgressDirtyUUIDs() {
+        return progressDirtyUUIDs;
+    }
+    public Set<TaskProgress> serProgressMaybeUUIDs() {
+        return progressMaybeUUIDs;
+    }
+    public List<ConcurrentMap<String, TaskDefinition>> serTaskDefById() {
+        return taskDefById;
+    }
+
     public TaskCache(LoggerTools log, UniversalScheduler scheduler, TaskRepository repo, TaskProgressRepository progressRepo) {
         this.log = log;
         this.scheduler = scheduler;

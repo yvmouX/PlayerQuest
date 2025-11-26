@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.utils;
 
-import com.playerPlugin.common.Common;
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.playerTaskX.common.Common;
 import org.bukkit.ChatColor;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -15,9 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static com.playerPlugin.playerTaskX.utils.Help.log;
-
 public class UpdateHelper {
+    private final LoggerTools log;
+
+    public UpdateHelper(LoggerTools log) {
+        this.log = log;
+    }
+
     public void checkUpdate(String currentVersion) {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder()

@@ -6,15 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.common.Enum.PTXActionType;
-import com.playerPlugin.playerTaskX.common.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
-import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
