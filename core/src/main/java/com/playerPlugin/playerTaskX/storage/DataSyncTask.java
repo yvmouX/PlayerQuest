@@ -119,7 +119,7 @@ public class DataSyncTask {
      * 3) 在 scheduler.runAsync 中批量写入 DB，写完后从原 dirty 集合中移除已经写入的 UUID
      */
     private void syncCacheToDatabaseSnapshot() {
-        Set<UUID> dirtySnapshot = new HashSet<>(taskCache.getDirtyUUIDs()); // 快照
+        Set<UUID> dirtySnapshot = new HashSet<>(taskCache.dirtyUUIDs()); // 快照
         if (dirtySnapshot.isEmpty()) {
             log.debug("没有脏数据需要同步");
             return;
@@ -127,7 +127,7 @@ public class DataSyncTask {
 
         // 深拷贝 cache: map->(uuid -> new ArrayList<>(list))
         Map<UUID, List<TaskProgress>> cacheSnapshot = new HashMap<>();
-        Map<UUID, List<TaskProgress>> originalCache = taskCache.getProgressByUUID();
+        Map<UUID, List<TaskProgress>> originalCache = taskCache.progressByUUID();
         for (UUID uuid : dirtySnapshot) {
             List<TaskProgress> list = originalCache.get(uuid);
             if (list != null && !list.isEmpty()) {
@@ -166,9 +166,9 @@ public class DataSyncTask {
             }
 
             // 写完后从原 dirty 集合中移除已保存的 UUID（线程安全：直接调用 taskCache 的 dirty 集合）
-            // 注意：这里基于 taskCache.getDirtyUUIDs() 返回的是一个线程安全集合或合理设计；若不是，应提供 taskCache.clearDirty(uuid) 方法
+            // 注意：这里基于 taskCache.dirtyUUIDs() 返回的是一个线程安全集合或合理设计；若不是，应提供 taskCache.clearDirty(uuid) 方法
             for (UUID uuid : cacheSnapshot.keySet()) {
-                taskCache.getDirtyUUIDs().remove(uuid);
+                taskCache.dirtyUUIDs().remove(uuid);
             }
         });
     }
@@ -179,7 +179,7 @@ public class DataSyncTask {
      */
     private void syncFinishedTasks() {
         // 从 cache 拷贝 maybeFinishedPlayers（避免并发）
-        Set<TaskProgress> maybeFinishedSnapshot = new HashSet<>(taskCache.getMaybeUUIDs());
+        Set<TaskProgress> maybeFinishedSnapshot = new HashSet<>(taskCache.maybeUUIDs());
         if (maybeFinishedSnapshot.isEmpty()) {
             return;
         }
@@ -198,7 +198,7 @@ public class DataSyncTask {
         }
 
         // 清空 maybeFinishedPlayers（已将完成项转移到 finishedQueue）
-        taskCache.getMaybeUUIDs().clear();
+        taskCache.maybeUUIDs().clear();
 
         // 如果有完成队列，则批量更新数据库（一次性写入 finishedQueue 的当前内容）
         if (!finishedQueue.isEmpty()) {
@@ -235,8 +235,8 @@ public class DataSyncTask {
         List<UUID> offlinePlayers = taskCache.getOfflinePlayers(); // 假设 TaskCache 提供该方法；若没有需调整
         if (offlinePlayers == null || offlinePlayers.isEmpty()) return;
 
-        Map<UUID, List<TaskProgress>> cache = taskCache.getProgressByUUID();
-        Set<UUID> dirty = taskCache.getDirtyUUIDs();
+        Map<UUID, List<TaskProgress>> cache = taskCache.progressByUUID();
+        Set<UUID> dirty = taskCache.dirtyUUIDs();
 
         // 使用迭代器安全删除
         Iterator<Map.Entry<UUID, List<TaskProgress>>> iterator = cache.entrySet().iterator();
@@ -272,10 +272,10 @@ public class DataSyncTask {
      */
     private void flushAllDirty() {
         // 1) flush dirty players
-        Set<UUID> dirty = new HashSet<>(taskCache.getDirtyUUIDs());
+        Set<UUID> dirty = new HashSet<>(taskCache.dirtyUUIDs());
         if (!dirty.isEmpty()) {
             List<TaskProgress> allDirty = new ArrayList<>();
-            Map<UUID, List<TaskProgress>> cache = taskCache.getProgressByUUID();
+            Map<UUID, List<TaskProgress>> cache = taskCache.progressByUUID();
             for (UUID uuid : dirty) {
                 List<TaskProgress> list = cache.get(uuid);
                 if (list != null && !list.isEmpty()) {
@@ -301,7 +301,7 @@ public class DataSyncTask {
                 }
             }
             // 清理 dirty 集合（尽可能）
-            taskCache.getDirtyUUIDs().removeAll(dirty);
+            taskCache.dirtyUUIDs().removeAll(dirty);
         }
 
         // 2) flush finishedQueue（如果还有）

@@ -47,13 +47,8 @@ allprojects {
     }
 }
 
-project(":api") {
-}
-
 project(":core") {
     dependencies {
-        implementation(project(":api"))
-
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
         implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
         implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
@@ -67,6 +62,12 @@ project(":core") {
         implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
     }
 }
+
+project(":api") {
+    implementation(project(":core"))
+}
+
+
 
 tasks {
     runServer {

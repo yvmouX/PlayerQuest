@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.storage.TaskRepository;
 
 import javax.annotation.Nonnull;
 import java.sql.SQLException;
@@ -20,14 +21,18 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class TaskCache {
     private final LoggerTools log;
+    private final TaskRepository repo;
+
+
     private final Map<UUID, List<TaskProgress>> progressByUUID; // 玩家UUID -> 任务进度列表
     private final Set<UUID> dirtyUUIDs = ConcurrentHashMap.newKeySet();
     private final Set<TaskProgress> maybeUUIDs = ConcurrentHashMap.newKeySet();
 
     private final List<ConcurrentMap<String, TaskDefinition>> taskDefById = new ArrayList<>(); // List<任务ID -> 任务定义>
 
-    public TaskCache(LoggerTools log) {
+    public TaskCache(LoggerTools log, TaskRepository repo) {
         this.log = log;
+        this.repo = repo;
         progressByUUID = Collections.synchronizedMap(
                 new LinkedHashMap<UUID, List<TaskProgress>>(
                         100, // 初始容量 100个玩家 TODO 配置文件自定义
@@ -51,10 +56,10 @@ public class TaskCache {
     }
 
     // Getter methods
-    public Map<UUID, List<TaskProgress>> getProgressByUUID() {return progressByUUID;}
-    public Set<UUID> getDirtyUUIDs() {return dirtyUUIDs;}
-    public Set<TaskProgress> getMaybeUUIDs() {return maybeUUIDs;}
-    public List<ConcurrentMap<String, TaskDefinition>> getTaskDefById() {return taskDefById;}
+    public Map<UUID, List<TaskProgress>> progressByUUID() {return progressByUUID;}
+    public Set<UUID> dirtyUUIDs() {return dirtyUUIDs;}
+    public Set<TaskProgress> maybeUUIDs() {return maybeUUIDs;}
+    public List<ConcurrentMap<String, TaskDefinition>> taskDefById() {return taskDefById;}
 
 
 
@@ -85,6 +90,32 @@ public class TaskCache {
         } else {
             dirtyUUIDs.add(uuid);
         }
+    }
+
+    private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
+        if (taskProgressList.isEmpty()) return;
+
+        if (firstSave) {
+            try {
+                sm.getDatabaseDAO().startTask(taskProgressList);
+                sm.getDatabaseDAO().setProgress(taskProgressList);
+                log.info("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
+        } else {
+            try {
+                sm.getDatabaseDAO().updateTasks(taskProgressList);
+                sm.getDatabaseDAO().updateProgress(taskProgressList);
+                log.debug("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
+            } catch (SQLException e) {
+                log.error("批量保存玩家任务到数据库失败", e);
+            }
+        }
+    }
+
+    public void init(Map<UUID, List<TaskProgress>> playerTaskCache) {
+        this.cache = playerTaskCache;
     }
 
 
@@ -170,31 +201,7 @@ public class TaskCache {
 //        });
 //    }
 
-    private void saveCacheToDatabase(@Nonnull List<TaskProgress> taskProgressList, boolean firstSave) {
-        if (taskProgressList.isEmpty()) return;
 
-        if (firstSave) {
-            try {
-                sm.getDatabaseDAO().startTask(taskProgressList);
-                sm.getDatabaseDAO().setProgress(taskProgressList);
-                log.info("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
-            } catch (SQLException e) {
-                log.error("批量保存玩家任务到数据库失败", e);
-            }
-        } else {
-            try {
-                sm.getDatabaseDAO().updateTasks(taskProgressList);
-                sm.getDatabaseDAO().updateProgress(taskProgressList);
-                log.debug("批量保存玩家任务到数据库成功，任务数量：" + taskProgressList.size());
-            } catch (SQLException e) {
-                log.error("批量保存玩家任务到数据库失败", e);
-            }
-        }
-    }
-
-    public void init(Map<UUID, List<TaskProgress>> playerTaskCache) {
-        this.cache = playerTaskCache;
-    }
 
 //
 //    /**

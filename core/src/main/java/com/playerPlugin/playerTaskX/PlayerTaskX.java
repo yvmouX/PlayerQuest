@@ -94,7 +94,7 @@ public final class PlayerTaskX extends JavaPlugin {
         for (TaskDefinition taskDef : taskDefList) {
             taskDefMap.putIfAbsent(taskDef.getId(), taskDef); // 避免重复添加, 如果两个任务有相同ID, 则保留第一个
         }
-        cache.getTaskDefById().add(taskDefMap);
+        cache.taskDefById().add(taskDefMap);
         log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
 
         // 4、开始数据同步任务
