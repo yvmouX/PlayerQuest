@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX.storage.yaml;
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import org.bukkit.plugin.java.JavaPlugin;
 

@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.utils;
 
 import com.paperPlugin.api.model.TaskDefinitionDTO;
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 
 public class DomainMapper {
     public static TaskDefinitionDTO toDTO(TaskDefinition t) {

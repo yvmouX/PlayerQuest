@@ -8,7 +8,7 @@ import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.configs.ConfigManager;
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.event.SimpleEventBus;
 import com.playerPlugin.playerTaskX.listeners.KillListener;

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.domain.Task;
+package com.playerPlugin.playerTaskX.model.Task;
 
 import com.playerPlugin.playerTaskX.common.Enum.PTXActionType;
 

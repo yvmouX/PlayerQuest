@@ -3,13 +3,12 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
-import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
-import com.playerPlugin.playerTaskX.domain.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.Task.TaskTarget;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -112,9 +111,6 @@ public class TaskCache {
 
                 // 2) 筛选并同步已经完成的任务（来自 taskCache 的 maybeFinishedPlayers）
                 syncFinishedTasks();
-
-                // 3) 清理离线玩家缓存（如果 TaskCache 提供 offlinePlayers 列表，传入使用；否则默认逻辑在 cache 层处理）
-                cleanupOfflinePlayers();
 
             } catch (Exception e) {
                 log.error("DataSyncTask 主任务发生异常", e);
@@ -239,83 +235,34 @@ public class TaskCache {
         }
     }
 
-    /**
-     * 清理离线玩家缓存（如果 TaskCache 提供 offline info 则由外部传入或由 Cache 提供）
-     * 这里做一个保守实现：检查 taskCache 中所有玩家，如果某玩家已经被标记 dirty 且被判定为离线，则移除其 cache 并保存
-     *
-     * 注意：如何判断离线玩家由 taskCache 提供。如果没有，请把 offlinePlayers 列表提供给本类或改为由外部调用 clearCache
-     */
-    private void cleanupOfflinePlayers() {
-        List<UUID> offlinePlayers = taskCache.getOfflinePlayers(); // 假设 TaskCache 提供该方法；若没有需调整
-        if (offlinePlayers == null || offlinePlayers.isEmpty()) return;
-
-        Map<UUID, List<TaskProgress>> cache = taskCache.progressByUUID();
-        Set<UUID> dirty = taskCache.dirtyUUIDs();
-
-        // 使用迭代器安全删除
-        Iterator<Map.Entry<UUID, List<TaskProgress>>> iterator = cache.entrySet().iterator();
-        List<UUID> processed = new ArrayList<>();
-
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, List<TaskProgress>> entry = iterator.next();
-            UUID uuid = entry.getKey();
-            if (offlinePlayers.contains(uuid) && dirty.contains(uuid)) {
-                List<TaskProgress> copyList = new ArrayList<>(entry.getValue());
-                try {
-                    databaseDAO.updateTasks(copyList);
-                    databaseDAO.updateProgress(copyList);
-                } catch (SQLException e) {
-                    log.error("离线玩家缓存同步失败，uuid=" + uuid, e);
-                    continue; // 出错则跳过删除，保留以便下次重试
-                }
-
-                iterator.remove(); // 从缓存移除
-                dirty.remove(uuid);
-                processed.add(uuid);
-            }
-        }
-
-        offlinePlayers.removeAll(processed);
-        if (!processed.isEmpty()) {
-            log.debug(String.format("已清理 %d 个玩家的缓存, 剩余 %d 个玩家", processed.size(), offlinePlayers.size()));
-        }
-    }
 
     /**
      * 停止时强制 flush 脏数据（同步阻塞调用）
      */
     private void flushAllDirty() {
         // 1) flush dirty players
-        Set<UUID> dirty = new HashSet<>(taskCache.dirtyUUIDs());
+        Set<UUID> dirty = new HashSet<>(progressDirtyUUIDs);
         if (!dirty.isEmpty()) {
             List<TaskProgress> allDirty = new ArrayList<>();
-            Map<UUID, List<TaskProgress>> cache = taskCache.progressByUUID();
             for (UUID uuid : dirty) {
-                List<TaskProgress> list = cache.get(uuid);
+                List<TaskProgress> list = progressByUUID.get(uuid);
                 if (list != null && !list.isEmpty()) {
                     allDirty.addAll(new ArrayList<>(list));
                 }
             }
 
             if (!allDirty.isEmpty()) {
-                // 直接在当前线程同步写入，确保进程停止前数据已写
                 try {
-                    if (!firstSaveDone.get()) {
-                        databaseDAO.startTask(allDirty);
-                        databaseDAO.setProgress(allDirty);
-                        firstSaveDone.set(true);
-                        log.info("停止时首次批量保存成功，数量：" + allDirty.size());
-                    } else {
-                        databaseDAO.updateTasks(allDirty);
-                        databaseDAO.updateProgress(allDirty);
-                        log.info("停止时批量更新成功，数量：" + allDirty.size());
+                    for (TaskProgress d : allDirty) {
+                        progressRepo.save(d);
                     }
-                } catch (SQLException e) {
+                    log.info("停止时首次批量保存成功，数量：" + allDirty.size());
+                } catch (Exception e) {
                     log.error("停止时批量保存脏数据失败", e);
                 }
             }
             // 清理 dirty 集合（尽可能）
-            taskCache.dirtyUUIDs().removeAll(dirty);
+            progressDirtyUUIDs.removeAll(dirty);
         }
 
         // 2) flush finishedQueue（如果还有）
@@ -326,9 +273,11 @@ public class TaskCache {
         }
         if (!remainingFinished.isEmpty()) {
             try {
-                databaseDAO.updateProgress(remainingFinished);
+                for (TaskProgress d : remainingFinished) {
+                    progressRepo.save(d);
+                }
                 log.info("停止时同步已完成任务数量：" + remainingFinished.size());
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 log.error("停止时同步已完成任务失败", e);
             }
         }

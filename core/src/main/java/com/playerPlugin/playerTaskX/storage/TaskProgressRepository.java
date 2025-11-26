@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.storage;
 
-import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
-import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import org.bukkit.entity.Player;
 
 import java.util.Optional;
