@@ -12,8 +12,9 @@ import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.event.SimpleEventBus;
 import com.playerPlugin.playerTaskX.listeners.KillListener;
-import com.playerPlugin.playerTaskX.storage.DataSyncTask;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
+import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import me.devnatan.inventoryframework.ViewFrame;
@@ -89,7 +90,9 @@ public final class PlayerTaskX extends JavaPlugin {
             log.warn("没有从存储库加载到任何任务定义");
             return;
         }
-        TaskCache cache = new TaskCache(log);
+        TaskRepository taskRepository = storageFactory.getRepository();
+        TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
+        TaskCache cache = new TaskCache(log, scheduler, taskRepository, taskProgressRepository);
         ConcurrentMap<String, TaskDefinition> taskDefMap = new ConcurrentHashMap<>();
         for (TaskDefinition taskDef : taskDefList) {
             taskDefMap.putIfAbsent(taskDef.getId(), taskDef); // 避免重复添加, 如果两个任务有相同ID, 则保留第一个
@@ -98,7 +101,7 @@ public final class PlayerTaskX extends JavaPlugin {
         log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
 
         // 4、开始数据同步任务
-        new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
+        //new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
 
         // 6、注册事件
         // 初始化事件总线
@@ -112,7 +115,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(killListener, this);
 
         // 注册玩家加入事件
-        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(storageFactory, cache), this);
+        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
 
         // 7、注册命令

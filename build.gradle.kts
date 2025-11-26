@@ -4,13 +4,23 @@ plugins {
     id("com.gradleup.shadow") version "9.0.0-rc3"
 }
 
-allprojects {
-    apply(plugin = "java")
 
+allprojects {
     group = "com.playerPlugin"
     version = "1.0.0"
 
-    // Java 版本配置
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
+        maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://repo.tcoded.com/releases") }
+        maven { url = uri("https://repo.rosewooddev.io/repository/public/") }
+    }
+}
+
+subprojects {
+    apply(plugin = "java")
+
     val targetJavaVersion = 21
     java {
         val javaVersion = JavaVersion.toVersion(targetJavaVersion)
@@ -33,16 +43,7 @@ allprojects {
         }
     }
 
-    repositories {
-        mavenCentral()
-        maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
-        maven { url = uri("https://jitpack.io")}
-        maven { url = uri("https://repo.tcoded.com/releases")}
-        maven { url = uri("https://repo.rosewooddev.io/repository/public/")}
-    }
-
     dependencies {
-        //implementation("com.github.yvmouX:YLib:1.0.0-beta4")
         implementation(files(rootProject.file("lib/YLib-1.0.0-beta5.jar")))
     }
 }
@@ -60,11 +61,14 @@ project(":core") {
         compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
         implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     }
 }
 
 project(":api") {
-    implementation(project(":core"))
+    dependencies {
+        implementation(project(":core"))
+    }
 }
 
 

@@ -1,18 +1,24 @@
 package com.playerPlugin.playerTaskX.storage.yaml;
 
 import cn.yvmou.ylib.tools.LoggerTools;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.common.Enum.PTXActionType;
+import com.playerPlugin.playerTaskX.common.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -49,12 +55,70 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void save(TaskProgress progress) {
+        writeLock.lock();
+        Path path = null;
+        Path temp = null;
+        try {
+            path = dataDir.resolve(progress.getUUID() + ".yml");
+            temp = dataDir.resolve(progress.getUUID() + ".yml");
 
+            // 初始化文件
+            JsonNode rootNode;
+            if (!Files.exists(path) || Files.size(path) == 0) {
+                Files.createFile(path);
+                log.warn(String.format("玩家 %s 的任务进度仓库不存在，已自动创建", progress.getUUID()));
+                rootNode = yamlMapper.createObjectNode(); // 空对象节点
+            } else {
+                // 读取 YAML 文件为 JsonNode 树模型
+                rootNode = yamlMapper.readTree(path.toFile());
+                // 兼容空文件/无效 YAML 避免解析失败
+                if (rootNode == null || !rootNode.isObject()) {
+                    rootNode = yamlMapper.createObjectNode();
+                }
+            }
+
+            // 转换为可修改的ObjectNode
+            ObjectNode mutNode = (ObjectNode) rootNode;
+            // 增量更新所有字段
+            if (progress.getUUID() != null) {
+                mutNode.put("uuid", progress.getUUID().toString());
+            }
+            if (progress.getStatus() != null) {
+                mutNode.put("status", progress.getStatus().toString());
+            }
+            if (progress.getTask() != null) {
+                mutNode.set("taskDefinition", yamlMapper.valueToTree(progress.getTask()));
+            }
+
+            // 写入临时文件
+            yamlMapper.writeValue(temp.toFile(), mutNode);
+            Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            log.debug(String.format("已成功保存玩家 %s 的任务",  progress.getUUID()));
+        } catch (IOException e) {
+            log.error(String.format("保存玩家 %s 的任务进度数据时发生错误: %s", progress.getUUID(), path), e);
+            // 清理临时文件
+            if (Files.exists(temp)) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e1) {
+                    log.error(e1.getMessage(), e1);
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
-    public void delete(UUID player, String taskId) {
-
+    public void delete(UUID uuid, String taskId) {
+        writeLock.lock();
+        try {
+            Files.deleteIfExists(dataDir.resolve(uuid + ".yml"));
+        } catch (IOException e) {
+            log.error(String.format("删除玩家 %s 的任务进度仓库时发生错误: ", uuid), e);
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     public void createForPlayer(Player player, TaskDefinition taskDefinition) {
@@ -62,8 +126,8 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
         Path path = null;
         try {
             path = dataDir.resolve(player.getUniqueId() + ".yml");
-            if (Files.exists(path)) {
-                log.warn(String.format("玩家 %s 的任务进度文件已存在，不会重复创建", player.getName()));
+            if (Files.exists(path) || Files.size(path) != 0) {
+                log.warn(String.format("玩家 %s 的任务进度仓库已存在，不会重复创建", player.getName()));
                 return;
             }
 
@@ -85,7 +149,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
             progressFile = dataDir.resolve(player.getUniqueId() + ".yml");
 
             if (!Files.exists(progressFile) || Files.size(progressFile) == 0) {
-                log.warn(String.format("没有找到玩家 %s 的任务进度数据", player.getName()));
+                log.warn(String.format("没有找到玩家 %s 的任务进度仓库", player.getName()));
                 return Optional.empty();
             }
 

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.domain.Task;
 
-import com.playerPlugin.playerTaskX.domain.PlayerTask.Enum.PTXTaskType;
+import com.playerPlugin.playerTaskX.common.Enum.PTXTaskType;
 
 import java.util.List;
 import java.util.Objects;

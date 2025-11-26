@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.event;
 
+import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
@@ -16,12 +17,14 @@ import static com.playerPlugin.playerTaskX.common.Common.Repo_URL;
 import static com.playerPlugin.playerTaskX.common.Common.isLatest;
 
 public class PlayerJoinHandler implements Listener {
+    private final LoggerTools log;
     private final TaskCache cache;
-    private final StorageFactory storageFactory;
+    private final TaskProgressRepository progressRepository;
 
-    public PlayerJoinHandler(StorageFactory storageFactory, TaskCache cache) {
-        this.storageFactory = storageFactory;
+    public PlayerJoinHandler(LoggerTools log, TaskCache cache, TaskProgressRepository progressRepository) {
+        this.log = log;
         this.cache = cache;
+        this.progressRepository = progressRepository;
     }
 
     /**
@@ -32,20 +35,19 @@ public class PlayerJoinHandler implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
 
+        Optional<TaskProgress> taskProgress = progressRepository.loadForPlayer(player);
 
-        Optional<TaskProgress> taskProgress = taskProgressRepository.loadForPlayer(player);
-
-        taskProgress.ifPresent(progress->{
-            cache.taskProgressToCache(progress, false);
-        });
+        if (taskProgress.isPresent()) {
+            cache.progressToCache(taskProgress.get());
+        } else {
+            log.debug(String.format("未加载玩家 %s 的任务进度，可能是由于其任务进度不存在或未被保存", player.getName()));
+        }
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
 
     }
 
