@@ -1,12 +1,21 @@
 package com.playerPlugin.playerTaskX.model.Trigger;
 
+import cn.yvmou.ylib.tools.LoggerTools;
+import net.milkbowl.vault.economy.Economy;
+import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.entity.Player;
 
-import static com.playerPlugin.playerTaskX.PlayerTaskX.getEconomy;
-import static com.playerPlugin.playerTaskX.PlayerTaskX.getPlayerPointsAPI;
-import static com.playerPlugin.playerTaskX.utils.Help.log;
-
 public class TaskTriggerEco {
+    private static LoggerTools log;
+    private static Economy economy;
+    private static PlayerPointsAPI ppAPI;
+
+    public TaskTriggerEco(LoggerTools log, Economy economy, PlayerPointsAPI ppAPI) {
+        TaskTriggerEco.log = log;
+        TaskTriggerEco.economy = economy;
+        TaskTriggerEco.ppAPI = ppAPI;
+    }
+
     /**
      * 处理资金
      *
@@ -14,7 +23,7 @@ public class TaskTriggerEco {
      * @param amount 量
      */
     protected static void handleMoney(Player player, String amount) {
-        if (getEconomy() == null) {
+        if (economy == null) {
             log.info("未安装Vault，无法使用经济功能");
             return;
         }
@@ -23,9 +32,9 @@ public class TaskTriggerEco {
             int money = Integer.parseInt(amount);
 
             if (money > 0) {
-                getEconomy().depositPlayer(player, money);
+                economy.depositPlayer(player, money);
             } else {
-                getEconomy().withdrawPlayer(player, money);
+                economy.withdrawPlayer(player, money);
             }
 
         } catch (NumberFormatException e) {
@@ -40,7 +49,7 @@ public class TaskTriggerEco {
      * @param amount 量
      */
     protected static void handlePoint(Player player, String amount) {
-        if (getPlayerPointsAPI() == null) {
+        if (ppAPI == null) {
             log.info("未安装PlayerPoints，无法使用点券功能");
             return;
         }
@@ -49,10 +58,10 @@ public class TaskTriggerEco {
             int points = Integer.parseInt(amount);
 
             if (points > 0) {
-                getPlayerPointsAPI().give(player.getUniqueId(), points);
+                ppAPI.give(player.getUniqueId(), points);
             } else {
                 // 两个方法都只接受大于0的amount
-                getPlayerPointsAPI().take(player.getUniqueId(), -points);
+                ppAPI.take(player.getUniqueId(), -points);
             }
 
         } catch (NumberFormatException e) {

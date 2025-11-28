@@ -1,5 +1,7 @@
 package com.playerPlugin.playerTaskX.model.Trigger;
 
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.playerTaskX.common.Common;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -16,11 +18,13 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.playerPlugin.common.Common.*;
-import static com.playerPlugin.playerTaskX.utils.Help.log;
-
-
 public class TaskTriggerSpecial {
+    private static LoggerTools log;
+
+    public TaskTriggerSpecial(LoggerTools log) {
+        TaskTriggerSpecial.log = log;
+    }
+
     /**
      * 处理杀戮
      *
@@ -103,13 +107,13 @@ public class TaskTriggerSpecial {
     private static ItemMeta getItemMeta(ItemMeta meta, Map<String, String> properties) {
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             switch (entry.getKey().toUpperCase(Locale.ENGLISH)) {
-                case NAME:
+                case Common.NAME:
                     meta.setDisplayName(entry.getValue().replace("&", "§"));
                     continue;
-                case LORE:
+                case Common.LORE:
                     meta.setLore(Arrays.asList(entry.getValue().split("\n")));
                     continue;
-                case ENCHANTS:
+                case Common.ENCHANTS:
                     String[] enchants = entry.getValue().split(",");
                     for (String enchant : enchants) {
                         String[] enchantParts = enchant.split(":");
@@ -125,7 +129,7 @@ public class TaskTriggerSpecial {
                         }
                     }
                     continue;
-                case DAMAGE:
+                case Common.DAMAGE:
 
                     meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(
                             NamespacedKey.minecraft("attack_damage"),
@@ -134,7 +138,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.ANY
                     ));
                     continue;
-                case HEALTH:
+                case Common.HEALTH:
                     meta.addAttributeModifier(Attribute.MAX_HEALTH, new AttributeModifier(
                             NamespacedKey.minecraft("max_health"),
                             Double.parseDouble(entry.getValue()),
@@ -142,7 +146,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.ANY
                     ));
                     continue;
-                case EQUIPPED_DAMAGE:
+                case Common.EQUIPPED_DAMAGE:
                     meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(
                             NamespacedKey.minecraft("attack_damage_main_hand"),
                             Double.parseDouble(entry.getValue()),
@@ -150,7 +154,7 @@ public class TaskTriggerSpecial {
                             EquipmentSlotGroup.MAINHAND
                     ));
                     continue;
-                case EQUIPPED_HEALTH:
+                case Common.EQUIPPED_HEALTH:
                     meta.addAttributeModifier(Attribute.MAX_HEALTH, new AttributeModifier(
                             NamespacedKey.minecraft("max_health_"),
                             Double.parseDouble(entry.getValue()),
@@ -158,10 +162,10 @@ public class TaskTriggerSpecial {
                             meta.getEquippable().getSlot().getGroup()
                     ));
                     continue;
-                case UNBREAKABLE:
+                case Common.UNBREAKABLE:
                     meta.setUnbreakable(true);
                     continue;
-                case ARMOR:
+                case Common.ARMOR:
                     meta.addAttributeModifier(Attribute.ARMOR, new AttributeModifier(
                             NamespacedKey.minecraft("armor"),
                             Double.parseDouble(entry.getValue()),
@@ -169,7 +173,7 @@ public class TaskTriggerSpecial {
                             meta.getEquippable().getSlot().getGroup()
                     ));
                     continue;
-                case ARMOR_TOUGHNESS:
+                case Common.ARMOR_TOUGHNESS:
                         meta.addAttributeModifier(Attribute.ARMOR_TOUGHNESS, new AttributeModifier(
                             NamespacedKey.minecraft("armor_toughness"),
                             Double.parseDouble(entry.getValue()),

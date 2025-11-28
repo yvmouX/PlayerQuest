@@ -1,6 +1,5 @@
 package com.playerPlugin.playerTaskX.event.listeners;
 
-import com.playerPlugin.playerTaskX.event.EventBus;
 import com.playerPlugin.playerTaskX.event.TaskRouter;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;

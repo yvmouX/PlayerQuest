@@ -1,5 +1,14 @@
 package com.playerPlugin.playerTaskX.extension;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ServiceLoader;
+
 /**
  * - 支持运行时读取 `extensions` 目录并以独立 ClassLoader 加载扩展 jar；
  * - 也支持普通的 SPI（`META-INF/services`）机制，方便打包为插件依赖或内置扩展。

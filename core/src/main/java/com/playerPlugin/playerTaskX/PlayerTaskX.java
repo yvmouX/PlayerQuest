@@ -7,11 +7,8 @@ import com.playerPlugin.playerTaskX.UI.MainUI;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.event.EventBus;
-import com.playerPlugin.playerTaskX.event.custom.TaskProgressEvent;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
-import com.playerPlugin.playerTaskX.event.SimpleEventBus;
 import com.playerPlugin.playerTaskX.event.listeners.KillListener;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
@@ -106,14 +103,14 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 6、注册事件
         // 初始化事件总线
-        SimpleEventBus eventBus = new SimpleEventBus(log);
+        //SimpleEventBus eventBus = new SimpleEventBus(log);
 
         // 注册事件处理程序
-        registerEventHandlers(eventBus);
+        //registerEventHandlers(eventBus);
 
         // 注册 Bukkit 事件监听器
-        KillListener killListener = new KillListener(eventBus);
-        getServer().getPluginManager().registerEvents(killListener, this);
+        //KillListener killListener = new KillListener(eventBus);
+        //getServer().getPluginManager().registerEvents(killListener, this);
 
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
@@ -137,22 +134,22 @@ public final class PlayerTaskX extends JavaPlugin {
 
     }
 
-    private void registerEventHandlers(EventBus eventBus) {
-        // 注册 TaskProgressEvent 的处理器
-        eventBus.register(TaskProgressEvent.class, event -> {
-            log.info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
-                    event.getPlayerId(),
-                    event.getActionType(),
-                    event.getMobType(), // 假设你给 TaskProgressEvent 加了 getMobType 方法
-                    event.getProgress())); // 假设你给 TaskProgressEvent 加了 getProgress 方法
-
-            // 在这里可以触发任务更新、发送奖励等逻辑
-            // Player player = Bukkit.getPlayer(event.getPlayerId());
-            // if (player != null) {
-            //     player.sendMessage("你完成了一个击杀任务！");
-            // }
-        });
-    }
+//    private void registerEventHandlers(EventBus eventBus) {
+//        // 注册 TaskProgressEvent 的处理器
+//        eventBus.register(TaskProgressEvent.class, event -> {
+//            log.info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
+//                    event.getPlayerId(),
+//                    event.getActionType(),
+//                    event.getMobType(), // 假设你给 TaskProgressEvent 加了 getMobType 方法
+//                    event.getProgress())); // 假设你给 TaskProgressEvent 加了 getProgress 方法
+//
+//            // 在这里可以触发任务更新、发送奖励等逻辑
+//            // Player player = Bukkit.getPlayer(event.getPlayerId());
+//            // if (player != null) {
+//            //     player.sendMessage("你完成了一个击杀任务！");
+//            // }
+//        });
+//    }
 
     private void unregister() {
     }
