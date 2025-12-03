@@ -81,6 +81,15 @@ tasks {
 }
 
 tasks.shadowJar {
+    // 依赖 core 模块的 jar 任务
+    dependsOn(project(":core").tasks.named("jar"))
+    
+    // 将 core 模块的输出包含进来
+    from(project(":core").sourceSets.main.get().output)
+    
+    // 包含 core 模块的运行时依赖
+    configurations = listOf(project(":core").configurations.runtimeClasspath.get())
+    
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
     relocate("me.devnatan.inventoryframework", "com.playerPlugin.playerTaskX.lib.inventoryframework")
 
@@ -91,8 +100,8 @@ tasks.shadowJar {
                         file.path.contains("inventory-framework"))
     }
 
-    // 强制保留自己的 plugin.yml（双重保险）
-    from("src/main/resources/plugin.yml") {
+    // 强制保留 core 模块的 plugin.yml
+    from(project(":core").file("src/main/resources/plugin.yml")) {
         into("/") // 放入 JAR 根目录
     }
 

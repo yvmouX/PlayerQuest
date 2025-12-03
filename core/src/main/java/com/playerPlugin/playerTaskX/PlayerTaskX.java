@@ -115,11 +115,6 @@ public final class PlayerTaskX extends JavaPlugin {
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
-
-        // 7、注册命令
-        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository);
-        new CommandRegister(ylib.getCommandManager(), cache, viewFrame, taskService).registerCommands();
-
         // 8、注册UI界面
         try {
             viewFrame = ViewFrame.create(this);
@@ -127,6 +122,12 @@ public final class PlayerTaskX extends JavaPlugin {
         } catch (Exception e) {
             log.error("创建UI错误" + e);
         }
+
+        // 7、注册命令
+        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository);
+        new CommandRegister(ylib.getCommandManager(), cache, viewFrame, taskService).registerCommands();
+
+
 
         // 9、更新检查
         UpdateHelper updateHelper = new UpdateHelper(log);
