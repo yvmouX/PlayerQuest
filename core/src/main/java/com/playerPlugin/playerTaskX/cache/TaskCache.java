@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX.cache;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.model.Task.TaskTarget;

@@ -1,5 +1,6 @@
 plugins {
     java
+    `maven-publish`
     id("xyz.jpenilla.run-paper") version "2.3.1"
     id("com.gradleup.shadow") version "9.0.0-rc3"
 }
@@ -20,6 +21,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "maven-publish")
 
     val targetJavaVersion = 21
     java {
@@ -45,14 +47,15 @@ subprojects {
 
     dependencies {
         implementation(files(rootProject.file("lib/YLib-1.0.0-beta5.jar")))
+        compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
     }
 }
 
 project(":core") {
     dependencies {
-        compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
-        implementation("me.devnatan:inventory-framework-platform-paper:3.5.5")
-        implementation("me.devnatan:inventory-framework-platform-bukkit:3.5.5")
+        // 依赖 api 模块
+        implementation(project(":api"))
+
         compileOnly("com.github.MilkBowl:VaultAPI:1.7")
         implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
 
@@ -66,9 +69,6 @@ project(":core") {
 }
 
 project(":api") {
-    dependencies {
-        implementation(project(":core"))
-    }
 }
 
 
@@ -91,24 +91,6 @@ tasks.shadowJar {
     configurations = listOf(project(":core").configurations.runtimeClasspath.get())
     
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
-    relocate("me.devnatan.inventoryframework", "com.playerPlugin.playerTaskX.lib.inventoryframework")
-
-    // 排除依赖中的 plugin.yml （避免冲突）
-    exclude { file ->
-        file.name == "plugin.yml" &&
-                (file.path.contains("me/devnatan/inventoryframework") ||
-                        file.path.contains("inventory-framework"))
-    }
-
-    // 强制保留 core 模块的 plugin.yml
-    from(project(":core").file("src/main/resources/plugin.yml")) {
-        into("/") // 放入 JAR 根目录
-    }
-
-    // 重复文件处理策略：排除重复
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    // 输出文件名格式：项目名-版本号-all.jar
-    archiveFileName.set("${project.name}-${project.version}-all.jar")
 }
 
 

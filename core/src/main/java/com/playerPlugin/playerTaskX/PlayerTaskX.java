@@ -3,20 +3,20 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.playerTaskX.UI.MainUI;
+import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
+import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
+import com.playerPlugin.playerTaskX.api.impl.PlayerTaskXAPIImpl;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
-import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
+import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
-import com.playerPlugin.playerTaskX.event.listeners.KillListener;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
-import me.devnatan.inventoryframework.ViewFrame;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
@@ -36,9 +36,10 @@ public final class PlayerTaskX extends JavaPlugin {
     private boolean isEconomyEnabled = true;
     private PlayerPointsAPI ppAPI;
     private boolean isPlayerPointsEnabled = true;
-    private ViewFrame viewFrame;
 
     private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取
+    
+    private PlayerTaskXAPI api;
 
     @Override
     public void onEnable() {
@@ -115,17 +116,14 @@ public final class PlayerTaskX extends JavaPlugin {
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
-        // 8、注册UI界面
-        try {
-            viewFrame = ViewFrame.create(this);
-            viewFrame.with(new MainUI()).register();
-        } catch (Exception e) {
-            log.error("创建UI错误" + e);
-        }
-
         // 7、注册命令
         TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository);
-        new CommandRegister(ylib.getCommandManager(), cache, viewFrame, taskService).registerCommands();
+        new CommandRegister(ylib.getCommandManager(), cache, taskService).registerCommands();
+
+        // 8、初始化并注册 API
+        api = new PlayerTaskXAPIImpl(log, cache, taskRepository, taskProgressRepository);
+        PlayerTaskXProvider.setApi(api);
+        log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
 
 
 
@@ -153,6 +151,9 @@ public final class PlayerTaskX extends JavaPlugin {
 //    }
 
     private void unregister() {
+        // 重置 API
+        PlayerTaskXProvider.reset();
+        log.debug("PlayerTaskX API 已重置");
     }
 
     private boolean setupEconomy() {

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
-import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 
 import java.util.Objects;
 import java.util.UUID;

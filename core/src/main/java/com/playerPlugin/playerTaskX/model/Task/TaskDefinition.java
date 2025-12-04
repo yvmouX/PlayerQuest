@@ -1,9 +1,14 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
-import com.playerPlugin.playerTaskX.common.Enum.PTXTaskType;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
+import com.playerPlugin.playerTaskX.api.task.ITaskCondition;
+import com.playerPlugin.playerTaskX.api.task.ITaskDefinition;
+import com.playerPlugin.playerTaskX.api.task.ITaskReward;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 任务定义
@@ -11,12 +16,13 @@ import java.util.Objects;
  * @author yvmoux
  * @date 2025/11/23
  */
-public class TaskDefinition {
-    private final String id;
-    private PTXTaskType type;
-    private String name;
-    private List<TaskTarget> targets;
+public class TaskDefinition implements ITaskDefinition {
+    private final String id; // 唯一ID
+    private final PTXTaskType type; // 不可变类型
+    private String name; // 名称
+    private String description;
     public List<TaskCondition> conditions; // TODO
+    private List<TaskTarget> targets;
     private TaskTrigger trigger;
 
     public TaskDefinition(String id, PTXTaskType type, String name, List<TaskTarget> targets, TaskTrigger trigger) {
@@ -28,25 +34,41 @@ public class TaskDefinition {
     }
 
     // Getter and Setter methods
-    public String getId() { return id; }
-
-    public PTXTaskType getType() { return type; }
-    public void setType(PTXTaskType type) { this.type = type; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public List<TaskTarget> getTargets() { return targets; }
-    public void setTargets(List<TaskTarget> targets) { this.targets = targets; }
-
-    public TaskTrigger getTrigger() { return trigger; }
-    public void setTrigger(TaskTrigger trigger) { this.trigger = trigger; }
+    @Override
+    public String getId() {
+        return id;
+    }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        TaskDefinition that = (TaskDefinition) o;
-        return Objects.equals(id, that.id) && type == that.type && Objects.equals(name, that.name) && Objects.equals(targets, that.targets) && Objects.equals(trigger, that.trigger);
+    public PTXTaskType getType() {
+        return type;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
+    }
+
+    @Override
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public List<TaskTarget> getTargets() {
+        return targets;
+    }
+
+    public List<TaskCondition> getConditions() {
+        return conditions;
     }
 }

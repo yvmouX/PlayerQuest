@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.common.Enum;
+package com.playerPlugin.playerTaskX.api.Enum;
 
 public enum PTXStorgeType {
     SQLITE,

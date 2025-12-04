@@ -2,13 +2,9 @@ package com.playerPlugin.playerTaskX.storage;
 
 import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.common.Enum.PTXStorgeType;
+import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 //import com.playerPlugin.playerTaskX.storage.json.JsonRepositoryCreator;
-import com.playerPlugin.playerTaskX.storage.json.JsonTaskProgressRepository;
-import com.playerPlugin.playerTaskX.storage.json.JsonTaskRepository;
 //import com.playerPlugin.playerTaskX.storage.mysql.MySQLRepositoryCreator;
-import com.playerPlugin.playerTaskX.storage.mysql.MySQLTaskProgressRepository;
-import com.playerPlugin.playerTaskX.storage.mysql.MySQLTaskRepository;
 //import com.playerPlugin.playerTaskX.storage.sqlite.SQLitePlayerProgressRepository;
 //import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteRepositoryCreator;
 //import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteTaskRepository;
