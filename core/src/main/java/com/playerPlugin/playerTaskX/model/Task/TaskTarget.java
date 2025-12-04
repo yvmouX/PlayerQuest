@@ -1,5 +1,7 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 
 public class TaskTarget {
@@ -9,7 +11,11 @@ public class TaskTarget {
     private int current;
     private boolean finished = false;
 
-    public TaskTarget(PTXActionType action, int targetIndex, Requirement requirement) {
+    @JsonCreator
+    public TaskTarget(
+            @JsonProperty("action") PTXActionType action,
+            @JsonProperty("targetIndex") int targetIndex,
+            @JsonProperty("requirement") Requirement requirement) {
         this.action = action;
         this.targetIndex = targetIndex;
         this.requirement = requirement;

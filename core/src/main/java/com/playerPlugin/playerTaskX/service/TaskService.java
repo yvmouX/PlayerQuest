@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.service;
 
 import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
@@ -10,11 +11,13 @@ public class TaskService implements TaskAPI {
     private final LoggerTools log;
     private final TaskRepository taskRepo;
     private final TaskProgressRepository progressRepo;
+    private final TaskCache cache;
 
-    public TaskService(LoggerTools log, TaskRepository taskRepo, TaskProgressRepository progressRepo) {
+    public TaskService(LoggerTools log, TaskRepository taskRepo, TaskProgressRepository progressRepo, TaskCache cache) {
         this.log = log;
         this.taskRepo = taskRepo;
         this.progressRepo = progressRepo;
+        this.cache = cache;
     }
 
     public void createProgress(Player player, String taskId) {
@@ -41,6 +44,11 @@ public class TaskService implements TaskAPI {
             log.error(String.format("Task with ID %s already exists", taskDef.getId()));
             return;
         }
+
+
+        // 保存到仓库
         taskRepo.save(taskDef);
+        // 保存到缓存
+        cache.taskDefToCache(taskDef);
     }
 }

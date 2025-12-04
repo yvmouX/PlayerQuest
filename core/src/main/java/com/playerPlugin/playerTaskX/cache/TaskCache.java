@@ -90,6 +90,13 @@ public class TaskCache {
 
 
     // DAO 方法
+    public void taskDefToCache(TaskDefinition taskDefinition) {
+        taskDefById.add(new ConcurrentHashMap<>() {{
+            put(taskDefinition.getId(), taskDefinition);
+            log.debug("任务已添加到缓存：" + taskDefinition.getId());
+        }});
+    }
+
     public void progressToCache(TaskProgress taskProgress) {
         UUID uuid = taskProgress.getUUID();
 
@@ -100,14 +107,22 @@ public class TaskCache {
         // taskList.contains(taskProgress) 依赖 TaskProgress 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
         if (!taskProgressList.contains(taskProgress)) {
             taskProgressList.add(taskProgress);
+            log.debug("玩家" + uuid + "任务进度已添加到缓存: " + taskProgress.getTask().getId());
         }
+    }
+
+    public void taskDefToRepository(TaskDefinition taskDefinition) {
+        repo.save(taskDefinition);
+        log.debug("任务已保存到数据库：" + taskDefinition.getId());
     }
 
     public void progressToRepository(TaskProgress progress, boolean immediateSave) {
         if (immediateSave) {
             progressRepo.save(progress);
+            log.debug("玩家任务进度已保存到存储库: " + progress.getTask().getId());
         } else {
             progressDirtyUUIDs.add(progress.getUUID());
+            log.debug("玩家任务进度已添加到保存到存储库队列: "  + progress.getTask().getId());
         }
     }
 

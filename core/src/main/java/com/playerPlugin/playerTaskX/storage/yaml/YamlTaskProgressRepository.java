@@ -123,7 +123,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
         Path path = null;
         try {
             path = dataDir.resolve(player.getUniqueId() + ".yml");
-            if (Files.exists(path) || Files.size(path) != 0) {
+            if (Files.exists(path) && Files.size(path) != 0) {
                 log.warn(String.format("玩家 %s 的任务进度仓库已存在，不会重复创建", player.getName()));
                 return;
             }
@@ -146,13 +146,12 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
             progressFile = dataDir.resolve(player.getUniqueId() + ".yml");
 
             if (!Files.exists(progressFile) || Files.size(progressFile) == 0) {
-                log.warn(String.format("没有找到玩家 %s 的任务进度仓库", player.getName()));
+                log.debug(String.format("未加载玩家 %s 的任务进度，可能是由于其任务进度未被创建", player.getName()));
                 return Optional.empty();
             }
 
             TaskProgress taskProgress = yamlMapper.readValue(progressFile.toFile(), TaskProgress.class);
             return Optional.ofNullable(taskProgress);
-
         } catch (IOException e) {
             log.error(String.format("加载玩家 %s 的任务进度数据时发生错误，文件可能已损坏: %s", player.getName(), progressFile), e);
             return Optional.empty();

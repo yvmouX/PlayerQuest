@@ -116,7 +116,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
         // 7、注册命令
-        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository);
+        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository, cache);
         new CommandRegister(ylib.getCommandManager(), cache, taskService).registerCommands();
 
         // 8、初始化并注册 API

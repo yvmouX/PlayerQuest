@@ -1,5 +1,7 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 
 import java.util.Objects;
@@ -10,7 +12,10 @@ public class TaskProgress {
     private TaskDefinition taskDefinition;
     private PTXTaskStatus status;
 
-    public TaskProgress(UUID playerId, TaskDefinition taskDefinition) {
+    @JsonCreator
+    public TaskProgress(
+            @JsonProperty("uuid") UUID playerId,
+            @JsonProperty("taskDefinition") TaskDefinition taskDefinition) {
         this.uuid = playerId;
         this.taskDefinition = taskDefinition;
         this.status = PTXTaskStatus.IN_PROGRESS;

@@ -37,11 +37,7 @@ public class PlayerJoinHandler implements Listener {
 
         Optional<TaskProgress> taskProgress = progressRepository.loadForPlayer(player);
 
-        if (taskProgress.isPresent()) {
-            cache.progressToCache(taskProgress.get());
-        } else {
-            log.debug(String.format("未加载玩家 %s 的任务进度，可能是由于其任务进度不存在或未被保存", player.getName()));
-        }
+        taskProgress.ifPresent(cache::progressToCache);
     }
 
     @EventHandler

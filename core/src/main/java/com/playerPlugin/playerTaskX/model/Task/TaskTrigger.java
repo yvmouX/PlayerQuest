@@ -1,11 +1,16 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class TaskTrigger {
+    @JsonProperty("onTaskStart")
     private List<String> onTaskStart = new ArrayList<>();
+    @JsonProperty("onTaskFinish")
     private List<String> onTaskFinish = new ArrayList<>();
+    @JsonProperty("onTaskFail")
     private List<String> onTaskFail = new ArrayList<>();
 
     // Getters and Setters

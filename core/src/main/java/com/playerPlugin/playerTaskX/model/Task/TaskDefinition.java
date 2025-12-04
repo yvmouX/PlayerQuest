@@ -1,5 +1,7 @@
 package com.playerPlugin.playerTaskX.model.Task;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.api.task.ITaskCondition;
 import com.playerPlugin.playerTaskX.api.task.ITaskDefinition;
@@ -25,7 +27,13 @@ public class TaskDefinition implements ITaskDefinition {
     private List<TaskTarget> targets;
     private TaskTrigger trigger;
 
-    public TaskDefinition(String id, PTXTaskType type, String name, List<TaskTarget> targets, TaskTrigger trigger) {
+    @JsonCreator
+    public TaskDefinition(
+            @JsonProperty("id") String id,
+            @JsonProperty("type") PTXTaskType type,
+            @JsonProperty("name") String name,
+            @JsonProperty("targets") List<TaskTarget> targets,
+            @JsonProperty("trigger") TaskTrigger trigger) {
         this.id = id;
         this.type = type;
         this.name = name;
