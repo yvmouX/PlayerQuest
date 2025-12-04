@@ -1,0 +1,62 @@
+package com.playerPlugin.playerTaskX.commands.admin;
+
+import cn.yvmou.ylib.api.command.CommandOptions;
+import cn.yvmou.ylib.api.command.SubCommand;
+import cn.yvmou.ylib.tools.LoggerTools;
+import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
+import com.playerPlugin.playerTaskX.model.Task.Requirement;
+import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.model.Task.TaskTrigger;
+import com.playerPlugin.playerTaskX.service.TaskService;
+import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
+
+import java.util.List;
+
+public class CreateCmd implements SubCommand {
+    private final TaskService taskService;
+
+    public CreateCmd(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    @Override
+    @CommandOptions(
+            name = "create",
+            permission = "",
+            onlyPlayer = false,
+            alias = {},
+            register = true,
+            usage = "/playertaskx create <taskID> <taskType> <taskName>"
+    )
+    public boolean execute(CommandSender sender, String[] args) {
+        // TEST
+        String taskId = args[1];
+        if (taskId == null) {
+            sender.sendMessage(ChatColor.RED + "Invalid task ID");
+            return false;
+        }
+
+        PTXTaskType taskType = PTXTaskType.fromString(args[2]);
+        if (taskType == PTXTaskType.NONE) {
+            sender.sendMessage(ChatColor.RED + "Invalid task type: " + args[2]);
+            return false;
+        }
+
+        String taskName = args[3];
+        if (taskName == null) {
+            sender.sendMessage(ChatColor.RED + "Invalid task name");
+            return false;
+        }
+
+
+        TaskDefinition takDef = new TaskDefinition(taskId, taskType, taskName,
+                List.of(new TaskTarget(PTXActionType.BREAK, 0, new Requirement("DIAMOND_BLOCK", 10))),
+                new TaskTrigger()
+        );
+        taskService.createTask(takDef);
+        return true;
+    }
+}

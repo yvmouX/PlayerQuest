@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.commands;
 
 import cn.yvmou.ylib.impl.command.CommandManager;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
+import com.playerPlugin.playerTaskX.commands.admin.CreateCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ListCmd;
 import com.playerPlugin.playerTaskX.commands.admin.ReloadCmd;
 import com.playerPlugin.playerTaskX.commands.admin.StartCmd;
@@ -29,12 +30,14 @@ public class CommandRegister {
         manager.registerCommands("playertaskxadmin",
                 new ReloadCmd(),
                 new ListCmd(cache),
-                new StartCmd(cache, service)
+                new StartCmd(cache, service),
+                new CreateCmd(service)
         );
         manager.registerCommands("ptxa",
                 new ReloadCmd(),
                 new ListCmd(cache),
-                new StartCmd(cache, service)
+                new StartCmd(cache, service),
+                new CreateCmd(service)
         );
     }
 }

@@ -44,11 +44,14 @@ public final class PlayerTaskX extends JavaPlugin {
     @Override
     public void onEnable() {
         register();
-        log.info(String.format("插件已启用，版本: %s", getDescription().getVersion()) +
+        log.info("插件已启用" +
+                "\n==============================================" +
+                "\n插件版本: " + getDescription().getVersion() +
                 "\n数据库: " + currentStorgeType +
                 "\n前置：" +
                         "\n - Vault: " + (isEconomyEnabled ? "已启用" : "未安装") +
-                        "\n - PlayerPoints: " + (isPlayerPointsEnabled ? "已启用" : "未安装")
+                        "\n - PlayerPoints: " + (isPlayerPointsEnabled ? "已启用" : "未安装") +
+                "\n=============================================="
         );
 
     }
@@ -85,10 +88,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 3、从 tasks 目录加载所有任务添加到缓存
         List<TaskDefinition> taskDefList = storageFactory.getRepository().loadAll();
-        if (taskDefList == null || taskDefList.isEmpty()) {
-            log.warn("没有从存储库加载到任何任务定义");
-            return;
-        }
         TaskRepository taskRepository = storageFactory.getRepository();
         TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
         TaskCache cache = new TaskCache(log, scheduler, taskRepository, taskProgressRepository);

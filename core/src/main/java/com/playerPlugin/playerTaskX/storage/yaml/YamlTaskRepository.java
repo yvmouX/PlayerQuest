@@ -75,7 +75,7 @@ public class YamlTaskRepository implements TaskRepository {
                     out.add(taskDef);
                 }
                 if (!foundAny) {
-                    log.warn("tasks目录下没有找到任何 .yml 文件");
+                    log.warn("没有从存储库加载到任何任务定义: yaml");
                 }
             }
             return out;

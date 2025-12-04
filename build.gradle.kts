@@ -57,14 +57,13 @@ project(":core") {
         implementation(project(":api"))
 
         compileOnly("com.github.MilkBowl:VaultAPI:1.7")
-        implementation("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+        compileOnly("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
 
         compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
-        implementation("mysql:mysql-connector-java:8.0.33")
+        compileOnly("mysql:mysql-connector-java:8.0.33")
         compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
         implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     }
 }
 
@@ -91,6 +90,20 @@ tasks.shadowJar {
     configurations = listOf(project(":core").configurations.runtimeClasspath.get())
     
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
+    
+    // 优雅地处理重复文件
+    mergeServiceFiles() // 自动合并 META-INF/services 文件
+    
+    // 排除签名文件和重复的元数据文件
+    exclude(
+        "META-INF/*.SF",
+        "META-INF/*.DSA",
+        "META-INF/*.RSA",
+        "META-INF/LICENSE",
+        "META-INF/LICENSE.txt",
+        "META-INF/NOTICE",
+        "META-INF/NOTICE.txt"
+    )
 }
 
 
