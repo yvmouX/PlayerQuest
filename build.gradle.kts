@@ -61,9 +61,12 @@ project(":core") {
 
         compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
         compileOnly("mysql:mysql-connector-java:8.0.33")
-        compileOnly("com.googlecode.json-simple:json-simple:1.1.1")
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
+        compileOnly("com.googlecode.json-simple:json-simple:1.1.1") // TODO will remove
+
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2") // TODO will remove
+        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2") // TODO will remove
+
+        implementation("com.alibaba.fastjson2:fastjson2:2.0.60")
     }
 }
 
