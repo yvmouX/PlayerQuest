@@ -167,171 +167,171 @@ public class EditorServer {
             ctx.json(Map.of("data", taskDef));
         });
 
-        // ***************** POST *****************
-        // 创建任务
-        app.post("/api/quests", ctx -> {
-            TaskDefinition taskDef = ctx.bodyAsClass(TaskDefinition.class);
-
-            String taskId = UUID.randomUUID().toString(); // TODO 通过网页生成的任务ID为随机值
-            PTXTaskType type = PTXTaskType.fromString(ctx.queryParam("type"));
-            String name = ctx.queryParam("name");
-            // TODO
-
-
-            Quest quest = ctx.bodyAsClass(Quest.class);
-            new TaskDefinition(taskId, type, name, tatgets, trigger);
-
-            boolean success = plugin.getQuestManager().createQuest(quest);
-
-            if (success) {
-                ctx.status(201).json(Map.of(
-                        "success", true,
-                        "data", quest,
-                        "message", "任务创建成功"
-                ));
-            } else {
-                ctx.status(400).json(Map.of(
-                        "success", false,
-                        "message", "任务创建失败"
-                ));
-            }
-        });
-
-        // 更新任务
-        app.put("/api/quests/{id}", ctx -> {
-            String questId = ctx.pathParam("id");
-            Quest updates = ctx.bodyAsClass(Quest.class);
-            updates.setId(questId);
-            updates.setModifiedAt(System.currentTimeMillis());
-
-            boolean success = plugin.getQuestManager().updateQuest(updates);
-
-            ctx.json(Map.of(
-                    "success", success,
-                    "message", success ? "任务更新成功" : "任务更新失败"
-            ));
-        });
-
-        // 删除任务
-        app.delete("/api/quests/{id}", ctx -> {
-            String questId = ctx.pathParam("id");
-            boolean success = plugin.getQuestManager().deleteQuest(questId);
-
-            ctx.json(Map.of(
-                    "success", success,
-                    "message", success ? "任务删除成功" : "任务删除失败"
-            ));
-        });
-
-        // ========== 玩家进度 API ==========
-
-        // 批量获取玩家进度
-        app.get("/api/players/progress", ctx -> {
-            String questId = ctx.queryParam("questId");
-            int page = ctx.queryParamAsClass("page", Integer.class).getOrDefault(1);
-            int size = ctx.queryParamAsClass("size", Integer.class).getOrDefault(50);
-            String status = ctx.queryParam("status");
-
-            Map<String, Object> result = plugin.getProgressManager()
-                    .getPlayerProgress(questId, page, size, status);
-            ctx.json(result);
-        });
-
-        // 批量更新玩家进度
-        app.post("/api/players/progress/batch", ctx -> {
-            BatchProgressRequest request = ctx.bodyAsClass(BatchProgressRequest.class);
-
-            // 异步处理，避免阻塞网络线程
-            CompletableFuture.runAsync(() -> {
-                plugin.getProgressManager().batchUpdateProgress(
-                        request.getPlayerIds(),
-                        request.getQuestId(),
-                        request.getProgress(),
-                        request.getCompleted(),
-                        request.getReset()
-                );
-            });
-
-            ctx.json(Map.of(
-                    "success", true,
-                    "message", "进度更新已提交处理"
-            ));
-        });
-
-        // 重置玩家进度
-        app.post("/api/players/progress/reset", ctx -> {
-            ResetProgressRequest request = ctx.bodyAsClass(ResetProgressRequest.class);
-
-            int count = plugin.getProgressManager().resetProgress(
-                    request.getQuestId(),
-                    request.getPlayerIds()
-            );
-
-            ctx.json(Map.of(
-                    "success", true,
-                    "count", count,
-                    "message", "已重置 " + count + " 个玩家的进度"
-            ));
-        });
-
-        // ========== 统计数据 API ==========
-
-        // 获取任务统计
-        app.get("/api/stats/quests", ctx -> {
-            String questId = ctx.queryParam("questId");
-            String period = ctx.queryParam("period", "7d"); // 7天
-
-            Statistics stats = plugin.getQuestManager().getQuestStatistics(questId, period);
-            ctx.json(Map.of("data", stats));
-        });
-
-        // 获取玩家统计
-        app.get("/api/stats/players", ctx -> {
-            String period = ctx.queryParam("period", "30d");
-            Map<String, Object> stats = plugin.getProgressManager().getPlayerStatistics(period);
-            ctx.json(stats);
-        });
-
-        // 获取奖励统计
-        app.get("/api/stats/rewards", ctx -> {
-            String startDate = ctx.queryParam("startDate");
-            String endDate = ctx.queryParam("endDate");
-
-            Map<String, Object> rewards = plugin.getQuestManager()
-                    .getRewardStatistics(startDate, endDate);
-            ctx.json(rewards);
-        });
-
-        // ========== 系统 API ==========
-
-        // 获取语言包
-        app.get("/api/locales/{lang}", ctx -> {
-            String lang = ctx.pathParam("lang");
-            Map<String, String> locale = plugin.getConfigManager().getLocale(lang);
-            ctx.json(locale);
-        });
-
-        // 重新加载配置
-        app.post("/api/system/reload", ctx -> {
-            plugin.reloadConfig();
-            plugin.getQuestManager().reload();
-            plugin.getConfigManager().reloadLocales();
-
-            ctx.json(Map.of(
-                    "success", true,
-                    "message", "配置重载成功"
-            ));
-        });
-
-        // 导出数据
-        app.get("/api/system/export", ctx -> {
-            String type = ctx.queryParam("type", "json");
-            String data = plugin.getQuestManager().exportData(type);
-
-            ctx.header("Content-Disposition", "attachment; filename=quests_export." + type);
-            ctx.result(data);
-        });
-    }
+//        // ***************** POST *****************
+//        // 创建任务
+//        app.post("/api/quests", ctx -> {
+//            TaskDefinition taskDef = ctx.bodyAsClass(TaskDefinition.class);
+//
+//            String taskId = UUID.randomUUID().toString(); // TODO 通过网页生成的任务ID为随机值
+//            PTXTaskType type = PTXTaskType.fromString(ctx.queryParam("type"));
+//            String name = ctx.queryParam("name");
+//            // TODO
+//
+//
+//            Quest quest = ctx.bodyAsClass(Quest.class);
+//            new TaskDefinition(taskId, type, name, tatgets, trigger);
+//
+//            boolean success = plugin.getQuestManager().createQuest(quest);
+//
+//            if (success) {
+//                ctx.status(201).json(Map.of(
+//                        "success", true,
+//                        "data", quest,
+//                        "message", "任务创建成功"
+//                ));
+//            } else {
+//                ctx.status(400).json(Map.of(
+//                        "success", false,
+//                        "message", "任务创建失败"
+//                ));
+//            }
+//        });
+//
+//        // 更新任务
+//        app.put("/api/quests/{id}", ctx -> {
+//            String questId = ctx.pathParam("id");
+//            Quest updates = ctx.bodyAsClass(Quest.class);
+//            updates.setId(questId);
+//            updates.setModifiedAt(System.currentTimeMillis());
+//
+//            boolean success = plugin.getQuestManager().updateQuest(updates);
+//
+//            ctx.json(Map.of(
+//                    "success", success,
+//                    "message", success ? "任务更新成功" : "任务更新失败"
+//            ));
+//        });
+//
+//        // 删除任务
+//        app.delete("/api/quests/{id}", ctx -> {
+//            String questId = ctx.pathParam("id");
+//            boolean success = plugin.getQuestManager().deleteQuest(questId);
+//
+//            ctx.json(Map.of(
+//                    "success", success,
+//                    "message", success ? "任务删除成功" : "任务删除失败"
+//            ));
+//        });
+//
+//        // ========== 玩家进度 API ==========
+//
+//        // 批量获取玩家进度
+//        app.get("/api/players/progress", ctx -> {
+//            String questId = ctx.queryParam("questId");
+//            int page = ctx.queryParamAsClass("page", Integer.class).getOrDefault(1);
+//            int size = ctx.queryParamAsClass("size", Integer.class).getOrDefault(50);
+//            String status = ctx.queryParam("status");
+//
+//            Map<String, Object> result = plugin.getProgressManager()
+//                    .getPlayerProgress(questId, page, size, status);
+//            ctx.json(result);
+//        });
+//
+//        // 批量更新玩家进度
+//        app.post("/api/players/progress/batch", ctx -> {
+//            BatchProgressRequest request = ctx.bodyAsClass(BatchProgressRequest.class);
+//
+//            // 异步处理，避免阻塞网络线程
+//            CompletableFuture.runAsync(() -> {
+//                plugin.getProgressManager().batchUpdateProgress(
+//                        request.getPlayerIds(),
+//                        request.getQuestId(),
+//                        request.getProgress(),
+//                        request.getCompleted(),
+//                        request.getReset()
+//                );
+//            });
+//
+//            ctx.json(Map.of(
+//                    "success", true,
+//                    "message", "进度更新已提交处理"
+//            ));
+//        });
+//
+//        // 重置玩家进度
+//        app.post("/api/players/progress/reset", ctx -> {
+//            ResetProgressRequest request = ctx.bodyAsClass(ResetProgressRequest.class);
+//
+//            int count = plugin.getProgressManager().resetProgress(
+//                    request.getQuestId(),
+//                    request.getPlayerIds()
+//            );
+//
+//            ctx.json(Map.of(
+//                    "success", true,
+//                    "count", count,
+//                    "message", "已重置 " + count + " 个玩家的进度"
+//            ));
+//        });
+//
+//        // ========== 统计数据 API ==========
+//
+//        // 获取任务统计
+//        app.get("/api/stats/quests", ctx -> {
+//            String questId = ctx.queryParam("questId");
+//            String period = ctx.queryParam("period", "7d"); // 7天
+//
+//            Statistics stats = plugin.getQuestManager().getQuestStatistics(questId, period);
+//            ctx.json(Map.of("data", stats));
+//        });
+//
+//        // 获取玩家统计
+//        app.get("/api/stats/players", ctx -> {
+//            String period = ctx.queryParam("period", "30d");
+//            Map<String, Object> stats = plugin.getProgressManager().getPlayerStatistics(period);
+//            ctx.json(stats);
+//        });
+//
+//        // 获取奖励统计
+//        app.get("/api/stats/rewards", ctx -> {
+//            String startDate = ctx.queryParam("startDate");
+//            String endDate = ctx.queryParam("endDate");
+//
+//            Map<String, Object> rewards = plugin.getQuestManager()
+//                    .getRewardStatistics(startDate, endDate);
+//            ctx.json(rewards);
+//        });
+//
+//        // ========== 系统 API ==========
+//
+//        // 获取语言包
+//        app.get("/api/locales/{lang}", ctx -> {
+//            String lang = ctx.pathParam("lang");
+//            Map<String, String> locale = plugin.getConfigManager().getLocale(lang);
+//            ctx.json(locale);
+//        });
+//
+//        // 重新加载配置
+//        app.post("/api/system/reload", ctx -> {
+//            plugin.reloadConfig();
+//            plugin.getQuestManager().reload();
+//            plugin.getConfigManager().reloadLocales();
+//
+//            ctx.json(Map.of(
+//                    "success", true,
+//                    "message", "配置重载成功"
+//            ));
+//        });
+//
+//        // 导出数据
+//        app.get("/api/system/export", ctx -> {
+//            String type = ctx.queryParam("type", "json");
+//            String data = plugin.getQuestManager().exportData(type);
+//
+//            ctx.header("Content-Disposition", "attachment; filename=quests_export." + type);
+//            ctx.result(data);
+//        });
+//    }
 
 //    private void setupWebSocketRoutes() {
 //        app.ws("/ws/editor", ws -> {
@@ -377,7 +377,7 @@ public class EditorServer {
 //                log.warning("WebSocket错误: " + throwable.getMessage());
 //            });
 //        });
-//    }
+    }
 
     public void stop() {
         if (app != null) {

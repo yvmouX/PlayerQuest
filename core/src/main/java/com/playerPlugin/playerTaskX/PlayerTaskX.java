@@ -17,6 +17,7 @@ import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.utils.Metrics;
 import com.playerPlugin.playerTaskX.utils.UpdateHelper;
+import com.playerPlugin.playerTaskX.web.EditorServer;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
@@ -131,6 +132,13 @@ public final class PlayerTaskX extends JavaPlugin {
         // 9、更新检查
         UpdateHelper updateHelper = new UpdateHelper(log);
         updateHelper.checkUpdate(getDescription().getVersion());
+
+        // 启动服务器
+        try {
+            new EditorServer(this, taskRepository, log).start();
+        } catch (Exception e) {
+            log.error("启动服务器时发生错误：" + e.getMessage());
+        }
 
     }
 
