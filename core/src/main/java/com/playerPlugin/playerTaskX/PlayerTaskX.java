@@ -33,8 +33,10 @@ public final class PlayerTaskX extends JavaPlugin {
     private LoggerTools log;
     private UniversalScheduler scheduler;
     private Economy economy;
+
     private boolean isEconomyEnabled = true;
     private PlayerPointsAPI ppAPI;
+
     private boolean isPlayerPointsEnabled = true;
 
     private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取

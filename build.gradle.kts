@@ -67,6 +67,15 @@ project(":core") {
         implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2") // TODO will remove
 
         implementation("com.alibaba.fastjson2:fastjson2:2.0.60")
+
+        implementation("io.javalin:javalin:6.7.0")
+        implementation("io.javalin:javalin-bundle:5.6.1")
+
+
+        compileOnly("org.slf4j:slf4j-api:2.0.9")
+        implementation("org.slf4j:slf4j-simple:2.0.16") {
+            exclude(group = "org.slf4j", module = "slf4j-api")
+        }
     }
 }
 
