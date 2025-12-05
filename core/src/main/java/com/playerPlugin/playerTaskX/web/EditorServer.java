@@ -118,12 +118,12 @@ public class EditorServer {
 
         // 令牌验证
         app.before("/api/*", ctx -> {
-            // TODO token 开始包含 Bearer
-            String token = ctx.header("Authorization");
-
-            if (token == null || !token.startsWith("Bearer ")) {
-                throw new UnauthorizedException();
-            }
+//            // TODO token 开始包含 Bearer
+//            String token = ctx.header("Authorization");
+//
+//            if (token == null || !token.startsWith("Bearer ")) {
+//                throw new UnauthorizedException();
+//            }
         });
 
         // 服务器状态检测
