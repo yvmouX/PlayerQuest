@@ -1,0 +1,101 @@
+
+export type Language = 'en-US' | 'zh-CN' | 'ja-JP';
+
+export interface LocalizedString {
+  [key: string]: string;
+}
+
+export enum QuestType {
+  SINGLE = 'single',
+  MULTI = 'multi',
+  SERIES = 'series',
+  CYCLE = 'cycle',
+  FOREVER = 'forever',
+  LIMIT = 'limit',
+  NONE = 'none',
+}
+
+export enum RewardType {
+  ITEM = 'item',
+  XP = 'xp',
+  MONEY = 'money',
+  COMMAND = 'command',
+}
+
+// A reusable template for rewards
+export interface RewardTemplate {
+  id: string;
+  name: string; // Friendly name for the library
+  type: RewardType;
+  value: string | number;
+  meta?: any;
+}
+
+// The actual reward instance used in quests
+export interface QuestReward {
+  id: string;
+  templateId?: string; // Reference to origin template if applicable
+  type: RewardType;
+  value: string | number; // ID for items, amount for others
+  meta?: any; // For NBT or extra data
+}
+
+export interface QuestObjective {
+  id: string;
+  type: string; // e.g., 'kill_mob', 'reach_location'
+  target: string;
+  count: number;
+  rewards: QuestReward[]; // Rewards specific to this objective
+  finished?: boolean; // Status from API
+}
+
+export interface Quest {
+  id: string;
+  name: LocalizedString;
+  description: LocalizedString;
+  type: QuestType;
+  objectives: QuestObjective[];
+  rewards: QuestReward[]; // Global completion rewards
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PlayerProgress {
+  id: string; // UUID
+  name: string;
+  avatarUrl: string;
+  questId: string;
+  progress: number; // 0-100
+  status: 'not_started' | 'in_progress' | 'completed' | 'claimed';
+  lastActive: number;
+}
+
+export interface StatData {
+  name: string;
+  value: number;
+}
+
+// API Interfaces
+export interface ApiTargetRequirement {
+  amount: number;
+  item: string;
+}
+
+export interface ApiTarget {
+  action: string;
+  current: number;
+  finished: boolean;
+  index: number;
+  requirement: ApiTargetRequirement;
+}
+
+export interface ApiTaskDef {
+  id: string;
+  name: string;
+  type: string;
+  targets: ApiTarget[];
+}
+
+export interface ApiResponse {
+  data: ApiTaskDef[];
+}

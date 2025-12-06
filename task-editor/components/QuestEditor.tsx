@@ -1,246 +1,273 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, Plus, Trash2, Code, Gift, Target } from 'lucide-react';
-import { Quest, QuestType, RewardType, Language } from '../types';
-import { MOCK_QUESTS } from '../services/mockData';
+import { Save, RotateCcw, Code, Loader2 } from 'lucide-react';
+import { Quest, QuestType, RewardType, QuestReward } from '../types';
+import { QuestService } from '../services/api';
+import { MOCK_REWARD_LIBRARY } from '../services/mockData';
 import { useLanguage } from '../context/LanguageContext';
+import { Sidebar } from './quest/Sidebar';
+import { QuestForm } from './quest/QuestForm';
+import { RewardForm } from './quest/RewardForm';
 
+/**
+ * 任务编辑器主组件 (Main Quest Editor Component)
+ * 管理整个编辑器的状态，包括任务列表、奖励库、当前选中的项以及保存/加载逻辑。
+ */
 export const QuestEditor: React.FC = () => {
-  const { language, t } = useLanguage();
-  const [activeQuestId, setActiveQuestId] = useState<string>(MOCK_QUESTS[0].id);
-  const [quest, setQuest] = useState<Quest>(MOCK_QUESTS[0]);
+  const { t } = useLanguage();
+  
+  // 数据状态 (Data State)
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [rewardLibrary, setRewardLibrary] = useState<QuestReward[]>(MOCK_REWARD_LIBRARY);
+  
+  // UI 状态 (UI State)
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'quests' | 'rewards'>('quests');
+  const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // 编辑状态 (Editing State)
+  const [quest, setQuest] = useState<Quest | null>(null);
+  const [rewardTemplate, setRewardTemplate] = useState<QuestReward | null>(null);
+  
   const [jsonMode, setJsonMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Sync state when selection changes
+  // 脏检查副作用 (Dirty Check Effect)
   useEffect(() => {
-    const found = MOCK_QUESTS.find(q => q.id === activeQuestId);
-    if (found) setQuest({ ...found }); // Clone to avoid direct mutation of mock
-  }, [activeQuestId]);
+    if (activeTab === 'quests') {
+        if (!quest) {
+            setIsDirty(false);
+            return;
+        }
+        const original = quests.find(q => q.id === quest.id);
+        if (original) {
+            setIsDirty(JSON.stringify(quest) !== JSON.stringify(original));
+        }
+    } else {
+        if (!rewardTemplate) {
+            setIsDirty(false);
+            return;
+        }
+        const original = rewardLibrary.find(r => r.id === rewardTemplate.id);
+        if (original) {
+            setIsDirty(JSON.stringify(rewardTemplate) !== JSON.stringify(original));
+        }
+    }
+  }, [quest, rewardTemplate, quests, rewardLibrary, activeTab]);
 
-  const handleSave = () => {
-    // Mock save
-    console.log('Saving Quest:', quest);
-    alert('Quest saved successfully (Mock)');
+  // 获取任务列表 (Fetch Quests)
+  useEffect(() => {
+    const fetchQuests = async () => {
+      setLoading(true);
+      try {
+        const data = await QuestService.getAll();
+        setQuests(data);
+        if (data.length > 0) setActiveId(data[0].id);
+      } catch (error) {
+        console.error("Critical error loading quests:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuests();
+  }, []);
+
+  // 同步编辑器选择 (Sync Editor Selection)
+  useEffect(() => {
+    if (!activeId) return;
+    
+    if (activeTab === 'quests') {
+      const found = quests.find(q => q.id === activeId);
+      if (found) {
+        setQuest({ ...found });
+        setRewardTemplate(null);
+      }
+    } else {
+      const found = rewardLibrary.find(r => r.id === activeId);
+      if (found) {
+        setRewardTemplate({ ...found });
+        setQuest(null);
+      }
+    }
+  }, [activeId, activeTab, quests, rewardLibrary]);
+
+  // --- 操作 (Actions) ---
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await new Promise(r => setTimeout(r, 600)); // 模拟延迟
+    
+    if (activeTab === 'quests' && quest) {
+        setQuests(prev => prev.map(q => q.id === quest.id ? quest : q));
+        await QuestService.save(quest);
+    } else if (activeTab === 'rewards' && rewardTemplate) {
+        setRewardLibrary(prev => prev.map(r => r.id === rewardTemplate.id ? rewardTemplate : r));
+    }
+    
+    setIsSaving(false);
+    alert('Saved successfully!');
   };
 
-  const updateLocalizedField = (field: 'name' | 'description', lang: string, value: string) => {
-    setQuest(prev => ({
-      ...prev,
-      [field]: { ...prev[field], [lang]: value }
-    }));
+  const handleSwitch = async (newId: string | null, newTab: 'quests' | 'rewards' = activeTab) => {
+    if (isDirty) {
+        if (window.confirm("You have unsaved changes.\n\nClick OK to Save & Switch.\nClick Cancel to Stay on current page.")) {
+            await handleSave();
+        } else {
+            return; // 取消切换
+        }
+    }
+    
+    if (newTab !== activeTab) {
+        setActiveTab(newTab);
+        if (newId === null) {
+             if (newTab === 'quests') {
+                 setActiveId(quests.length > 0 ? quests[0].id : null);
+             } else {
+                 setActiveId(rewardLibrary.length > 0 ? rewardLibrary[0].id : null);
+             }
+             return;
+        }
+    }
+    setActiveId(newId);
   };
 
-  const addObjective = () => {
-    setQuest(prev => ({
-      ...prev,
-      objectives: [...prev.objectives, { id: `obj_${Date.now()}`, type: 'block_break', target: 'stone', count: 1 }]
-    }));
+  const handleCreateNew = async () => {
+    if (isDirty) {
+        if (window.confirm("You have unsaved changes.\n\nClick OK to Save & Create New.\nClick Cancel to Stay on current page.")) {
+            await handleSave();
+        } else {
+            return; // 取消创建
+        }
+    }
+    createNew();
   };
 
-  const removeObjective = (id: string) => {
-    setQuest(prev => ({
-      ...prev,
-      objectives: prev.objectives.filter(o => o.id !== id)
-    }));
+  const createNew = () => {
+    if (activeTab === 'quests') {
+        const newQuest: Quest = {
+            id: `quest_${Date.now()}`,
+            name: 'New Quest',
+            description: '',
+            type: QuestType.LIMIT,
+            objectives: [],
+            questRewards: [],
+            createAt: new Date().toISOString(),
+            updateAt: new Date().toISOString()
+        };
+        setQuests(prev => [...prev, newQuest]);
+        setActiveId(newQuest.id);
+    } else {
+        const newReward: QuestReward = {
+            id: `lib_${Date.now()}`,
+            name: 'New Reward',
+            type: RewardType.MONEY,
+            value: 100
+        };
+        setRewardLibrary(prev => [...prev, newReward]);
+        setActiveId(newReward.id);
+    }
   };
+
+  // --- 渲染 (Render) ---
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400 gap-2">
+        <Loader2 className="animate-spin" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-6 h-full">
-      {/* Quest List Sidebar */}
-      <div className="w-64 flex-shrink-0 bg-mc-panel border border-mc-border rounded-lg overflow-hidden flex flex-col">
-        <div className="p-3 border-b border-mc-border bg-mc-border/20">
-          <button className="w-full flex items-center justify-center gap-2 bg-mc-accent hover:bg-green-700 text-white py-2 rounded text-sm font-medium transition-colors">
-            <Plus size={16} />
-            {t('btn.create')}
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {MOCK_QUESTS.map(q => (
-            <button
-              key={q.id}
-              onClick={() => setActiveQuestId(q.id)}
-              className={`w-full text-left px-3 py-3 rounded text-sm transition-colors ${
-                activeQuestId === q.id 
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/50' 
-                  : 'text-gray-400 hover:bg-mc-border hover:text-gray-200'
-              }`}
-            >
-              <div className="font-medium truncate">{q.name[language] || q.name['en-US']}</div>
-              <div className="text-xs opacity-60 truncate">{q.id}</div>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 侧边栏 (Sidebar) */}
+      <Sidebar 
+        quests={quests}
+        rewardLibrary={rewardLibrary}
+        activeTab={activeTab}
+        activeId={activeId}
+        onSwitch={handleSwitch}
+        onCreate={handleCreateNew}
+      />
 
-      {/* Editor Panel */}
+      {/* 主编辑区域 (Main Editor Area) */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Toolbar */}
+        {/* 工具栏 (Toolbar) */}
         <div className="flex justify-between items-center bg-mc-panel p-4 rounded-lg border border-mc-border">
             <div className="flex gap-2">
-                 <button 
-                  onClick={() => setJsonMode(!jsonMode)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${jsonMode ? 'bg-purple-600 text-white' : 'bg-mc-border text-gray-300'}`}
+                    <button 
+                    onClick={() => setJsonMode(!jsonMode)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${jsonMode ? 'bg-purple-600 text-white' : 'bg-mc-border text-gray-300'}`}
                 >
-                  <Code size={16} />
-                  JSON
+                    <Code size={16} />
+                    JSON
                 </button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+                {isDirty && (
+                    <span className="text-xs text-yellow-500 font-bold bg-yellow-900/30 px-2 py-1 rounded border border-yellow-700/50 flex items-center gap-1">
+                        Modified
+                    </span>
+                )}
                 <button 
-                  onClick={() => setQuest(MOCK_QUESTS.find(q => q.id === activeQuestId)!)}
-                  className="flex items-center gap-2 px-4 py-2 bg-mc-border hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors"
+                    onClick={() => {
+                        // 重置逻辑 (Reset Logic)
+                        if(activeTab === 'quests') {
+                            const original = quests.find(q => q.id === activeId);
+                            if (original) setQuest({...original});
+                        } else {
+                            const original = rewardLibrary.find(r => r.id === activeId);
+                            if (original) setRewardTemplate({...original});
+                        }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-mc-border hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors"
                 >
-                  <RotateCcw size={16} />
-                  {t('btn.reset')}
+                    <RotateCcw size={16} />
+                    {t('btn.reset')}
                 </button>
                 <button 
-                  onClick={handleSave}
-                  className="flex items-center gap-2 px-4 py-2 bg-mc-accent hover:bg-green-700 text-white rounded text-sm font-medium transition-colors shadow-lg shadow-green-900/20"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 px-4 py-2 bg-mc-accent hover:bg-green-700 text-white rounded text-sm font-medium transition-colors shadow-lg shadow-green-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save size={16} />
-                  {t('btn.save')}
+                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    {t('btn.save')}
                 </button>
             </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 bg-mc-panel border border-mc-border rounded-lg overflow-hidden flex flex-col">
+        {/* 编辑器内容 (Editors) */}
+        <div className="flex-1 bg-mc-panel border border-mc-border rounded-lg overflow-hidden flex flex-col relative">
             {jsonMode ? (
-                <textarea 
+                 <textarea 
                     className="w-full h-full bg-[#1e1e1e] text-green-400 font-mono p-4 text-sm resize-none focus:outline-none"
-                    value={JSON.stringify(quest, null, 2)}
-                    onChange={(e) => {
-                        try {
-                            setQuest(JSON.parse(e.target.value));
-                        } catch(err) {
-                            // ignore parse error
-                        }
-                    }}
+                    value={JSON.stringify(activeTab === 'quests' ? quest : rewardTemplate, null, 2)}
+                    readOnly // 简单只读模式
                 />
             ) : (
-                <div className="p-6 space-y-8 overflow-y-auto">
-                    {/* Basic Info */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-mc-border pb-2">
-                            Basic Information
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Quest ID (Read Only)</label>
-                                <input 
-                                    disabled 
-                                    value={quest.id} 
-                                    className="w-full bg-mc-dark border border-mc-border rounded px-3 py-2 text-gray-500 text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">{t('label.type')}</label>
-                                <select 
-                                    value={quest.type}
-                                    onChange={(e) => setQuest({...quest, type: e.target.value as QuestType})}
-                                    className="w-full bg-mc-dark border border-mc-border rounded px-3 py-2 text-white text-sm focus:border-mc-accent focus:outline-none"
-                                >
-                                    <option value={QuestType.SINGLE}>Single Player</option>
-                                    <option value={QuestType.MULTI}>Multiplayer</option>
-                                    <option value={QuestType.SERIES}>Quest Chain</option>
-                                </select>
-                            </div>
-                        </div>
+                <>
+                 {activeTab === 'quests' && quest && (
+                    <QuestForm 
+                        quest={quest} 
+                        onChange={setQuest} 
+                        rewardLibrary={rewardLibrary} 
+                    />
+                 )}
 
-                        {/* Multi-lang Name */}
-                        <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1">{t('label.name')} ({language})</label>
-                            <input 
-                                value={quest.name[language] || ''} 
-                                onChange={(e) => updateLocalizedField('name', language, e.target.value)}
-                                className="w-full bg-mc-dark border border-mc-border rounded px-3 py-2 text-white text-sm focus:border-mc-accent focus:outline-none"
-                            />
-                        </div>
-
-                         {/* Multi-lang Description */}
-                         <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1">{t('label.desc')} ({language})</label>
-                            <textarea 
-                                value={quest.description[language] || ''} 
-                                onChange={(e) => updateLocalizedField('description', language, e.target.value)}
-                                rows={3}
-                                className="w-full bg-mc-dark border border-mc-border rounded px-3 py-2 text-white text-sm focus:border-mc-accent focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Objectives */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center border-b border-mc-border pb-2">
-                            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                                <Target size={20} className="text-blue-400" />
-                                {t('label.objectives')}
-                            </h3>
-                            <button onClick={addObjective} className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-600/40">+ Add Objective</button>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            {quest.objectives.map((obj, idx) => (
-                                <div key={obj.id} className="bg-mc-dark p-3 rounded border border-mc-border flex gap-3 items-start group">
-                                    <div className="mt-2 text-xs text-gray-500 font-mono">#{idx + 1}</div>
-                                    <div className="flex-1 grid grid-cols-3 gap-3">
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase">Type</label>
-                                            <input value={obj.type} onChange={(e) => {
-                                                const newObjs = [...quest.objectives];
-                                                newObjs[idx].type = e.target.value;
-                                                setQuest({...quest, objectives: newObjs});
-                                            }} className="w-full bg-mc-panel border border-mc-border rounded px-2 py-1 text-sm text-white" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase">Target</label>
-                                            <input value={obj.target} onChange={(e) => {
-                                                const newObjs = [...quest.objectives];
-                                                newObjs[idx].target = e.target.value;
-                                                setQuest({...quest, objectives: newObjs});
-                                            }} className="w-full bg-mc-panel border border-mc-border rounded px-2 py-1 text-sm text-white" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase">Count</label>
-                                            <input type="number" value={obj.count} onChange={(e) => {
-                                                const newObjs = [...quest.objectives];
-                                                newObjs[idx].count = parseInt(e.target.value);
-                                                setQuest({...quest, objectives: newObjs});
-                                            }} className="w-full bg-mc-panel border border-mc-border rounded px-2 py-1 text-sm text-white" />
-                                        </div>
-                                    </div>
-                                    <button onClick={() => removeObjective(obj.id)} className="text-gray-600 hover:text-red-500 p-1">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Rewards */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center border-b border-mc-border pb-2">
-                            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                                <Gift size={20} className="text-yellow-500" />
-                                {t('label.rewards')}
-                            </h3>
-                            <button className="text-xs bg-yellow-600/20 text-yellow-500 px-2 py-1 rounded hover:bg-yellow-600/40">+ Add Reward</button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                             {quest.rewards.map((reward) => (
-                                 <div key={reward.id} className="bg-mc-dark p-3 rounded border border-mc-border flex items-center justify-between">
-                                     <div className="flex items-center gap-3">
-                                         <div className="w-8 h-8 rounded bg-yellow-500/10 flex items-center justify-center text-yellow-500 font-bold text-xs">
-                                             {reward.type === RewardType.XP ? 'XP' : '$'}
-                                         </div>
-                                         <div>
-                                             <div className="text-sm font-medium text-gray-200">{reward.type.toUpperCase()}</div>
-                                             <div className="text-xs text-gray-500">Value: {reward.value}</div>
-                                         </div>
-                                     </div>
-                                 </div>
-                             ))}
-                        </div>
-                    </div>
+                 {activeTab === 'rewards' && rewardTemplate && (
+                    <RewardForm 
+                        reward={rewardTemplate} 
+                        onChange={setRewardTemplate} 
+                    />
+                 )}
+                </>
+            )}
+            
+            {/* 空状态提示 (Empty State) */}
+            {((activeTab === 'quests' && !quest) || (activeTab === 'rewards' && !rewardTemplate)) && !jsonMode && (
+                <div className="flex items-center justify-center h-full text-gray-500 italic">
+                    Select an item to edit
                 </div>
             )}
         </div>
