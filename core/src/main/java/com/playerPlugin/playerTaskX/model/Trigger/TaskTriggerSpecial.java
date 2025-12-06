@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.model.Trigger;
 
 import cn.yvmou.ylib.tools.LoggerTools;
-import com.playerPlugin.playerTaskX.common.Common;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;

@@ -12,8 +12,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.Optional;
 
-import static com.playerPlugin.playerTaskX.common.Common.Repo_URL;
-import static com.playerPlugin.playerTaskX.common.Common.isLatest;
+import static com.playerPlugin.playerTaskX.model.Trigger.Common.Repo_URL;
+import static com.playerPlugin.playerTaskX.model.Trigger.Common.isLatest;
 
 public class PlayerJoinHandler implements Listener {
     private final LoggerTools log;
