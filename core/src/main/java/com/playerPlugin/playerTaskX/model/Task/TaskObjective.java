@@ -5,62 +5,58 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 
 public class TaskObjective {
-    private int targetIndex;
-    private PTXActionType action;
-    private Requirement requirement;
-    private int current;
-    private boolean finished = false;
+    private final PTXActionType action;
+    private final String target;
+    private final boolean finished;
+    private final int currentAmount;
+    private final int targetAmount;
+    private final String createAt;
+    private final String updateAt;
 
-    @JsonCreator
-    public TaskObjective(
-            @JsonProperty("action") PTXActionType action,
-            @JsonProperty("targetIndex") int targetIndex,
-            @JsonProperty("requirement") Requirement requirement) {
-        this.action = action;
-        this.targetIndex = targetIndex;
-        this.requirement = requirement;
+    public PTXActionType getAction() {
+        return action;
+    }
+
+    public String getTarget() {
+        return target;
     }
 
     public boolean isFinished() {
         return finished;
     }
-    public void setFinished(boolean finished) {}
 
-    public int getCurrent() {
-        return current;
-    }
-    public void setCurrent(int current) {
-        this.current = current;
+    public int getCurrentAmount() {
+        return currentAmount;
     }
 
-    public int getIndex() {
-        return targetIndex;
-    }
-    public void setIndex(int targetIndex) {
-        this.targetIndex = targetIndex;
+    public int getTargetAmount() {
+        return targetAmount;
     }
 
-    public PTXActionType getAction() {
-        return action;
+    public String getCreateAt() {
+        return createAt;
     }
-    public void setAction(PTXActionType action) {
+
+    public String getUpdateAt() {
+        return updateAt;
+    }
+
+    @JsonCreator
+    public TaskObjective(
+            @JsonProperty("action") PTXActionType action,
+            @JsonProperty("target") String target,
+            @JsonProperty("finished") boolean finished,
+            @JsonProperty("currentAmount") int currentAmount,
+            @JsonProperty("targetAmount") int targetAmount,
+            @JsonProperty("createAt") String createAt,
+            @JsonProperty("updateAt") String updateAt
+    ) {
         this.action = action;
-    }
-
-    public Requirement getRequirement() {
-        return requirement;
-    }
-    public void setRequirement(Requirement requirement) {
-        this.requirement = requirement;
-    }
-
-
-    public boolean incrementCurrent(int amount) {
-        if (current >= requirement.getAmount()) {
-            finished = true;
-            return true;
-        }
-        current += amount;
-        return false;
+        this.target = target;
+        this.finished = finished;
+        this.currentAmount = currentAmount;
+        this.targetAmount = targetAmount;
+        this.createAt = createAt;
+        this.updateAt = updateAt;
     }
 }

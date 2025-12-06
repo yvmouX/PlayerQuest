@@ -98,7 +98,7 @@ public class TaskCache {
     }
 
     public void progressToCache(TaskProgress taskProgress) {
-        UUID uuid = taskProgress.getUUID();
+        UUID uuid = taskProgress.getUuid();
 
         List<TaskProgress> taskProgressList = progressByUUID.computeIfAbsent(uuid, k -> new ArrayList<>());
 
@@ -107,7 +107,7 @@ public class TaskCache {
         // taskList.contains(taskProgress) 依赖 TaskProgress 的 equals() 方法判断「两个任务是否相同」。如果没重写，会使用 Object 类的默认实现（仅判断对象引用是否相同），导致去重失效！
         if (!taskProgressList.contains(taskProgress)) {
             taskProgressList.add(taskProgress);
-            log.debug("玩家" + uuid + "任务进度已添加到缓存: " + taskProgress.getTask().getId());
+            log.debug("玩家" + uuid + "任务进度已添加到缓存: " + taskProgress.getTaskDefinition().getId());
         }
     }
 
@@ -119,10 +119,10 @@ public class TaskCache {
     public void progressToRepository(TaskProgress progress, boolean immediateSave) {
         if (immediateSave) {
             progressRepo.save(progress);
-            log.debug("玩家任务进度已保存到存储库: " + progress.getTask().getId());
+            log.debug("玩家任务进度已保存到存储库: " + progress.getTaskDefinition().getId());
         } else {
-            progressDirtyUUIDs.add(progress.getUUID());
-            log.debug("玩家任务进度已添加到保存到存储库队列: "  + progress.getTask().getId());
+            progressDirtyUUIDs.add(progress.getUuid());
+            log.debug("玩家任务进度已添加到保存到存储库队列: "  + progress.getTaskDefinition().getId());
         }
     }
 
@@ -288,7 +288,7 @@ public class TaskCache {
 
         for (TaskProgress tp : maybeFinishedSnapshot) {
             boolean allFinished = true;
-            for (TaskObjective t : tp.getTask().getObjective()) {
+            for (TaskObjective t : tp.getTaskDefinition().getObjectives()) {
                 if (!t.isFinished()) {
                     allFinished = false;
                     break;
@@ -315,7 +315,7 @@ public class TaskCache {
                     try {
                         for (TaskProgress done : batch) {
                             progressRepo.save(done);
-                            log.debug(String.format("玩家 %s 任务 %s 已同步为完成", done.getUUID(), done.getTask().getId()));
+                            log.debug(String.format("玩家 %s 任务 %s 已同步为完成", done.getUuid(), done.getTaskDefinition().getId()));
                         }
                     } catch (Exception e) {
                         log.error("同步已完成任务进度到数据库失败", e);

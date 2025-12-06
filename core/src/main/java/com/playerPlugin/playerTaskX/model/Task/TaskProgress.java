@@ -3,39 +3,49 @@ package com.playerPlugin.playerTaskX.model.Task;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.utils.TimeUtil;
 
-import java.util.Objects;
 import java.util.UUID;
 
 public class TaskProgress {
-    private UUID uuid;
-    private TaskDefinition taskDefinition;
-    private PTXTaskStatus status;
+    private final UUID uuid;
+    private final TaskDefinition taskDefinition;
+    private final PTXTaskStatus status;
+    private final String createAt;
+    private final String updateAt;
 
     @JsonCreator
     public TaskProgress(
             @JsonProperty("uuid") UUID playerId,
-            @JsonProperty("taskDefinition") TaskDefinition taskDefinition) {
+            @JsonProperty("taskDefinition") TaskDefinition taskDefinition,
+            @JsonProperty("status") PTXTaskStatus status,
+            @JsonProperty("createAt") String createAt,
+            @JsonProperty("updateAt") String updateAt
+    ) {
         this.uuid = playerId;
         this.taskDefinition = taskDefinition;
         this.status = PTXTaskStatus.IN_PROGRESS;
+        this.createAt = TimeUtil.getTime();
+        this.updateAt = TimeUtil.getTime();
     }
 
-    // Getter and Setter
-    public UUID getUUID() { return this.uuid; }
-    public void setUUID(UUID uuid) { this.uuid = uuid; }
+    public UUID getUuid() {
+        return uuid;
+    }
 
-    public TaskDefinition getTask() { return this.taskDefinition; }
-    public void setTask(TaskDefinition taskDefinition) { this.taskDefinition = taskDefinition; }
+    public TaskDefinition getTaskDefinition() {
+        return taskDefinition;
+    }
 
-    public PTXTaskStatus getStatus() { return this.status; }
-    public void setStatus(PTXTaskStatus status) { this.status = status; }
+    public PTXTaskStatus getStatus() {
+        return status;
+    }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        TaskProgress that = (TaskProgress) o;
-        return Objects.equals(uuid, that.uuid) && Objects.equals(taskDefinition, that.taskDefinition) && status == that.status;
+    public String getCreateAt() {
+        return createAt;
+    }
+
+    public String getUpdateAt() {
+        return updateAt;
     }
 }

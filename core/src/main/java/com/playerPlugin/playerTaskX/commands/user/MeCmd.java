@@ -55,19 +55,18 @@ public class MeCmd implements SubCommand {
 
             List<String> b = new ArrayList<>();
 
-            pt.getTask().getObjective().forEach((target) -> {
+            pt.getTaskDefinition().getObjectives().forEach((target) -> {
                 String finishStr = target.isFinished() ? "§a[已完成]" : "§c[未完成]";
-                String a = String.format("  §7→ 目标%d: 需要%s §7(需%d/%d个) %s",
-                        target.getIndex(),
-                        target.getRequirement().getItem(),
-                        target.getCurrent(),
-                        target.getRequirement().getAmount(),
+                String a = String.format("  §7→ 目标: 需要%s §7(需%d/%d个) %s",
+                        target.getTarget(),
+                        target.getCurrentAmount(),
+                        target.getTargetAmount(),
                         finishStr
                 );
                 b.add(a);
             });
 
-            sender.sendMessage(String.format("§e%s §7- %s", pt.getTask().getName(), statusStr));
+            sender.sendMessage(String.format("§e%s §7- %s", pt.getTaskDefinition().getName(), statusStr));
             for (String a : b) {
                 sender.sendMessage(a);
             }

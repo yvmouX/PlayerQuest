@@ -4,11 +4,10 @@ import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.model.Task.Requirement;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.model.Task.TaskObjective;
-import com.playerPlugin.playerTaskX.model.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.service.TaskService;
+import com.playerPlugin.playerTaskX.utils.TimeUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
@@ -51,9 +50,9 @@ public class CreateCmd implements SubCommand {
         }
 
 
-        TaskDefinition takDef = new TaskDefinition(taskId, taskType, taskName,
-                List.of(new TaskObjective(PTXActionType.BREAK, 0, new Requirement("DIAMOND_BLOCK", 10))),
-                new TaskTrigger()
+        TaskDefinition takDef = new TaskDefinition(taskId, taskType, taskName,"这是描述哈",
+                List.of(new TaskObjective(PTXActionType.BREAK, "DIAMOND_BLOCK", false, 0, 10, TimeUtil.getTime(), TimeUtil.getTime())),
+                TimeUtil.getTime(), TimeUtil.getTime()
         );
         taskService.createTask(takDef);
         return true;
