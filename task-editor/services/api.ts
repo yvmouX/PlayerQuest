@@ -56,14 +56,29 @@ export const QuestService = {
     }
   },
 
-  /**
-   * Placeholder for saving a quest
-   */
-  async save(quest: Quest): Promise<void> {
-    console.log('Service: Saving Quest...', quest);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // TODO: Implement POST/PUT request
-    // return fetch(`${API_BASE_URL}/quest`, { method: 'POST', body: JSON.stringify(quest) ... })
-  }
+    /**
+     * Saves a quest definition.
+     * Uses /api/create for both creating and updating quests (upsert).
+     */
+    async save(quest: Quest): Promise<void> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(quest),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Log success but don't need to return data as the UI updates optimistically or re-fetches
+            console.log('Quest saved successfully');
+        } catch (error) {
+            console.error("Failed to save quest:", error);
+            throw error;
+        }
+    }
 };

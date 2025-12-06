@@ -9,11 +9,11 @@ public interface TaskAPI {
      * @param player 玩家
      * @param taskId 任务ID
      */
-    void createProgress(Player player, String taskId);
+    boolean createProgress(Player player, String taskId);
 
     /**
      * 创建任务
      * @param taskDef 任务定义
      */
-    void createTask(TaskDefinition taskDef);
+    boolean createTask(TaskDefinition taskDef);
 }

@@ -135,7 +135,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 启动服务器
         try {
-            new EditorServer(this, taskRepository, log).start();
+            new EditorServer(this, taskRepository, taskService, log).start();
         } catch (Exception e) {
             log.error("启动服务器时发生错误：" + e.getMessage());
         }

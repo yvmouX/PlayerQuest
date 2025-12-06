@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.JsonParseException;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.web.exception.NotFoundTaskDefinitionException;
 import com.playerPlugin.playerTaskX.web.exception.UnauthorizedException;
@@ -28,11 +29,13 @@ import java.util.Map;
 public class EditorServer {
     private final PlayerTaskX plugin;
     private final TaskRepository taskRepo;
+    private final TaskService taskService;
     private final LoggerTools log;
     private Javalin app;
-    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, LoggerTools log) {
+    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskService taskService, LoggerTools log) {
         this.plugin = plugin;
         this.taskRepo = taskRepo;
+        this.taskService = taskService;
         this.log = log;
     }
 
@@ -202,7 +205,7 @@ public class EditorServer {
         });
 
         // API路由
-        new ApiRoutes().setupApiRoutes(app, taskRepo);
+        new ApiRoutes().setupApiRoutes(app, taskRepo, taskService);
 
         // WebSocket路由（用于实时更新）
         // setupWebSocketRoutes();  // 暂时注释掉

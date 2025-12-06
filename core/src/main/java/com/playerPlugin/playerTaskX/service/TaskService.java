@@ -20,29 +20,30 @@ public class TaskService implements TaskAPI {
         this.cache = cache;
     }
 
-    public void createProgress(Player player, String taskId) {
+    public boolean createProgress(Player player, String taskId) {
         // 验证 ID 是否存在
         // Verify that the ID exists
         if (taskRepo.findById(taskId).isEmpty()) {
             log.error(String.format("Task with ID %s not found", taskId));
-            return;
+            return false;
         };
         TaskDefinition taskDef = taskRepo.findById(taskId).get();
         progressRepo.createForPlayer(player, taskDef);
+        return true;
     }
 
-    public void createTask(TaskDefinition taskDef) {
+    public boolean createTask(TaskDefinition taskDef) {
         // 验证 Def 是否有效
         // Verify that the Def is valid
         if (taskDef.getId() == null || taskDef.getId().isEmpty()) {
             log.error("taskDefinition id required");
-            return;
+            return false;
         }
         // 验证仓库是否存在该 Def
         // verify that it exists in the repository
         if (taskRepo.findById(taskDef.getId()).isPresent()) {
             log.error(String.format("Task with ID %s already exists", taskDef.getId()));
-            return;
+            return false;
         }
 
 
@@ -50,5 +51,6 @@ public class TaskService implements TaskAPI {
         taskRepo.save(taskDef);
         // 保存到缓存
         cache.taskDefToCache(taskDef);
+        return true;
     }
 }
