@@ -6,7 +6,7 @@ import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
-import com.playerPlugin.playerTaskX.model.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.model.Task.TaskObjective;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 
@@ -288,7 +288,7 @@ public class TaskCache {
 
         for (TaskProgress tp : maybeFinishedSnapshot) {
             boolean allFinished = true;
-            for (TaskTarget t : tp.getTask().getTargets()) {
+            for (TaskObjective t : tp.getTask().getObjective()) {
                 if (!t.isFinished()) {
                     allFinished = false;
                     break;

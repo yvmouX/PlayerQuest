@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 
-public class TaskTarget {
+public class TaskObjective {
     private int targetIndex;
     private PTXActionType action;
     private Requirement requirement;
@@ -12,7 +12,7 @@ public class TaskTarget {
     private boolean finished = false;
 
     @JsonCreator
-    public TaskTarget(
+    public TaskObjective(
             @JsonProperty("action") PTXActionType action,
             @JsonProperty("targetIndex") int targetIndex,
             @JsonProperty("requirement") Requirement requirement) {

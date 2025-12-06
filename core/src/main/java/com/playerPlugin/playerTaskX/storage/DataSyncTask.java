@@ -5,7 +5,7 @@
 //import cn.yvmou.ylib.tools.LoggerTools;
 //import com.playerPlugin.playerTaskX.cache.TaskCache;
 //import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
-//import com.playerPlugin.playerTaskX.domain.Task.TaskTarget;
+//import com.playerPlugin.playerTaskX.domain.Task.TaskObjective;
 //
 //import java.sql.SQLException;
 //import java.util.*;
@@ -188,7 +188,7 @@
 //
 //        for (TaskProgress tp : maybeFinishedSnapshot) {
 //            boolean allFinished = true;
-//            for (TaskTarget t : tp.getTask().getTargets()) {
+//            for (TaskObjective t : tp.getTask().getTargets()) {
 //                if (!t.isFinished()) {
 //                    allFinished = false;
 //                    break;

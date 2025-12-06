@@ -4,7 +4,7 @@
 //import com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus;
 //import com.playerPlugin.playerTaskX.domain.Task.TaskDefinition;
 //import com.playerPlugin.playerTaskX.domain.Task.TaskProgress;
-//import com.playerPlugin.playerTaskX.domain.Task.TaskTarget;
+//import com.playerPlugin.playerTaskX.domain.Task.TaskObjective;
 //import com.playerPlugin.playerTaskX.storage.RepositoryCreator;
 //import org.bukkit.entity.Player;
 //
@@ -317,8 +317,8 @@
 //                String taskId = rs.getString("task_id");
 //
 //                // 处理任务目标，设置为玩家当前的进度
-//                List<TaskTarget> handledTaskTargetList = tm.getTaskTargets(taskId);
-//                for (TaskTarget taskTarget : handledTaskTargetList) {
+//                List<TaskObjective> handledTaskTargetList = tm.getTaskTargets(taskId);
+//                for (TaskObjective taskTarget : handledTaskTargetList) {
 //                    Map<Integer, Integer> progressMap = getDatabaseDAO().getProgress(uuid.toString(), taskId);
 //                    taskTarget.setCurrent(
 //                            progressMap.get(taskTarget.getIndex())

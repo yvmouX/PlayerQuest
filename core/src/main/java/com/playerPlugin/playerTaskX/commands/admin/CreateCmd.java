@@ -2,12 +2,11 @@ package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
-import cn.yvmou.ylib.tools.LoggerTools;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.model.Task.Requirement;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
-import com.playerPlugin.playerTaskX.model.Task.TaskTarget;
+import com.playerPlugin.playerTaskX.model.Task.TaskObjective;
 import com.playerPlugin.playerTaskX.model.Task.TaskTrigger;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import org.bukkit.ChatColor;
@@ -53,7 +52,7 @@ public class CreateCmd implements SubCommand {
 
 
         TaskDefinition takDef = new TaskDefinition(taskId, taskType, taskName,
-                List.of(new TaskTarget(PTXActionType.BREAK, 0, new Requirement("DIAMOND_BLOCK", 10))),
+                List.of(new TaskObjective(PTXActionType.BREAK, 0, new Requirement("DIAMOND_BLOCK", 10))),
                 new TaskTrigger()
         );
         taskService.createTask(takDef);

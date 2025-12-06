@@ -3,14 +3,9 @@ package com.playerPlugin.playerTaskX.model.Task;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.api.task.ITaskCondition;
 import com.playerPlugin.playerTaskX.api.task.ITaskDefinition;
-import com.playerPlugin.playerTaskX.api.task.ITaskReward;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * 任务定义
@@ -24,7 +19,7 @@ public class TaskDefinition implements ITaskDefinition {
     private String name; // 名称
     private String description;
     public List<TaskCondition> conditions; // TODO
-    private List<TaskTarget> targets;
+    private List<TaskObjective> targets;
     private TaskTrigger trigger;
 
     @JsonCreator
@@ -32,7 +27,7 @@ public class TaskDefinition implements ITaskDefinition {
             @JsonProperty("id") String id,
             @JsonProperty("type") PTXTaskType type,
             @JsonProperty("name") String name,
-            @JsonProperty("targets") List<TaskTarget> targets,
+            @JsonProperty("targets") List<TaskObjective> targets,
             @JsonProperty("trigger") TaskTrigger trigger) {
         this.id = id;
         this.type = type;
@@ -72,7 +67,7 @@ public class TaskDefinition implements ITaskDefinition {
         this.description = description;
     }
 
-    public List<TaskTarget> getTargets() {
+    public List<TaskObjective> getObjective() {
         return targets;
     }
 
