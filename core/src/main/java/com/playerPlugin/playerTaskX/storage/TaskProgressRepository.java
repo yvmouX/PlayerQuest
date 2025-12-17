@@ -10,6 +10,11 @@ import java.util.UUID;
 public interface TaskProgressRepository {
     Optional<TaskProgress> find(UUID player, String taskId);
 
+    /**
+     * 保存进度
+     *
+     * @param progress 进展
+     */
     void save(TaskProgress progress);
 
     void delete(UUID player, String taskId);

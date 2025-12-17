@@ -1,0 +1,3 @@
+[submodule "YLib"]
+	path = YLib
+	url = https://github.com/yvmouX/YLib.git

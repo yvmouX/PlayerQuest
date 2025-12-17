@@ -28,8 +28,17 @@ public class TaskService implements TaskAPI {
             return false;
         };
         TaskDefinition taskDef = taskRepo.findById(taskId).get();
+
         progressRepo.createForPlayer(player, taskDef);
         return true;
+    }
+
+    public void deleteProgress(Player player, String taskId) {
+        // TODO
+    }
+
+    public void saveProgress(Player player, String taskId) {
+        // TODO
     }
 
     public boolean createTask(TaskDefinition taskDef) {
@@ -45,7 +54,6 @@ public class TaskService implements TaskAPI {
             log.error(String.format("Task with ID %s already exists", taskDef.getId()));
             return false;
         }
-
 
         // 保存到仓库
         taskRepo.save(taskDef);
