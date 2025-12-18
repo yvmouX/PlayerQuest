@@ -2,7 +2,7 @@ plugins {
     java
     `maven-publish`
     id("xyz.jpenilla.run-paper") version "2.3.1"
-    id("com.gradleup.shadow") version "9.0.0-rc3"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 
@@ -46,7 +46,6 @@ subprojects {
     }
 
     dependencies {
-        implementation(files(rootProject.file("lib/YLib-1.0.0-beta5.jar")))
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
     }
 }
