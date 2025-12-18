@@ -1,7 +1,7 @@
 plugins {
     java
     `maven-publish`
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
     id("com.gradleup.shadow") version "9.3.0"
 }
 
@@ -52,9 +52,12 @@ allprojects {
 
 tasks {
     runServer {
-        minecraftVersion("1.21")
+        minecraftVersion("1.21.8")
         jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
     }
+    
+    // 添加Folia支持
+    runPaper.folia.registerTask()
 }
 
 tasks.shadowJar {
