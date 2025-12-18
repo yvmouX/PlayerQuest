@@ -1,8 +1,9 @@
 package com.playerPlugin.playerTaskX;
 
-import cn.yvmou.ylib.YLib;
+import cn.yvmou.ylib.api.YLib;
+import cn.yvmou.ylib.api.YLibCreate;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
 import com.playerPlugin.playerTaskX.api.impl.PlayerTaskXAPIImpl;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public final class PlayerTaskX extends JavaPlugin {
-    private LoggerTools log;
+    private LoggerService log;
     private UniversalScheduler scheduler;
     private Economy economy;
 
@@ -67,8 +68,8 @@ public final class PlayerTaskX extends JavaPlugin {
 
     private void register() {
         // 1、创建必要的前置
-        YLib ylib = new YLib(this);
-        log = ylib.getLoggerTools();
+        YLib ylib = YLibCreate.create(this);
+        log = ylib.getSimpleLogger();
         scheduler = ylib.getScheduler();
 
         new Metrics(this, 27726);
@@ -120,7 +121,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 7、注册命令
         TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository, cache);
-        new CommandRegister(ylib.getCommandManager(), cache, taskService).registerCommands();
+        new CommandRegister(ylib.getSimpleCommandManager(), cache, taskService).registerCommands();
 
         // 8、初始化并注册 API
         api = new PlayerTaskXAPIImpl(log, cache, taskRepository, taskProgressRepository);

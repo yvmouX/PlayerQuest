@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.model.Trigger;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -18,9 +18,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class TaskTriggerSpecial {
-    private static LoggerTools log;
+    private static LoggerService log;
 
-    public TaskTriggerSpecial(LoggerTools log) {
+    public TaskTriggerSpecial(LoggerService log) {
         TaskTriggerSpecial.log = log;
     }
 

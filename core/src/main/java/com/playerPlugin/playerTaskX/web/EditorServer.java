@@ -1,11 +1,10 @@
 package com.playerPlugin.playerTaskX.web;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.JsonParseException;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.web.exception.NotFoundTaskDefinitionException;
@@ -30,9 +29,9 @@ public class EditorServer {
     private final PlayerTaskX plugin;
     private final TaskRepository taskRepo;
     private final TaskService taskService;
-    private final LoggerTools log;
+    private final LoggerService log;
     private Javalin app;
-    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskService taskService, LoggerTools log) {
+    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskService taskService, LoggerService log) {
         this.plugin = plugin;
         this.taskRepo = taskRepo;
         this.taskService = taskService;

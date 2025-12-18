@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.utils;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.model.Trigger.Common;
 import org.bukkit.ChatColor;
 import org.json.simple.JSONObject;
@@ -17,9 +17,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class UpdateHelper {
-    private final LoggerTools log;
+    private final LoggerService log;
 
-    public UpdateHelper(LoggerTools log) {
+    public UpdateHelper(LoggerService log) {
         this.log = log;
     }
 

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.storage;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 //import com.playerPlugin.playerTaskX.storage.json.JsonRepositoryCreator;
@@ -14,10 +14,10 @@ import com.playerPlugin.playerTaskX.storage.yaml.YamlTaskRepository;
 
 public class StorageFactory {
     private final PlayerTaskX plugin;
-    private final LoggerTools log;
+    private final LoggerService log;
     private final PTXStorgeType storgeType;
 
-    public StorageFactory(PlayerTaskX plugin, LoggerTools log, PTXStorgeType storgeType) {
+    public StorageFactory(PlayerTaskX plugin, LoggerService log, PTXStorgeType storgeType) {
         this.plugin = plugin;
         this.log = log;
         this.storgeType = storgeType;

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.event;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
@@ -16,11 +16,11 @@ import static com.playerPlugin.playerTaskX.model.Trigger.Common.Repo_URL;
 import static com.playerPlugin.playerTaskX.model.Trigger.Common.isLatest;
 
 public class PlayerJoinHandler implements Listener {
-    private final LoggerTools log;
+    private final LoggerService log;
     private final TaskCache cache;
     private final TaskProgressRepository progressRepository;
 
-    public PlayerJoinHandler(LoggerTools log, TaskCache cache, TaskProgressRepository progressRepository) {
+    public PlayerJoinHandler(LoggerService log, TaskCache cache, TaskProgressRepository progressRepository) {
         this.log = log;
         this.cache = cache;
         this.progressRepository = progressRepository;

@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.storage.yaml;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -30,9 +30,9 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
     private final Lock readLock = rwLock.readLock();
     private final Lock writeLock = rwLock.writeLock();
-    private final LoggerTools log;
+    private final LoggerService log;
 
-    public YamlTaskProgressRepository(PlayerTaskX plugin, LoggerTools log){
+    public YamlTaskProgressRepository(PlayerTaskX plugin, LoggerService log){
         this.dataDir = getDataDir(plugin);
         this.log = log;
         this.yamlMapper = new ObjectMapper(new YAMLFactory());

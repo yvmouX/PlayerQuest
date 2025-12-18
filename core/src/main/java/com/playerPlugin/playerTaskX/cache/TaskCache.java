@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.cache;
 
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
@@ -37,7 +37,7 @@ public class TaskCache {
     // 是否正在运行
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    private final LoggerTools log;
+    private final LoggerService log;
     private final UniversalScheduler scheduler;
     private final TaskRepository repo;
     private final TaskProgressRepository progressRepo;
@@ -61,7 +61,7 @@ public class TaskCache {
         return taskDefById;
     }
 
-    public TaskCache(LoggerTools log, UniversalScheduler scheduler, TaskRepository repo, TaskProgressRepository progressRepo) {
+    public TaskCache(LoggerService log, UniversalScheduler scheduler, TaskRepository repo, TaskProgressRepository progressRepo) {
         this.log = log;
         this.scheduler = scheduler;
         this.repo = repo;

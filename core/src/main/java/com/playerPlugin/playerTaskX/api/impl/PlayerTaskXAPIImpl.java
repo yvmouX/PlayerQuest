@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.api.impl;
 
-import cn.yvmou.ylib.tools.LoggerTools;
+import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
 import com.playerPlugin.playerTaskX.api.event.*;
 import com.playerPlugin.playerTaskX.api.task.ITaskDefinition;
@@ -20,13 +20,13 @@ import java.util.stream.Collectors;
 public class PlayerTaskXAPIImpl implements PlayerTaskXAPI {
     private static final String API_VERSION = "1.0.0";
     
-    private final LoggerTools log;
+    private final LoggerService log;
     private final TaskCache cache;
     private final TaskRepository taskRepository;
     private final TaskProgressRepository progressRepository;
     private final List<TaskEventListener> eventListeners;
 
-    public PlayerTaskXAPIImpl(LoggerTools log, TaskCache cache, 
+    public PlayerTaskXAPIImpl(LoggerService log, TaskCache cache,
                               TaskRepository taskRepository, 
                               TaskProgressRepository progressRepository) {
         this.log = log;
