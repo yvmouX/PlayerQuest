@@ -2,8 +2,6 @@ package com.playerPlugin.playerTaskX.api.task;
 
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 
-import java.util.List;
-
 /**
  * 任务定义接口
  * 定义了任务的基本属性和行为

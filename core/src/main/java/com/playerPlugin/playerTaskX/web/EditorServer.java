@@ -12,7 +12,8 @@ import com.playerPlugin.playerTaskX.web.exception.UnauthorizedException;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
 import io.javalin.json.JsonMapper;
-import io.javalin.openapi.*;
+import io.javalin.openapi.JsonSchemaLoader;
+import io.javalin.openapi.JsonSchemaResource;
 import io.javalin.openapi.plugin.OpenApiPlugin;
 import io.javalin.openapi.plugin.redoc.ReDocPlugin;
 import io.javalin.openapi.plugin.swagger.SwaggerPlugin;
@@ -148,7 +149,7 @@ public class EditorServer {
                 System.out.println(generatedJsonSchema.getContentAsString());
             }
 
-        }).start(1145);
+        }).start(2222);
 
         // 全局异常处理
         app.exception(Exception.class, (e, ctx) -> {

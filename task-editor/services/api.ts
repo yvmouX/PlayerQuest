@@ -1,7 +1,7 @@
 import { Quest, QuestType, QuestObjective } from '../types';
 import { MOCK_QUESTS } from './mockData';
 
-const API_BASE_URL = 'http://localhost:1145/api';
+const API_BASE_URL = 'http://localhost:2222/api';
 
 interface ApiResponse {
     code: number;
