@@ -69,8 +69,10 @@ tasks.shadowJar {
     
     // 包含 core 模块的运行时依赖
     configurations = listOf(project(":core").configurations.runtimeClasspath.get())
-    
+
+    // 重定位
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
+    relocate("com.fasterxml.jackson", "com.playerPlugin.playerTaskX.libs.jackson")
     
     // 优雅地处理重复文件
     mergeServiceFiles() // 自动合并 META-INF/services 文件
