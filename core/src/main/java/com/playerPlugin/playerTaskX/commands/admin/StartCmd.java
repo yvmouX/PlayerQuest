@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.commands.admin;
 
-import cn.yvmou.ylib.api.command.CommandOptions;
-import cn.yvmou.ylib.api.command.SubCommand;
+import cn.yvmou.ylib.api.command.*;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import org.bukkit.Bukkit;
@@ -29,6 +28,15 @@ public class StartCmd implements SubCommand {
             register = true,
             usage = "/playertaskxadmin start <taskID> <player>"
     )
+    @CommandComplete({
+            @CommandComplete.Tab(
+                    type = CompleteType.CUSTOM,
+                    customOptions = {"<taskID>"}),
+            @CommandComplete.Tab(
+                    type = CompleteType.PRESET,
+                    preset = PresetType.ONLINE_PLAYER
+            )
+    })
     public boolean execute(CommandSender sender, String[] args) {
         if (Objects.equals(args[0], "start") && args.length != 3) {
             sender.sendMessage(ChatColor.RED + "Usage: /playertaskxadmin start <taskID> <player>");

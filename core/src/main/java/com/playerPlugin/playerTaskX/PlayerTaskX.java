@@ -2,8 +2,11 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.api.YLib;
 import cn.yvmou.ylib.api.YLibCreate;
+import cn.yvmou.ylib.api.command.SimpleCommandManager;
+import cn.yvmou.ylib.api.config.ConfigurationManager;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.impl.config.SimpleConfigurationManager;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
@@ -37,6 +40,7 @@ public final class PlayerTaskX extends JavaPlugin {
     private LoggerService log;
     private UniversalScheduler scheduler;
     private Economy economy;
+    private ConfigurationManager configurationManager;
 
     private boolean isEconomyEnabled = true;
     private PlayerPointsAPI ppAPI;
@@ -121,9 +125,15 @@ public final class PlayerTaskX extends JavaPlugin {
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
+        // 注册配置
+        configurationManager = ylib.getConfigurationManager();
+
+        configurationManager.registerConfiguration(EditorConfiguration.class);
+        configurationManager.registerConfiguration(StorgeConfiguration.class);
+
         // 7、注册命令
         TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository, cache);
-        new CommandRegister(ylib.getSimpleCommandManager(), cache, taskService).registerCommands();
+        new CommandRegister(configurationManager, ylib.getSimpleCommandManager(), cache, taskService).registerCommands();
 
         // 8、初始化并注册 API
         api = new PlayerTaskXAPIImpl(log, cache, taskRepository, taskProgressRepository);
@@ -144,8 +154,6 @@ public final class PlayerTaskX extends JavaPlugin {
         }
 
 
-        ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
-        ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
 
 
     }
