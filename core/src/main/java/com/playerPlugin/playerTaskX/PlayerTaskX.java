@@ -10,6 +10,8 @@ import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
 import com.playerPlugin.playerTaskX.api.impl.PlayerTaskXAPIImpl;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
+import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
+import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
 import com.playerPlugin.playerTaskX.service.TaskService;
@@ -140,6 +142,11 @@ public final class PlayerTaskX extends JavaPlugin {
         } catch (Exception e) {
             log.error("启动服务器时发生错误：" + e.getMessage());
         }
+
+
+        ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
+        ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
+
 
     }
 

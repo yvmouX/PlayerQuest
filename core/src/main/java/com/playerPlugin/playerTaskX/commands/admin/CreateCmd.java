@@ -1,6 +1,8 @@
 package com.playerPlugin.playerTaskX.commands.admin;
 
+import cn.yvmou.ylib.api.command.CommandComplete;
 import cn.yvmou.ylib.api.command.CommandOptions;
+import cn.yvmou.ylib.api.command.CompleteType;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
@@ -29,6 +31,20 @@ public class CreateCmd implements SubCommand {
             register = true,
             usage = "/playertaskx create <taskID> <taskType> <taskName>"
     )
+    @CommandComplete({
+            @CommandComplete.Tab(
+                    type = CompleteType.CUSTOM,
+                    customOptions = {"<taskID>"}
+            ),
+            @CommandComplete.Tab(
+                    type = CompleteType.CUSTOM,
+                    customOptions = {"CYCLE", "LIMIT", "FOREVER"}
+            ),
+            @CommandComplete.Tab(
+                    type = CompleteType.CUSTOM,
+                    customOptions = {"<taskName>"}
+            ),
+    })
     public boolean execute(CommandSender sender, String[] args) {
         // TEST
         String taskId = args[1];
