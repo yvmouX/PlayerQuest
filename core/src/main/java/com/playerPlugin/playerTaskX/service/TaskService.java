@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.service;
 
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import org.bukkit.entity.Player;

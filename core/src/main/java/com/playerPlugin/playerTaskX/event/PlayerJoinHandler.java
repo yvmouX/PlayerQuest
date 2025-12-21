@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.event;
 
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,8 +12,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.Optional;
 
-import static com.playerPlugin.playerTaskX.model.Trigger.Common.Repo_URL;
-import static com.playerPlugin.playerTaskX.model.Trigger.Common.isLatest;
+import static com.playerPlugin.playerTaskX.Trigger.Common.Repo_URL;
+import static com.playerPlugin.playerTaskX.Trigger.Common.isLatest;
 
 public class PlayerJoinHandler implements Listener {
     private final LoggerService log;

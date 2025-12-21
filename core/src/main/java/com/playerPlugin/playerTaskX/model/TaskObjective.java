@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.model.Task;
+package com.playerPlugin.playerTaskX.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

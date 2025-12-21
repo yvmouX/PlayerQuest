@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.web;
 
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.service.TaskService;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.web.exception.NotFoundTaskDefinitionException;

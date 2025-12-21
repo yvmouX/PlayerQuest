@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.service;
 
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.TaskDefinition;
 import org.bukkit.entity.Player;
 
 public interface TaskAPI {

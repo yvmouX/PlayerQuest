@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.model.Trigger;
+package com.playerPlugin.playerTaskX.Trigger;
 
 import cn.yvmou.ylib.api.services.LoggerService;
 import org.bukkit.Material;

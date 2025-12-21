@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.model.Trigger;
+package com.playerPlugin.playerTaskX.Trigger;
 
 public class Common {
     public static boolean isLatest = true;

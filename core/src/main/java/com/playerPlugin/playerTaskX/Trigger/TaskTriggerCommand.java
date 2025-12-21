@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.model.Trigger;
+package com.playerPlugin.playerTaskX.Trigger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

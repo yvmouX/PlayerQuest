@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.api.impl;
+package com.playerPlugin.playerTaskX.service;
 
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
@@ -6,7 +6,7 @@ import com.playerPlugin.playerTaskX.api.event.*;
 import com.playerPlugin.playerTaskX.api.task.ITaskDefinition;
 import com.playerPlugin.playerTaskX.api.task.ITaskProgress;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 import org.bukkit.entity.Player;

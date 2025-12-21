@@ -4,9 +4,9 @@ import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.model.Task.TaskDefinition;
-import com.playerPlugin.playerTaskX.model.Task.TaskObjective;
-import com.playerPlugin.playerTaskX.model.Task.TaskProgress;
+import com.playerPlugin.playerTaskX.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.model.TaskObjective;
+import com.playerPlugin.playerTaskX.model.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 

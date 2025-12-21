@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.utils;
 
 import cn.yvmou.ylib.api.services.LoggerService;
-import com.playerPlugin.playerTaskX.model.Trigger.Common;
+import com.playerPlugin.playerTaskX.Trigger.Common;
 import org.bukkit.ChatColor;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
