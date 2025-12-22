@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.utils;
+package com.playerPlugin.playerTaskX.api.utils;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;

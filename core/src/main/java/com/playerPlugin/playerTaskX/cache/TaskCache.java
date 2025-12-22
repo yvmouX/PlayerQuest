@@ -4,9 +4,9 @@ import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.model.TaskObjective;
-import com.playerPlugin.playerTaskX.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskObjective;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
 
@@ -18,7 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 在 `TaskService.reload()` 时用 `TaskRepository.loadAll()` 更新缓存；在 `UpdateProgressUseCase` 中优先从缓存读取任务定义。
+ * 在 `TaskAPIImpl.reload()` 时用 `TaskRepository.loadAll()` 更新缓存；在 `UpdateProgressUseCase` 中优先从缓存读取任务定义。
  */
 
 /**

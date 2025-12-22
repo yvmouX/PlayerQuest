@@ -6,21 +6,19 @@ import cn.yvmou.ylib.api.config.ConfigurationManager;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.api.PlayerTaskXAPI;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
-import com.playerPlugin.playerTaskX.service.PlayerTaskXAPIImpl;
+import com.playerPlugin.playerTaskX.api.TaskAPI;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.utils.Metrics;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.CommandRegister;
 import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
 import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.service.TaskService;
+import com.playerPlugin.playerTaskX.impl.TaskAPIImpl;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.utils.Metrics;
-import com.playerPlugin.playerTaskX.utils.UpdateHelper;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
@@ -47,7 +45,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
     private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取
     
-    private PlayerTaskXAPI api;
+    private TaskAPI api;
 
     @Override
     public void onEnable() {
@@ -130,18 +128,18 @@ public final class PlayerTaskX extends JavaPlugin {
         configurationManager.registerConfiguration(StorgeConfiguration.class);
 
         // 7、注册命令
-        TaskService taskService = new TaskService(log, taskRepository, taskProgressRepository, cache);
+        TaskAPI taskService = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
         new CommandRegister(configurationManager, ylib.getSimpleCommandManager(), cache, taskService).registerCommands();
 
         // 8、初始化并注册 API
-        api = new PlayerTaskXAPIImpl(log, cache, taskRepository, taskProgressRepository);
+        api = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
         PlayerTaskXProvider.setApi(api);
         log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
 
 
 
         // 9、更新检查
-        UpdateHelper updateHelper = new UpdateHelper(log);
+        PlayerTaskXProvider.UpdateHelper updateHelper = new PlayerTaskXProvider.UpdateHelper(log);
         updateHelper.checkUpdate(getDescription().getVersion());
 
         // 启动服务器

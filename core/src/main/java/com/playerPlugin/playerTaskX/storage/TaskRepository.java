@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.storage;
 
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,15 +1,15 @@
 package com.playerPlugin.playerTaskX.web;
 
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.service.TaskService;
+import com.playerPlugin.playerTaskX.api.TaskAPI;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.exception.NotFoundTaskDefinitionException;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.web.exception.NotFoundTaskDefinitionException;
 import io.javalin.Javalin;
 
 import java.util.Map;
 
 public class ApiRoutes {
-    public void setupApiRoutes(Javalin app, TaskRepository taskRepo, TaskService service) {
+    public void setupApiRoutes(Javalin app, TaskRepository taskRepo, TaskAPI taskAPI) {
         // ***************** GET *****************
         /*
           获取任务列表
@@ -35,7 +35,7 @@ public class ApiRoutes {
         app.post("/api/create", ctx -> {
             TaskDefinition taskDef = ctx.bodyAsClass(TaskDefinition.class);
 
-            boolean success = service.createTask(taskDef);
+            boolean success = taskAPI.createTask(taskDef);
             if (success) {
                 ctx.status(201).json(Map.of(
                         "success", true,

@@ -5,10 +5,10 @@ import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.JsonParseException;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.service.TaskService;
+import com.playerPlugin.playerTaskX.api.TaskAPI;
+import com.playerPlugin.playerTaskX.exception.NotFoundTaskDefinitionException;
+import com.playerPlugin.playerTaskX.exception.UnauthorizedException;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.web.exception.NotFoundTaskDefinitionException;
-import com.playerPlugin.playerTaskX.web.exception.UnauthorizedException;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
 import io.javalin.json.JsonMapper;
@@ -29,13 +29,13 @@ import java.util.Map;
 public class EditorServer {
     private final PlayerTaskX plugin;
     private final TaskRepository taskRepo;
-    private final TaskService taskService;
+    private final TaskAPI taskAPI;
     private final LoggerService log;
     private Javalin app;
-    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskService taskService, LoggerService log) {
+    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskAPI taskAPI, LoggerService log) {
         this.plugin = plugin;
         this.taskRepo = taskRepo;
-        this.taskService = taskService;
+        this.taskAPI = taskAPI;
         this.log = log;
     }
 
@@ -205,7 +205,7 @@ public class EditorServer {
         });
 
         // API路由
-        new ApiRoutes().setupApiRoutes(app, taskRepo, taskService);
+        new ApiRoutes().setupApiRoutes(app, taskRepo, taskAPI);
 
         // WebSocket路由（用于实时更新）
         // setupWebSocketRoutes();  // 暂时注释掉

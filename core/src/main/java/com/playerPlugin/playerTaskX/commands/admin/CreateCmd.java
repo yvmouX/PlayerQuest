@@ -6,20 +6,20 @@ import cn.yvmou.ylib.api.command.CompleteType;
 import cn.yvmou.ylib.api.command.SubCommand;
 import com.playerPlugin.playerTaskX.api.Enum.PTXActionType;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.model.TaskObjective;
-import com.playerPlugin.playerTaskX.service.TaskService;
-import com.playerPlugin.playerTaskX.utils.TimeUtil;
+import com.playerPlugin.playerTaskX.api.TaskAPI;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskObjective;
+import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
 
 public class CreateCmd implements SubCommand {
-    private final TaskService taskService;
+    private final TaskAPI taskAPI;
 
-    public CreateCmd(TaskService taskService) {
-        this.taskService = taskService;
+    public CreateCmd(TaskAPI taskAPI) {
+        this.taskAPI = taskAPI;
     }
 
     @Override
@@ -70,7 +70,7 @@ public class CreateCmd implements SubCommand {
                 List.of(new TaskObjective(PTXActionType.BREAK, "DIAMOND_BLOCK", false, 0, 10, TimeUtil.getTime(), TimeUtil.getTime())),
                 TimeUtil.getTime(), TimeUtil.getTime()
         );
-        taskService.createTask(takDef);
+        taskAPI.createTask(takDef);
         return true;
     }
 }

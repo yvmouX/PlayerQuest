@@ -7,10 +7,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
-import com.playerPlugin.playerTaskX.utils.TimeUtil;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 

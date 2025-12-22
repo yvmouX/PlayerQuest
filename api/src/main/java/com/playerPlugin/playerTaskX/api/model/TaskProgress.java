@@ -1,9 +1,9 @@
-package com.playerPlugin.playerTaskX.model;
+package com.playerPlugin.playerTaskX.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.utils.TimeUtil;
+import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 
 import java.util.UUID;
 

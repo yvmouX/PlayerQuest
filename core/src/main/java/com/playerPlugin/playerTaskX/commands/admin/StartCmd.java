@@ -1,8 +1,8 @@
 package com.playerPlugin.playerTaskX.commands.admin;
 
 import cn.yvmou.ylib.api.command.*;
+import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.service.TaskService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -12,11 +12,11 @@ import java.util.Objects;
 
 public class StartCmd implements SubCommand {
     private final TaskCache cache;
-    private final TaskService service;
+    private final TaskAPI taskAPI;
 
-    public StartCmd(TaskCache cache, TaskService service) {
+    public StartCmd(TaskCache cache, TaskAPI taskAPI) {
         this.cache = cache;
-        this.service = service;
+        this.taskAPI = taskAPI;
     }
 
     @Override
@@ -56,7 +56,7 @@ public class StartCmd implements SubCommand {
         }
 
         try {
-            service.createProgress(p, taskID);
+            taskAPI.createProgress(p, taskID);
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Error: " + e.getMessage());
             throw new RuntimeException(e);

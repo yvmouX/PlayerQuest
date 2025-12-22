@@ -2,8 +2,8 @@ package com.playerPlugin.playerTaskX.commands.user;
 
 import cn.yvmou.ylib.api.command.CommandOptions;
 import cn.yvmou.ylib.api.command.SubCommand;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.model.TaskProgress;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 

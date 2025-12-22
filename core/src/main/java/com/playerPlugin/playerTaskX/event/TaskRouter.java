@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.event;
 
-import com.playerPlugin.playerTaskX.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDeathEvent;

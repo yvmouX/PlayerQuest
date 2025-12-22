@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.Trigger;
 
-import com.playerPlugin.playerTaskX.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import org.bukkit.entity.Player;
 
 import java.util.List;
