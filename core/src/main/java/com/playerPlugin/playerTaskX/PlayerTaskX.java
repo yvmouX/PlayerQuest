@@ -134,7 +134,7 @@ public final class PlayerTaskX extends JavaPlugin {
         // 8、初始化并注册 API
         api = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
         PlayerTaskXProvider.setApi(api);
-        log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
+        //log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
 
 
 

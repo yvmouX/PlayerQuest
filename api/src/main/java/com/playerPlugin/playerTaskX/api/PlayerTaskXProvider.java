@@ -93,28 +93,28 @@ public final class PlayerTaskXProvider {
         }
 
         private void compareVersion(String currentVersion, String latestVersion) {
-            if (latestVersion == null) {
-                log.info(ChatColor.RED, "无法获取最新版本信息");
-                return;
-            }
-
-            int latest;
-            int current;
-            ArrayList<String> currentVersionList = new ArrayList<>(Arrays.asList(currentVersion.split("\\.")));
-            ArrayList<String> latestVersionList = new ArrayList<>(Arrays.asList(latestVersion.split("\\.")));
-            for (int i = 0; i < Math.min(currentVersionList.size(), latestVersionList.size()); i++) {
-                current = Integer.parseInt(currentVersionList.get(i));
-                latest = Integer.parseInt(latestVersionList.get(i));
-                if (current < latest) {
-                    Common.isLatest = false;
-                    log.info(ChatColor.GREEN, "有新版本可用，请前往 https://github.com/Findoutsider/PlayerTaskX/releases/latest 下载");
-                    break;
-                }
-                if (current > latest) {
-                    Common.isLatest = true;
-                    break;
-                }
-            }
+//            if (latestVersion == null) {
+//                log.info(ChatColor.RED, "无法获取最新版本信息");
+//                return;
+//            }
+//
+//            int latest;
+//            int current;
+//            ArrayList<String> currentVersionList = new ArrayList<>(Arrays.asList(currentVersion.split("\\.")));
+//            ArrayList<String> latestVersionList = new ArrayList<>(Arrays.asList(latestVersion.split("\\.")));
+//            for (int i = 0; i < Math.min(currentVersionList.size(), latestVersionList.size()); i++) {
+//                current = Integer.parseInt(currentVersionList.get(i));
+//                latest = Integer.parseInt(latestVersionList.get(i));
+//                if (current < latest) {
+//                    Common.isLatest = false;
+//                    log.info(ChatColor.GREEN, "有新版本可用，请前往 https://github.com/Findoutsider/PlayerTaskX/releases/latest 下载");
+//                    break;
+//                }
+//                if (current > latest) {
+//                    Common.isLatest = true;
+//                    break;
+//                }
+//            }
 
         }
 

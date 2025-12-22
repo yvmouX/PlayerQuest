@@ -24,6 +24,14 @@ allprojects {
     dependencies {
         implementation("com.github.yvmouX:YLib:1.0.0-beta5")
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+
+
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
+        compileOnly("org.slf4j:slf4j-api:2.0.9")
+        implementation("org.slf4j:slf4j-simple:2.0.16") {
+            exclude(group = "org.slf4j", module = "slf4j-api")
+        }
     }
 
     val targetJavaVersion = 21

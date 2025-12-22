@@ -4,6 +4,8 @@ import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.model.TaskObjective;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
@@ -84,14 +86,20 @@ public class TaskAPIImpl implements TaskAPI {
     @Override
     public boolean updateProgress(Player player, String taskId, int progress) {
         try {
-            //Optional<TaskProgress> progressOpt = progressRepo.findByPlayerAndTask(player, taskId);
-            //if (progressOpt.isEmpty()) {
-            //    log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
-            //    return false;
-            //}
-
-            //TaskProgress taskProgress = progressOpt.get();
-            //int oldProgress = taskProgress.getCurrentProgress();
+//            Optional<TaskProgress> progressOpt = progressRepo.findByPlayerAndTask(player, taskId);
+//            if (progressOpt.isEmpty()) {
+//                log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
+//                return false;
+//            }
+//
+//            TaskProgress taskProgress = progressOpt.get();
+//            for (TaskObjective objective : taskProgress.getTaskDefinition().getObjectives()) {
+//                int oldProgress = objective.getCurrentAmount();
+//                progressRepo.update();
+//
+//                // 获取目标进度
+//
+//            }
             //taskProgress.setCurrentProgress(progress);
             //progressRepo.update(taskProgress);
 
@@ -199,16 +207,16 @@ public class TaskAPIImpl implements TaskAPI {
 
     @Override
     public void registerEventListener(TaskEventListener listener) {
-        if (!eventListeners.contains(listener)) {
-            eventListeners.add(listener);
-            log.debug("Task event listener registered: " + listener.getClass().getName());
-        }
+//        if (!eventListeners.contains(listener)) {
+//            eventListeners.add(listener);
+//            log.debug("Task event listener registered: " + listener.getClass().getName());
+//        }
     }
 
     @Override
     public void unregisterEventListener(TaskEventListener listener) {
-        eventListeners.remove(listener);
-        log.debug("Task event listener unregistered: " + listener.getClass().getName());
+//        eventListeners.remove(listener);
+//        log.debug("Task event listener unregistered: " + listener.getClass().getName());
     }
 
     @Override
@@ -228,46 +236,46 @@ public class TaskAPIImpl implements TaskAPI {
 
     // 事件触发方法
     private void fireTaskStartEvent(UUID playerId, String taskId) {
-        TaskStartEvent event = new TaskStartEvent(playerId, taskId);
-        for (TaskEventListener listener : eventListeners) {
-            try {
-                listener.onTaskStart(event);
-            } catch (Exception e) {
-                log.error("Error in task start event listener: " + e.getMessage());
-            }
-        }
+//        TaskStartEvent event = new TaskStartEvent(playerId, taskId);
+//        for (TaskEventListener listener : eventListeners) {
+//            try {
+//                listener.onTaskStart(event);
+//            } catch (Exception e) {
+//                log.error("Error in task start event listener: " + e.getMessage());
+//            }
+//        }
     }
 
     private void fireTaskProgressEvent(UUID playerId, String taskId, int oldProgress, int newProgress, int targetProgress) {
-        TaskProgressEvent event = new TaskProgressEvent(playerId, taskId, oldProgress, newProgress, targetProgress);
-        for (TaskEventListener listener : eventListeners) {
-            try {
-                listener.onTaskProgress(event);
-            } catch (Exception e) {
-                log.error("Error in task progress event listener: " + e.getMessage());
-            }
-        }
+//        TaskProgressEvent event = new TaskProgressEvent(playerId, taskId, oldProgress, newProgress, targetProgress);
+//        for (TaskEventListener listener : eventListeners) {
+//            try {
+//                listener.onTaskProgress(event);
+//            } catch (Exception e) {
+//                log.error("Error in task progress event listener: " + e.getMessage());
+//            }
+//        }
     }
 
     private void fireTaskCompleteEvent(UUID playerId, String taskId, long completionTime) {
-        TaskCompleteEvent event = new TaskCompleteEvent(playerId, taskId, completionTime);
-        for (TaskEventListener listener : eventListeners) {
-            try {
-                listener.onTaskComplete(event);
-            } catch (Exception e) {
-                log.error("Error in task complete event listener: " + e.getMessage());
-            }
-        }
+//        TaskCompleteEvent event = new TaskCompleteEvent(playerId, taskId, completionTime);
+//        for (TaskEventListener listener : eventListeners) {
+//            try {
+//                listener.onTaskComplete(event);
+//            } catch (Exception e) {
+//                log.error("Error in task complete event listener: " + e.getMessage());
+//            }
+//        }
     }
 
     public void fireTaskFailEvent(UUID playerId, String taskId, String reason) {
-        TaskFailEvent event = new TaskFailEvent(playerId, taskId, reason);
-        for (TaskEventListener listener : eventListeners) {
-            try {
-                listener.onTaskFail(event);
-            } catch (Exception e) {
-                log.error("Error in task fail event listener: " + e.getMessage());
-            }
-        }
+//        TaskFailEvent event = new TaskFailEvent(playerId, taskId, reason);
+//        for (TaskEventListener listener : eventListeners) {
+//            try {
+//                listener.onTaskFail(event);
+//            } catch (Exception e) {
+//                log.error("Error in task fail event listener: " + e.getMessage());
+//            }
+//        }
     }
 }
