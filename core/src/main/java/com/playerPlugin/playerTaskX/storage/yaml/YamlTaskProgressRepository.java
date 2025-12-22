@@ -10,8 +10,8 @@ import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
-import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
-import com.playerPlugin.playerTaskX.storage.UUUUUU;
+import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.api.utils.StorageUtil;
 import org.bukkit.entity.Player;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void create(Player player, TaskDefinition taskDefinition) {
-        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
+        Path dir = StorageUtil.getProgressDir(plugin, player.getUniqueId().toString());
 
         writeLock.lock();
         Path path = null;
@@ -65,7 +65,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public Optional<TaskProgress> find(Player player, String taskId) {
-        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
+        Path dir = StorageUtil.getProgressDir(plugin, player.getUniqueId().toString());
 
         readLock.lock();
         Path progressFile = null;
@@ -91,9 +91,9 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
     public List<TaskProgress> findAll(Player player) {
         List<TaskProgress> result = new ArrayList<>();
 
-        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
+        Path dir = StorageUtil.getProgressDir(plugin, player.getUniqueId().toString());
 
-        List<String> fileNames = UUUUUU.getFileNamesBySuffix(dir,".yml", false);
+        List<String> fileNames = StorageUtil.getFileNamesBySuffix(dir,".yml", false);
         if (fileNames.isEmpty()) {
             log.debug(String.format("未加载玩家 %s 的任务进度，可能是由于其任务进度未被创建", player.getName()));
             return new ArrayList<>();
@@ -129,7 +129,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void save(TaskProgress progress) {
-        Path dir = UUUUUU.getProgressDir(plugin, progress.getUuid().toString());
+        Path dir = StorageUtil.getProgressDir(plugin, progress.getUuid().toString());
 
         writeLock.lock();
         Path path = null;
@@ -187,7 +187,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void delete(UUID uuid, String taskId) {
-        Path dir = UUUUUU.getProgressDir(plugin, uuid.toString());
+        Path dir = StorageUtil.getProgressDir(plugin, uuid.toString());
 
         writeLock.lock();
         try {

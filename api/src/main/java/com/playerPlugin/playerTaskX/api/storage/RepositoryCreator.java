@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.storage;
+package com.playerPlugin.playerTaskX.api.storage;
 
 import java.sql.Connection;
 import java.sql.SQLException;

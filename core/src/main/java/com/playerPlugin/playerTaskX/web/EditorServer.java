@@ -8,7 +8,7 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.exception.NotFoundTaskDefinitionException;
 import com.playerPlugin.playerTaskX.exception.UnauthorizedException;
-import com.playerPlugin.playerTaskX.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
 import io.javalin.json.JsonMapper;

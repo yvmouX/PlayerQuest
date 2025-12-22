@@ -4,10 +4,9 @@ import cn.yvmou.ylib.api.services.LoggerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.storage.UUUUUU;
+import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.api.utils.StorageUtil;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -31,7 +30,7 @@ public class YamlTaskRepository implements TaskRepository {
 
     public YamlTaskRepository(JavaPlugin plugin, LoggerService log) {
         this.log = log;
-        this.dir = UUUUUU.getDir(plugin, "tasks");
+        this.dir = StorageUtil.getDir(plugin, "tasks");
         this.yamlMapper = new ObjectMapper(new YAMLFactory());
     }
 

@@ -1,10 +1,9 @@
-package com.playerPlugin.playerTaskX.storage;
+package com.playerPlugin.playerTaskX.api.utils;
 
 import cn.yvmou.ylib.api.services.LoggerService;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -12,11 +11,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UUUUUU {
+public class StorageUtil {
     private static LoggerService log = null;
 
-    public UUUUUU(LoggerService log) {
-        UUUUUU.log = log;
+    public StorageUtil(LoggerService log) {
+        StorageUtil.log = log;
     }
 
     public static Path getDir(@NotNull JavaPlugin plugin, @NotNull String dir) {

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.storage;
+package com.playerPlugin.playerTaskX.api.storage;
 
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;

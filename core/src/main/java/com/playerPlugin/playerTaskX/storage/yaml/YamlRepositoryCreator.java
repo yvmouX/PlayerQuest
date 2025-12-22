@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.storage.yaml;
 
-import com.playerPlugin.playerTaskX.storage.RepositoryCreator;
+import com.playerPlugin.playerTaskX.api.storage.RepositoryCreator;
 
 import java.sql.Connection;
 import java.sql.SQLException;

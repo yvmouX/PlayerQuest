@@ -3,14 +3,12 @@ package com.playerPlugin.playerTaskX.event;
 import cn.yvmou.ylib.api.services.LoggerService;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-
-import java.util.Optional;
 
 import static com.playerPlugin.playerTaskX.api.Common.Repo_URL;
 import static com.playerPlugin.playerTaskX.api.Common.isLatest;
