@@ -103,7 +103,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
             readLock.lock();
             Path progressFile = null;
             try {
-                 progressFile = dir.resolve(fileName + ".yml");
+                 progressFile = dir.resolve(fileName);
 
                 if (!Files.exists(progressFile) || Files.size(progressFile) == 0) {
                     log.debug(String.format("未加载玩家 %s 的任务进度，可能是由于其任务进度未被创建", player.getName()));
