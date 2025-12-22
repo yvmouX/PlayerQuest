@@ -35,9 +35,9 @@ public class PlayerJoinHandler implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        Optional<TaskProgress> taskProgress = progressRepository.loadForPlayer(player);
-
-        taskProgress.ifPresent(cache::progressToCache);
+        for (TaskProgress taskProgress : progressRepository.findAll(player)) {
+            cache.progressToCache(taskProgress);
+        }
     }
 
     @EventHandler

@@ -64,7 +64,7 @@ public class TaskAPIImpl implements TaskAPI {
                 return false;
             }
 
-            progressRepo.createForPlayer(player, taskDefOpt.get());
+            progressRepo.create(player, taskDefOpt.get());
 
             // Trigger task start Event
             fireTaskStartEvent(player.getUniqueId(), taskId);
@@ -86,11 +86,17 @@ public class TaskAPIImpl implements TaskAPI {
     @Override
     public boolean updateProgress(Player player, String taskId, int progress) {
         try {
-//            Optional<TaskProgress> progressOpt = progressRepo.findByPlayerAndTask(player, taskId);
-//            if (progressOpt.isEmpty()) {
-//                log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
-//                return false;
-//            }
+            Optional<TaskProgress> progressOpt = progressRepo.find(player, taskId);
+            if (progressOpt.isEmpty()) {
+                log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
+                return false;
+            }
+
+            TaskProgress taskProgress = progressOpt.get();
+            for (TaskObjective objective : taskProgress.getTaskDefinition().getObjectives()) {
+                int oldProgress = objective.getCurrentAmount();
+                progressRepo.update(taskProgress);
+            }
 //
 //            TaskProgress taskProgress = progressOpt.get();
 //            for (TaskObjective objective : taskProgress.getTaskDefinition().getObjectives()) {
