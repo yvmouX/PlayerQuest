@@ -8,16 +8,31 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TaskProgressRepository {
+    /**
+     * Find task progress for a player
+     *
+     * @param player Player
+     * @param taskId Task ID
+     * @return {@link Optional }<{@link TaskProgress }>
+     */
     Optional<TaskProgress> find(UUID player, String taskId);
 
+
     /**
-     * 保存进度
+     * Save task progress
      *
-     * @param progress 进展
+     * @param progress TaskProgress
      */
     void save(TaskProgress progress);
 
+    /**
+     * Delete task progress
+     *
+     * @param player Player
+     * @param taskId Task ID
+     */
     void delete(UUID player, String taskId);
+
     /**
      * 创建指定玩家的任务进度
      * <p>

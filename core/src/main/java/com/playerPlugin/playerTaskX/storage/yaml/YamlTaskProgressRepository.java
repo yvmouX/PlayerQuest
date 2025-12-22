@@ -11,6 +11,7 @@ import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.storage.UUUUUU;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -33,18 +34,9 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
     private final LoggerService log;
 
     public YamlTaskProgressRepository(PlayerTaskX plugin, LoggerService log){
-        this.dataDir = getDataDir(plugin);
         this.log = log;
+        this.dataDir = UUUUUU.getDir(plugin, "data");
         this.yamlMapper = new ObjectMapper(new YAMLFactory());
-        // 确保任务目录存在
-        if (Files.notExists(dataDir)) {
-            try {
-                Files.createDirectories(dataDir);
-                log.info(String.format("data目录不存在，已自动创建：%s", dataDir));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     @Override
@@ -120,6 +112,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
         }
     }
 
+    @Override
     public void createForPlayer(Player player, TaskDefinition taskDefinition) {
         writeLock.lock();
         Path path = null;
@@ -160,10 +153,5 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
         } finally {
             readLock.unlock();
         }
-    }
-
-    private Path getDataDir(JavaPlugin plugin) {
-        // Such as C:\Minecraft\Server\plugins\playerTaskX\data\
-        return plugin.getDataFolder().toPath().resolve("data");
     }
 }
