@@ -1,5 +1,5 @@
-import { Quest, QuestType, QuestObjective } from '../types';
-import { MOCK_QUESTS } from './mockData';
+import {Quest} from '../types';
+import {MOCK_QUESTS} from './mockData';
 
 const API_BASE_URL = 'http://localhost:2222/api';
 

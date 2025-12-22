@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-import { Language } from '../types';
+import React, {createContext, useContext, useState} from 'react';
+import {Language} from '../types';
 
 const translations = {
   'en-US': {

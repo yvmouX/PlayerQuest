@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { ScrollText, Users, BarChart3, Globe, Box } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import { Language } from '../types';
+import React, {useState} from 'react';
+import {NavLink, Outlet} from 'react-router-dom';
+import {BarChart3, Box, Globe, ScrollText, Users} from 'lucide-react';
+import {useLanguage} from '../context/LanguageContext';
 
 export const Layout: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();

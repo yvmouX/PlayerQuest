@@ -1,5 +1,4 @@
-
-import { Quest, QuestType, RewardType, QuestReward } from '../types';
+import {Quest, QuestReward, QuestType, RewardType} from '../types';
 
 export const MOCK_REWARD_LIBRARY: QuestReward[] = [
   { id: 'lib_1', name: '100 Gold Coins', type: RewardType.MONEY, value: 100 },

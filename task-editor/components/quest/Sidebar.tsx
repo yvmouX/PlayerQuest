@@ -1,6 +1,6 @@
 import React from 'react';
-import { BookOpen, Library, Plus } from 'lucide-react';
-import { Quest, QuestReward } from '../../types';
+import {BookOpen, Library, Plus} from 'lucide-react';
+import {Quest, QuestReward} from '../../types';
 
 interface SidebarProps {
     quests: Quest[];

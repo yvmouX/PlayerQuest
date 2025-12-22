@@ -1,5 +1,5 @@
 import React from 'react';
-import { RewardType, QuestReward } from '../../types';
+import {QuestReward, RewardType} from '../../types';
 
 interface RewardFormProps {
     reward: QuestReward;

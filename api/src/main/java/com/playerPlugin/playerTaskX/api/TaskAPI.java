@@ -1,11 +1,10 @@
 package com.playerPlugin.playerTaskX.api;
 
 import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
-
-import java.util.UUID;
-
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import org.bukkit.entity.Player;
+
+import java.util.UUID;
 
 public interface TaskAPI {
 

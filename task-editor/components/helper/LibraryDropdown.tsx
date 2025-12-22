@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { QuestReward } from '../../types';
+import React, {useState} from 'react';
+import {QuestReward} from '../../types';
 
 export const LibraryDropdown: React.FC<{
   library: QuestReward[];

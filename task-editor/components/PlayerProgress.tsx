@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Search, Filter, RefreshCw, CheckCircle, MoreHorizontal } from 'lucide-react';
-import { MOCK_PLAYERS } from '../services/mockData';
-import { useLanguage } from '../context/LanguageContext';
+import React, {useState} from 'react';
+import {Filter, MoreHorizontal, Search} from 'lucide-react';
+import {MOCK_PLAYERS} from '../services/mockData';
+import {useLanguage} from '../context/LanguageContext';
 
 export const PlayerProgress: React.FC = () => {
   const { t } = useLanguage();

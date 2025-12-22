@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.api;
 
 import cn.yvmou.ylib.api.services.LoggerService;
-import org.bukkit.ChatColor;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -12,8 +11,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * API 提供者

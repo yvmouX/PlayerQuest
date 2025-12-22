@@ -1,10 +1,10 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { QuestEditor } from './components/QuestEditor';
-import { PlayerProgress } from './components/PlayerProgress';
-import { Statistics } from './components/Statistics';
-import { LanguageProvider } from './context/LanguageContext';
+import {HashRouter, Navigate, Route, Routes} from 'react-router-dom';
+import {Layout} from './components/Layout';
+import {QuestEditor} from './components/QuestEditor';
+import {PlayerProgress} from './components/PlayerProgress';
+import {Statistics} from './components/Statistics';
+import {LanguageProvider} from './context/LanguageContext';
 
 const App: React.FC = () => {
   return (

@@ -1,6 +1,18 @@
 import React from 'react';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { useLanguage } from '../context/LanguageContext';
+import {
+    Bar,
+    BarChart,
+    Cell,
+    Line,
+    LineChart,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
+} from 'recharts';
+import {useLanguage} from '../context/LanguageContext';
 
 const COLORS = ['#3b8526', '#EAB308', '#3B82F6', '#EF4444'];
 

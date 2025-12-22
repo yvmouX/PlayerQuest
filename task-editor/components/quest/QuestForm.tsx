@@ -1,8 +1,8 @@
 import React from 'react';
-import { Target, Gift, Trash2, CheckCircle2, Circle } from 'lucide-react';
-import { Quest, QuestType, RewardType, QuestReward } from '../../types';
-import { LibraryDropdown } from '../helper/LibraryDropdown';
-import { useLanguage } from '../../context/LanguageContext';
+import {CheckCircle2, Circle, Gift, Target, Trash2} from 'lucide-react';
+import {Quest, QuestReward, QuestType, RewardType} from '../../types';
+import {LibraryDropdown} from '../helper/LibraryDropdown';
+import {useLanguage} from '../../context/LanguageContext';
 
 interface QuestFormProps {
     quest: Quest;
