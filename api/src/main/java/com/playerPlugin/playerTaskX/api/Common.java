@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX;
+package com.playerPlugin.playerTaskX.api;
 
 public class Common {
     public static boolean isLatest = true;
