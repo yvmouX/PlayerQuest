@@ -19,6 +19,7 @@ import com.playerPlugin.playerTaskX.impl.TaskAPIImpl;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.storage.UUUUUU;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
@@ -83,6 +84,9 @@ public final class PlayerTaskX extends JavaPlugin {
         if (!setupPlayerPoints()) {
             isPlayerPointsEnabled = false;
         }
+
+        // 1.5 初始化一些工具类
+        new UUUUUU(log);
 
         // 2、创建存储工厂
         StorageFactory storageFactory = new StorageFactory(this, log, currentStorgeType);

@@ -4,6 +4,28 @@
 
 ## 快速跳转
 
-- [项目文档](./项目文档（clean_architecture_模块化_事件驱动）.md）)
-- [项目文档](./项目文档_人工重写.md）)
-- [指令](./Command.md)
+- [存储](#存储)
+
+### 储存
+
+- 玩家进度
+  - SQLite (默认)
+  - MySQL
+  - YAML
+  - JSON
+- 任务
+  - 主体
+    - YAML(默认)
+    - JSON
+    - SQLite
+    - MySQL
+  - 奖励
+    - YAML(默认)
+    - JSON
+    - SQLite
+    - MySQL
+  - 目标
+    - YAML(默认)
+    - JSON
+    - SQLite
+    - MySQL
