@@ -34,6 +34,10 @@ public class UUUUUU {
         return p;
     }
 
+    public static Path getProgressDir(@NotNull JavaPlugin plugin, @NotNull String dir) {
+        return getDir(plugin, "progress").resolve(dir);
+    }
+
     /**
      * 获取指定目录下指定后缀的所有文件名（支持Path对象，推荐）
      * @param dir 目标目录的Path对象（替代原来的File对象）

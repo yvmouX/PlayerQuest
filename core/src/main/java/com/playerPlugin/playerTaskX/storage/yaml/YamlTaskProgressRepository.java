@@ -42,7 +42,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void create(Player player, TaskDefinition taskDefinition) {
-        Path dir = UUUUUU.getDir(plugin, player.getUniqueId().toString());
+        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
 
         writeLock.lock();
         Path path = null;
@@ -65,7 +65,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public Optional<TaskProgress> find(Player player, String taskId) {
-        Path dir = UUUUUU.getDir(plugin, player.getUniqueId().toString());
+        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
 
         readLock.lock();
         Path progressFile = null;
@@ -91,7 +91,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
     public List<TaskProgress> findAll(Player player) {
         List<TaskProgress> result = new ArrayList<>();
 
-        Path dir = UUUUUU.getDir(plugin, player.getUniqueId().toString());
+        Path dir = UUUUUU.getProgressDir(plugin, player.getUniqueId().toString());
 
         List<String> fileNames = UUUUUU.getFileNamesBySuffix(dir,".yml", false);
         if (fileNames.isEmpty()) {
@@ -129,7 +129,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void save(TaskProgress progress) {
-        Path dir = UUUUUU.getDir(plugin, progress.getUuid().toString());
+        Path dir = UUUUUU.getProgressDir(plugin, progress.getUuid().toString());
 
         writeLock.lock();
         Path path = null;
@@ -187,7 +187,7 @@ public class YamlTaskProgressRepository implements TaskProgressRepository {
 
     @Override
     public void delete(UUID uuid, String taskId) {
-        Path dir = UUUUUU.getDir(plugin, uuid.toString());
+        Path dir = UUUUUU.getProgressDir(plugin, uuid.toString());
 
         writeLock.lock();
         try {
