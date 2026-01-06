@@ -1,16 +1,16 @@
 package com.playerPlugin.playerTaskX.Trigger;
 
-import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.api.logger.Logger;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.entity.Player;
 
 public class TaskTriggerEco {
-    private static LoggerService log;
+    private static Logger log;
     private static Economy economy;
     private static PlayerPointsAPI ppAPI;
 
-    public TaskTriggerEco(LoggerService log, Economy economy, PlayerPointsAPI ppAPI) {
+    public TaskTriggerEco(Logger log, Economy economy, PlayerPointsAPI ppAPI) {
         TaskTriggerEco.log = log;
         TaskTriggerEco.economy = economy;
         TaskTriggerEco.ppAPI = ppAPI;

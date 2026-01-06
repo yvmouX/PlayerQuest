@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.commands;
 
-import cn.yvmou.ylib.api.command.SimpleCommandManager;
+import cn.yvmou.ylib.api.command.CommandManager;
 import cn.yvmou.ylib.api.config.ConfigurationManager;
 import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
@@ -12,11 +12,11 @@ import com.playerPlugin.playerTaskX.commands.user.MeCmd;
 
 public class CommandRegister {
     private final ConfigurationManager configurationManager;
-    private final SimpleCommandManager manager;
+    private final CommandManager manager;
     private final TaskCache cache;
     private final TaskAPI taskAPI;
 
-    public CommandRegister(ConfigurationManager configurationManager, SimpleCommandManager manager, TaskCache cache, TaskAPI taskAPI) {
+    public CommandRegister(ConfigurationManager configurationManager, CommandManager manager, TaskCache cache, TaskAPI taskAPI) {
         this.configurationManager = configurationManager;
         this.manager = manager;
         this.cache = cache;

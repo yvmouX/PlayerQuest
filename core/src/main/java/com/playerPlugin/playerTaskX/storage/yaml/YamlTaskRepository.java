@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.storage.yaml;
 
-import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.api.logger.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
@@ -9,10 +9,7 @@ import com.playerPlugin.playerTaskX.api.utils.StorageUtil;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,9 +23,9 @@ public class YamlTaskRepository implements TaskRepository {
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
     private final Lock readLock = rwLock.readLock();
     private final Lock writeLock = rwLock.writeLock();
-    private final LoggerService log;
+    private final Logger log;
 
-    public YamlTaskRepository(JavaPlugin plugin, LoggerService log) {
+    public YamlTaskRepository(JavaPlugin plugin, Logger log) {
         this.log = log;
         this.dir = StorageUtil.getDir(plugin, "tasks");
         this.yamlMapper = new ObjectMapper(new YAMLFactory());
@@ -39,24 +36,33 @@ public class YamlTaskRepository implements TaskRepository {
         readLock.lock();
         try {
             List<TaskDefinition> out = new ArrayList<>();
+            // Ensure directory exists before trying to stream it
+            if (!Files.exists(dir)) {
+                log.warn("Task repository does not exist: {}", dir);
+                return out;
+            }
+
             try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir, "*.yml")) {
                 boolean foundAny = false;
                 for (Path taskFile : ds) {
                     foundAny = true;
                     String fileName = taskFile.getFileName().toString();
-                    log.debug(String.format("正在加载任务文件：%s", fileName));
+                    log.debug("Loading task file: {}", fileName);
 
-                    TaskDefinition taskDef = yamlMapper.readValue(taskFile.toFile(), TaskDefinition.class);
-
-                    out.add(taskDef);
+                    try {
+                        TaskDefinition taskDef = yamlMapper.readValue(taskFile.toFile(), TaskDefinition.class);
+                        out.add(taskDef);
+                    } catch (Exception e) {
+                        log.error("Failed to parse task file: {}", fileName, e);
+                    }
                 }
                 if (!foundAny) {
-                    log.warn("没有从存储库加载到任何任务定义: yaml");
+                    log.warn("No task definitions loaded from repository: yaml");
                 }
             }
             return out;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to load tasks from directory: " + dir, e);
         } finally {
             readLock.unlock();
         }
@@ -73,6 +79,7 @@ public class YamlTaskRepository implements TaskRepository {
 
             return Optional.of(taskDef);
         } catch (IOException e) {
+            log.error("Failed to load task: {}", id, e);
             return Optional.empty();
         } finally {
             readLock.unlock();
@@ -83,14 +90,19 @@ public class YamlTaskRepository implements TaskRepository {
     public void save(TaskDefinition def) {
         writeLock.lock();
         try {
-            TaskDefinition taskDef = yamlMapper.convertValue(def, TaskDefinition.class);
-            String yaml = yamlMapper.writeValueAsString(taskDef);
-            Path taskPath = dir.resolve(taskDef.getId() + ".yml");
+            Path taskPath = dir.resolve(def.getId() + ".yml");
+            Path tempPath = taskPath.resolveSibling(taskPath.getFileName() + ".tmp");
 
-            Files.writeString(taskPath, yaml, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            log.debug(String.format("已保存任务 %s 到文件 %s", taskDef.getId(), taskPath));
+            // Write to temporary file first
+            yamlMapper.writeValue(tempPath.toFile(), def);
+            
+            // Atomic move
+            Files.move(tempPath, taskPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            
+            log.debug("Saved task {} to file {}", def.getId(), taskPath);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Failed to save task: {}", def.getId(), e);
+            throw new RuntimeException("Failed to save task " + def.getId(), e);
         } finally {
             writeLock.unlock();
         }

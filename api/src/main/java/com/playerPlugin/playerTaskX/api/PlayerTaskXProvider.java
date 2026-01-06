@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.api;
 
-import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.api.logger.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -62,9 +62,9 @@ public final class PlayerTaskXProvider {
     }
 
     public static class UpdateHelper {
-        private final LoggerService log;
+        private final Logger log;
 
-        public UpdateHelper(LoggerService log) {
+        public UpdateHelper(Logger log) {
             this.log = log;
         }
 

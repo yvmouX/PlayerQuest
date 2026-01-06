@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.web;
 
-import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.api.logger.Logger;
 import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.JsonParseException;
@@ -30,9 +30,9 @@ public class EditorServer {
     private final PlayerTaskX plugin;
     private final TaskRepository taskRepo;
     private final TaskAPI taskAPI;
-    private final LoggerService log;
+    private final Logger log;
     private Javalin app;
-    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskAPI taskAPI, LoggerService log) {
+    public EditorServer(PlayerTaskX plugin, TaskRepository taskRepo, TaskAPI taskAPI, Logger log) {
         this.plugin = plugin;
         this.taskRepo = taskRepo;
         this.taskAPI = taskAPI;

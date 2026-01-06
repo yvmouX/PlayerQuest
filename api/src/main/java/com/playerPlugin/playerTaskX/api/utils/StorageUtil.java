@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.api.utils;
 
-import cn.yvmou.ylib.api.services.LoggerService;
+import cn.yvmou.ylib.api.logger.Logger;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StorageUtil {
-    private static LoggerService log = null;
+    private static Logger log = null;
 
-    public StorageUtil(LoggerService log) {
+    public StorageUtil(Logger log) {
         StorageUtil.log = log;
     }
 
@@ -25,9 +25,9 @@ public class StorageUtil {
         if (Files.notExists(p)) {
             try {
                 Files.createDirectories(p);
-                log.info("Directory created: {}", dir);
+                if (log != null) log.info("Directory created: {}", dir);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Failed to create directory: " + dir, e);
             }
         }
         return p;
@@ -38,39 +38,35 @@ public class StorageUtil {
     }
 
     /**
-     * 获取指定目录下指定后缀的所有文件名（支持Path对象，推荐）
-     * @param dir 目标目录的Path对象（替代原来的File对象）
-     * @param fileSuffix 指定文件后缀（如".json"）
-     * @param includeSubDirs 是否遍历子目录
-     * @return 符合条件的文件名列表
+     * Get all file names with specified suffix in the directory (Supports Path, Recommended)
+     * @param dir Target directory Path
+     * @param fileSuffix File suffix (e.g., ".json")
+     * @param includeSubDirs Whether to traverse subdirectories
+     * @return List of file names matching the condition
      */
     public static List<String> getFileNamesBySuffix(Path dir, String fileSuffix, boolean includeSubDirs) {
         List<String> fileNameList = new ArrayList<>();
 
-        // 检查目录是否存在且是目录（使用Java NIO的Files工具类）
+        // Check if directory exists and is a directory
         if (!Files.exists(dir) || !Files.isDirectory(dir)) {
-            log.error("目录不存在或不是目录：" + dir.toAbsolutePath());
+            if (log != null) log.error("Directory does not exist or is not a directory: {}", dir.toAbsolutePath());
             return fileNameList;
         }
 
-        // 遍历目录下的所有路径（使用DirectoryStream遍历，效率更高）
+        // Traverse directory
         try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(dir)) {
             for (Path path : directoryStream) {
                 if (Files.isDirectory(path) && includeSubDirs) {
-                    // 如果是目录且需要遍历子目录，递归调用（传入Path对象）
                     fileNameList.addAll(getFileNamesBySuffix(path, fileSuffix, includeSubDirs));
                 } else if (Files.isRegularFile(path)) {
-                    // 如果是文件，判断后缀
                     String fileName = path.getFileName().toString();
-                    // 忽略大小写匹配后缀
                     if (fileName.toLowerCase().endsWith(fileSuffix.toLowerCase())) {
                         fileNameList.add(fileName);
                     }
                 }
             }
         } catch (IOException e) {
-            // 捕获IO异常（比如目录访问权限不足）
-            log.error("遍历目录时发生错误：" + dir.toAbsolutePath(), e);
+            if (log != null) log.error("Error occurred while traversing directory: {}", dir.toAbsolutePath(), e);
         }
 
         return fileNameList;
