@@ -11,11 +11,15 @@ import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskObjective;
 import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import org.bukkit.ChatColor;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class CreateCmd implements SubCommand {
+public class CreateCmd implements SubCommand, TabCompleter {
     private final TaskAPI taskAPI;
 
     public CreateCmd(TaskAPI taskAPI) {
@@ -72,5 +76,11 @@ public class CreateCmd implements SubCommand {
         );
         taskAPI.createTask(takDef);
         return true;
+    }
+
+    @Nullable
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        return List.of();
     }
 }
