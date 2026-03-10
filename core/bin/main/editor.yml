@@ -1,0 +1,34 @@
+editor:
+  # 是否启用编辑器
+  enabled: true
+
+  # 编辑器服务器端口
+  port: 1145
+
+  # 绑定的主机地址
+  host: 127.0.0.1
+
+  # 令牌有效期（秒）
+  token-expiry: 3600
+
+  # 最大同时编辑会话数
+  max-sessions: 10
+
+  # 允许访问的IP列表（支持CIDR）
+  allowed-ips:
+    - "127.0.0.1"
+    - "localhost"
+    - "192.168.1.0/24"
+
+  # 启用HTTPS（需要证书）
+  ssl:
+    enabled: false
+    keystore-path: ""
+    keystore-password: ""
+
+  # 跨域设置
+  cors:
+    enabled: true
+    allowed-origins:
+      - "http://localhost:*"
+      - "http://127.0.0.1:*"

@@ -19,10 +19,10 @@ public interface TaskAPI {
     /**
      * Delete task definition
      * 
-     * @param taskId
+     * @param taskID
      * @return
      */
-    boolean deleteTask(String taskId);
+    boolean deleteTask(String taskID);
 
     /**
      * Create progress for player

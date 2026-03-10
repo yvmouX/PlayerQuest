@@ -12,11 +12,22 @@ public class TaskDefinition {
     private final String name; // 名称
     private final String description;
     private final List<TaskObjective> objectives;
-    private final String createAt;
-    private final String updateAt;
 
     public String getId() {
         return id;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TaskDefinition that = (TaskDefinition) o;
+        return id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
     }
 
     public PTXTaskType getType() {
@@ -35,30 +46,18 @@ public class TaskDefinition {
         return objectives;
     }
 
-    public String getCreateAt() {
-        return createAt;
-    }
-
-    public String getUpdateAt() {
-        return updateAt;
-    }
-
     @JsonCreator
     public TaskDefinition(
             @JsonProperty("id") String id,
             @JsonProperty("type") PTXTaskType type,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("objectives") List<TaskObjective> objectives,
-            @JsonProperty("createAt") String createAt,
-            @JsonProperty("updateAt") String updateAt
+            @JsonProperty("objectives") List<TaskObjective> objectives
     ) {
         this.id = id;
         this.type = type;
         this.name = name;
         this.description = description;
         this.objectives = objectives;
-        this.createAt = createAt;
-        this.updateAt = updateAt;
     }
 }

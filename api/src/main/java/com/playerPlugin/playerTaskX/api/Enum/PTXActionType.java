@@ -18,22 +18,22 @@ public enum PTXActionType {
     PLACE,
     NONE;
 
-    private static boolean isValid(String value) {
-        if (value == null || value.isEmpty()) {
-            return false;
-        }
+    public static PTXActionType fromString(String value) {
+        if (value == null) return NONE;
         try {
-            PTXActionType.valueOf(value.toUpperCase(Locale.ENGLISH));
-            return true;
+            return PTXActionType.valueOf(value.toUpperCase(Locale.ENGLISH));
         } catch (IllegalArgumentException e) {
-            return false;
+            return NONE;
         }
     }
 
-    public static PTXActionType fromString(String value) {
-        if (isValid(value)) {
-            return PTXActionType.valueOf(value.toUpperCase(Locale.ENGLISH));
-        }
-        return PTXActionType.NONE;
+    /**
+     * 不为空、或者NONE
+     *
+     * @param type 类型
+     * @return boolean
+     */
+    public static boolean isValid(PTXActionType type) {
+        return type != null && type != NONE;
     }
 }

@@ -1,0 +1,125 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": ""
+  },
+  "paths": {
+    "/api/taskDefList": {
+      "get": {
+        "tags": [
+          "Task"
+        ],
+        "summary": "获取任务列表",
+        "description": "获取系统中所有任务定义的列表",
+        "operationId": "getTaskDefList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功获取任务列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskDefinition"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误"
+          }
+        },
+        "deprecated": false,
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PTXActionType": {
+        "type": "string",
+        "enum": [
+          "BREAK",
+          "BREED",
+          "CONSUME",
+          "CRAFT",
+          "DROP",
+          "ENCHANT",
+          "FISHING",
+          "KILL",
+          "NONE",
+          "PLACE",
+          "SCISSOR",
+          "TAKE",
+          "TAME",
+          "TRIGGER"
+        ]
+      },
+      "PTXTaskType": {
+        "type": "string",
+        "enum": [
+          "CYCLE",
+          "FOREVER",
+          "LIMIT",
+          "NONE",
+          "TIMER"
+        ]
+      },
+      "TaskDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskObjective"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/PTXTaskType"
+          }
+        }
+      },
+      "TaskObjective": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "targetAmount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentAmount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "action": {
+            "$ref": "#/components/schemas/PTXActionType"
+          },
+          "finished": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetAmount",
+          "currentAmount",
+          "finished"
+        ]
+      }
+    }
+  }
+}

@@ -1,20 +1,18 @@
 package com.playerPlugin.playerTaskX;
 
-import cn.yvmou.ylib.api.YLib;
-import cn.yvmou.ylib.api.YLibBuilder;
+import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.config.ConfigurationManager;
 import cn.yvmou.ylib.api.logger.Logger;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
 import com.playerPlugin.playerTaskX.api.TaskAPI;
-import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.api.utils.Metrics;
 import com.playerPlugin.playerTaskX.api.utils.StorageUtil;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
-import com.playerPlugin.playerTaskX.commands.CommandRegister;
+import com.playerPlugin.playerTaskX.commands.AdminCommand;
 import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
 import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
@@ -29,9 +27,6 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public final class PlayerTaskX extends JavaPlugin {
     private Logger log;
@@ -71,8 +66,8 @@ public final class PlayerTaskX extends JavaPlugin {
 
     private void register() {
         // 1、创建必要的前置
-        YLib ylib = YLibBuilder.create(this);
-        log = ylib.createLogger();
+        YLib ylib = new YLib(this);
+        log = ylib.getLogger();
         scheduler = ylib.getScheduler();
 
         new Metrics(this, 27726);
@@ -97,16 +92,9 @@ public final class PlayerTaskX extends JavaPlugin {
         }
 
         // 3、从 tasks 目录加载所有任务添加到缓存
-        List<TaskDefinition> taskDefList = storageFactory.getRepository().loadAll();
         TaskRepository taskRepository = storageFactory.getRepository();
         TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
-        TaskCache cache = new TaskCache(log, scheduler, taskRepository, taskProgressRepository);
-        ConcurrentMap<String, TaskDefinition> taskDefMap = new ConcurrentHashMap<>();
-        for (TaskDefinition taskDef : taskDefList) {
-            taskDefMap.putIfAbsent(taskDef.getId(), taskDef); // 避免重复添加, 如果两个任务有相同ID, 则保留第一个
-        }
-        cache.setTaskDefById().add(taskDefMap);
-        log.debug("已将 " + taskDefList.size() + " 个任务添加到缓存");
+        TaskCache cache = new TaskCache(log, scheduler, storageFactory);
 
         // 4、开始数据同步任务
         //new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
@@ -132,11 +120,9 @@ public final class PlayerTaskX extends JavaPlugin {
         configurationManager.registerConfiguration(StorgeConfiguration.class);
 
         // 7、注册命令
-        TaskAPI taskService = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
-        new CommandRegister(configurationManager, ylib.getCommandManager(), cache, taskService).registerCommands();
-
-        // 8、初始化并注册 API
         api = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
+        ylib.getCommandManager().register(new AdminCommand(log, api, cache, configurationManager, ylib.getCommandManager()));
+        // 8、初始化并注册 API
         PlayerTaskXProvider.setApi(api);
         //log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
 
@@ -148,7 +134,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 启动服务器
         try {
-            new EditorServer(this, taskRepository, taskService, log).start();
+            new EditorServer(this, taskRepository, api, log).start();
         } catch (Exception e) {
             log.error("启动服务器时发生错误：" + e.getMessage());
         }

@@ -39,8 +39,8 @@ public class TaskAPIImpl implements TaskAPI {
                 return false;
             }
 
-            // todo 只保存到仓库  暂时
             taskRepo.save(taskDef);
+            cache.addTaskDef(taskDef);
             log.info("Task with ID " + taskDef.getId() + " created successfully");
             return true;
         } catch (Exception e) {
@@ -50,9 +50,27 @@ public class TaskAPIImpl implements TaskAPI {
     }
 
     @Override
-    public boolean deleteTask(String taskId) {
-        // TODO
-        return false;
+    public boolean deleteTask(String taskID) {
+        try {
+            TaskDefinition taskDef = taskRepo.findById(taskID).orElse(null);
+            if (taskDef == null) {
+                log.error("Task with ID " + taskID + " does not exist");
+                return false;
+            }
+
+            if (taskDef.getId() == null || taskDef.getId().isEmpty()) {
+                log.error("Task ID cannot be null or empty");
+                return false;
+            }
+
+            taskRepo.delete(taskID);
+            cache.removeTaskDef(taskDef);
+            log.info("Task with ID " + taskDef.getId() + " deleted successfully");
+            return true;
+        } catch (Exception e) {
+            log.error("Error deleting task", e);
+            return false;
+        }
     }
 
     @Override

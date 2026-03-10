@@ -33,15 +33,15 @@ public class PlayerJoinHandler implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        for (TaskProgress taskProgress : progressRepository.findAll(player)) {
-            cache.progressToCache(taskProgress);
-        }
+        // 建议异步加载，防止卡主线程
+        // 这里暂时保持同步调用，后续优化
+        cache.loadPlayer(player.getUniqueId(), progressRepository.findAll(player));
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-
+        cache.unloadPlayer(player.getUniqueId());
     }
 
     @EventHandler
