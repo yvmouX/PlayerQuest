@@ -4,6 +4,8 @@ import cn.yvmou.ylib.api.logger.Logger;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import cn.yvmou.ylib.api.scheduler.UniversalTask;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.model.ObjectiveDefinition;
+import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
@@ -12,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -39,6 +42,12 @@ public class TaskCache {
     // 任务定义缓存: List<TaskDefinition>
     private final List<TaskDefinition> taskDefs;
 
+    // 目标定义缓存: List<ObjectiveDefinition>
+    private final List<ObjectiveDefinition> objectiveDefs;
+
+    // 奖励定义缓存: List<RewardDefinition>
+    private final List<RewardDefinition> rewardDefs;
+
     // 在线玩家进度缓存: UUID -> List<TaskProgress>
     // 使用 ConcurrentHashMap 保证线程安全
     private final ConcurrentMap<UUID, List<TaskProgress>> progressByUUID = new ConcurrentHashMap<>();
@@ -52,6 +61,14 @@ public class TaskCache {
         // 从任务仓库获取所有已定义任务
         taskDefs = storageFactory.getRepository().loadAll();
         log.debug("已将 " + taskDefs.size() + " 个任务添加到缓存");
+
+        // 从目标仓库获取所有已定义目标
+        objectiveDefs = storageFactory.getObjectiveRepository().loadAll();
+        log.debug("已将 " + objectiveDefs.size() + " 个目标定义添加到缓存");
+
+        // 从奖励仓库获取所有已定义奖励
+        rewardDefs = storageFactory.getRewardRepository().loadAll();
+        log.debug("已将 " + rewardDefs.size() + " 个奖励定义添加到缓存");
         // 获取进度仓库
         progressRepo = storageFactory.getProgressRepository();
         
@@ -71,17 +88,64 @@ public class TaskCache {
         log.debug("任务定义已从缓存移除：" + taskDefinition.getId());
     }
 
-    @Nullable
-    public TaskDefinition getTaskDef(String id) {
-        if (id == null || id.isBlank()) return null;
+    public Optional<TaskDefinition> getTaskDef(String id) {
+        if (id == null || id.isBlank()) return Optional.empty();
         for (TaskDefinition taskDef : taskDefs) {
-            if (taskDef.getId().equals(id)) return taskDef;
+            if (taskDef.getId().equals(id)) return Optional.of(taskDef);
         }
-        return null;
+        return Optional.empty();
     }
 
     public List<TaskDefinition> getTaskDefList() {
         return taskDefs;
+    }
+
+    // ================== 1.5 目标定义 (ObjectiveDefinition) 相关 ==================
+
+    public void addObjectiveDef(ObjectiveDefinition objectiveDefinition) {
+        objectiveDefs.add(objectiveDefinition);
+        log.debug("目标定义已添加到缓存：" + objectiveDefinition.getId());
+    }
+
+    public void removeObjectiveDef(ObjectiveDefinition objectiveDefinition) {
+        objectiveDefs.remove(objectiveDefinition);
+        log.debug("目标定义已从缓存移除：" + objectiveDefinition.getId());
+    }
+
+    public Optional<ObjectiveDefinition> getObjectiveDef(String id) {
+        if (id == null || id.isBlank()) return Optional.empty();
+        for (ObjectiveDefinition objDef : objectiveDefs) {
+            if (objDef.getId().equals(id)) return Optional.of(objDef);
+        }
+        return Optional.empty();
+    }
+
+    public List<ObjectiveDefinition> getObjectiveDefList() {
+        return objectiveDefs;
+    }
+
+    // ================== 1.6 奖励定义 (RewardDefinition) 相关 ==================
+
+    public void addRewardDef(RewardDefinition rewardDefinition) {
+        rewardDefs.add(rewardDefinition);
+        log.debug("奖励定义已添加到缓存：" + rewardDefinition.getId());
+    }
+
+    public void removeRewardDef(RewardDefinition rewardDefinition) {
+        rewardDefs.remove(rewardDefinition);
+        log.debug("奖励定义已从缓存移除：" + rewardDefinition.getId());
+    }
+
+    public Optional<RewardDefinition> getRewardDef(String id) {
+        if (id == null || id.isBlank()) return Optional.empty();
+        for (RewardDefinition rewardDef : rewardDefs) {
+            if (rewardDef.getId().equals(id)) return Optional.of(rewardDef);
+        }
+        return Optional.empty();
+    }
+
+    public List<RewardDefinition> getRewardDefList() {
+        return rewardDefs;
     }
 
     // ================== 2. 玩家进度 (TaskProgress) 相关 ==================
@@ -116,29 +180,29 @@ public class TaskCache {
 
     // ------ 读写操作 ------
 
-    public void progressToCache(TaskProgress taskProgress) {
-        UUID uuid = taskProgress.getUuid();
-        // 只有在线玩家（在缓存中）才更新
-        List<TaskProgress> list = progressByUUID.get(uuid);
-        if (list != null) {
-            // 简单去重：如果 list 中已存在该任务（根据 equals），则先移除旧的
-            // 注意：TaskProgress 需要正确实现 equals/hashCode
-            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskProgress.getTaskDefinition().getId()));
-            list.add(taskProgress);
-            log.debug("更新玩家 " + uuid + " 缓存中的任务进度: " + taskProgress.getTaskDefinition().getId());
-        } else {
-             // 如果玩家不在线（不在缓存中），直接忽略或打个警告
-             // 或者根据需求决定是否要临时加载（建议不要，保持简单）
-             log.debug("尝试更新不在线玩家 " + uuid + " 的缓存，已忽略");
-        }
-    }
-    
-    public void removeProgressFromCache(UUID uuid, String taskId) {
-        List<TaskProgress> list = progressByUUID.get(uuid);
-        if (list != null) {
-            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskId));
-        }
-    }
+//    public void progressToCache(TaskProgress taskProgress) {
+//        UUID uuid = taskProgress.getUuid();
+//        // 只有在线玩家（在缓存中）才更新
+//        List<TaskProgress> list = progressByUUID.get(uuid);
+//        if (list != null) {
+//            // 简单去重：如果 list 中已存在该任务（根据 equals），则先移除旧的
+//            // 注意：TaskProgress 需要正确实现 equals/hashCode
+//            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskProgress.getTaskDefinition().getId()));
+//            list.add(taskProgress);
+//            log.debug("更新玩家 " + uuid + " 缓存中的任务进度: " + taskProgress.getTaskDefinition().getId());
+//        } else {
+//             // 如果玩家不在线（不在缓存中），直接忽略或打个警告
+//             // 或者根据需求决定是否要临时加载（建议不要，保持简单）
+//             log.debug("尝试更新不在线玩家 " + uuid + " 的缓存，已忽略");
+//        }
+//    }
+//
+//    public void removeProgressFromCache(UUID uuid, String taskId) {
+//        List<TaskProgress> list = progressByUUID.get(uuid);
+//        if (list != null) {
+//            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskId));
+//        }
+//    }
 
     @Nullable
     public List<TaskProgress> getProgressList(UUID uuid) {

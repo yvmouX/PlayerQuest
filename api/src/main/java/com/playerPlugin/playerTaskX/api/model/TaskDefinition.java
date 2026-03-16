@@ -11,7 +11,8 @@ public class TaskDefinition {
     private final PTXTaskType type; // 不可变类型
     private final String name; // 名称
     private final String description;
-    private final List<TaskObjective> objectives;
+    private final List<String> objectives;
+    private final List<String> rewards;
 
     public String getId() {
         return id;
@@ -42,8 +43,12 @@ public class TaskDefinition {
         return description;
     }
 
-    public List<TaskObjective> getObjectives() {
+    public List<String> getObjectives() {
         return objectives;
+    }
+
+    public List<String> getRewards() {
+        return rewards;
     }
 
     @JsonCreator
@@ -52,12 +57,14 @@ public class TaskDefinition {
             @JsonProperty("type") PTXTaskType type,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("objectives") List<TaskObjective> objectives
+            @JsonProperty("objectives") List<String> objectives,
+            @JsonProperty("rewards") List<String> rewards
     ) {
         this.id = id;
         this.type = type;
         this.name = name;
         this.description = description;
-        this.objectives = objectives;
+        this.objectives = objectives != null ? objectives : new java.util.ArrayList<>();
+        this.rewards = rewards != null ? rewards : new java.util.ArrayList<>();
     }
 }

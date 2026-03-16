@@ -57,19 +57,30 @@ public class UserCommand {
             };
 
             // 任务标题行
-            sender.sendMessage(String.format("§e%s §7- %s", task.getTaskDefinition().getName(), statusStr));
-            
-            // 目标详情行
-            task.getTaskDefinition().getObjectives().forEach(objective -> {
-                String finishStr = objective.isFinished() ? "§a[已完成]" : "§c[未完成]";
-                // 使用进度条或百分比可能更优雅，但这里先保持与要求一致的详细格式
-                String detail = String.format("  §7→ 目标: %s §7(%d/%d) %s", 
-                        objective.getTarget(), 
-                        objective.getCurrentAmount(), 
-                        objective.getTargetAmount(), 
-                        finishStr
-                );
-                sender.sendMessage(detail);
+            // 此时我们需要从缓存中获取任务定义来显示名字和目标
+            api.getTaskDefinition(task.getTaskId()).ifPresentOrElse(def -> {
+                sender.sendMessage(String.format("§e%s §7- %s", def.getName(), statusStr));
+                
+                // 目标详情行
+                for (int i = 0; i < def.getObjectives().size(); i++) {
+                    String objectiveId = def.getObjectives().get(i);
+                    var objective = api.getObjectiveDefinition(objectiveId).orElse(null);
+                    if (objective == null) continue;
+
+                    int currentAmount = task.getObjectiveAmount(objectiveId);
+                    boolean isFinished = currentAmount >= objective.getTargetAmount();
+                    String finishStr = isFinished ? "§a[已完成]" : "§c[未完成]";
+                    
+                    String detail = String.format("  §7→ 目标: %s §7(%d/%d) %s", 
+                            objective.getTarget(), 
+                            currentAmount, 
+                            objective.getTargetAmount(), 
+                            finishStr
+                    );
+                    sender.sendMessage(detail);
+                }
+            }, () -> {
+                sender.sendMessage(String.format("§e未知任务(ID:%s) §7- %s", task.getTaskId(), statusStr));
             });
             
             // 任务间空行分隔

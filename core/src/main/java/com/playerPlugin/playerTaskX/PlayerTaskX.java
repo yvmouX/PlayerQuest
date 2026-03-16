@@ -100,8 +100,16 @@ public final class PlayerTaskX extends JavaPlugin {
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
-        // 7、注册命令
+        // 4、注册任务事件监听
         api = new TaskAPI(log, storageFactory, cache);
+        com.playerPlugin.playerTaskX.event.TaskRouter router = new com.playerPlugin.playerTaskX.event.TaskRouter(api, log);
+        getServer().getPluginManager().registerEvents(new com.playerPlugin.playerTaskX.event.listeners.KillListener(router), this);
+        getServer().getPluginManager().registerEvents(new com.playerPlugin.playerTaskX.event.listeners.BlockListener(router), this);
+        getServer().getPluginManager().registerEvents(new com.playerPlugin.playerTaskX.event.listeners.InventoryListener(router), this);
+        getServer().getPluginManager().registerEvents(new com.playerPlugin.playerTaskX.event.listeners.EntityListener(router), this);
+        getServer().getPluginManager().registerEvents(new com.playerPlugin.playerTaskX.event.listeners.InteractListener(router), this);
+
+        // 7、注册命令
         ylib.getCommandManager().register(new AdminCommand(log, api, cache, configurationManager, ylib.getCommandManager()));
         ylib.getCommandManager().register(new UserCommand(log, api));
 

@@ -3,6 +3,8 @@ package com.playerPlugin.playerTaskX.storage;
 import cn.yvmou.ylib.api.logger.Logger;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
+import com.playerPlugin.playerTaskX.api.storage.ObjectiveRepository;
+import com.playerPlugin.playerTaskX.api.storage.RewardRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 
@@ -32,5 +34,13 @@ public class StorageFactory {
     public TaskRepository getRepository() {
         // Task definitions are always stored in YAML for now
         return new YamlTaskRepository(plugin, log);
+    }
+
+    public ObjectiveRepository getObjectiveRepository() {
+        return new YamlObjectiveRepository(plugin, log);
+    }
+
+    public RewardRepository getRewardRepository() {
+        return new YamlRewardRepository(plugin, log);
     }
 }

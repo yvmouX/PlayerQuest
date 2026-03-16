@@ -3,9 +3,12 @@ package com.playerPlugin.playerTaskX;
 import cn.yvmou.ylib.api.logger.Logger;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
+import com.playerPlugin.playerTaskX.api.model.ObjectiveDefinition;
+import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.api.model.TaskObjective;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.storage.ObjectiveRepository;
+import com.playerPlugin.playerTaskX.api.storage.RewardRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
@@ -24,6 +27,8 @@ import java.util.function.Function;
 public class TaskAPI {
     private final Logger log;
     private final TaskRepository taskRepo;
+    private final ObjectiveRepository objectiveRepo;
+    private final RewardRepository rewardRepo;
     private final TaskProgressRepository progressRepo;
     private final TaskCache cache;
 
@@ -32,6 +37,8 @@ public class TaskAPI {
         this.cache = cache;
 
         this.taskRepo = storageFactory.getRepository();
+        this.objectiveRepo = storageFactory.getObjectiveRepository();
+        this.rewardRepo = storageFactory.getRewardRepository();
         this.progressRepo = storageFactory.getProgressRepository();
     }
 
@@ -70,6 +77,84 @@ public class TaskAPI {
         });
     }
 
+    // --- Objective Definition Management ---
+
+    public boolean createObjective(ObjectiveDefinition objDef) {
+        return safeExecute("creating objective", () -> {
+            if (isInvalidId(objDef.getId())) return false;
+            
+            if (objectiveRepo.findById(objDef.getId()).isPresent()) {
+                log.error("Objective with ID " + objDef.getId() + " already exists");
+                return false;
+            }
+
+            objectiveRepo.save(objDef);
+            cache.addObjectiveDef(objDef);
+            log.info("Objective with ID " + objDef.getId() + " created successfully");
+            return true;
+        });
+    }
+
+    public boolean deleteObjective(String objID) {
+        return safeExecute("deleting objective", () -> {
+            if (isInvalidId(objID)) return false;
+
+            ObjectiveDefinition objDef = objectiveRepo.findById(objID).orElse(null);
+            if (objDef == null) {
+                log.error("Objective with ID " + objID + " does not exist");
+                return false;
+            }
+
+            objectiveRepo.delete(objID);
+            cache.removeObjectiveDef(objDef);
+            log.info("Objective with ID " + objDef.getId() + " deleted successfully");
+            return true;
+        });
+    }
+
+    public Optional<ObjectiveDefinition> getObjectiveDefinition(String objId) {
+        return cache.getObjectiveDef(objId);
+    }
+
+    // --- Reward Definition Management ---
+
+    public boolean createReward(RewardDefinition rewardDef) {
+        return safeExecute("creating reward", () -> {
+            if (isInvalidId(rewardDef.getId())) return false;
+            
+            if (rewardRepo.findById(rewardDef.getId()).isPresent()) {
+                log.error("Reward with ID " + rewardDef.getId() + " already exists");
+                return false;
+            }
+
+            rewardRepo.save(rewardDef);
+            cache.addRewardDef(rewardDef);
+            log.info("Reward with ID " + rewardDef.getId() + " created successfully");
+            return true;
+        });
+    }
+
+    public boolean deleteReward(String rewardID) {
+        return safeExecute("deleting reward", () -> {
+            if (isInvalidId(rewardID)) return false;
+
+            RewardDefinition rewardDef = rewardRepo.findById(rewardID).orElse(null);
+            if (rewardDef == null) {
+                log.error("Reward with ID " + rewardID + " does not exist");
+                return false;
+            }
+
+            rewardRepo.delete(rewardID);
+            cache.removeRewardDef(rewardDef);
+            log.info("Reward with ID " + rewardDef.getId() + " deleted successfully");
+            return true;
+        });
+    }
+
+    public Optional<RewardDefinition> getRewardDefinition(String rewardId) {
+        return cache.getRewardDef(rewardId);
+    }
+
     // --- Progress Management ---
 
     public boolean createProgress(Player player, String taskId) {
@@ -99,24 +184,62 @@ public class TaskAPI {
 
     public boolean updateProgress(Player player, String taskId, int progress) {
         return executeProgressUpdate(player, taskId, (currentProgress) -> {
-            return calculateNewState(currentProgress, (objective) -> {
-                int target = objective.getTargetAmount();
-                int newAmount = Math.min(progress, target);
-                return createObjective(objective, newAmount, newAmount >= target);
-            });
+            TaskDefinition def = cache.getTaskDef(taskId).orElse(null);
+            if (def == null) return new UpdateResult(PTXTaskStatus.IN_PROGRESS);
+            
+            boolean allFinished = true;
+            
+            for (int i = 0; i < def.getObjectives().size(); i++) {
+                String objId = def.getObjectives().get(i);
+                ObjectiveDefinition obj = cache.getObjectiveDef(objId).orElse(null);
+                if (obj == null) continue;
+                
+                int target = obj.getTargetAmount();
+                int newAmount = Math.min(progress, target); // Assuming same progress for all? Might need revision later
+                
+                currentProgress.setObjectiveAmount(objId, newAmount);
+                if (newAmount < target) allFinished = false;
+            }
+            return new UpdateResult(allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
         }, null);
     }
 
-    public boolean incrementTaskProgress(UUID playerId, String taskId, int amount) {
+    public boolean incrementTaskProgress(UUID playerId, String taskId, String objectiveId, int amount) {
         Player player = Bukkit.getPlayer(playerId);
         if (player == null) return false;
 
         return executeProgressUpdate(player, taskId, (currentProgress) -> {
-            return calculateNewState(currentProgress, (objective) -> {
-                int target = objective.getTargetAmount();
-                int newAmount = Math.min(objective.getCurrentAmount() + amount, target);
-                return createObjective(objective, newAmount, newAmount >= target);
-            });
+            TaskDefinition def = cache.getTaskDef(taskId).orElse(null);
+            if (def == null) return new UpdateResult(PTXTaskStatus.IN_PROGRESS);
+            
+            boolean allFinished = true;
+            boolean objectiveFound = false;
+            
+            for (String objId : def.getObjectives()) {
+                ObjectiveDefinition obj = cache.getObjectiveDef(objId).orElse(null);
+                if (obj == null) continue;
+                
+                int target = obj.getTargetAmount();
+                int currentAmount = currentProgress.getObjectiveAmount(objId);
+                
+                // Only update the requested objective
+                if (objId.equals(objectiveId)) {
+                    objectiveFound = true;
+                    int newAmount = Math.min(currentAmount + amount, target);
+                    currentProgress.setObjectiveAmount(objId, newAmount);
+                    if (newAmount < target) allFinished = false;
+                } else {
+                    // Check other objectives status
+                    if (currentAmount < target) allFinished = false;
+                }
+            }
+            
+            if (!objectiveFound) {
+                // If the objective ID wasn't found in the task definition, we shouldn't change status
+                return new UpdateResult(currentProgress.getStatus());
+            }
+            
+            return new UpdateResult(allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
         }, null);
     }
 
@@ -125,9 +248,17 @@ public class TaskAPI {
         if (player == null) return false;
 
         return executeProgressUpdate(player, taskId, (currentProgress) -> {
-            List<TaskObjective> newObjectives = mapObjectives(currentProgress, 
-                obj -> createObjective(obj, obj.getTargetAmount(), true));
-            return new UpdateResult(newObjectives, PTXTaskStatus.COMPLETED);
+            TaskDefinition def = cache.getTaskDef(taskId).orElse(null);
+            if (def != null) {
+                for (int i = 0; i < def.getObjectives().size(); i++) {
+                    String objId = def.getObjectives().get(i);
+                    ObjectiveDefinition obj = cache.getObjectiveDef(objId).orElse(null);
+                    if (obj != null) {
+                        currentProgress.setObjectiveAmount(objId, obj.getTargetAmount());
+                    }
+                }
+            }
+            return new UpdateResult(PTXTaskStatus.COMPLETED);
         }, (uuid, id) -> fireTaskCompleteEvent(uuid, id, System.currentTimeMillis()));
     }
 
@@ -136,9 +267,8 @@ public class TaskAPI {
         if (player == null) return false;
 
         return executeProgressUpdate(player, taskId, (currentProgress) -> {
-            List<TaskObjective> newObjectives = mapObjectives(currentProgress, 
-                obj -> createObjective(obj, 0, false));
-            return new UpdateResult(newObjectives, PTXTaskStatus.IN_PROGRESS);
+            currentProgress.getObjectiveProgress().clear();
+            return new UpdateResult(PTXTaskStatus.IN_PROGRESS);
         }, this::fireTaskStartEvent);
     }
 
@@ -153,6 +283,10 @@ public class TaskAPI {
 
     public List<TaskProgress> getPlayerTasks(Player player) {
         return progressRepo.findAll(player);
+    }
+    
+    public Optional<TaskDefinition> getTaskDefinition(String taskId) {
+        return cache.getTaskDef(taskId);
     }
 
     private boolean isInvalidId(String id) {
@@ -181,6 +315,7 @@ public class TaskAPI {
         Optional<TaskProgress> progressOpt = progressRepo.find(player, taskId);
         if (progressOpt.isEmpty()) {
             log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
+            return Optional.empty();
         }
         return progressOpt;
     }
@@ -193,7 +328,8 @@ public class TaskAPI {
             TaskProgress currentProgress = progressOpt.get();
             UpdateResult result = calculation.apply(currentProgress);
 
-            updateAndSaveProgress(currentProgress, result.objectives, result.status);
+            currentProgress.setStatus(result.status);
+            progressRepo.save(currentProgress);
 
             if (eventAction != null) {
                 eventAction.accept(player.getUniqueId(), taskId);
@@ -202,40 +338,7 @@ public class TaskAPI {
         });
     }
 
-    private UpdateResult calculateNewState(TaskProgress progress, Function<TaskObjective, TaskObjective> objectiveMapper) {
-        List<TaskObjective> newObjectives = new ArrayList<>();
-        boolean allFinished = true;
-        
-        for (TaskObjective obj : progress.getTaskDefinition().getObjectives()) {
-            TaskObjective newObj = objectiveMapper.apply(obj);
-            if (!newObj.isFinished()) allFinished = false;
-            newObjectives.add(newObj);
-        }
-        
-        return new UpdateResult(newObjectives, allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
-    }
-
-    private List<TaskObjective> mapObjectives(TaskProgress progress, Function<TaskObjective, TaskObjective> mapper) {
-        List<TaskObjective> list = new ArrayList<>();
-        for (TaskObjective obj : progress.getTaskDefinition().getObjectives()) {
-            list.add(mapper.apply(obj));
-        }
-        return list;
-    }
-
-    private TaskObjective createObjective(TaskObjective original, int amount, boolean finished) {
-        return new TaskObjective(original.getAction(), original.getTarget(), finished, amount, original.getTargetAmount());
-    }
-
-    private void updateAndSaveProgress(TaskProgress oldProgress, List<TaskObjective> newObjectives, PTXTaskStatus newStatus) {
-        TaskDefinition oldDef = oldProgress.getTaskDefinition();
-        TaskDefinition newDef = new TaskDefinition(oldDef.getId(), oldDef.getType(), oldDef.getName(), oldDef.getDescription(), newObjectives);
-        TaskProgress newProgress = new TaskProgress(oldProgress.getUuid(), newDef, newStatus, oldProgress.getCreateAt(), TimeUtil.getTime());
-        progressRepo.save(newProgress);
-    }
-
-    // TODO
-    private record UpdateResult(List<TaskObjective> objectives, PTXTaskStatus status) {}
+    private record UpdateResult(PTXTaskStatus status) {}
 
     // --- Event Handling Stub ---
 

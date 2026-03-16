@@ -17,4 +17,13 @@ public class TimeUtil {
                         .ofPattern("yyyy-MM-dd HH:mm:ss")
                         .withLocale(defaultLocale));
     }
+
+    public static String formatTime(long timestamp) {
+        Locale defaultLocale = Locale.getDefault();
+        return java.time.Instant.ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter
+                        .ofPattern("yyyy-MM-dd HH:mm:ss")
+                        .withLocale(defaultLocale));
+    }
 }
