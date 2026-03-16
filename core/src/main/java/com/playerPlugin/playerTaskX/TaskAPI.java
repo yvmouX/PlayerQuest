@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.api.logger.Logger;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
 import com.playerPlugin.playerTaskX.api.model.ObjectiveDefinition;
 import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
@@ -11,13 +10,11 @@ import com.playerPlugin.playerTaskX.api.storage.ObjectiveRepository;
 import com.playerPlugin.playerTaskX.api.storage.RewardRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -166,7 +163,6 @@ public class TaskAPI {
             }
 
             progressRepo.create(player, taskDefOpt.get());
-            fireTaskStartEvent(player.getUniqueId(), taskId);
             log.info("Progress for task " + taskId + " created successfully");
             return true;
         });
@@ -201,7 +197,7 @@ public class TaskAPI {
                 if (newAmount < target) allFinished = false;
             }
             return new UpdateResult(allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
-        }, null);
+        });
     }
 
     public boolean incrementTaskProgress(UUID playerId, String taskId, String objectiveId, int amount) {
@@ -240,7 +236,7 @@ public class TaskAPI {
             }
             
             return new UpdateResult(allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
-        }, null);
+        });
     }
 
     public boolean completeTask(UUID playerId, String taskId) {
@@ -259,7 +255,7 @@ public class TaskAPI {
                 }
             }
             return new UpdateResult(PTXTaskStatus.COMPLETED);
-        }, (uuid, id) -> fireTaskCompleteEvent(uuid, id, System.currentTimeMillis()));
+        });
     }
 
     public boolean resetTask(UUID playerId, String taskId) {
@@ -269,7 +265,7 @@ public class TaskAPI {
         return executeProgressUpdate(player, taskId, (currentProgress) -> {
             currentProgress.getObjectiveProgress().clear();
             return new UpdateResult(PTXTaskStatus.IN_PROGRESS);
-        }, this::fireTaskStartEvent);
+        });
     }
 
     public boolean isTaskCompleted(UUID playerId, String taskId) {
@@ -320,7 +316,7 @@ public class TaskAPI {
         return progressOpt;
     }
 
-    private boolean executeProgressUpdate(Player player, String taskId, Function<TaskProgress, UpdateResult> calculation, BiConsumer<UUID, String> eventAction) {
+    private boolean executeProgressUpdate(Player player, String taskId, Function<TaskProgress, UpdateResult> calculation) {
         return safeExecute("updating task progress", () -> {
             Optional<TaskProgress> progressOpt = getTaskProgress(player, taskId);
             if (progressOpt.isEmpty()) return false;
@@ -331,42 +327,9 @@ public class TaskAPI {
             currentProgress.setStatus(result.status);
             progressRepo.save(currentProgress);
 
-            if (eventAction != null) {
-                eventAction.accept(player.getUniqueId(), taskId);
-            }
             return true;
         });
     }
 
     private record UpdateResult(PTXTaskStatus status) {}
-
-    // --- Event Handling Stub ---
-
-    public void registerEventListener(TaskEventListener listener) {
-        // Implementation pending
-    }
-
-    public void unregisterEventListener(TaskEventListener listener) {
-        // Implementation pending
-    }
-
-    public void reload() {
-        // Implementation pending
-    }
-
-    private void fireTaskStartEvent(UUID playerId, String taskId) {
-        // Implementation pending
-    }
-
-    private void fireTaskProgressEvent(UUID playerId, String taskId, int oldProgress, int newProgress, int targetProgress) {
-        // Implementation pending
-    }
-
-    private void fireTaskCompleteEvent(UUID playerId, String taskId, long completionTime) {
-        // Implementation pending
-    }
-
-    public void fireTaskFailEvent(UUID playerId, String taskId, String reason) {
-        // Implementation pending
-    }
 }
