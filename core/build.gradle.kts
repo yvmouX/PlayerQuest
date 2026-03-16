@@ -5,7 +5,7 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
 
-    compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
+    implementation("org.xerial:sqlite-jdbc:3.42.0.0")
     compileOnly("mysql:mysql-connector-java:8.0.33")
 
 

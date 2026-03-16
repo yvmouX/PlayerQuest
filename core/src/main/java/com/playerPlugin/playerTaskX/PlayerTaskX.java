@@ -23,22 +23,18 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.sql.SQLException;
-
 public final class PlayerTaskX extends JavaPlugin {
     private Logger log;
     private UniversalScheduler scheduler;
-    private Economy economy;
     private ConfigurationManager configurationManager;
+    private PTXStorgeType currentStorgeType = PTXStorgeType.YAML;
+    private TaskAPI api;
 
+    // Hook
+    private Economy economy;
     private boolean isEconomyEnabled = true;
     private PlayerPointsAPI ppAPI;
-
     private boolean isPlayerPointsEnabled = true;
-
-    private final PTXStorgeType currentStorgeType = PTXStorgeType.YAML; // TODO 从配置文件中读取
-    
-    private TaskAPI api;
 
     @Override
     public void onEnable() {
@@ -79,44 +75,32 @@ public final class PlayerTaskX extends JavaPlugin {
         // 1.5 初始化一些工具类
         new StorageUtil(log);
 
+        // 注册配置
+        configurationManager = ylib.getConfigurationManager();
+        configurationManager.registerConfiguration(EditorConfiguration.class);
+        StorgeConfiguration storgeConfig = configurationManager.registerConfiguration(StorgeConfiguration.class);
+
+        // 读取存储配置
+        try {
+            currentStorgeType = PTXStorgeType.valueOf(storgeConfig.getStorageMethod_playerData().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.warn("无效的存储方式: " + storgeConfig.getStorageMethod_playerData() + ", 将使用 YAML");
+            currentStorgeType = PTXStorgeType.YAML;
+        }
+
         // 2、创建存储工厂
         StorageFactory storageFactory = new StorageFactory(this, log, currentStorgeType);
-        try {
-            storageFactory.getStorageCreator().connect();
-        } catch (SQLException | ClassNotFoundException e) {
-            log.error("连接数据库时发生错误：" + e.getMessage());
-        }
 
         // 3、从 tasks 目录加载所有任务添加到缓存
         TaskRepository taskRepository = storageFactory.getRepository();
         TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
         TaskCache cache = new TaskCache(log, scheduler, storageFactory);
 
-        // 4、开始数据同步任务
-        //new DataSyncTask(log, scheduler, taskCache, databaseDAO).startSync();
-
-        // 6、注册事件
-        // 初始化事件总线
-        //SimpleEventBus eventBus = new SimpleEventBus(log);
-
-        // 注册事件处理程序
-        //registerEventHandlers(eventBus);
-
-        // 注册 Bukkit 事件监听器
-        //KillListener killListener = new KillListener(eventBus);
-        //getServer().getPluginManager().registerEvents(killListener, this);
-
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);
 
-        // 注册配置
-        configurationManager = ylib.getConfigurationManager();
-
-        configurationManager.registerConfiguration(EditorConfiguration.class);
-        configurationManager.registerConfiguration(StorgeConfiguration.class);
-
         // 7、注册命令
-        api = new TaskAPI(log, taskRepository, taskProgressRepository, cache);
+        api = new TaskAPI(log, storageFactory, cache);
         ylib.getCommandManager().register(new AdminCommand(log, api, cache, configurationManager, ylib.getCommandManager()));
 
 
@@ -131,23 +115,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
 
     }
-
-//    private void registerEventHandlers(EventBus eventBus) {
-//        // 注册 TaskProgressEvent 的处理器
-//        eventBus.register(TaskProgressEvent.class, event -> {
-//            log.info(String.format("玩家 %s 完成了动作: %s, 目标: %s, 进度: %d",
-//                    event.getPlayerId(),
-//                    event.getActionType(),
-//                    event.getMobType(), // 假设你给 TaskProgressEvent 加了 getMobType 方法
-//                    event.getProgress())); // 假设你给 TaskProgressEvent 加了 getProgress 方法
-//
-//            // 在这里可以触发任务更新、发送奖励等逻辑
-//            // Player player = Bukkit.getPlayer(event.getPlayerId());
-//            // if (player != null) {
-//            //     player.sendMessage("你完成了一个击杀任务！");
-//            // }
-//        });
-//    }
 
 
     private boolean setupEconomy() {

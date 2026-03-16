@@ -1,17 +1,25 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.api.logger.Logger;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskObjective;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
+import com.playerPlugin.playerTaskX.storage.StorageFactory;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class TaskAPI {
     private final Logger log;
@@ -19,19 +27,20 @@ public class TaskAPI {
     private final TaskProgressRepository progressRepo;
     private final TaskCache cache;
 
-    public TaskAPI(Logger log, TaskRepository taskRepo, TaskProgressRepository progressRepo, TaskCache cache) {
+    public TaskAPI(Logger log, StorageFactory storageFactory, TaskCache cache) {
         this.log = log;
-        this.taskRepo = taskRepo;
-        this.progressRepo = progressRepo;
         this.cache = cache;
+
+        this.taskRepo = storageFactory.getRepository();
+        this.progressRepo = storageFactory.getProgressRepository();
     }
 
+    // --- Task Definition Management ---
+
     public boolean createTask(TaskDefinition taskDef) {
-        try {
-            if (taskDef.getId() == null || taskDef.getId().isEmpty()) {
-                log.error("Task ID cannot be null or empty");
-                return false;
-            }
+        return safeExecute("creating task", () -> {
+            if (isInvalidId(taskDef.getId())) return false;
+            
             if (taskRepo.findById(taskDef.getId()).isPresent()) {
                 log.error("Task with ID " + taskDef.getId() + " already exists");
                 return false;
@@ -41,22 +50,16 @@ public class TaskAPI {
             cache.addTaskDef(taskDef);
             log.info("Task with ID " + taskDef.getId() + " created successfully");
             return true;
-        } catch (Exception e) {
-            log.error("Error creating task", e);
-            return false;
-        }
+        });
     }
 
     public boolean deleteTask(String taskID) {
-        try {
+        return safeExecute("deleting task", () -> {
+            if (isInvalidId(taskID)) return false;
+
             TaskDefinition taskDef = taskRepo.findById(taskID).orElse(null);
             if (taskDef == null) {
                 log.error("Task with ID " + taskID + " does not exist");
-                return false;
-            }
-
-            if (taskDef.getId() == null || taskDef.getId().isEmpty()) {
-                log.error("Task ID cannot be null or empty");
                 return false;
             }
 
@@ -64,14 +67,13 @@ public class TaskAPI {
             cache.removeTaskDef(taskDef);
             log.info("Task with ID " + taskDef.getId() + " deleted successfully");
             return true;
-        } catch (Exception e) {
-            log.error("Error deleting task", e);
-            return false;
-        }
+        });
     }
 
+    // --- Progress Management ---
+
     public boolean createProgress(Player player, String taskId) {
-        try {
+        return safeExecute("creating progress", () -> {
             Optional<TaskDefinition> taskDefOpt = taskRepo.findById(taskId);
             if (taskDefOpt.isEmpty()) {
                 log.error("Task with ID " + taskId + " does not exist");
@@ -79,215 +81,187 @@ public class TaskAPI {
             }
 
             progressRepo.create(player, taskDefOpt.get());
-
-            // Trigger task start Event
             fireTaskStartEvent(player.getUniqueId(), taskId);
-
             log.info("Progress for task " + taskId + " created successfully");
             return true;
-        } catch (Exception e) {
-            log.error("Error creating task", e);
-            return false;
-        }
+        });
     }
 
     public boolean deleteProgress(Player player, String taskId) {
-        // TODO
-        return false;
+        return safeExecute("deleting task progress", () -> {
+            if (getTaskProgress(player, taskId).isEmpty()) return false;
+            
+            progressRepo.delete(player.getUniqueId(), taskId);
+            log.info("Task progress deleted for player " + player.getName() + " task " + taskId);
+            return true;
+        });
     }
 
     public boolean updateProgress(Player player, String taskId, int progress) {
-        try {
-            Optional<TaskProgress> progressOpt = progressRepo.find(player, taskId);
-            if (progressOpt.isEmpty()) {
-                log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
-                return false;
-            }
-
-            TaskProgress taskProgress = progressOpt.get();
-            for (TaskObjective objective : taskProgress.getTaskDefinition().getObjectives()) {
-                int oldProgress = objective.getCurrentAmount();
-                progressRepo.update(taskProgress);
-            }
-//
-//            TaskProgress taskProgress = progressOpt.get();
-//            for (TaskObjective objective : taskProgress.getTaskDefinition().getObjectives()) {
-//                int oldProgress = objective.getCurrentAmount();
-//                progressRepo.update();
-//
-//                // 获取目标进度
-//
-//            }
-            //taskProgress.setCurrentProgress(progress);
-            //progressRepo.update(taskProgress);
-
-            // 获取目标进度
-            //var taskDefOpt = taskRepo.findById(taskId);
-            //int targetProgress = taskDefOpt.map(TaskDefinition::getTargetAmount).orElse(0);
-
-            // 触发进度更新事件
-            //fireTaskProgressEvent(player.getUniqueId(), taskId, oldProgress, progress, targetProgress);
-
-            return true;
-        } catch (Exception e) {
-            log.error("Error updating task progress", e);
-            return false;
-        }
+        return executeProgressUpdate(player, taskId, (currentProgress) -> {
+            return calculateNewState(currentProgress, (objective) -> {
+                int target = objective.getTargetAmount();
+                int newAmount = Math.min(progress, target);
+                return createObjective(objective, newAmount, newAmount >= target);
+            });
+        }, null);
     }
 
     public boolean incrementTaskProgress(UUID playerId, String taskId, int amount) {
-//        try {
-//            var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
-//            if (progressOpt.isEmpty()) {
-//                log.error("Task progress not found for player " + playerId + " and task " + taskId);
-//                return false;
-//            }
-//
-//            var taskProgress = progressOpt.get();
-//            int oldProgress = taskProgress.getCurrentProgress();
-//            int newProgress = oldProgress + amount;
-//            taskProgress.setCurrentProgress(newProgress);
-//            progressRepository.update(taskProgress);
-//
-//            // 获取目标进度
-//            var taskDefOpt = taskRepository.findById(taskId);
-//            int targetProgress = taskDefOpt.map(TaskDefinition::getTargetAmount).orElse(0);
-//
-//            // 触发进度更新事件
-//            fireTaskProgressEvent(playerId, taskId, oldProgress, newProgress, targetProgress);
-//
-//            return true;
-//        } catch (Exception e) {
-//            log.error("Failed to increment task progress: " + e.getMessage());
-//            return false;
-//        }
-        return false;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) return false;
+
+        return executeProgressUpdate(player, taskId, (currentProgress) -> {
+            return calculateNewState(currentProgress, (objective) -> {
+                int target = objective.getTargetAmount();
+                int newAmount = Math.min(objective.getCurrentAmount() + amount, target);
+                return createObjective(objective, newAmount, newAmount >= target);
+            });
+        }, null);
     }
 
     public boolean completeTask(UUID playerId, String taskId) {
-//        try {
-//            var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
-//            if (progressOpt.isEmpty()) {
-//                log.error("Task progress not found for player " + playerId + " and task " + taskId);
-//                return false;
-//            }
-//
-//            var taskProgress = progressOpt.get();
-//            taskProgress.setStatus(com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus.COMPLETED);
-//            progressRepository.update(taskProgress);
-//
-//            // 触发任务完成事件
-//            fireTaskCompleteEvent(playerId, taskId, System.currentTimeMillis());
-//
-//            log.info("Task " + taskId + " completed for player " + playerId);
-//            return true;
-//        } catch (Exception e) {
-//            log.error("Failed to complete task: " + e.getMessage());
-//            return false;
-//        }
-        return false;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) return false;
+
+        return executeProgressUpdate(player, taskId, (currentProgress) -> {
+            List<TaskObjective> newObjectives = mapObjectives(currentProgress, 
+                obj -> createObjective(obj, obj.getTargetAmount(), true));
+            return new UpdateResult(newObjectives, PTXTaskStatus.COMPLETED);
+        }, (uuid, id) -> fireTaskCompleteEvent(uuid, id, System.currentTimeMillis()));
     }
 
     public boolean resetTask(UUID playerId, String taskId) {
-//        try {
-//            var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
-//            if (progressOpt.isEmpty()) {
-//                log.error("Task progress not found for player " + playerId + " and task " + taskId);
-//                return false;
-//            }
-//
-//            var taskProgress = progressOpt.get();
-//            taskProgress.setCurrentProgress(0);
-//            taskProgress.setStatus(com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus.IN_PROGRESS);
-//            progressRepository.update(taskProgress);
-//
-//            log.info("Task " + taskId + " reset for player " + playerId);
-//            return true;
-//        } catch (Exception e) {
-//            log.error("Failed to reset task: " + e.getMessage());
-//            return false;
-//        }
-        return false;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) return false;
+
+        return executeProgressUpdate(player, taskId, (currentProgress) -> {
+            List<TaskObjective> newObjectives = mapObjectives(currentProgress, 
+                obj -> createObjective(obj, 0, false));
+            return new UpdateResult(newObjectives, PTXTaskStatus.IN_PROGRESS);
+        }, this::fireTaskStartEvent);
     }
 
     public boolean isTaskCompleted(UUID playerId, String taskId) {
-//        var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
-//        if (progressOpt.isEmpty()) {
-//            return false;
-//        }
-//
-//        return progressOpt.get().getStatus() == com.playerPlugin.playerTaskX.common.Enum.PTXTaskStatus.COMPLETED;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) return false;
+        
+        return progressRepo.find(player, taskId)
+                .map(p -> p.getStatus() == PTXTaskStatus.COMPLETED)
+                .orElse(false);
+    }
+
+    // --- Helper Methods ---
+
+    private boolean isInvalidId(String id) {
+        if (id == null || id.isEmpty()) {
+            log.error("Task ID cannot be null or empty");
+            return true;
+        }
         return false;
     }
 
+    private boolean safeExecute(String actionName, BooleanSupplier action) {
+        try {
+            return action.getAsBoolean();
+        } catch (Exception e) {
+            log.error("Error " + actionName, e);
+            return false;
+        }
+    }
+    
+    @FunctionalInterface
+    private interface BooleanSupplier {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    private Optional<TaskProgress> getTaskProgress(Player player, String taskId) {
+        Optional<TaskProgress> progressOpt = progressRepo.find(player, taskId);
+        if (progressOpt.isEmpty()) {
+            log.error("Task progress not found for player " + player.getUniqueId() + " and task " + taskId);
+        }
+        return progressOpt;
+    }
+
+    private boolean executeProgressUpdate(Player player, String taskId, Function<TaskProgress, UpdateResult> calculation, BiConsumer<UUID, String> eventAction) {
+        return safeExecute("updating task progress", () -> {
+            Optional<TaskProgress> progressOpt = getTaskProgress(player, taskId);
+            if (progressOpt.isEmpty()) return false;
+
+            TaskProgress currentProgress = progressOpt.get();
+            UpdateResult result = calculation.apply(currentProgress);
+
+            updateAndSaveProgress(currentProgress, result.objectives, result.status);
+
+            if (eventAction != null) {
+                eventAction.accept(player.getUniqueId(), taskId);
+            }
+            return true;
+        });
+    }
+
+    private UpdateResult calculateNewState(TaskProgress progress, Function<TaskObjective, TaskObjective> objectiveMapper) {
+        List<TaskObjective> newObjectives = new ArrayList<>();
+        boolean allFinished = true;
+        
+        for (TaskObjective obj : progress.getTaskDefinition().getObjectives()) {
+            TaskObjective newObj = objectiveMapper.apply(obj);
+            if (!newObj.isFinished()) allFinished = false;
+            newObjectives.add(newObj);
+        }
+        
+        return new UpdateResult(newObjectives, allFinished ? PTXTaskStatus.COMPLETED : PTXTaskStatus.IN_PROGRESS);
+    }
+
+    private List<TaskObjective> mapObjectives(TaskProgress progress, Function<TaskObjective, TaskObjective> mapper) {
+        List<TaskObjective> list = new ArrayList<>();
+        for (TaskObjective obj : progress.getTaskDefinition().getObjectives()) {
+            list.add(mapper.apply(obj));
+        }
+        return list;
+    }
+
+    private TaskObjective createObjective(TaskObjective original, int amount, boolean finished) {
+        return new TaskObjective(original.getAction(), original.getTarget(), finished, amount, original.getTargetAmount());
+    }
+
+    private void updateAndSaveProgress(TaskProgress oldProgress, List<TaskObjective> newObjectives, PTXTaskStatus newStatus) {
+        TaskDefinition oldDef = oldProgress.getTaskDefinition();
+        TaskDefinition newDef = new TaskDefinition(oldDef.getId(), oldDef.getType(), oldDef.getName(), oldDef.getDescription(), newObjectives);
+        TaskProgress newProgress = new TaskProgress(oldProgress.getUuid(), newDef, newStatus, oldProgress.getCreateAt(), TimeUtil.getTime());
+        progressRepo.save(newProgress);
+    }
+
+    // TODO
+    private record UpdateResult(List<TaskObjective> objectives, PTXTaskStatus status) {}
+
+    // --- Event Handling Stub ---
+
     public void registerEventListener(TaskEventListener listener) {
-//        if (!eventListeners.contains(listener)) {
-//            eventListeners.add(listener);
-//            log.debug("Task event listener registered: " + listener.getClass().getName());
-//        }
+        // Implementation pending
     }
 
     public void unregisterEventListener(TaskEventListener listener) {
-//        eventListeners.remove(listener);
-//        log.debug("Task event listener unregistered: " + listener.getClass().getName());
+        // Implementation pending
     }
 
     public void reload() {
-//        try {
-//            // 重新加载任务定义
-//            List<TaskDefinition> taskDefList = taskRepository.loadAll();
-//            cache.setTaskDefById().clear();
-//            for (TaskDefinition taskDef : taskDefList) {
-//                cache.setTaskDefById().add(taskDef.getId(), taskDef);
-//            }
-//            log.info("Tasks reloaded successfully. Total: " + taskDefList.size());
-//        } catch (Exception e) {
-//            log.error("Failed to reload tasks: " + e.getMessage());
-//        }
+        // Implementation pending
     }
 
-    // 事件触发方法
     private void fireTaskStartEvent(UUID playerId, String taskId) {
-//        TaskStartEvent event = new TaskStartEvent(playerId, taskId);
-//        for (TaskEventListener listener : eventListeners) {
-//            try {
-//                listener.onTaskStart(event);
-//            } catch (Exception e) {
-//                log.error("Error in task start event listener: " + e.getMessage());
-//            }
-//        }
+        // Implementation pending
     }
 
     private void fireTaskProgressEvent(UUID playerId, String taskId, int oldProgress, int newProgress, int targetProgress) {
-//        TaskProgressEvent event = new TaskProgressEvent(playerId, taskId, oldProgress, newProgress, targetProgress);
-//        for (TaskEventListener listener : eventListeners) {
-//            try {
-//                listener.onTaskProgress(event);
-//            } catch (Exception e) {
-//                log.error("Error in task progress event listener: " + e.getMessage());
-//            }
-//        }
+        // Implementation pending
     }
 
     private void fireTaskCompleteEvent(UUID playerId, String taskId, long completionTime) {
-//        TaskCompleteEvent event = new TaskCompleteEvent(playerId, taskId, completionTime);
-//        for (TaskEventListener listener : eventListeners) {
-//            try {
-//                listener.onTaskComplete(event);
-//            } catch (Exception e) {
-//                log.error("Error in task complete event listener: " + e.getMessage());
-//            }
-//        }
+        // Implementation pending
     }
 
     public void fireTaskFailEvent(UUID playerId, String taskId, String reason) {
-//        TaskFailEvent event = new TaskFailEvent(playerId, taskId, reason);
-//        for (TaskEventListener listener : eventListeners) {
-//            try {
-//                listener.onTaskFail(event);
-//            } catch (Exception e) {
-//                log.error("Error in task fail event listener: " + e.getMessage());
-//            }
-//        }
+        // Implementation pending
     }
 }
