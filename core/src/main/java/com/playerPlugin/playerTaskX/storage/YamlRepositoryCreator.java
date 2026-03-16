@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.storage.yaml;
+package com.playerPlugin.playerTaskX.storage;
 
 import com.playerPlugin.playerTaskX.api.storage.RepositoryCreator;
 

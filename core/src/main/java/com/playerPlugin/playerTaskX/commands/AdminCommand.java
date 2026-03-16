@@ -7,8 +7,8 @@ import cn.yvmou.ylib.command.annotation.Arg;
 import cn.yvmou.ylib.command.annotation.Command;
 import cn.yvmou.ylib.command.annotation.Optional;
 import cn.yvmou.ylib.command.annotation.SubCommand;
+import com.playerPlugin.playerTaskX.TaskAPI;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
-import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
@@ -21,6 +21,7 @@ import java.util.Objects;
 
 @Command(name = "playertaskxadmin", aliases = {"ptxadmin", "ptxa"}, description = "PlayerTaskX Admin Command", permission = "playertaskx.admin")
 public class AdminCommand {
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(AdminCommand.class);
     private final Logger logger;
     private final TaskAPI api;
     private final TaskCache cache;
@@ -90,6 +91,8 @@ public class AdminCommand {
     }
 
 
+
+
     @SubCommand(value = "reload all", permission = "playertaskx.admin.reload_all")
     public void reloadCommand(CommandSender sender) {
         logger.to(sender).info("Reloading all");
@@ -108,8 +111,9 @@ public class AdminCommand {
                 break;
             case command:
                 logger.to(sender).info("Reloading command");
-                // TODO
+                commandManager.reload();
                 logger.to(sender).info("Configuration reloaded!");
+                logger.to(sender).warn("Attention! The main command cannot be fully unregistered dynamically. If you want to modify it, please reload the server!");
                 break;
             case storage:
                 logger.to(sender).info("Reloading storage");
@@ -117,11 +121,6 @@ public class AdminCommand {
                 logger.to(sender).info("Configuration reloaded!");
                 break;
         }
-    }
-
-    @SubCommand(value = "debug reload_command", permission = "playertaskx.admin.debug")
-    public void debugReloadCommand() {
-        commandManager.reload();
     }
 
     private void sendHelp(CommandSender sender) {

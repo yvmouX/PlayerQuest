@@ -5,8 +5,6 @@ import cn.yvmou.ylib.api.config.ConfigurationManager;
 import cn.yvmou.ylib.api.logger.Logger;
 import cn.yvmou.ylib.api.scheduler.UniversalScheduler;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.api.PlayerTaskXProvider;
-import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.api.utils.Metrics;
@@ -16,7 +14,6 @@ import com.playerPlugin.playerTaskX.commands.AdminCommand;
 import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
 import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
-import com.playerPlugin.playerTaskX.impl.TaskAPIImpl;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import net.milkbowl.vault.economy.Economy;
@@ -60,7 +57,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        unregister();
         log.info("插件已禁用");
     }
 
@@ -120,17 +116,9 @@ public final class PlayerTaskX extends JavaPlugin {
         configurationManager.registerConfiguration(StorgeConfiguration.class);
 
         // 7、注册命令
-        api = new TaskAPIImpl(log, taskRepository, taskProgressRepository, cache);
+        api = new TaskAPI(log, taskRepository, taskProgressRepository, cache);
         ylib.getCommandManager().register(new AdminCommand(log, api, cache, configurationManager, ylib.getCommandManager()));
-        // 8、初始化并注册 API
-        PlayerTaskXProvider.setApi(api);
-        //log.info("PlayerTaskX API " + api.getApiVersion() + " 已注册，其他插件现在可以使用 API");
 
-
-
-        // 9、更新检查
-        PlayerTaskXProvider.UpdateHelper updateHelper = new PlayerTaskXProvider.UpdateHelper(log);
-        updateHelper.checkUpdate(getDescription().getVersion());
 
         // 启动服务器
         try {
@@ -161,11 +149,6 @@ public final class PlayerTaskX extends JavaPlugin {
 //        });
 //    }
 
-    private void unregister() {
-        // 重置 API
-        PlayerTaskXProvider.reset();
-        log.debug("PlayerTaskX API 已重置");
-    }
 
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {

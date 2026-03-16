@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.JsonParseException;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.api.TaskAPI;
+import com.playerPlugin.playerTaskX.TaskAPI;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
 import com.playerPlugin.playerTaskX.exception.NotFoundTaskDefinitionException;
 import com.playerPlugin.playerTaskX.exception.UnauthorizedException;

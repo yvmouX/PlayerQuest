@@ -6,9 +6,6 @@ import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.storage.RepositoryCreator;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
 import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
-import com.playerPlugin.playerTaskX.storage.yaml.YamlRepositoryCreator;
-import com.playerPlugin.playerTaskX.storage.yaml.YamlTaskProgressRepository;
-import com.playerPlugin.playerTaskX.storage.yaml.YamlTaskRepository;
 
 public class StorageFactory {
     private final PlayerTaskX plugin;

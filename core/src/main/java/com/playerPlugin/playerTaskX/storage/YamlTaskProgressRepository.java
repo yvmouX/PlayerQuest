@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.storage.yaml;
+package com.playerPlugin.playerTaskX.storage;
 
 import cn.yvmou.ylib.api.logger.Logger;
 import com.fasterxml.jackson.databind.JsonNode;

@@ -1,7 +1,6 @@
-package com.playerPlugin.playerTaskX.impl;
+package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.api.logger.Logger;
-import com.playerPlugin.playerTaskX.api.TaskAPI;
 import com.playerPlugin.playerTaskX.api.event.TaskEventListener;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskObjective;
@@ -14,20 +13,19 @@ import org.bukkit.entity.Player;
 import java.util.Optional;
 import java.util.UUID;
 
-public class TaskAPIImpl implements TaskAPI {
+public class TaskAPI {
     private final Logger log;
     private final TaskRepository taskRepo;
     private final TaskProgressRepository progressRepo;
     private final TaskCache cache;
 
-    public TaskAPIImpl(Logger log, TaskRepository taskRepo, TaskProgressRepository progressRepo, TaskCache cache) {
+    public TaskAPI(Logger log, TaskRepository taskRepo, TaskProgressRepository progressRepo, TaskCache cache) {
         this.log = log;
         this.taskRepo = taskRepo;
         this.progressRepo = progressRepo;
         this.cache = cache;
     }
 
-    @Override
     public boolean createTask(TaskDefinition taskDef) {
         try {
             if (taskDef.getId() == null || taskDef.getId().isEmpty()) {
@@ -49,7 +47,6 @@ public class TaskAPIImpl implements TaskAPI {
         }
     }
 
-    @Override
     public boolean deleteTask(String taskID) {
         try {
             TaskDefinition taskDef = taskRepo.findById(taskID).orElse(null);
@@ -73,7 +70,6 @@ public class TaskAPIImpl implements TaskAPI {
         }
     }
 
-    @Override
     public boolean createProgress(Player player, String taskId) {
         try {
             Optional<TaskDefinition> taskDefOpt = taskRepo.findById(taskId);
@@ -95,13 +91,11 @@ public class TaskAPIImpl implements TaskAPI {
         }
     }
 
-    @Override
     public boolean deleteProgress(Player player, String taskId) {
         // TODO
         return false;
     }
 
-    @Override
     public boolean updateProgress(Player player, String taskId, int progress) {
         try {
             Optional<TaskProgress> progressOpt = progressRepo.find(player, taskId);
@@ -141,7 +135,6 @@ public class TaskAPIImpl implements TaskAPI {
         }
     }
 
-    @Override
     public boolean incrementTaskProgress(UUID playerId, String taskId, int amount) {
 //        try {
 //            var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
@@ -195,7 +188,6 @@ public class TaskAPIImpl implements TaskAPI {
         return false;
     }
 
-    @Override
     public boolean resetTask(UUID playerId, String taskId) {
 //        try {
 //            var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
@@ -218,7 +210,6 @@ public class TaskAPIImpl implements TaskAPI {
         return false;
     }
 
-    @Override
     public boolean isTaskCompleted(UUID playerId, String taskId) {
 //        var progressOpt = progressRepository.findByPlayerAndTask(playerId, taskId);
 //        if (progressOpt.isEmpty()) {
@@ -229,7 +220,6 @@ public class TaskAPIImpl implements TaskAPI {
         return false;
     }
 
-    @Override
     public void registerEventListener(TaskEventListener listener) {
 //        if (!eventListeners.contains(listener)) {
 //            eventListeners.add(listener);
@@ -237,13 +227,11 @@ public class TaskAPIImpl implements TaskAPI {
 //        }
     }
 
-    @Override
     public void unregisterEventListener(TaskEventListener listener) {
 //        eventListeners.remove(listener);
 //        log.debug("Task event listener unregistered: " + listener.getClass().getName());
     }
 
-    @Override
     public void reload() {
 //        try {
 //            // 重新加载任务定义
