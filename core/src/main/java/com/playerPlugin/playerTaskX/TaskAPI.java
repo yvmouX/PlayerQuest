@@ -151,7 +151,9 @@ public class TaskAPI {
                 .orElse(false);
     }
 
-    // --- Helper Methods ---
+    public List<TaskProgress> getPlayerTasks(Player player) {
+        return progressRepo.findAll(player);
+    }
 
     private boolean isInvalidId(String id) {
         if (id == null || id.isEmpty()) {

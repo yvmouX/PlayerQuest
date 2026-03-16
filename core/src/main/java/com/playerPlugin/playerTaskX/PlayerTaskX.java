@@ -11,6 +11,7 @@ import com.playerPlugin.playerTaskX.api.utils.Metrics;
 import com.playerPlugin.playerTaskX.api.utils.StorageUtil;
 import com.playerPlugin.playerTaskX.cache.TaskCache;
 import com.playerPlugin.playerTaskX.commands.AdminCommand;
+import com.playerPlugin.playerTaskX.commands.UserCommand;
 import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
 import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
@@ -102,6 +103,7 @@ public final class PlayerTaskX extends JavaPlugin {
         // 7、注册命令
         api = new TaskAPI(log, storageFactory, cache);
         ylib.getCommandManager().register(new AdminCommand(log, api, cache, configurationManager, ylib.getCommandManager()));
+        ylib.getCommandManager().register(new UserCommand(log, api));
 
 
         // 启动服务器

@@ -21,14 +21,16 @@ public class StorageFactory {
         return switch (storgeType) {
             case SQLITE -> new SqliteTaskProgressRepository(plugin, log);
             //case MYSQL -> new MySQLTaskProgressRepository(plugin, log);
+            case YAML -> {
+                log.warn("YAML storage for player progress is deprecated. Using SQLite instead.");
+                yield new SqliteTaskProgressRepository(plugin, log);
+            }
             default -> throw new IllegalArgumentException("Invalid storage type: " + storgeType);
         };
     }
 
     public TaskRepository getRepository() {
-        return switch (storgeType) {
-            case YAML -> new YamlTaskRepository(plugin, log);
-            default -> throw new IllegalArgumentException("Invalid storage type: " + storgeType);
-        };
+        // Task definitions are always stored in YAML for now
+        return new YamlTaskRepository(plugin, log);
     }
 }
