@@ -7,7 +7,23 @@
       </template>
     </Header>
     
-    <div class="canvas-wrapper">
+    <div class="canvas-wrapper"
+         @drop="handleDrop"
+         @dragover.prevent="handleDragOver">
+      <aside class="sidebar">
+        <h3>任务列表</h3>
+        <div
+          v-for="quest in sidebarQuests"
+          :key="quest.id"
+          class="sidebar-item"
+          draggable="true"
+          @dragstart="(e) => handleDragStart(e, quest)"
+        >
+          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || quest.id }}</span>
+          <span class="quest-type">{{ quest.type }}</span>
+        </div>
+      </aside>
+      
       <VueFlow
         v-model:nodes="flowNodes"
         v-model:edges="flowEdges"
@@ -34,18 +50,27 @@
         @close="selectedNode = null"
         @update="handleUpdateQuest"
       />
+      
+      <CreateQuestDialog
+        v-if="showCreateDialog"
+        @close="showCreateDialog = false"
+        @create="handleCreateQuest"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { VueFlow, Background, Controls, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
 import QuestNode from '../components/editor/QuestNode.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
+import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import { useQuestEditor } from '../composables/useQuestEditor'
 import { QuestService } from '../services/api'
 import type { Quest } from '../types'
@@ -64,6 +89,9 @@ const {
 } = useQuestEditor()
 
 const { project } = useVueFlow()
+
+const showCreateDialog = ref(false)
+const sidebarQuests = ref<Quest[]>([])
 
 const flowNodes = computed({
   get: () => editorNodes.value.map(n => ({
@@ -101,9 +129,36 @@ async function loadData() {
     const response = await QuestService.getAll()
     if (response.code === 0 && response.data) {
       loadQuests(response.data)
+      sidebarQuests.value = response.data
     }
   } catch (error) {
     console.error('Failed to load quests:', error)
+  }
+}
+
+function handleDragOver(event: DragEvent) {
+  event.dataTransfer!.dropEffect = 'copy'
+}
+
+function handleDragStart(event: DragEvent, quest: Quest) {
+  event.dataTransfer?.setData('application/json', JSON.stringify(quest))
+}
+
+function handleDrop(event: DragEvent) {
+  event.preventDefault()
+  const questData = event.dataTransfer?.getData('application/json')
+  if (questData) {
+    try {
+      const quest: Quest = JSON.parse(questData)
+      const rect = (event.target as HTMLElement).getBoundingClientRect()
+      const position = project({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      })
+      addNode(quest, position)
+    } catch (e) {
+      console.error('Failed to parse dropped quest data:', e)
+    }
   }
 }
 
@@ -131,18 +186,13 @@ function handleUpdateQuest(nodeId: string, quest: Partial<Quest>) {
 }
 
 function handleAddQuest() {
-  const newQuest: Quest = {
-    id: `quest_${Date.now()}`,
-    name: { 'zh-CN': '新任务', 'en-US': 'New Quest' },
-    description: { 'zh-CN': '', 'en-US': '' },
-    type: 'single',
-    objectives: [],
-    rewards: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  }
+  showCreateDialog.value = true
+}
+
+function handleCreateQuest(quest: Quest) {
   const center = project({ x: 400, y: 300 })
-  addNode(newQuest, center)
+  addNode(quest, center)
+  showCreateDialog.value = false
 }
 
 async function handleSave() {
@@ -171,6 +221,40 @@ onMounted(() => {
   flex: 1;
   position: relative;
   background: #f5f5f5;
+  display: flex;
+}
+.sidebar {
+  width: 200px;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  padding: 1rem;
+  overflow-y: auto;
+}
+.sidebar h3 {
+  margin-top: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+.sidebar-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #f3f4f6;
+  border-radius: 4px;
+  cursor: grab;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sidebar-item:hover {
+  background: #e5e7eb;
+}
+.quest-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.quest-type {
+  font-size: 0.7rem;
+  color: #9ca3af;
 }
 .btn-primary {
   padding: 0.5rem 1rem;
