@@ -41,6 +41,8 @@ PlayerTaskX
 
 ### 3.1 任务定义 (TaskDefinition)
 
+v1.0 采用**手动接取**模式。
+
 ```java
 public class TaskDefinition {
     private String id;                      // 唯一标识
@@ -49,7 +51,6 @@ public class TaskDefinition {
     private List<Objective> objectives;     // 目标列表（需全部完成）
     private List<Reward> rewards;           // 奖励列表
     private List<Condition> conditions;    // 接受条件（可选）
-    private TriggerConfig trigger;          // 触发方式
 }
 ```
 
@@ -110,24 +111,7 @@ public class TaskProgress {
 }
 ```
 
-### 3.5 触发配置 (TriggerConfig)
-
-v1.0 采用**手动接取**模式，无需触发配置。保留此接口为后续扩展。
-
-```java
-public class TriggerConfig {
-    private TriggerType type;  // 触发类型
-    private Map<String, Object> params;  // 触发参数
-
-    public enum TriggerType {
-        MANUAL,     // 手动接取（v1.0）
-        AUTO,       // 自动接取（满足条件时）
-        COMMAND     // 命令触发
-    }
-}
-```
-
-### 3.6 条件接口 (Condition)
+### 3.5 条件接口 (Condition)
 
 ```java
 public interface Condition {
