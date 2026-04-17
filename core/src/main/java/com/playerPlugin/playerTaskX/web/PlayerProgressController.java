@@ -30,11 +30,11 @@ public class PlayerProgressController {
 
         List<Map<String, Object>> allProgress = new ArrayList<>();
         for (TaskProgress progress : taskManager.getAllProgress()) {
-            if (search != null && !progress.getPlayerUuid().toString().contains(search)) continue;
+            if (search != null && !progress.getPlayerId().toString().contains(search)) continue;
             if (status != null && !progress.getStatus().name().equalsIgnoreCase(status)) continue;
             
             Map<String, Object> item = new HashMap<>();
-            item.put("playerUuid", progress.getPlayerUuid().toString());
+            item.put("playerUuid", progress.getPlayerId().toString());
             item.put("taskId", progress.getTaskId());
             item.put("status", progress.getStatus().name());
             allProgress.add(item);
