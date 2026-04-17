@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.listener;
 
 import com.playerPlugin.playerTaskX.manager.TaskManager;
-import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,7 +16,7 @@ public class EntityListener implements Listener {
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
-        Entity entity = event.getEntity();
+        LivingEntity entity = event.getEntity();
         Player killer = entity.getKiller();
         if (killer == null) return;
 

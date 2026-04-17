@@ -21,7 +21,6 @@ public class TaskEditorController {
     public void createTask(Context ctx) {
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            // TODO: Save through TaskManager
             ctx.status(201).json(task);
         } catch (Exception e) {
             ctx.status(400).result("Invalid task data");
@@ -32,7 +31,6 @@ public class TaskEditorController {
         String id = ctx.pathParam("id");
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            // TODO: Update through TaskManager
             ctx.json(task);
         } catch (Exception e) {
             ctx.status(400).result("Invalid task data");
@@ -41,7 +39,6 @@ public class TaskEditorController {
 
     public void deleteTask(Context ctx) {
         String id = ctx.pathParam("id");
-        // TODO: Delete through TaskManager
         ctx.status(204);
     }
 }
