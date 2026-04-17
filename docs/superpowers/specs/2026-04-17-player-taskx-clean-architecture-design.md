@@ -89,7 +89,45 @@ public class CommandReward implements Reward {
 }
 ```
 
-### 3.4 条件接口 (Condition)
+### 3.4 玩家进度 (TaskProgress)
+
+```java
+public class TaskProgress {
+    private UUID playerId;                    // 玩家 ID
+    private String taskId;                    // 任务 ID
+    private Map<String, Integer> objectiveProgress;  // 目标进度（objectiveId → 当前数量）
+    private TaskStatus status;               // 任务状态
+    private long acceptedAt;                 // 接受时间戳
+    private long completedAt;                // 完成时间戳（0 表示未完成）
+    private long claimedAt;                  // 领取奖励时间戳（0 表示未领取）
+
+    public enum TaskStatus {
+        IN_PROGRESS,   // 进行中
+        COMPLETED,      // 已完成（可领取奖励）
+        CLAIMED,        // 已领取奖励
+        ABANDONED       // 已放弃
+    }
+}
+```
+
+### 3.5 触发配置 (TriggerConfig)
+
+v1.0 采用**手动接取**模式，无需触发配置。保留此接口为后续扩展。
+
+```java
+public class TriggerConfig {
+    private TriggerType type;  // 触发类型
+    private Map<String, Object> params;  // 触发参数
+
+    public enum TriggerType {
+        MANUAL,     // 手动接取（v1.0）
+        AUTO,       // 自动接取（满足条件时）
+        COMMAND     // 命令触发
+    }
+}
+```
+
+### 3.6 条件接口 (Condition)
 
 ```java
 public interface Condition {
