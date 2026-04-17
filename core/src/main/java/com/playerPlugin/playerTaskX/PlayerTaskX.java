@@ -57,8 +57,8 @@ public final class PlayerTaskX extends JavaPlugin {
         this.rewardManager = new RewardManager();
         taskManager.loadTasks();
 
-        getCommand("task").setExecutor(new TaskCommand(taskManager));
-        getCommand("taskadmin").setExecutor(new TaskAdminCommand(taskManager));
+        ylib.getCommandManager().register(new TaskCommand(taskManager));
+        ylib.getCommandManager().register(new TaskAdminCommand(taskManager));
 
         getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
         getServer().getPluginManager().registerEvents(new BlockListener(taskManager), this);

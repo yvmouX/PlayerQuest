@@ -1,74 +1,56 @@
 package com.playerPlugin.playerTaskX.command;
 
-import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.api.model.TaskProgress;
+import cn.yvmou.ylib.command.annotation.Arg;
+import cn.yvmou.ylib.command.annotation.Command;
+import cn.yvmou.ylib.command.annotation.SubCommand;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class TaskCommand implements CommandExecutor, TabCompleter {
+@Command(name = "playertaskx", description = "PlayerTaskX player commands")
+public class TaskCommand {
+
     private final TaskManager taskManager;
 
     public TaskCommand(TaskManager taskManager) {
         this.taskManager = taskManager;
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    @SubCommand("")
+    public void help(CommandSender sender) {
+        sender.sendMessage("=== PlayerTaskX Commands ===");
+        sender.sendMessage("/task list - View available tasks");
+        sender.sendMessage("/task accept <id> - Accept a task");
+        sender.sendMessage("/task progress - View your progress");
+        sender.sendMessage("/task claim <id> - Claim reward");
+        sender.sendMessage("/task abandon <id> - Abandon task");
+    }
+
+    @SubCommand("list")
+    public void listTasks(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage("This command can only be used by players");
-            return true;
+            return;
         }
-
-        if (args.length == 0) {
-            sendHelp(player);
-            return true;
-        }
-
-        switch (args[0].toLowerCase()) {
-            case "list" -> listTasks(player);
-            case "accept" -> acceptTask(player, args);
-            case "progress" -> showProgress(player);
-            case "claim" -> claimReward(player, args);
-            case "abandon" -> abandonTask(player, args);
-            default -> sendHelp(player);
-        }
-        return true;
-    }
-
-    private void sendHelp(Player player) {
-        player.sendMessage("=== Task Commands ===");
-        player.sendMessage("/task list - View available tasks");
-        player.sendMessage("/task accept <id> - Accept a task");
-        player.sendMessage("/task progress - View your progress");
-        player.sendMessage("/task claim <id> - Claim reward");
-        player.sendMessage("/task abandon <id> - Abandon task");
-    }
-
-    private void listTasks(Player player) {
-        List<TaskDefinition> available = taskManager.getAvailableTasks(player);
+        List<?> available = taskManager.getAvailableTasks(player);
         if (available.isEmpty()) {
-            player.sendMessage("No tasks available");
+            sender.sendMessage("No tasks available");
             return;
         }
-        player.sendMessage("=== Available Tasks ===");
-        for (TaskDefinition task : available) {
-            player.sendMessage(task.getId() + ": " + task.getName() + " - " + task.getDescription());
+        sender.sendMessage("=== Available Tasks ===");
+        for (Object task : available) {
+            sender.sendMessage(task.toString());
         }
     }
 
-    private void acceptTask(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage("Usage: /task accept <id>");
+    @SubCommand("accept")
+    public void acceptTask(CommandSender sender, @Arg("id") String taskId) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be used by players");
             return;
         }
-        String taskId = args[1];
         if (taskManager.acceptTask(player, taskId)) {
             player.sendMessage("Task accepted!");
         } else {
@@ -76,16 +58,21 @@ public class TaskCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void showProgress(Player player) {
+    @SubCommand("progress")
+    public void showProgress(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be used by players");
+            return;
+        }
         player.sendMessage("=== Your Progress ===");
     }
 
-    private void claimReward(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage("Usage: /task claim <id>");
+    @SubCommand("claim")
+    public void claimReward(CommandSender sender, @Arg("id") String taskId) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be used by players");
             return;
         }
-        String taskId = args[1];
         if (taskManager.claimReward(player, taskId)) {
             player.sendMessage("Reward claimed!");
         } else {
@@ -93,21 +80,16 @@ public class TaskCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void abandonTask(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage("Usage: /task abandon <id>");
+    @SubCommand("abandon")
+    public void abandonTask(CommandSender sender, @Arg("id") String taskId) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("This command can only be used by players");
             return;
         }
-        String taskId = args[1];
         if (taskManager.abandonTask(player, taskId)) {
             player.sendMessage("Task abandoned.");
         } else {
             player.sendMessage("Failed to abandon task.");
         }
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return new ArrayList<>();
     }
 }
