@@ -590,22 +590,30 @@ import com.playerPlugin.playerTaskX.storage.mysql.*;
 import java.io.File;
 
 public class StorageFactory {
-    public static TaskStorage createTaskStorage(PTXStorgeType type, File dataFolder) {
+    public static TaskStorage createTaskStorage(PTXStorgeType type, File dataFolder, MySQLConfig mysqlConfig) {
         return switch (type) {
             case YAML -> new YamlTaskStorage(dataFolder);
             case SQLITE -> new SQLiteTaskStorage(dataFolder);
-            case MYSQL -> new MySQLTaskStorage(config);
+            case MYSQL -> new MySQLTaskStorage(mysqlConfig);
             default -> throw new IllegalArgumentException("Unknown storage type");
         };
     }
 
-    public static ProgressStorage createProgressStorage(PTXStorgeType type, File dataFolder) {
+    public static ProgressStorage createProgressStorage(PTXStorgeType type, File dataFolder, MySQLConfig mysqlConfig) {
         return switch (type) {
             case YAML -> new YamlProgressStorage(dataFolder);
             case SQLITE -> new SQLiteProgressStorage(dataFolder);
-            case MYSQL -> new MySQLProgressStorage(config);
+            case MYSQL -> new MySQLProgressStorage(mysqlConfig);
             default -> throw new IllegalArgumentException("Unknown storage type");
         };
+    }
+
+    public static class MySQLConfig {
+        public String host;
+        public int port;
+        public String database;
+        public String username;
+        public String password;
     }
 }
 ```
@@ -1095,8 +1103,21 @@ public class PlayerTaskX extends JavaPlugin {
         PTXStorgeType storageType = PTXStorgeType.valueOf(getConfig().getString("storage.type", "SQLITE"));
 
         // 2. 初始化存储
-        TaskStorage taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder());
-        ProgressStorage progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder());
+        TaskStorage taskStorage;
+        ProgressStorage progressStorage;
+        if (storageType == PTXStorgeType.MYSQL) {
+            StorageFactory.MySQLConfig mysqlConfig = new StorageFactory.MySQLConfig();
+            mysqlConfig.host = getConfig().getString("storage.mysql.host", "localhost");
+            mysqlConfig.port = getConfig().getInt("storage.mysql.port", 3306);
+            mysqlConfig.database = getConfig().getString("storage.mysql.database", "playertaskx");
+            mysqlConfig.username = getConfig().getString("storage.mysql.username", "root");
+            mysqlConfig.password = getConfig().getString("storage.mysql.password", "");
+            taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder(), mysqlConfig);
+            progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder(), mysqlConfig);
+        } else {
+            taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder());
+            progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder());
+        }
 
         // 3. 初始化管理器
         this.taskManager = new TaskManager(taskStorage, progressStorage);
@@ -1108,7 +1129,8 @@ public class PlayerTaskX extends JavaPlugin {
         getCommand("taskadmin").setExecutor(new TaskAdminCommand());
 
         // 5. 注册事件监听
-        getServer().getPluginManager().registerEvents(new TaskRouter(taskManager), this);
+        getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
+        getServer().getPluginManager().registerEvents(new BlockListener(taskManager), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
 
         // 6. 启动 Web 服务器
