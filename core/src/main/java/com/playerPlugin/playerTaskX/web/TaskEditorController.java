@@ -13,32 +13,45 @@ public class TaskEditorController {
         this.taskManager = taskManager;
     }
 
-    public void getAllTasks(Context ctx) {
+    public void getAll(Context ctx) {
         Collection<TaskDefinition> tasks = taskManager.getAllTasks();
-        ctx.json(tasks);
+        ctx.json(ApiResponse.success(tasks));
     }
 
-    public void createTask(Context ctx) {
+    public void getById(Context ctx) {
+        String id = ctx.pathParam("id");
+        TaskDefinition task = taskManager.getTask(id).orElse(null);
+        if (task == null) {
+            ctx.status(404).json(ApiResponse.error(404, "Task not found"));
+            return;
+        }
+        ctx.json(ApiResponse.success(task));
+    }
+
+    public void create(Context ctx) {
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            ctx.status(201).json(task);
+            // TODO: 调用 taskManager 保存
+            ctx.status(201).json(ApiResponse.success(task));
         } catch (Exception e) {
-            ctx.status(400).result("Invalid task data");
+            ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         }
     }
 
-    public void updateTask(Context ctx) {
+    public void update(Context ctx) {
         String id = ctx.pathParam("id");
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            ctx.json(task);
+            // TODO: 调用 taskManager 更新
+            ctx.json(ApiResponse.success(task));
         } catch (Exception e) {
-            ctx.status(400).result("Invalid task data");
+            ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         }
     }
 
-    public void deleteTask(Context ctx) {
+    public void delete(Context ctx) {
         String id = ctx.pathParam("id");
-        ctx.status(204);
+        // TODO: 调用 taskManager 删除
+        ctx.json(ApiResponse.success(null));
     }
 }
