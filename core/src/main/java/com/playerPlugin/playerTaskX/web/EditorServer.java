@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.web;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
-import io.javalin.http.Handler;
 import java.nio.file.Path;
 
 public class EditorServer {
@@ -21,9 +20,7 @@ public class EditorServer {
     }
 
     public void start(int port) {
-        this.javalin = Javalin.create(config -> {
-            config.staticFiles.add("/web");
-        })
+        this.javalin = Javalin.create()
             // 任务管理
             .get("/api/quests", ctx -> taskController.getAll(ctx))
             .get("/api/quests/:id", ctx -> taskController.getById(ctx))

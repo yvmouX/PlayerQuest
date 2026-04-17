@@ -16,6 +16,9 @@ import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public final class PlayerTaskX extends JavaPlugin {
     private TaskManager taskManager;
     private RewardManager rewardManager;

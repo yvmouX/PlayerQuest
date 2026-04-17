@@ -25,11 +25,6 @@ dependencies {
 
 }
 
-val copyFrontendBuild by tasks.registering(Copy::class) {
-    from("${project.rootDir}/task-editor-vue/dist")
-    into("${projectDir}/src/main/resources/web")
-}
-
-assemble {
-    dependsOn(copyFrontendBuild)
-}
+// 前端构建产物嵌入可以通过以下方式之一实现：
+// 1. 运行 npm run build 后手动复制 dist/* 到 src/main/resources/web/
+// 2. 或者修改 EditorServer 直接从 ${project.rootDir}/task-editor-vue/dist 读取静态文件
