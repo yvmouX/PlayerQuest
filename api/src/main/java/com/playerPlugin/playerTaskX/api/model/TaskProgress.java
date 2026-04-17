@@ -1,89 +1,58 @@
 package com.playerPlugin.playerTaskX.api.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
-import com.playerPlugin.playerTaskX.api.utils.TimeUtil;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TaskProgress {
-    private final UUID uuid;
+    private final UUID playerId;
     private final String taskId;
     private PTXTaskStatus status;
-    private final long createAt;
-    private long updateAt;
-    
-    // Key: objective ID, Value: current amount
+    private final long acceptedAt;
+    private long completedAt;
+    private long claimedAt;
     private final Map<String, Integer> objectiveProgress;
 
-    @JsonCreator
-    public TaskProgress(
-            @JsonProperty("uuid") UUID uuid,
-            @JsonProperty("taskId") String taskId,
-            @JsonProperty("status") PTXTaskStatus status,
-            @JsonProperty("createAt") Long createAt,
-            @JsonProperty("updateAt") Long updateAt,
-            @JsonProperty("objectiveProgress") Map<String, Integer> objectiveProgress
-    ) {
-        this.uuid = uuid;
+    public TaskProgress(UUID playerId, String taskId) {
+        this.playerId = playerId;
         this.taskId = taskId;
-        this.status = status != null ? status : PTXTaskStatus.IN_PROGRESS;
-        
-        long currentTime = System.currentTimeMillis();
-        this.createAt = createAt != null ? createAt : currentTime;
-        this.updateAt = updateAt != null ? updateAt : currentTime;
-        
-        this.objectiveProgress = objectiveProgress != null ? new ConcurrentHashMap<>(objectiveProgress) : new ConcurrentHashMap<>();
-    }
-    
-    // 快捷构造新进度
-    public TaskProgress(UUID uuid, String taskId) {
-        this(uuid, taskId, PTXTaskStatus.IN_PROGRESS, null, null, null);
+        this.status = PTXTaskStatus.IN_PROGRESS;
+        this.acceptedAt = System.currentTimeMillis();
+        this.completedAt = 0;
+        this.claimedAt = 0;
+        this.objectiveProgress = new ConcurrentHashMap<>();
     }
 
-    public UUID getUuid() {
-        return uuid;
-    }
+    public UUID getPlayerId() { return playerId; }
+    public String getTaskId() { return taskId; }
+    public PTXTaskStatus getStatus() { return status; }
+    public void setStatus(PTXTaskStatus status) { this.status = status; }
+    public long getAcceptedAt() { return acceptedAt; }
+    public long getCompletedAt() { return completedAt; }
+    public void setCompletedAt(long completedAt) { this.completedAt = completedAt; }
+    public long getClaimedAt() { return claimedAt; }
+    public void setClaimedAt(long claimedAt) { this.claimedAt = claimedAt; }
+    public Map<String, Integer> getObjectiveProgress() { return objectiveProgress; }
 
-    public String getTaskId() {
-        return taskId;
-    }
-
-    public PTXTaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(PTXTaskStatus status) {
-        this.status = status;
-        this.updateAt = System.currentTimeMillis();
-    }
-
-    public long getCreateAt() {
-        return createAt;
-    }
-
-    public long getUpdateAt() {
-        return updateAt;
-    }
-
-    public Map<String, Integer> getObjectiveProgress() {
-        return objectiveProgress;
-    }
-    
-    public int getObjectiveAmount(String objectiveId) {
+    public int getProgress(String objectiveId) {
         return objectiveProgress.getOrDefault(objectiveId, 0);
     }
-    
-    public void setObjectiveAmount(String objectiveId, int amount) {
+
+    public void setProgress(String objectiveId, int amount) {
         objectiveProgress.put(objectiveId, amount);
-        this.updateAt = System.currentTimeMillis();
     }
-    
-    public void incrementObjectiveAmount(String objectiveId, int amount) {
-        objectiveProgress.merge(objectiveId, amount, Integer::sum);
-        this.updateAt = System.currentTimeMillis();
+
+    public void incrementProgress(String objectiveId, int delta) {
+        objectiveProgress.merge(objectiveId, delta, Integer::sum);
+    }
+
+    public boolean isCompleted() {
+        return status == PTXTaskStatus.COMPLETED;
+    }
+
+    public boolean isClaimed() {
+        return status == PTXTaskStatus.CLAIMED;
     }
 }

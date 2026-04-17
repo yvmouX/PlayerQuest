@@ -1,46 +1,39 @@
 package com.playerPlugin.playerTaskX.storage;
 
-import cn.yvmou.ylib.api.logger.Logger;
-import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
-import com.playerPlugin.playerTaskX.api.storage.ObjectiveRepository;
-import com.playerPlugin.playerTaskX.api.storage.RewardRepository;
-import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
-import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.api.service.TaskStorage;
+import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
+import com.playerPlugin.playerTaskX.storage.yaml.*;
+import com.playerPlugin.playerTaskX.storage.sqlite.*;
+import com.playerPlugin.playerTaskX.storage.mysql.*;
+
+import java.io.File;
 
 public class StorageFactory {
-    private final PlayerTaskX plugin;
-    private final Logger log;
-    private final PTXStorgeType storgeType;
-
-    public StorageFactory(PlayerTaskX plugin, Logger log, PTXStorgeType storgeType) {
-        this.plugin = plugin;
-        this.log = log;
-        this.storgeType = storgeType;
-    }
-
-    public TaskProgressRepository getProgressRepository() {
-        return switch (storgeType) {
-            case SQLITE -> new SqliteTaskProgressRepository(plugin, log);
-            //case MYSQL -> new MySQLTaskProgressRepository(plugin, log);
-            case YAML -> {
-                log.warn("YAML storage for player progress is deprecated. Using SQLite instead.");
-                yield new SqliteTaskProgressRepository(plugin, log);
-            }
-            default -> throw new IllegalArgumentException("Invalid storage type: " + storgeType);
+    
+    public static TaskStorage createTaskStorage(PTXStorgeType type, File dataFolder, MySQLConfig mysqlConfig) {
+        return switch (type) {
+            case YAML -> new YamlTaskStorage(dataFolder);
+            case SQLITE -> new SQLiteTaskStorage(dataFolder);
+            case MYSQL -> new MySQLTaskStorage(mysqlConfig.host, mysqlConfig.port, mysqlConfig.database, mysqlConfig.username, mysqlConfig.password);
+            default -> throw new IllegalArgumentException("Unknown storage type: " + type);
         };
     }
 
-    public TaskRepository getRepository() {
-        // Task definitions are always stored in YAML for now
-        return new YamlTaskRepository(plugin, log);
+    public static ProgressStorage createProgressStorage(PTXStorgeType type, File dataFolder, MySQLConfig mysqlConfig) {
+        return switch (type) {
+            case YAML -> new YamlProgressStorage(dataFolder);
+            case SQLITE -> new SQLiteProgressStorage(dataFolder);
+            case MYSQL -> new MySQLProgressStorage(mysqlConfig.host, mysqlConfig.port, mysqlConfig.database, mysqlConfig.username, mysqlConfig.password);
+            default -> throw new IllegalArgumentException("Unknown storage type: " + type);
+        };
     }
 
-    public ObjectiveRepository getObjectiveRepository() {
-        return new YamlObjectiveRepository(plugin, log);
-    }
-
-    public RewardRepository getRewardRepository() {
-        return new YamlRewardRepository(plugin, log);
+    public static class MySQLConfig {
+        public String host;
+        public int port;
+        public String database;
+        public String username;
+        public String password;
     }
 }

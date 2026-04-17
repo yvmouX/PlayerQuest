@@ -1,50 +1,44 @@
 package com.playerPlugin.playerTaskX.web;
 
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.api.storage.TaskRepository;
+import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.http.Context;
-import io.javalin.openapi.HttpMethod;
-import io.javalin.openapi.OpenApi;
-import io.javalin.openapi.OpenApiContent;
-import io.javalin.openapi.OpenApiResponse;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Collection;
 
 public class TaskEditorController {
-    private final TaskRepository taskRepo;
+    private final TaskManager taskManager;
 
-    public TaskEditorController(TaskRepository taskRepo) {
-        this.taskRepo = taskRepo;
+    public TaskEditorController(TaskManager taskManager) {
+        this.taskManager = taskManager;
     }
 
-    @OpenApi(
-        path = "/api/taskDefList",
-        methods = HttpMethod.GET,
-        operationId = "getTaskDefList",
-        summary = "获取任务列表",
-        description = "获取系统中所有任务定义的列表",
-        tags = { "Task" },
-        responses = {
-            @OpenApiResponse(
-                status = "200",
-                description = "成功获取任务列表",
-                content = @OpenApiContent(
-                    from = TaskDefinition[].class,
-                    mimeType = "application/json"
-                )
-            ),
-            @OpenApiResponse(
-                status = "500",
-                description = "服务器内部错误"
-            )
+    public void getAllTasks(Context ctx) {
+        Collection<TaskDefinition> tasks = taskManager.getAllTasks();
+        ctx.json(tasks);
+    }
+
+    public void createTask(Context ctx) {
+        try {
+            TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
+            ctx.status(201).json(task);
+        } catch (Exception e) {
+            ctx.status(400).result("Invalid task data");
         }
-    )
-    public void getTaskDefList(@NotNull Context ctx) {
-        List<TaskDefinition> taskDefList = taskRepo.loadAll();
-        ctx.json(Map.of(
-                "data", taskDefList
-        ));
+    }
+
+    public void updateTask(Context ctx) {
+        String id = ctx.pathParam("id");
+        try {
+            TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
+            ctx.json(task);
+        } catch (Exception e) {
+            ctx.status(400).result("Invalid task data");
+        }
+    }
+
+    public void deleteTask(Context ctx) {
+        String id = ctx.pathParam("id");
+        ctx.status(204);
     }
 }
