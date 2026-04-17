@@ -36,6 +36,16 @@ public class TaskManager {
         return Optional.ofNullable(taskCache.get(taskId));
     }
 
+    public void saveTask(TaskDefinition task) {
+        taskStorage.save(task);
+        taskCache.put(task.getId(), task);
+    }
+
+    public void deleteTask(String taskId) {
+        taskStorage.delete(taskId);
+        taskCache.remove(taskId);
+    }
+
     public List<TaskDefinition> getAvailableTasks(Player player) {
         return taskCache.values().stream()
             .filter(task -> task.getConditions().stream().allMatch(c -> c.isMet(player)))
