@@ -142,4 +142,10 @@ public class TaskManager {
         progressStorage.save(player.getUniqueId(), progress);
         return true;
     }
+
+    public Collection<TaskProgress> getAllProgress() {
+        return playerProgressCache.values().stream()
+            .flatMap(map -> map.values().stream())
+            .toList();
+    }
 }

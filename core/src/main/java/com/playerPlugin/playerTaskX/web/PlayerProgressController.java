@@ -28,13 +28,27 @@ public class PlayerProgressController {
             if (offsetStr != null) offset = Integer.parseInt(offsetStr);
         } catch (NumberFormatException ignored) {}
 
-        // TODO: 实现真正的玩家进度查询
-        // 目前返回模拟数据
-        List<Map<String, Object>> mockData = new ArrayList<>();
-        
+        List<Map<String, Object>> allProgress = new ArrayList<>();
+        for (TaskProgress progress : taskManager.getAllProgress()) {
+            if (search != null && !progress.getPlayerUuid().toString().contains(search)) continue;
+            if (status != null && !progress.getStatus().name().equalsIgnoreCase(status)) continue;
+            
+            Map<String, Object> item = new HashMap<>();
+            item.put("playerUuid", progress.getPlayerUuid().toString());
+            item.put("taskId", progress.getTaskId());
+            item.put("status", progress.getStatus().name());
+            allProgress.add(item);
+        }
+
+        int total = allProgress.size();
+        int end = Math.min(offset + limit, allProgress.size());
+        List<Map<String, Object>> page = offset < allProgress.size() 
+            ? allProgress.subList(offset, end) 
+            : Collections.emptyList();
+
         Map<String, Object> result = new HashMap<>();
-        result.put("total", mockData.size());
-        result.put("data", mockData);
+        result.put("total", total);
+        result.put("data", page);
         
         ctx.json(ApiResponse.success(result));
     }
