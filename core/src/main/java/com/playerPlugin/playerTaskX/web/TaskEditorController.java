@@ -13,6 +13,7 @@ public class TaskEditorController {
         this.taskManager = taskManager;
     }
 
+
     public void getAll(Context ctx) {
         Collection<TaskDefinition> tasks = taskManager.getAllTasks();
         ctx.json(ApiResponse.success(tasks));
@@ -31,7 +32,7 @@ public class TaskEditorController {
     public void create(Context ctx) {
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            // TODO: 调用 taskManager 保存
+            taskManager.saveTask(task);
             ctx.status(201).json(ApiResponse.success(task));
         } catch (Exception e) {
             ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
@@ -42,7 +43,7 @@ public class TaskEditorController {
         String id = ctx.pathParam("id");
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
-            // TODO: 调用 taskManager 更新
+            taskManager.saveTask(task);
             ctx.json(ApiResponse.success(task));
         } catch (Exception e) {
             ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
@@ -51,7 +52,7 @@ public class TaskEditorController {
 
     public void delete(Context ctx) {
         String id = ctx.pathParam("id");
-        // TODO: 调用 taskManager 删除
+        taskManager.deleteTask(id);
         ctx.json(ApiResponse.success(null));
     }
 }
