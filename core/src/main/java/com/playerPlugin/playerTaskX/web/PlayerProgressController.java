@@ -16,8 +16,17 @@ public class PlayerProgressController {
     public void getAll(Context ctx) {
         String search = ctx.queryParam("search");
         String status = ctx.queryParam("status");
-        int limit = ctx.queryParam("limit", Integer.class).orElse(20);
-        int offset = ctx.queryParam("offset", Integer.class).orElse(0);
+        
+        int limit = 20;
+        int offset = 0;
+        try {
+            String limitStr = ctx.queryParam("limit");
+            if (limitStr != null) limit = Integer.parseInt(limitStr);
+        } catch (NumberFormatException ignored) {}
+        try {
+            String offsetStr = ctx.queryParam("offset");
+            if (offsetStr != null) offset = Integer.parseInt(offsetStr);
+        } catch (NumberFormatException ignored) {}
 
         // TODO: 实现真正的玩家进度查询
         // 目前返回模拟数据

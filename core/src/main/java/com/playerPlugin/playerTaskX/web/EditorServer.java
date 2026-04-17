@@ -16,14 +16,11 @@ public class EditorServer {
         this.taskController = new TaskEditorController(taskManager);
         this.rewardController = new RewardTemplateController(taskManager);
         this.progressController = new PlayerProgressController(taskManager);
-        this.statsController = new StatsController(taskManager);
+        this.statsController = new StatsController();
     }
 
     public void start(int port) {
-        this.javalin = Javalin.create(config -> {
-            config.staticFiles.enableDirectoryBrowsing = false;
-            config.cors = ctx -> ctx.allowHost("localhost", "127.0.0.1");
-        })
+        this.javalin = Javalin.create()
             // 任务管理
             .get("/api/quests", ctx -> taskController.getAll(ctx))
             .get("/api/quests/:id", ctx -> taskController.getById(ctx))

@@ -1,16 +1,14 @@
 package com.playerPlugin.playerTaskX.web;
 
-import com.playerPlugin.playerTaskX.api.model.reward.Reward;
+import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.http.Context;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RewardTemplateController {
-    private final Map<String, Reward> templateStore = new ConcurrentHashMap<>();
+    private final Map<String, RewardDefinition> templateStore = new ConcurrentHashMap<>();
     private final TaskManager taskManager;
 
     public RewardTemplateController(TaskManager taskManager) {
@@ -23,9 +21,11 @@ public class RewardTemplateController {
 
     public void save(Context ctx) {
         try {
-            Reward reward = ctx.bodyAsClass(Reward.class);
+            RewardDefinition reward = ctx.bodyAsClass(RewardDefinition.class);
             if (reward.getId() == null || reward.getId().isEmpty()) {
-                reward.setId(java.util.UUID.randomUUID().toString());
+                // Can't set id on immutable RewardDefinition, create new instance
+                String newId = java.util.UUID.randomUUID().toString();
+                reward = new RewardDefinition(newId, reward.getType(), reward.getContent(), reward.getAmount());
             }
             templateStore.put(reward.getId(), reward);
             ctx.status(201).json(ApiResponse.success(reward));
@@ -36,7 +36,7 @@ public class RewardTemplateController {
 
     public void delete(Context ctx) {
         String id = ctx.pathParam("id");
-        Reward removed = templateStore.remove(id);
+        RewardDefinition removed = templateStore.remove(id);
         if (removed == null) {
             ctx.status(404).json(ApiResponse.error(404, "Template not found"));
             return;
