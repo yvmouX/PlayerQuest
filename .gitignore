@@ -8,5 +8,17 @@
 *.bat
 
 **/build/
+**/bin/
 **/bin/.worktrees/
 .worktrees/
+
+# Eclipse
+.classpath
+.project
+api/.classpath
+api/.project
+api/.settings/
+core/.classpath
+core/.project
+core/.factorypath
+core/.settings/
