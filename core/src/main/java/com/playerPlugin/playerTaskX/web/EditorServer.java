@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import java.nio.file.Path;
 
 public class EditorServer {
     private final TaskEditorController taskController;
@@ -12,11 +13,11 @@ public class EditorServer {
     private final StatsController statsController;
     private Javalin javalin;
 
-    public EditorServer(TaskManager taskManager) {
+    public EditorServer(TaskManager taskManager, Path dataFolder) {
         this.taskController = new TaskEditorController(taskManager);
-        this.rewardController = new RewardTemplateController(taskManager);
+        this.rewardController = new RewardTemplateController(taskManager, dataFolder);
         this.progressController = new PlayerProgressController(taskManager);
-        this.statsController = new StatsController();
+        this.statsController = new StatsController(taskManager);
     }
 
     public void start(int port) {

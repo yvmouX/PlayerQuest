@@ -148,4 +148,8 @@ public class TaskManager {
             .flatMap(map -> map.values().stream())
             .toList();
     }
+
+    public Map<UUID, Map<String, TaskProgress>> getPlayerProgressCache() {
+        return playerProgressCache;
+    }
 }
