@@ -7,6 +7,7 @@ dependencies {
 
     implementation("org.xerial:sqlite-jdbc:3.42.0.0")
     compileOnly("mysql:mysql-connector-java:8.0.33")
+    implementation("com.zaxxer:HikariCP:4.0.3")
 
 
     implementation("com.alibaba.fastjson2:fastjson2:2.0.60")
