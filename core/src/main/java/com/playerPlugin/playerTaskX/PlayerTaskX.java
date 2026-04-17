@@ -95,7 +95,7 @@ public final class PlayerTaskX extends JavaPlugin {
         // 3、从 tasks 目录加载所有任务添加到缓存
         TaskRepository taskRepository = storageFactory.getRepository();
         TaskProgressRepository taskProgressRepository = storageFactory.getProgressRepository();
-        TaskCache cache = new TaskCache(log, scheduler, storageFactory);
+        TaskCache cache = new TaskCache(log, scheduler, storgeConfig, storageFactory);
 
         // 注册玩家加入事件
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(log, cache, taskProgressRepository), this);

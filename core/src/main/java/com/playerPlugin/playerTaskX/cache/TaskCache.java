@@ -9,6 +9,7 @@ import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.storage.TaskProgressRepository;
+import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 缓存管理类
@@ -31,7 +33,7 @@ public class TaskCache {
     private final Logger log;
     private final UniversalScheduler scheduler;
     private final TaskProgressRepository progressRepo;
-    private final StorageFactory storageFactory;
+    private final StorgeConfiguration storgeConfiguration;
 
     // 周期性保存任务句柄
     private UniversalTask autoSaveTask;
@@ -49,14 +51,13 @@ public class TaskCache {
     private final List<RewardDefinition> rewardDefs;
 
     // 在线玩家进度缓存: UUID -> List<TaskProgress>
-    // 使用 ConcurrentHashMap 保证线程安全
     private final ConcurrentMap<UUID, List<TaskProgress>> progressByUUID = new ConcurrentHashMap<>();
 
 
-    public TaskCache(Logger log, UniversalScheduler scheduler, StorageFactory storageFactory) {
+    public TaskCache(Logger log, UniversalScheduler scheduler, StorgeConfiguration storgeConfiguration, StorageFactory storageFactory) {
         this.log = log;
         this.scheduler = scheduler;
-        this.storageFactory = storageFactory;
+        this.storgeConfiguration = storgeConfiguration;
 
         // 从任务仓库获取所有已定义任务
         taskDefs = storageFactory.getRepository().loadAll();
@@ -69,11 +70,12 @@ public class TaskCache {
         // 从奖励仓库获取所有已定义奖励
         rewardDefs = storageFactory.getRewardRepository().loadAll();
         log.debug("已将 " + rewardDefs.size() + " 个奖励定义添加到缓存");
+
         // 获取进度仓库
         progressRepo = storageFactory.getProgressRepository();
         
-        // 启动自动保存任务 (例如每5分钟)
-        startAutoSave(6000L, 6000L); // 300秒 = 6000 ticks
+        // 启动自动保存任务
+        startAutoSave();
     }
 
     // ================== 1. 任务定义 (TaskDefinition) 相关 ==================
@@ -149,20 +151,12 @@ public class TaskCache {
     }
 
     // ================== 2. 玩家进度 (TaskProgress) 相关 ==================
-    
-    // ------ 核心操作：加载与卸载 ------
 
-    /**
-     * 玩家加入时调用：将数据加载到缓存
-     */
     public void loadPlayer(UUID uuid, List<TaskProgress> data) {
         progressByUUID.put(uuid, new CopyOnWriteArrayList<>(data));
         log.debug("已加载玩家 " + uuid + " 的 " + data.size() + " 个任务进度到缓存");
     }
 
-    /**
-     * 玩家退出时调用：保存数据并移除缓存
-     */
     public void unloadPlayer(UUID uuid) {
         List<TaskProgress> data = progressByUUID.remove(uuid);
         if (data != null) {
@@ -177,32 +171,6 @@ public class TaskCache {
             });
         }
     }
-
-    // ------ 读写操作 ------
-
-//    public void progressToCache(TaskProgress taskProgress) {
-//        UUID uuid = taskProgress.getUuid();
-//        // 只有在线玩家（在缓存中）才更新
-//        List<TaskProgress> list = progressByUUID.get(uuid);
-//        if (list != null) {
-//            // 简单去重：如果 list 中已存在该任务（根据 equals），则先移除旧的
-//            // 注意：TaskProgress 需要正确实现 equals/hashCode
-//            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskProgress.getTaskDefinition().getId()));
-//            list.add(taskProgress);
-//            log.debug("更新玩家 " + uuid + " 缓存中的任务进度: " + taskProgress.getTaskDefinition().getId());
-//        } else {
-//             // 如果玩家不在线（不在缓存中），直接忽略或打个警告
-//             // 或者根据需求决定是否要临时加载（建议不要，保持简单）
-//             log.debug("尝试更新不在线玩家 " + uuid + " 的缓存，已忽略");
-//        }
-//    }
-//
-//    public void removeProgressFromCache(UUID uuid, String taskId) {
-//        List<TaskProgress> list = progressByUUID.get(uuid);
-//        if (list != null) {
-//            list.removeIf(tp -> tp.getTaskDefinition().getId().equals(taskId));
-//        }
-//    }
 
     @Nullable
     public List<TaskProgress> getProgressList(UUID uuid) {
@@ -221,9 +189,14 @@ public class TaskCache {
     
     // ================== 自动保存逻辑 ==================
 
-    private void startAutoSave(long initialDelayTicks, long periodTicks) {
+    private void startAutoSave() {
+        if (!storgeConfiguration.getCache_enabled()) {
+            return;
+        }
+
         if (running.getAndSet(true)) return;
 
+        long periodTicks = storgeConfiguration.getCache_ttl() * 20L;
         autoSaveTask = scheduler.runTimerAsync(() -> {
             try {
                 log.debug("开始自动保存所有在线玩家数据...");
@@ -242,9 +215,35 @@ public class TaskCache {
             } catch (Exception e) {
                 log.error("自动保存任务发生异常", e);
             }
-        }, initialDelayTicks, periodTicks);
+        }, periodTicks, periodTicks);
         
-        log.info("自动保存任务已启动，间隔: " + periodTicks + " ticks");
+        log.info("自动保存任务已启动，间隔: " + storgeConfiguration.getCache_ttl() + " 秒 (" + periodTicks + " ticks)");
+    }
+
+    /**
+     * 重新加载自动保存任务，使其响应最新的配置
+     * - 当 cache_enabled 关闭时，取消定时任务
+     * - 当 ttl 变更时，重建定时任务
+     */
+    public void reloadAutoSave() {
+        // 先取消现有任务
+        if (autoSaveTask != null) {
+            try {
+                autoSaveTask.cancel();
+            } catch (Exception ignored) {
+            }
+            autoSaveTask = null;
+        }
+        running.set(false);
+
+        // 根据最新配置决定是否启动
+        if (!storgeConfiguration.getCache_enabled()) {
+            log.info("自动保存已根据最新配置禁用，跳过启动");
+            return;
+        }
+
+        // 重新启动，使用最新 ttl
+        startAutoSave();
     }
     
     public void shutdown() {

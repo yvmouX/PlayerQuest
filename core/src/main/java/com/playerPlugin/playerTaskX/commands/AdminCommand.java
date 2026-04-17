@@ -418,18 +418,23 @@ public class AdminCommand {
                 .map(TaskDefinition::getId)
                 .toList();
     }
+    // 第二种写法
+    // @SubCommand(value = "reload all", permission = "playertaskx.admin.reload_all")
+    // public void reloadCommand(CommandSender sender) {
+    //     logger.to(sender).info("Reloading all");
+    // }
 
-    @SubCommand(value = "reload all", permission = "playertaskx.admin.reload_all")
-    public void reloadCommand(CommandSender sender) {
-        logger.to(sender).info("Reloading all");
-    }
-
-    private enum ReloadType {
-        editor, command, storage
-    }
+    // private enum ReloadType {
+    //     editor, command, storage
+    // }
 
     @SubCommand(value = "reload", permission = "playertaskx.admin.reload")
     public void reload(CommandSender sender, @Arg("type") ReloadType type) {
+        if (type == null) {
+            logger.to(sender).info("Please specify a reload type: editor, command, storage, all");
+            return;
+        }
+        
         switch (type) {
             case editor:
                 logger.to(sender).info("Reloading editor");
@@ -446,8 +451,22 @@ public class AdminCommand {
                 logger.to(sender).info("Reloading storage");
                 configurationManager.reloadConfiguration(StorgeConfiguration.class);
                 logger.to(sender).info("Configuration reloaded!");
+                // 使缓存的自动保存任务响应最新配置
+                cache.reloadAutoSave();
+                break;
+            case all:
+                logger.to(sender).info("Reloading all");
+                configurationManager.reloadConfiguration(EditorConfiguration.class);
+                commandManager.reload();
+                configurationManager.reloadConfiguration(StorgeConfiguration.class);
+                cache.reloadAutoSave();
+                logger.to(sender).info("All configurations reloaded!");
                 break;
         }
+    }
+
+    private enum ReloadType {
+        editor, command, storage, all
     }
 
     private void sendHelp(CommandSender sender) {
@@ -471,7 +490,7 @@ public class AdminCommand {
         logger.to(sender).info("/ptxadmin progress complete <player> <taskID> - 完成任务");
         logger.to(sender).info("/ptxadmin progress reset <player> <taskID> - 重置任务");
         logger.to(sender).info("/ptxadmin progress info <player> <taskID> - 查看任务信息");
-        logger.to(sender).info("/ptxadmin reload <type> - 重载插件配置");
+        logger.to(sender).info("/ptxadmin reload <type> - 重载插件配置 (type: editor, command, storage, all)");
     }
 
     private boolean hasObjective(String taskID) {

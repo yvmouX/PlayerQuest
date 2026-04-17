@@ -5,36 +5,12 @@ import cn.yvmou.ylib.api.config.ConfigValue;
 
 @AutoConfiguration(configFile = "storage.yml")
 public class StorgeConfiguration {
-    /**
-     * storage-method:
-  player-data: yaml
-  quest-data: yaml
-sqlite:
-  file: data.db
-mysql:
-  host: "localhost"
-  port: 3306
-  database: "quest"
-  username: "root"
-  password: ""
-  use-ssl: false
-  pool-size: 10
-connection-pool:
-  max-pool-size: 20
-  min-idle: 5
-  connection-timeout: 30000
-  idle-timeout: 600000
-  max-lifetime: 1800000
-cache:
-  enabled: true
-  ttl: 300
 
-     */
     @ConfigValue(
         value = "storage-method.player-data",
-        description = "储存玩家数据的方法。yaml 或 sqlite 或 mysql。"
+        description = "储存玩家数据的方法。sqlite 或 mysql。"
     )
-    private String storageMethod_playerData = "yaml";
+    private String storageMethod_playerData = "sqlite";
 
     @ConfigValue(
         value = "storage-method.quest-data",
@@ -399,7 +375,7 @@ cache:
      * 获取
      * @return cache_enabled
      */
-    public boolean isCache_enabled() {
+    public boolean getCache_enabled() {
         return cache_enabled;
     }
 

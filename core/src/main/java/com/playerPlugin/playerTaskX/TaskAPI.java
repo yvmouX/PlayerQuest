@@ -50,6 +50,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             taskRepo.save(taskDef);
             cache.addTaskDef(taskDef);
             log.info("Task with ID " + taskDef.getId() + " created successfully");
@@ -67,11 +68,22 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             taskRepo.delete(taskID);
             cache.removeTaskDef(taskDef);
             log.info("Task with ID " + taskDef.getId() + " deleted successfully");
             return true;
         });
+    }
+
+    public Optional<TaskDefinition> getTaskDefinition(String taskId) {
+        return cache.getTaskDef(taskId);
+    }
+    public Optional<TaskDefinition> getTaskDefFormDb(String taskID) {
+        return taskRepo.findById(taskID);
+    }
+    public List<TaskProgress> getPlayerTasks(Player player) {
+        return progressRepo.findAll(player);
     }
 
     // --- Objective Definition Management ---
@@ -85,6 +97,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             objectiveRepo.save(objDef);
             cache.addObjectiveDef(objDef);
             log.info("Objective with ID " + objDef.getId() + " created successfully");
@@ -102,6 +115,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             objectiveRepo.delete(objID);
             cache.removeObjectiveDef(objDef);
             log.info("Objective with ID " + objDef.getId() + " deleted successfully");
@@ -111,6 +125,9 @@ public class TaskAPI {
 
     public Optional<ObjectiveDefinition> getObjectiveDefinition(String objId) {
         return cache.getObjectiveDef(objId);
+    }
+    public Optional<ObjectiveDefinition> getObjectiveDefFormDb(String objId) {
+        return objectiveRepo.findById(objId);
     }
 
     // --- Reward Definition Management ---
@@ -124,6 +141,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             rewardRepo.save(rewardDef);
             cache.addRewardDef(rewardDef);
             log.info("Reward with ID " + rewardDef.getId() + " created successfully");
@@ -141,6 +159,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             rewardRepo.delete(rewardID);
             cache.removeRewardDef(rewardDef);
             log.info("Reward with ID " + rewardDef.getId() + " deleted successfully");
@@ -150,6 +169,9 @@ public class TaskAPI {
 
     public Optional<RewardDefinition> getRewardDefinition(String rewardId) {
         return cache.getRewardDef(rewardId);
+    }
+    public Optional<RewardDefinition> getRewardDefFormDb(String rewardId) {
+        return rewardRepo.findById(rewardId);
     }
 
     // --- Progress Management ---
@@ -162,6 +184,7 @@ public class TaskAPI {
                 return false;
             }
 
+            // action
             progressRepo.create(player, taskDefOpt.get());
             log.info("Progress for task " + taskId + " created successfully");
             return true;
@@ -171,7 +194,8 @@ public class TaskAPI {
     public boolean deleteProgress(Player player, String taskId) {
         return safeExecute("deleting task progress", () -> {
             if (getTaskProgress(player, taskId).isEmpty()) return false;
-            
+
+            // action
             progressRepo.delete(player.getUniqueId(), taskId);
             log.info("Task progress deleted for player " + player.getName() + " task " + taskId);
             return true;
@@ -277,13 +301,7 @@ public class TaskAPI {
                 .orElse(false);
     }
 
-    public List<TaskProgress> getPlayerTasks(Player player) {
-        return progressRepo.findAll(player);
-    }
-    
-    public Optional<TaskDefinition> getTaskDefinition(String taskId) {
-        return cache.getTaskDef(taskId);
-    }
+
 
     private boolean isInvalidId(String id) {
         if (id == null || id.isEmpty()) {
