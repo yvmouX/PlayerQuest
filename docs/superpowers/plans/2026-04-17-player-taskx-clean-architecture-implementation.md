@@ -360,7 +360,9 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TaskProgress {
     private final UUID playerId;
@@ -369,6 +371,8 @@ public class TaskProgress {
     private final long acceptedAt;
     private long completedAt;
     private long claimedAt;
+    // Key: objectiveId, Value: current progress amount
+    private final Map<String, Integer> objectiveProgress;
 
     public TaskProgress(UUID playerId, String taskId) {
         this.playerId = playerId;
@@ -377,6 +381,7 @@ public class TaskProgress {
         this.acceptedAt = System.currentTimeMillis();
         this.completedAt = 0;
         this.claimedAt = 0;
+        this.objectiveProgress = new ConcurrentHashMap<>();
     }
 
     public UUID getPlayerId() { return playerId; }
@@ -384,6 +389,19 @@ public class TaskProgress {
     public PTXTaskStatus getStatus() { return status; }
     public void setStatus(PTXTaskStatus status) { this.status = status; }
     public long getAcceptedAt() { return acceptedAt; }
+    public Map<String, Integer> getObjectiveProgress() { return objectiveProgress; }
+
+    public int getProgress(String objectiveId) {
+        return objectiveProgress.getOrDefault(objectiveId, 0);
+    }
+
+    public void setProgress(String objectiveId, int amount) {
+        objectiveProgress.put(objectiveId, amount);
+    }
+
+    public void incrementProgress(String objectiveId, int delta) {
+        objectiveProgress.merge(objectiveId, delta, Integer::sum);
+    }
     public long getCompletedAt() { return completedAt; }
     public void setCompletedAt(long completedAt) { this.completedAt = completedAt; }
     public long getClaimedAt() { return claimedAt; }
@@ -795,9 +813,83 @@ public class PlayerJoinHandler implements Listener {
 
 ---
 
+#### Task 15: 创建 EntityListener（杀怪事件）
+
+**Files:**
+- Create: `core/src/main/java/com/playerPlugin/playerTaskX/listener/EntityListener.java`
+
+- [ ] **Step 1: 创建 EntityListener**
+
+```java
+package com.playerPlugin.playerTaskX.listener;
+
+import com.playerPlugin.playerTaskX.manager.TaskManager;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
+
+public class EntityListener implements Listener {
+    private final TaskManager taskManager;
+
+    public EntityListener(TaskManager taskManager) {
+        this.taskManager = taskManager;
+    }
+
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent event) {
+        Entity entity = event.getEntity();
+        Player killer = entity.getKiller();
+        if (killer == null) return;
+
+        taskManager.handleEvent(killer, event);
+    }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+---
+
+#### Task 16: 创建 BlockListener（破坏方块事件）
+
+**Files:**
+- Create: `core/src/main/java/com/playerPlugin/playerTaskX/listener/BlockListener.java`
+
+- [ ] **Step 1: 创建 BlockListener**
+
+```java
+package com.playerPlugin.playerTaskX.listener;
+
+import com.playerPlugin.playerTaskX.manager.TaskManager;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+
+public class BlockListener implements Listener {
+    private final TaskManager taskManager;
+
+    public BlockListener(TaskManager taskManager) {
+        this.taskManager = taskManager;
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        taskManager.handleEvent(player, event);
+    }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+---
+
 ### Phase 6: 命令
 
-#### Task 15: 实现 /task 命令
+#### Task 17: 实现 /task 命令
 
 **Files:**
 - Create: `core/src/main/java/com/playerPlugin/playerTaskX/command/TaskCommand.java`
