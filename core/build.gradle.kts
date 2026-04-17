@@ -24,3 +24,12 @@ dependencies {
 
 
 }
+
+val copyFrontendBuild by tasks.registering(Copy::class) {
+    from("${project.rootDir}/task-editor-vue/dist")
+    into("${projectDir}/src/main/resources/web")
+}
+
+assemble {
+    dependsOn(copyFrontendBuild)
+}

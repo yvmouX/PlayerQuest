@@ -21,7 +21,9 @@ public class EditorServer {
     }
 
     public void start(int port) {
-        this.javalin = Javalin.create()
+        this.javalin = Javalin.create(config -> {
+            config.staticFiles.add("/web");
+        })
             // 任务管理
             .get("/api/quests", ctx -> taskController.getAll(ctx))
             .get("/api/quests/:id", ctx -> taskController.getById(ctx))
