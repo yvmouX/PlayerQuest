@@ -1,0 +1,17 @@
+auto-save-interval: 5
+auto-backup: true
+backup-keep-days: 7
+
+# 多语言配置
+locales:
+  # 默认语言
+  default: "zh-CN"
+
+  # 可用语言
+  available:
+    - "zh-CN"
+    - "en-US"
+    - "ja-JP"
+
+  # 语言文件目录
+  directory: "locales"

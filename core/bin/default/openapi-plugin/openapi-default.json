@@ -1,0 +1,84 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": ""
+  },
+  "paths": {
+    "/api/taskDefList": {
+      "get": {
+        "tags": [
+          "Task"
+        ],
+        "summary": "获取任务列表",
+        "description": "获取系统中所有任务定义的列表",
+        "operationId": "getTaskDefList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功获取任务列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskDefinition"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误"
+          }
+        },
+        "deprecated": false,
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PTXTaskType": {
+        "type": "string",
+        "enum": [
+          "CYCLE",
+          "FOREVER",
+          "LIMIT",
+          "NONE",
+          "TIMER"
+        ]
+      },
+      "TaskDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/PTXTaskType"
+          }
+        }
+      }
+    }
+  }
+}
