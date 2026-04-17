@@ -7,3 +7,10 @@ folia-supported: true
 softdepend:
   - PlayerPoints
   - Vault
+commands:
+  task:
+    description: Player task commands
+    usage: /<command> [args]
+  taskadmin:
+    description: Admin task commands
+    usage: /<command> [args]
