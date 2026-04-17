@@ -65,7 +65,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
 
         int editorPort = getConfig().getInt("editor.port", 8080);
-        this.editorServer = new EditorServer(taskManager);
+        this.editorServer = new EditorServer(taskManager, getDataFolder().toPath());
         editorServer.start(editorPort);
 
         log.info("PlayerTaskX enabled - Storage: " + storageType);
