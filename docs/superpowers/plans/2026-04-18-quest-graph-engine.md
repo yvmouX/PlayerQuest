@@ -445,6 +445,7 @@ Create `core/src/main/java/com/playerPlugin/playerTaskX/storage/mysql/MySQLSessi
 package com.playerPlugin.playerTaskX.storage.mysql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.storage.SessionStorage;
 import com.zaxxer.hikari.HikariDataSource;
@@ -601,8 +602,12 @@ public class MySQLSessionStorage implements SessionStorage {
             session.updateContext(context);
         }
         
-        // Restore timestamps
+        // Restore timestamps and status
         session.setLastActiveTime(rs.getLong("last_active"));
+        String statusStr = rs.getString("status");
+        if (statusStr != null) {
+            session.setStatus(PTXTaskStatus.valueOf(statusStr));
+        }
         
         return session;
     }
@@ -772,6 +777,10 @@ public class SQLiteSessionStorage implements SessionStorage {
         }
         
         session.setLastActiveTime(rs.getLong("last_active"));
+        String statusStr = rs.getString("status");
+        if (statusStr != null) {
+            session.setStatus(com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus.valueOf(statusStr));
+        }
         return session;
     }
 }
@@ -1166,7 +1175,16 @@ public class CompletionNodeHandler implements NodeHandler {
         
         switch (type) {
             case "item" -> {
-                // Parse item from value and give to player
+                if (value instanceof String materialName) {
+                    try {
+                        org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
+                        int amount = ((Number) rewardData.getOrDefault("amount", 1)).intValue();
+                        player.getInventory().addItem(new org.bukkit.inventory.ItemStack(material, amount));
+                    } catch (IllegalArgumentException e) {
+                        org.slf4j.LoggerFactory.getLogger(CompletionNodeHandler.class)
+                            .warn("Invalid material for reward: {}", value);
+                    }
+                }
             }
             case "xp" -> {
                 if (value instanceof Number) {
@@ -1174,10 +1192,17 @@ public class CompletionNodeHandler implements NodeHandler {
                 }
             }
             case "money" -> {
-                // Integrate with economy plugin
+                // Economy plugin integration - requires Vault or similar
+                // Implementation: EconomyResponse response = economy.depositPlayer(player, amount);
+                org.slf4j.LoggerFactory.getLogger(CompletionNodeHandler.class)
+                    .info("Money reward of {} pending economy plugin integration", value);
             }
             case "command" -> {
-                // Execute command as player
+                if (value instanceof String command) {
+                    if (command.startsWith("/")) command = command.substring(1);
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                        command.replace("%player%", player.getName()));
+                }
             }
         }
     }
