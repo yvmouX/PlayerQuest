@@ -8,6 +8,15 @@
 
 **Tech Stack:** Vue 3, TypeScript, Vue Flow
 
+**执行顺序注意:**
+1. Task 1 (类型定义)
+2. Task 5 (useQuestEditor - addNode 和连线验证)
+3. **Task 7 (flowNodes 映射修复)** ← 必须在 Task 2-4 之前！
+4. Task 2, 3, 4 (节点组件)
+5. Task 6 (NodePropertiesPanel)
+6. Task 8 (侧边栏)
+7. Task 9 (集成测试)
+
 ---
 
 ## 文件结构
@@ -99,6 +108,8 @@ git commit -m "feat(editor): add Condition, Branch, Action types for phase 2"
 ```
 
 ---
+
+**注意:** Task 7 (flowNodes 映射修复) 必须在 Task 2-4 之前完成，否则新节点无法正确渲染
 
 ## Task 2: 创建 ConditionNode.vue
 
@@ -652,6 +663,8 @@ function updateConditionParams(cond: ConditionItem) {
       cond.params = { permission: '' }
       break
     case 'HAS_ITEM':
+      cond.params = { itemId: '', count: 1 }
+      break
     case 'KILL_MOB':
       cond.params = { mobType: '', count: 1 }
       break
