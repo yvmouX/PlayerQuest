@@ -735,7 +735,12 @@ git commit -m "feat(editor): add NodePropertiesPanel supporting all 3 node types
 ```
 
 **清理遗留文件:**
-- Task 完成后可删除 `QuestNode.vue` 和旧的 `PropertiesPanel.vue`（它们已被新组件替代）
+Task 完成后，在 Task 5 提交中添加删除操作:
+
+```bash
+git rm task-editor-vue/src/components/editor/QuestNode.vue task-editor-vue/src/components/editor/PropertiesPanel.vue
+git commit -m "refactor(editor): remove deprecated QuestNode and PropertiesPanel"
+```
 
 ---
 
@@ -755,7 +760,7 @@ export interface QuestNodeData {
 }
 ```
 
-- [ ] **Step 2: 修改 addEdge 函数添加完整验证**
+- [ ] **Step 2: 修改 addEdge 函数添加完整验证**（同 Task 6 Step 2 代码）
 
 用以下完整实现替换 `useQuestEditor.ts` 中的 `addEdge` 函数:
 
