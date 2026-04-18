@@ -368,6 +368,23 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
 }
 
+function getLocalizedText(obj: Record<string, string> | string | undefined, fallback: string = ''): string {
+  if (!obj) return fallback
+  if (typeof obj === 'string') return obj
+  return obj['zh-CN'] || obj['en-US'] || fallback
+}
+
+function questToBackendFormat(quest: Quest): any {
+  return {
+    id: quest.id,
+    name: getLocalizedText(quest.name),
+    description: getLocalizedText(quest.description),
+    taskType: quest.type || 'FOREVER',
+    objectives: quest.objectives || [],
+    rewards: quest.rewards || []
+  }
+}
+
 async function handleSave() {
   const tempIds = [...unsavedQuestIds.value]
   if (tempIds.length > 0) {
@@ -376,7 +393,7 @@ async function handleSave() {
       if (!quest) continue
       
       try {
-        const created = await QuestService.create(quest)
+        const created = await QuestService.create(questToBackendFormat(quest))
         if (created.code === 0 && created.data) {
           const newId = created.data.id
           const oldId = tempId
