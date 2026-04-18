@@ -1742,8 +1742,24 @@ public class StateNodeHandler implements NodeHandler {
 }
 
 // SubtaskNodeHandler.java - handles nested quests
+package com.playerPlugin.playerTaskX.handler;
+
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
+import com.playerPlugin.playerTaskX.api.model.GraphNode;
+import com.playerPlugin.playerTaskX.api.model.NodeConnection;
+import com.playerPlugin.playerTaskX.api.model.QuestGraph;
+import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
+import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
+import org.bukkit.event.Event;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 public class SubtaskNodeHandler implements NodeHandler {
-    private final com.playerPlugin.playerTaskX.engine.QuestSessionManager sessionManager;
+    private final QuestSessionManager sessionManager;
     
     public SubtaskNodeHandler(com.playerPlugin.playerTaskX.engine.QuestSessionManager sessionManager) {
         this.sessionManager = sessionManager;
@@ -1951,11 +1967,6 @@ public class PlayerTaskX extends JavaPlugin {
             new GraphEventListener(questEngine), this);
     }
     
-    // Task 13 will add: taskManager.setQuestEngine(questEngine);
-    private void injectQuestEngineIntoTaskManager() {
-        // Placeholder - implement after Task 13 adds setQuestEngine to TaskManager
-    }
-    
     private void registerHandlers(NodeHandlerRegistry registry) {
         registry.register(new StartNodeHandler());
         registry.register(new TaskNodeHandler());
@@ -2009,11 +2020,40 @@ public class TaskManager {
     }
     
     public void handleEvent(Player player, Event event) {
-        // Delegate to quest engine if available
+        // Delegate to quest engine for graph-based tasks
         if (questEngine != null) {
             questEngine.handleEvent(player, event);
         }
-        // Legacy handling for non-graph tasks continues below...
+        
+        // Legacy handling for non-graph tasks (tasks without QuestGraph)
+        Map<String, TaskProgress> progressMap = playerProgressCache.get(player.getUniqueId());
+        if (progressMap == null) return;
+        
+        for (TaskProgress progress : progressMap.values()) {
+            if (progress.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
+            
+            TaskDefinition task = taskCache.get(progress.getTaskId());
+            if (task == null || task.hasGraph()) continue;  // Skip graph-based tasks
+            
+            // Legacy objective matching
+            for (Objective objective : task.getObjectives()) {
+                if (objective.matchesEvent(event)) {
+                    objective.applyProgress(player, 1);
+                    int currentProgress = progress.getProgress(objective.getId());
+                    progress.setProgress(objective.getId(), currentProgress + 1);
+                    
+                    if (objective.isCompleted(player)) {
+                        boolean allCompleted = task.getObjectives().stream()
+                            .allMatch(obj -> obj.isCompleted(player));
+                        if (allCompleted) {
+                            progress.setStatus(PTXTaskStatus.COMPLETED);
+                            progress.setCompletedAt(System.currentTimeMillis());
+                        }
+                    }
+                    asyncSaveProgress(player.getUniqueId(), progress);
+                }
+            }
+        }
     }
 }
 ```
@@ -2040,7 +2080,39 @@ git commit -m "refactor(engine): integrate QuestEngine into TaskManager"
 
 ---
 
-### Task 14: Refactor EditorServer (remove GraphManager)
+### Task 14: Disable old EntityListener
+
+**Files:**
+- Modify: `core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java`
+
+- [ ] **Step 1: Comment out old EntityListener registration**
+
+In `onEnable()`, comment out the old EntityListener since GraphEventListener replaces it:
+
+```java
+// Register event listener
+getServer().getPluginManager().registerEvents(
+    new GraphEventListener(questEngine), this);
+
+// OLD listener - now handled by GraphEventListener:
+// getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
+```
+
+- [ ] **Step 2: Run build**
+
+Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
+Expected: BUILD SUCCESSFUL
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java
+git commit -m "chore: disable old EntityListener in favor of GraphEventListener"
+```
+
+---
+
+### Task 15: Refactor EditorServer (remove GraphManager)
 
 **Files:**
 - Modify: `core/src/main/java/com/playerPlugin/playerTaskX/web/EditorServer.java`
