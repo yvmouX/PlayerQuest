@@ -3,6 +3,7 @@
     <Header title="任务编辑器">
       <template #actions>
         <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
+        <button @click="showHelpDialog = true" class="btn-outline">帮助</button>
         <button @click="handleSave" class="btn-primary">保存</button>
         <button @click="handleAddQuest" class="btn-secondary">新建任务</button>
       </template>
@@ -136,6 +137,11 @@
         @close="showExamplesDialog = false"
         @load="handleLoadExamples"
       />
+      
+      <EditorHelpDialog
+        v-if="showHelpDialog"
+        @close="showHelpDialog = false"
+      />
     </div>
   </div>
 </template>
@@ -163,6 +169,7 @@ import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
+import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {QuestService} from '../services/api'
 import type {Quest, EditorNodeData, TaskNodeData} from '../types'
@@ -184,6 +191,7 @@ const { project } = useVueFlow()
 
 const showCreateDialog = ref(false)
 const showExamplesDialog = ref(false)
+const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
