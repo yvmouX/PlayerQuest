@@ -403,16 +403,26 @@ const conditionNodes = computed(() => {
 const editedNode = ref<NodeData>(createDefaultNode())
 
 function createDefaultNode(): NodeData {
-  return {
+  const node = {
     type: 'start',
     name: '',
     description: ''
-  } as StartNodeData
+  } as NodeData
+  return node
 }
 
 watch(() => props.selectedNode, (node) => {
   if (node) {
     editedNode.value = JSON.parse(JSON.stringify(node))
+    if (editedNode.value.type === 'task') {
+      const taskNode = editedNode.value as TaskNodeData
+      if (typeof taskNode.name === 'string') {
+        taskNode.name = { 'zh-CN': taskNode.name, 'en-US': '' }
+      }
+      if (typeof taskNode.description === 'string') {
+        taskNode.description = { 'zh-CN': taskNode.description, 'en-US': '' }
+      }
+    }
   }
 }, { immediate: true })
 
