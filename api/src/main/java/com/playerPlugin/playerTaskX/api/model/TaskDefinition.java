@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.api.model.condition.Condition;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
@@ -13,6 +14,7 @@ public class TaskDefinition {
     private final String id;
     private final String name;
     private final String description;
+    private final PTXTaskType taskType;
     private final List<Objective> objectives;
     private final List<Reward> rewards;
     private final List<Condition> conditions;
@@ -22,6 +24,7 @@ public class TaskDefinition {
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
+            @JsonProperty("taskType") PTXTaskType taskType,
             @JsonProperty("objectives") List<Objective> objectives,
             @JsonProperty("rewards") List<Reward> rewards,
             @JsonProperty("conditions") List<Condition> conditions
@@ -29,6 +32,7 @@ public class TaskDefinition {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.taskType = taskType != null ? taskType : PTXTaskType.FOREVER;
         this.objectives = objectives != null ? new ArrayList<>(objectives) : new ArrayList<>();
         this.rewards = rewards != null ? new ArrayList<>(rewards) : new ArrayList<>();
         this.conditions = conditions != null ? new ArrayList<>(conditions) : new ArrayList<>();
@@ -37,6 +41,7 @@ public class TaskDefinition {
     public String getId() { return id; }
     public String getName() { return name; }
     public String getDescription() { return description; }
+    public PTXTaskType getTaskType() { return taskType; }
     public List<Objective> getObjectives() { return objectives; }
     public List<Reward> getRewards() { return rewards; }
     public List<Condition> getConditions() { return conditions; }
