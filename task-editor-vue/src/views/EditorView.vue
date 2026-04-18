@@ -253,13 +253,20 @@ function handleKeyDelete(event) {
 }
 
 const flowEdges = computed({
-  get: () => editorEdges.value.map(e => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'smoothstep'
-  })),
+  get: () => {
+    const edges = editorEdges.value.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      type: 'smoothstep'
+    }))
+    if (selectedQuestId.value) {
+      const visibleNodeIds = new Set(flowNodes.value.map(n => n.id))
+      return edges.filter(e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target))
+    }
+    return edges
+  },
   set: (val) => {
     const newEdgeIds = new Set(val.map(e => e.id))
     const currentEdgeIds = new Set(editorEdges.value.map(e => e.id))
@@ -270,12 +277,18 @@ const flowEdges = computed({
 })
 
 const flowNodes = computed({
-  get: () => editorNodes.value.map(n => ({
-    id: n.id,
-    type: n.nodeType,
-    position: n.position,
-    data: n.data
-  })),
+  get: () => {
+    const nodes = editorNodes.value.map(n => ({
+      id: n.id,
+      type: n.nodeType,
+      position: n.position,
+      data: n.data
+    }))
+    if (selectedQuestId.value) {
+      return nodes.filter(n => n.data.type !== 'task' || (n.data as any).id === selectedQuestId.value)
+    }
+    return nodes
+  },
   set: (val) => {
     val.forEach(v => {
       const node = editorNodes.value.find(n => n.id === v.id)
@@ -317,19 +330,10 @@ function handleDragStart(event: DragEvent, quest: Quest) {
 
 function handleSelectQuest(quest: Quest) {
   selectedQuestId.value = quest.id
-  GraphService.getById(quest.id).then(res => {
-    if (res.code === 0 && res.data) {
-      loadGraph(res.data)
-    } else {
-      editorNodes.value = []
-      editorEdges.value = []
-    }
-  }).catch(err => {
-    if (err.response?.status === 404) {
-      editorNodes.value = []
-      editorEdges.value = []
-    }
-  })
+  editorNodes.value = editorNodes.value.map(n => ({
+    ...n,
+    hidden: n.data.type === 'task' && (n.data as any).id !== quest.id
+  }))
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
