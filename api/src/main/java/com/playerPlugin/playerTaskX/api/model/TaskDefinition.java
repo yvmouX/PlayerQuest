@@ -25,7 +25,7 @@ public class TaskDefinition {
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("taskType") PTXTaskType taskType,
+            @JsonProperty("type") PTXTaskType taskType,
             @JsonProperty("objectives") List<Objective> objectives,
             @JsonProperty("rewards") List<Reward> rewards,
             @JsonProperty("conditions") List<Condition> conditions,
