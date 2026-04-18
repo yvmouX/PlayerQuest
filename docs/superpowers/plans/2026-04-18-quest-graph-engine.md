@@ -2003,7 +2003,7 @@ public class PlayerTaskX extends JavaPlugin {
         registry.register(new CounterNodeHandler());
         registry.register(new TimerNodeHandler());
         registry.register(new StateNodeHandler());
-        registry.register(new SubtaskNodeHandler());
+        registry.register(new SubtaskNodeHandler(sessionManager));  // Pass sessionManager
     }
 }
 ```
@@ -2079,6 +2079,29 @@ public class TaskManager {
                 }
             }
         }
+    }
+    
+    public boolean acceptTask(Player player, String taskId) {
+        TaskDefinition task = taskCache.get(taskId);
+        if (task == null) return false;
+        if (task.getConditions().stream().anyMatch(c -> !c.isMet(player))) {
+            return false;
+        }
+        
+        TaskProgress progress = new TaskProgress(player.getUniqueId(), taskId);
+        progressStorage.save(player.getUniqueId(), progress);
+        playerProgressCache.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
+            .put(taskId, progress);
+        
+        // For graph-based tasks, create a quest session
+        if (questEngine != null && task.hasGraph()) {
+            Player actualPlayer = Bukkit.getPlayer(player.getUniqueId());
+            if (actualPlayer != null) {
+                questEngine.startQuest(actualPlayer, task);
+            }
+        }
+        
+        return true;
     }
 }
 ```
