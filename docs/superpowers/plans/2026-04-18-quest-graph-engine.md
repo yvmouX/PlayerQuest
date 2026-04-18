@@ -1229,6 +1229,7 @@ import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -1277,10 +1278,64 @@ public class ConditionNodeHandler implements NodeHandler {
     }
     
     private boolean evaluateCondition(String type, Map<String, Object> params) {
-        // TODO: Implement condition evaluation based on type:
-        // PERMISSION, HAS_ITEM, KILL_MOB, COLLECT_ITEM, PLAYER_LEVEL, TIME_RANGE, IN_REGION
-        // Use session context to evaluate
-        return true;
+        Player player = Bukkit.getPlayer(session.getPlayerId());
+        if (player == null) return false;
+        
+        switch (type) {
+            case "PERMISSION" -> {
+                String permission = (String) params.get("permission");
+                return permission != null && player.hasPermission(permission);
+            }
+            case "HAS_ITEM" -> {
+                String itemId = (String) params.get("itemId");
+                int count = ((Number) params.getOrDefault("count", 1)).intValue();
+                org.bukkit.Material material = org.bukkit.Material.valueOf(
+                    params.getOrDefault("material", "DIAMOND").toString().toUpperCase());
+                return player.getInventory().containsAtLeast(new org.bukkit.inventory.ItemStack(material), count);
+            }
+            case "KILL_MOB" -> {
+                String mobType = (String) params.get("mobType");
+                int killCount = ((Number) session.getContext().getOrDefault("kills_" + mobType, 0)).intValue();
+                int required = ((Number) params.getOrDefault("count", 1)).intValue();
+                return killCount >= required;
+            }
+            case "COLLECT_ITEM" -> {
+                String itemId = (String) params.get("itemId");
+                int collected = ((Number) session.getContext().getOrDefault("collected_" + itemId, 0)).intValue();
+                int required = ((Number) params.getOrDefault("count", 1)).intValue();
+                return collected >= required;
+            }
+            case "PLAYER_LEVEL" -> {
+                int level = ((Number) params.getOrDefault("level", 1)).intValue();
+                String operator = (String) params.getOrDefault("operator", "GTE");
+                return switch (operator) {
+                    case "EQ" -> player.getLevel() == level;
+                    case "GT" -> player.getLevel() > level;
+                    case "GTE" -> player.getLevel() >= level;
+                    case "LT" -> player.getLevel() < level;
+                    case "LTE" -> player.getLevel() <= level;
+                    default -> false;
+                };
+            }
+            case "TIME_RANGE" -> {
+                int currentHour = java.time.LocalTime.now().getHour();
+                int startHour = ((Number) params.getOrDefault("startHour", 0)).intValue();
+                int endHour = ((Number) params.getOrDefault("endHour", 24)).intValue();
+                if (startHour <= endHour) {
+                    return currentHour >= startHour && currentHour < endHour;
+                } else {
+                    return currentHour >= startHour || currentHour < endHour;
+                }
+            }
+            case "IN_REGION" -> {
+                String region = (String) params.get("region");
+                return Boolean.TRUE.equals(session.getContext().get("in_region_" + region));
+            }
+            default -> {
+                org.slf4j.LoggerFactory.getLogger(ConditionNodeHandler.class).warn("Unknown condition type: {}", type);
+                return false;
+            }
+        }
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
@@ -1377,6 +1432,7 @@ import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -1393,12 +1449,14 @@ public class ActionNodeHandler implements NodeHandler {
         GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.wait();
         
+        Player player = Bukkit.getPlayer(session.getPlayerId());
+        if (player == null) return NextNodeResult.wait();
+        
         Map<String, Object> data = currentNode.getData();
         String actionType = (String) data.get("actionType");
         Map<String, Object> actionParams = (Map<String, Object>) data.get("actionParams");
         
-        // TODO: Get player from session and execute action
-        // executeAction(player, actionType, actionParams);
+        executeAction(player, actionType, actionParams);
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
@@ -1415,9 +1473,60 @@ public class ActionNodeHandler implements NodeHandler {
     }
     
     private void executeAction(Player player, String actionType, Map<String, Object> params) {
-        // TODO: Implement action execution based on actionType:
-        // GIVE_ITEM, TAKE_ITEM, GIVE_MONEY, TAKE_MONEY, GIVE_XP, 
-        // SEND_MESSAGE, BROADCAST, EXECUTE_COMMAND, PLAY_SOUND
+        switch (actionType) {
+            case "GIVE_ITEM" -> {
+                String materialName = (String) params.getOrDefault("material", "DIAMOND");
+                int amount = ((Number) params.getOrDefault("amount", 1)).intValue();
+                org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
+                org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(material, amount);
+                player.getInventory().addItem(item);
+            }
+            case "TAKE_ITEM" -> {
+                String materialName = (String) params.getOrDefault("material", "DIAMOND");
+                int amount = ((Number) params.getOrDefault("amount", 1)).intValue();
+                org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
+                org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(material, amount);
+                player.getInventory().removeItem(item);
+            }
+            case "GIVE_MONEY" -> {
+                // Requires economy plugin integration (Vault or similar)
+                double amount = ((Number) params.getOrDefault("amount", 0)).doubleValue();
+                // Example: EconomyResponse response = economy.depositPlayer(player, amount);
+            }
+            case "TAKE_MONEY" -> {
+                double amount = ((Number) params.getOrDefault("amount", 0)).doubleValue();
+                // Example: EconomyResponse response = economy.withdrawPlayer(player, amount);
+            }
+            case "GIVE_XP" -> {
+                int amount = ((Number) params.getOrDefault("amount", 0)).intValue();
+                player.giveExp(amount);
+            }
+            case "SEND_MESSAGE" -> {
+                String message = (String) params.getOrDefault("message", "");
+                player.sendMessage(message);
+            }
+            case "BROADCAST" -> {
+                String message = (String) params.getOrDefault("message", "");
+                Bukkit.broadcastMessage(message);
+            }
+            case "EXECUTE_COMMAND" -> {
+                String command = (String) params.getOrDefault("command", "");
+                // Remove leading slash if present
+                if (command.startsWith("/")) {
+                    command = command.substring(1);
+                }
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.getName()));
+            }
+            case "PLAY_SOUND" -> {
+                String soundName = (String) params.getOrDefault("sound", "ENTITY_PLAYER_LEVELUP");
+                float volume = ((Number) params.getOrDefault("volume", 1.0f)).floatValue();
+                float pitch = ((Number) params.getOrDefault("pitch", 1.0f)).floatValue();
+                player.playSound(player.getLocation(), org.bukkit.Sound.valueOf(soundName.toUpperCase()), volume, pitch);
+            }
+            default -> {
+                org.slf4j.LoggerFactory.getLogger(ActionNodeHandler.class).warn("Unknown action type: {}", actionType);
+            }
+        }
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
@@ -1521,19 +1630,44 @@ public class TimerNodeHandler implements NodeHandler {
         switch (timerType) {
             case "DELAY" -> {
                 long delaySeconds = ((Number) data.getOrDefault("delaySeconds", 60)).longValue();
-                long startTime = ((Number) session.getContext().getOrDefault("timer_start_" + session.getCurrentNodeId(), 0)).longValue();
+                String timerKey = "timer_start_" + session.getCurrentNodeId();
+                long startTime = ((Number) session.getContext().getOrDefault(timerKey, 0)).longValue();
                 if (startTime == 0) {
-                    session.updateContext(Map.of("timer_start_" + session.getCurrentNodeId(), System.currentTimeMillis()));
+                    session.updateContext(Map.of(timerKey, System.currentTimeMillis()));
                 } else if (System.currentTimeMillis() - startTime >= delaySeconds * 1000) {
                     session.markNodeCompleted(session.getCurrentNodeId());
                     return getNextNode(graph, session.getCurrentNodeId());
                 }
             }
             case "COOLDOWN" -> {
-                // TODO: Implement cooldown logic
+                long cooldownSeconds = ((Number) data.getOrDefault("cooldownSeconds", 300)).longValue();
+                String cooldownKey = "cooldown_end_" + session.getCurrentNodeId();
+                Long cooldownEnd = ((Number) session.getContext().getOrDefault(cooldownKey, 0)).longValue();
+                long now = System.currentTimeMillis();
+                if (cooldownEnd == 0) {
+                    session.updateContext(Map.of(cooldownKey, now + cooldownSeconds * 1000));
+                } else if (now >= cooldownEnd) {
+                    session.updateContext(Map.of(cooldownKey, now + cooldownSeconds * 1000));
+                    session.markNodeCompleted(session.getCurrentNodeId());
+                    return getNextNode(graph, session.getCurrentNodeId());
+                }
             }
             case "INTERVAL" -> {
-                // TODO: Implement interval logic
+                long intervalSeconds = ((Number) data.getOrDefault("intervalSeconds", 60)).longValue();
+                int maxReps = ((Number) data.getOrDefault("repeatCount", 1)).intValue();
+                String intervalKey = "interval_" + session.getCurrentNodeId();
+                Map<String, Object> intervalData = (Map<String, Object>) session.getContext().get(intervalKey);
+                long lastFire = intervalData != null ? ((Number) intervalData.getOrDefault("lastFire", 0)).longValue() : 0;
+                int reps = intervalData != null ? ((Number) intervalData.getOrDefault("reps", 0)).intValue() : 0;
+                long now = System.currentTimeMillis();
+                if (lastFire == 0 || now - lastFire >= intervalSeconds * 1000) {
+                    reps++;
+                    session.updateContext(Map.of(intervalKey, Map.of("lastFire", now, "reps", reps)));
+                    if (reps >= maxReps) {
+                        session.markNodeCompleted(session.getCurrentNodeId());
+                        return getNextNode(graph, session.getCurrentNodeId());
+                    }
+                }
             }
         }
         
@@ -1609,6 +1743,12 @@ public class StateNodeHandler implements NodeHandler {
 
 // SubtaskNodeHandler.java - handles nested quests
 public class SubtaskNodeHandler implements NodeHandler {
+    private final com.playerPlugin.playerTaskX.engine.QuestSessionManager sessionManager;
+    
+    public SubtaskNodeHandler(com.playerPlugin.playerTaskX.engine.QuestSessionManager sessionManager) {
+        this.sessionManager = sessionManager;
+    }
+    
     @Override
     public String getNodeType() { return "subtask"; }
     
@@ -1619,12 +1759,33 @@ public class SubtaskNodeHandler implements NodeHandler {
         
         Map<String, Object> data = currentNode.getData();
         String subtaskId = (String) data.getOrDefault("subtaskId", "");
+        String subSessionKey = "subtask_session_" + subtaskId;
         
-        // TODO: Create sub-session for subtask and wait for completion
-        // This would involve starting a nested quest session
+        // Check if we already started this subtask
+        String subSessionId = (String) session.getContext().get(subSessionKey);
         
-        session.markNodeCompleted(session.getCurrentNodeId());
-        return getNextNode(graph, session.getCurrentNodeId());
+        if (subSessionId == null) {
+            // First time here - create sub-session
+            QuestSession subSession = new QuestSession(session.getPlayerId(), subtaskId, "start");
+            sessionManager.createSession(subSession);
+            session.updateContext(Map.of(subSessionKey, subSessionId));
+            return NextNodeResult.wait();
+        }
+        
+        // Check if sub-session is complete
+        java.util.Optional<QuestSession> subSessionOpt = sessionManager.getSession(session.getPlayerId(), subtaskId);
+        if (subSessionOpt.isEmpty()) {
+            session.markNodeCompleted(session.getCurrentNodeId());
+            return getNextNode(graph, session.getCurrentNodeId());
+        }
+        
+        QuestSession subSession = subSessionOpt.get();
+        if (subSession.getStatus() == PTXTaskStatus.COMPLETED || subSession.getStatus() == PTXTaskStatus.CLAIMED) {
+            session.markNodeCompleted(session.getCurrentNodeId());
+            return getNextNode(graph, session.getCurrentNodeId());
+        }
+        
+        return NextNodeResult.wait();
     }
     
     private NextNodeResult getNextNode(QuestGraph graph, String currentNodeId) {
@@ -1780,9 +1941,7 @@ public class PlayerTaskX extends JavaPlugin {
         // Initialize quest engine with dependencies
         questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
         
-        // Now inject questEngine into taskManager using reflection or setter
-        // Or better: refactor TaskManager constructor to accept questEngine
-        injectQuestEngineIntoTaskManager();
+        // Note: taskManager.setQuestEngine(questEngine) called in Task 13 after TaskManager is modified
         
         // Restore any active sessions from database
         questEngine.restoreSessions();
@@ -1792,11 +1951,9 @@ public class PlayerTaskX extends JavaPlugin {
             new GraphEventListener(questEngine), this);
     }
     
+    // Task 13 will add: taskManager.setQuestEngine(questEngine);
     private void injectQuestEngineIntoTaskManager() {
-        // Option 1: Use reflection
-        // Option 2: Add setter method to TaskManager
-        // Option 3: Refactor TaskManager to accept questEngine in constructor
-        // Using Option 3 - modify TaskManager in next task
+        // Placeholder - implement after Task 13 adds setQuestEngine to TaskManager
     }
     
     private void registerHandlers(NodeHandlerRegistry registry) {
