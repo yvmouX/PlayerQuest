@@ -398,6 +398,8 @@ const conditionNodes = computed(() => {
 })
 
 const editedNode = ref<NodeData>(createDefaultNode())
+let saveTimeout: number | null = null
+let lastEmittedNode: string | null = null
 
 function createDefaultNode(): NodeData {
   const node = {
@@ -423,9 +425,6 @@ watch(() => props.selectedNode, (node) => {
     lastEmittedNode = JSON.stringify(editedNode.value)
   }
 }, { immediate: true })
-
-let saveTimeout: number | null = null
-let lastEmittedNode: string | null = null
 
 watch(editedNode, () => {
   if (props.selectedNode) {
