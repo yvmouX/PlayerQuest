@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RewardTemplate } from '../types'
+import type {RewardTemplate} from '../types'
 
 defineProps<{ template: RewardTemplate }>()
 defineEmits<{ edit: []; delete: [] }>()

@@ -1,6 +1,8 @@
 package com.playerPlugin.playerTaskX.api.handler;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class NodeHandlerRegistry {
     private final Map<String, NodeHandler> handlers = new HashMap<>();

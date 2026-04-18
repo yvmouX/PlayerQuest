@@ -1,5 +1,13 @@
 import axios from 'axios'
-import type {ApiResponse, PlayerProgress, Quest, QuestGraph, RewardTemplate, StatsActivity, StatsCompletion} from '../types'
+import type {
+  ApiResponse,
+  PlayerProgress,
+  Quest,
+  QuestGraph,
+  RewardTemplate,
+  StatsActivity,
+  StatsCompletion
+} from '../types'
 
 const api = axios.create({
   baseURL: '/api',

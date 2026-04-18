@@ -178,8 +178,8 @@ import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
 import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {setToast} from '../composables/useToast'
-import {QuestService, GraphService} from '../services/api'
-import type {Quest, EditorNodeData, TaskNodeData} from '../types'
+import {GraphService, QuestService} from '../services/api'
+import type {EditorNodeData, Quest, TaskNodeData} from '../types'
 
 const {
   nodes: editorNodes,
@@ -193,7 +193,8 @@ const {
   loadQuests,
   loadGraph,
   saveGraph,
-  selectNode
+  selectNode,
+  currentGraphId
 } = useQuestEditor()
 
 const { project } = useVueFlow()
@@ -330,10 +331,19 @@ function handleDragStart(event: DragEvent, quest: Quest) {
 
 function handleSelectQuest(quest: Quest) {
   selectedQuestId.value = quest.id
-  editorNodes.value = editorNodes.value.map(n => ({
-    ...n,
-    hidden: n.data.type === 'task' && (n.data as any).id !== quest.id
-  }))
+  
+  GraphService.getById(quest.id).then(res => {
+    if (res.code === 0 && res.data) {
+      loadGraph(res.data)
+    } else {
+      editorNodes.value = []
+      editorEdges.value = []
+    }
+  }).catch(err => {
+    console.error('Failed to load graph for quest:', err)
+    editorNodes.value = []
+    editorEdges.value = []
+  })
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
@@ -431,6 +441,7 @@ async function handleSave() {
             q.id === oldId ? { ...q, id: newId, name: taskData.name, description: taskData.description } : q
           )
           
+          currentGraphId.value = newId
           unsavedQuestIds.value = new Set([...unsavedQuestIds.value].filter(id => id !== oldId))
         }
       } catch (error) {

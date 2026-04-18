@@ -1,5 +1,23 @@
 import {computed, ref} from 'vue'
-import type {Quest, EditorNodeData, StartNodeData, TaskNodeData, CompletionNodeData, ConditionData, BranchData, ActionData, EventData, CounterData, TimerData, StateData, SubtaskData, NodeType, QuestGraph, GraphNode, NodeConnection} from '../types'
+import type {
+  ActionData,
+  BranchData,
+  CompletionNodeData,
+  ConditionData,
+  CounterData,
+  EditorNodeData,
+  EventData,
+  GraphNode,
+  NodeConnection,
+  NodeType,
+  Quest,
+  QuestGraph,
+  StartNodeData,
+  StateData,
+  SubtaskData,
+  TaskNodeData,
+  TimerData
+} from '../types'
 import {useToast} from './useToast'
 import {GraphService} from '../services/api'
 
@@ -244,6 +262,7 @@ export function useQuestEditor() {
   return {
     nodes,
     edges,
+    currentGraphId,
     selectedNode,
     selectedNodeId,
     addNode,

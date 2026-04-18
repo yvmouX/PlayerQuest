@@ -40,13 +40,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import {onMounted, ref} from 'vue'
 import Header from '../components/layout/Header.vue'
 import RewardCard from '../components/RewardCard.vue'
 import RewardForm from '../components/RewardForm.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
-import { RewardService } from '../services/api'
-import type { RewardTemplate } from '../types'
+import {RewardService} from '../services/api'
+import type {RewardTemplate} from '../types'
 
 const templates = ref<RewardTemplate[]>([])
 const loading = ref(true)

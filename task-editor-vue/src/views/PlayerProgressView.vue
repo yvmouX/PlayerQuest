@@ -46,11 +46,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import {onMounted, ref} from 'vue'
 import Header from '../components/layout/Header.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { PlayerService } from '../services/api'
-import type { PlayerProgress } from '../types'
+import {PlayerService} from '../services/api'
+import type {PlayerProgress} from '../types'
 
 const progress = ref<PlayerProgress[]>([])
 const total = ref(0)

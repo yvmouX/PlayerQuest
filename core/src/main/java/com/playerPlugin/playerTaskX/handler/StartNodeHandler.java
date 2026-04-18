@@ -1,17 +1,13 @@
 package com.playerPlugin.playerTaskX.handler;
 
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
-import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 public class StartNodeHandler implements NodeHandler {
     @Override

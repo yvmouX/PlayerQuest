@@ -4,7 +4,6 @@ import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
-import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
@@ -18,7 +17,9 @@ import org.bukkit.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 public class QuestEngine {
     private static final Logger log = LoggerFactory.getLogger(QuestEngine.class);

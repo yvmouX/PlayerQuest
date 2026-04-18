@@ -40,12 +40,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement } from 'chart.js'
-import { Doughnut, Line } from 'vue-chartjs'
+import {computed, onMounted, ref} from 'vue'
+import {
+  ArcElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip
+} from 'chart.js'
+import {Doughnut, Line} from 'vue-chartjs'
 import Header from '../components/layout/Header.vue'
-import { StatsService } from '../services/api'
-import type { StatsCompletion, StatsActivity } from '../types'
+import {StatsService} from '../services/api'
+import type {StatsActivity, StatsCompletion} from '../types'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement)
 

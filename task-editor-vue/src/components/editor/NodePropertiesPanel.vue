@@ -357,9 +357,23 @@
 </template>
 
 <script setup lang="ts">
-import {ref, watch, computed} from 'vue'
-import type {StartNodeData, TaskNodeData, CompletionNodeData, QuestObjective, QuestReward, ConditionData, BranchData, ActionData, ConditionItem, EventData, CounterData, TimerData, StateData, SubtaskData} from '../../types'
-import { editorNodes } from '../../composables/useQuestEditor'
+import {computed, ref, watch} from 'vue'
+import type {
+  ActionData,
+  BranchData,
+  CompletionNodeData,
+  ConditionData,
+  ConditionItem,
+  CounterData,
+  EventData,
+  QuestReward,
+  StartNodeData,
+  StateData,
+  SubtaskData,
+  TaskNodeData,
+  TimerData
+} from '../../types'
+import {editorNodes} from '../../composables/useQuestEditor'
 
 type NodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData | EventData | CounterData | TimerData | StateData | SubtaskData
 

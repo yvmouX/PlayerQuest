@@ -7,7 +7,6 @@ import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
 import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
@@ -17,10 +16,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class GraphExecutionIntegrationTest {
     @Mock private com.playerPlugin.playerTaskX.manager.TaskManager taskManager;

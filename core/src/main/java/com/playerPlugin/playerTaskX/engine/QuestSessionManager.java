@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.engine;
 
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import org.bukkit.entity.Player;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
