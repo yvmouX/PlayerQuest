@@ -579,13 +579,31 @@ public class MySQLSessionStorage implements SessionStorage {
         }
     }
     
-    private QuestSession mapRow(ResultSet rs) throws SQLException {
-        // Simplified - full implementation needed
+    private QuestSession mapRow(ResultSet rs) throws SQLException, com.fasterxml.jackson.core.JsonProcessingException {
         UUID playerId = UUID.fromString(rs.getString("player_uuid"));
         String questId = rs.getString("quest_id");
         String currentNodeId = rs.getString("current_node_id");
         QuestSession session = new QuestSession(playerId, questId, currentNodeId);
-        // ... restore other fields from JSON columns
+        
+        // Restore completed nodes
+        String completedNodesJson = rs.getString("completed_nodes");
+        if (completedNodesJson != null) {
+            List<String> completedNodes = mapper.readValue(completedNodesJson, 
+                mapper.getTypeFactory().constructCollectionType(List.class, String.class));
+            completedNodes.forEach(session::markNodeCompleted);
+        }
+        
+        // Restore context
+        String contextJson = rs.getString("context_data");
+        if (contextJson != null) {
+            Map<String, Object> context = mapper.readValue(contextJson,
+                mapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+            session.updateContext(context);
+        }
+        
+        // Restore timestamps
+        session.setLastActiveTime(rs.getLong("last_active"));
+        
         return session;
     }
 }
@@ -628,12 +646,17 @@ import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.engine.exception.GraphExecutionException;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public class QuestEngine {
+    private static final Logger log = LoggerFactory.getLogger(QuestEngine.class);
+    
     private final QuestSessionManager sessionManager;
     private final NodeHandlerRegistry handlerRegistry;
     private final TaskManager taskManager;
@@ -724,9 +747,16 @@ public class QuestEngine {
         session.setStatus(PTXTaskStatus.COMPLETED);
         session.markNodeCompleted(session.getCurrentNodeId());
         
+        // Get player from Bukkit server
+        Player player = Bukkit.getPlayer(session.getPlayerId());
+        if (player == null) {
+            log.warn("Cannot grant rewards - player {} not online", session.getPlayerId());
+            return;
+        }
+        
         // Grant rewards
         for (var reward : task.getRewards()) {
-            reward.grant(/* player */);
+            reward.grant(player);
         }
     }
     
@@ -1609,37 +1639,39 @@ public class PlayerTaskX extends JavaPlugin {
         // Initialize storage
         ProgressStorage progressStorage = createProgressStorage();
         
-        // Initialize session storage
+        // Initialize session storage based on config
         sessionStorage = createSessionStorage();
         
-        // Initialize quest engine
-        NodeHandlerRegistry handlerRegistry = new NodeHandlerRegistry();
-        registerHandlers(handlerRegistry);
+        // Initialize task manager (now requires questEngine reference)
+        taskManager = new TaskManager(taskStorage, progressStorage, questEngine);
         
-        QuestSessionManager sessionManager = new QuestSessionManager();
-        
-        questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
-        
-        // Restore sessions on startup
-        questEngine.restoreSessions();
-        
-        // Register listener
+        // Register event listener
         getServer().getPluginManager().registerEvents(
             new GraphEventListener(questEngine), this);
     }
     
-    private void registerHandlers(NodeHandlerRegistry registry) {
-        registry.register(new StartNodeHandler());
-        registry.register(new TaskNodeHandler());
-        registry.register(new CompletionNodeHandler());
-        registry.register(new ConditionNodeHandler());
-        registry.register(new BranchNodeHandler());
-        registry.register(new ActionNodeHandler());
-        registry.register(new EventNodeHandler());
-        registry.register(new CounterNodeHandler());
-        registry.register(new TimerNodeHandler());
-        registry.register(new StateNodeHandler());
-        registry.register(new SubtaskNodeHandler());
+    private SessionStorage createSessionStorage() {
+        String storageType = getConfig().getString("storage.type", "mysql");
+        if ("mysql".equals(storageType)) {
+            String host = getConfig().getString("storage.mysql.host", "localhost");
+            int port = getConfig().getInt("storage.mysql.port", 3306);
+            String database = getConfig().getString("storage.mysql.database", "playertaskx");
+            String username = getConfig().getString("storage.mysql.username", "root");
+            String password = getConfig().getString("storage.mysql.password", "");
+            
+            HikariConfig hikariConfig = new HikariConfig();
+            hikariConfig.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
+            hikariConfig.setUsername(username);
+            hikariConfig.setPassword(password);
+            hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            HikariDataSource dataSource = new HikariDataSource(hikariConfig);
+            
+            return new MySQLSessionStorage(dataSource);
+        } else {
+            // SQLite implementation
+            File dataFile = new File(getDataFolder(), "sessions.db");
+            return new SQLiteSessionStorage(dataFile);
+        }
     }
 }
 ```
