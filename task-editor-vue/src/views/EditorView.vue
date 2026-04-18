@@ -409,7 +409,7 @@ async function handleSave() {
           objectives: taskData.objectives || [],
           rewards: taskData.rewards || [],
           conditions: [],
-          graph: graph.id === tempId ? graph : undefined
+          graph: graph
         })
         if (created.code === 0 && created.data) {
           const newId = created.data.id
