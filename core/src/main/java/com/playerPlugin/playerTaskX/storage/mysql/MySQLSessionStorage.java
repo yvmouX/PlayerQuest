@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 import java.sql.*;
@@ -13,9 +14,19 @@ public class MySQLSessionStorage implements SessionStorage {
     private final HikariDataSource dataSource;
     private final ObjectMapper mapper;
     
-    public MySQLSessionStorage(HikariDataSource dataSource) {
-        this.dataSource = dataSource;
+    public MySQLSessionStorage(String host, int port, String database, String username, String password) {
         this.mapper = new ObjectMapper();
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        this.dataSource = new HikariDataSource(config);
         initTables();
     }
     
