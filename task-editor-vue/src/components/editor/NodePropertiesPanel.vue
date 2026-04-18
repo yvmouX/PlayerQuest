@@ -357,9 +357,6 @@
         </div>
       </template>
     </div>
-    <div class="panel-footer">
-      <button class="save-btn" @click="saveChanges">保存</button>
-    </div>
   </aside>
 </template>
 
@@ -425,6 +422,13 @@ watch(() => props.selectedNode, (node) => {
     }
   }
 }, { immediate: true })
+
+watch(editedNode, (newNode) => {
+  if (props.selectedNode) {
+    const nodeId = newNode.type === 'task' ? (newNode as TaskNodeData).id : props.selectedNode.id || ''
+    emit('update', nodeId, editedNode.value)
+  }
+}, { deep: true })
 
 function addObjective() {
   if (editedNode.value.type === 'task') {
@@ -499,12 +503,6 @@ function updateConditionParams(cond: ConditionItem) {
     case 'IN_REGION':
       cond.params = { regionName: '' }
       break
-  }
-}
-
-function saveChanges() {
-  if (props.selectedNode) {
-    emit('update', (editedNode.value as EditorNodeData).type === 'task' ? (editedNode.value as TaskNodeData).id : props.selectedNode.id || '', editedNode.value)
   }
 }
 </script>
@@ -593,16 +591,5 @@ function saveChanges() {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.75rem;
-}
-.panel-footer { padding: 1rem; border-top: 1px solid #e5e7eb; }
-.save-btn {
-  width: 100%;
-  padding: 0.75rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
 }
 </style>

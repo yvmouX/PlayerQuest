@@ -56,8 +56,8 @@
           v-for="quest in sidebarQuests"
           :key="quest.id"
           class="sidebar-item"
-          draggable="true"
-          @dragstart="(e) => handleDragStart(e, quest)"
+          :class="{ 'selected-quest': selectedQuestId === quest.id }"
+          @click="handleSelectQuest(quest)"
         >
           <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || '未命名任务' }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
         </div>
@@ -202,6 +202,7 @@ const showExamplesDialog = ref(false)
 const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
 const unsavedQuestIds = ref<Set<string>>(new Set())
+const selectedQuestId = ref<string | null>(null)
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -224,13 +225,13 @@ function handleCreateNewQuest() {
     objectives: [],
     rewards: []
   }
-  sidebarQuests.value = [newQuest]
-  unsavedQuestIds.value = new Set([tempId])
+  sidebarQuests.value = [...sidebarQuests.value, newQuest]
+  unsavedQuestIds.value = new Set([...unsavedQuestIds.value, tempId])
   
-  editorNodes.value = []
-  editorEdges.value = []
-  
-  const position = { x: 100, y: 100 }
+  const position = {
+    x: 100 + (editorNodes.value.length % 4) * 250,
+    y: 100 + Math.floor(editorNodes.value.length / 4) * 150
+  }
   addNode(newQuest, position)
   selectNode(tempId)
 }
@@ -289,17 +290,17 @@ const selectedNode = computed(() => editorSelectedNode.value)
 
 async function loadData() {
   try {
-    const [questsResponse, graphsResponse] = await Promise.all([
-      QuestService.getAll(),
-      GraphService.getAll()
-    ])
+    const questsResponse = await QuestService.getAll()
     if (questsResponse.code === 0 && questsResponse.data) {
       sidebarQuests.value = questsResponse.data
-      if (graphsResponse.code === 0 && graphsResponse.data && graphsResponse.data.length > 0) {
-        loadGraph(graphsResponse.data[0])
-      } else {
-        loadQuests(questsResponse.data, [])
-      }
+    }
+    
+    const graphsResponse = await GraphService.getAll()
+    if (graphsResponse.code === 0 && graphsResponse.data && graphsResponse.data.length > 0) {
+      loadGraph(graphsResponse.data[0])
+    } else {
+      editorNodes.value = []
+      editorEdges.value = []
     }
   } catch (error) {
     console.error('Failed to load data:', error)
@@ -312,6 +313,22 @@ function handleDragOver(event: DragEvent) {
 
 function handleDragStart(event: DragEvent, quest: Quest) {
   event.dataTransfer?.setData('application/json', JSON.stringify(quest))
+}
+
+function handleSelectQuest(quest: Quest) {
+  selectedQuestId.value = quest.id
+  const graphsResponse = GraphService.getById(quest.id)
+  graphsResponse.then(res => {
+    if (res.code === 0 && res.data) {
+      loadGraph(res.data)
+    } else {
+      editorNodes.value = []
+      editorEdges.value = []
+    }
+  }).catch(() => {
+    editorNodes.value = []
+    editorEdges.value = []
+  })
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
@@ -485,13 +502,17 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
   background: #f3f4f6;
   border-radius: 4px;
-  cursor: grab;
+  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .sidebar-item:hover {
   background: #e5e7eb;
+}
+.sidebar-item.selected-quest {
+  background: #dbeafe;
+  border: 1px solid #3b82f6;
 }
 .quest-name {
   font-size: 0.85rem;
