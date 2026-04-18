@@ -317,17 +317,18 @@ function handleDragStart(event: DragEvent, quest: Quest) {
 
 function handleSelectQuest(quest: Quest) {
   selectedQuestId.value = quest.id
-  const graphsResponse = GraphService.getById(quest.id)
-  graphsResponse.then(res => {
+  GraphService.getById(quest.id).then(res => {
     if (res.code === 0 && res.data) {
       loadGraph(res.data)
     } else {
       editorNodes.value = []
       editorEdges.value = []
     }
-  }).catch(() => {
-    editorNodes.value = []
-    editorEdges.value = []
+  }).catch(err => {
+    if (err.response?.status === 404) {
+      editorNodes.value = []
+      editorEdges.value = []
+    }
   })
 }
 
