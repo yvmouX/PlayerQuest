@@ -57,6 +57,10 @@
         <template #node-branch="{ data }">
           <BranchNode :data="data" />
         </template>
+
+        <template #node-action="{ data }">
+          <ActionNode :data="data" />
+        </template>
       </VueFlow>
       
       <NodePropertiesPanel
@@ -102,6 +106,7 @@ import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
 import ConditionNode from '../components/editor/ConditionNode.vue'
 import BranchNode from '../components/editor/BranchNode.vue'
+import ActionNode from '../components/editor/ActionNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
