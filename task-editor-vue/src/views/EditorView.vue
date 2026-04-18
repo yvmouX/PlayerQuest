@@ -396,26 +396,25 @@ function getLocalizedText(obj: Record<string, string> | string | undefined, fall
   return obj['zh-CN'] || obj['en-US'] || fallback
 }
 
-function questToBackendFormat(quest: Quest): any {
-  return {
-    id: quest.id,
-    name: getLocalizedText(quest.name),
-    description: getLocalizedText(quest.description),
-    taskType: quest.type || 'FOREVER',
-    objectives: quest.objectives || [],
-    rewards: quest.rewards || []
-  }
-}
-
 async function handleSave() {
   const tempIds = [...unsavedQuestIds.value]
   if (tempIds.length > 0) {
     for (const tempId of tempIds) {
-      const quest = sidebarQuests.value.find(q => q.id === tempId)
-      if (!quest) continue
+      const node = editorNodes.value.find(n => n.id === tempId && n.data.type === 'task')
+      if (!node) continue
+      
+      const taskData = node.data as TaskNodeData
       
       try {
-        const created = await QuestService.create(questToBackendFormat(quest))
+        const created = await QuestService.create({
+          id: tempId,
+          name: getLocalizedText(taskData.name),
+          description: getLocalizedText(taskData.description),
+          taskType: taskData.taskType || 'FOREVER',
+          objectives: taskData.objectives || [],
+          rewards: taskData.rewards || [],
+          conditions: []
+        })
         if (created.code === 0 && created.data) {
           const newId = created.data.id
           const oldId = tempId
@@ -427,7 +426,7 @@ async function handleSave() {
             return n
           })
           
-          edges.value = edges.value.map(e => ({
+          editorEdges.value = editorEdges.value.map(e => ({
             ...e,
             id: e.id.replace(oldId, newId),
             source: e.source === oldId ? newId : e.source,
@@ -435,7 +434,7 @@ async function handleSave() {
           }))
           
           sidebarQuests.value = sidebarQuests.value.map(q => 
-            q.id === oldId ? { ...q, id: newId } : q
+            q.id === oldId ? { ...q, id: newId, name: taskData.name, description: taskData.description } : q
           )
           
           unsavedQuestIds.value = new Set([...unsavedQuestIds.value].filter(id => id !== oldId))
