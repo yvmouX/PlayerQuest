@@ -48,6 +48,10 @@
         <template #node-start="{ data }">
           <StartNode :data="data" />
         </template>
+
+        <template #node-completion="{ data }">
+          <CompletionNode :data="data" />
+        </template>
       </VueFlow>
       
       <PropertiesPanel
@@ -90,6 +94,7 @@ import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
 import QuestNode from '../components/editor/QuestNode.vue'
 import StartNode from '../components/editor/StartNode.vue'
+import CompletionNode from '../components/editor/CompletionNode.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
