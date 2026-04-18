@@ -89,7 +89,8 @@ public final class PlayerTaskX extends JavaPlugin {
         ylib.getCommandManager().register(new TaskCommand(taskManager));
         ylib.getCommandManager().register(new TaskAdminCommand(taskManager));
 
-        getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
+        // OLD listener - now handled by GraphEventListener:
+        // getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
         getServer().getPluginManager().registerEvents(new BlockListener(taskManager), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
         getServer().getPluginManager().registerEvents(new GraphEventListener(questEngine), this);
