@@ -2,6 +2,8 @@
   <div class="editor-view">
     <Header title="任务编辑器">
       <template #actions>
+        <button @click="handleOpenImport" class="btn-outline">导入</button>
+        <button @click="handleExport" class="btn-outline">导出</button>
         <button @click="handleSave" class="btn-primary">保存</button>
         <button @click="handleAddQuest" class="btn-secondary">新建任务</button>
       </template>
@@ -56,6 +58,20 @@
         @close="showCreateDialog = false"
         @create="handleCreateQuest"
       />
+      
+      <ConfirmDialog
+        v-if="showDeleteEdgeConfirm"
+        title="删除连接"
+        message="确定要删除这个连接吗？"
+        @confirm="confirmDeleteEdge"
+        @cancel="showDeleteEdgeConfirm = false"
+      />
+      
+      <ImportDialog
+        v-if="showImportDialog"
+        @close="showImportDialog = false"
+        @import="handleImportQuests"
+      />
     </div>
   </div>
 </template>
@@ -71,6 +87,8 @@ import Header from '../components/layout/Header.vue'
 import QuestNode from '../components/editor/QuestNode.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ImportDialog from '../components/editor/ImportDialog.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {QuestService} from '../services/api'
 import type {Quest} from '../types'
@@ -91,7 +109,10 @@ const {
 const { project } = useVueFlow()
 
 const showCreateDialog = ref(false)
+const showImportDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
+const selectedEdgeId = ref<string | null>(null)
+const showDeleteEdgeConfirm = ref(false)
 
 const flowNodes = computed({
   get: () => editorNodes.value.map(n => ({
@@ -175,6 +196,16 @@ function handleConnect(params) {
 }
 
 function handleEdgeClick(event) {
+  selectedEdgeId.value = event.edge.id
+  showDeleteEdgeConfirm.value = true
+}
+
+function confirmDeleteEdge() {
+  if (selectedEdgeId.value) {
+    removeEdge(selectedEdgeId.value)
+    selectedEdgeId.value = null
+  }
+  showDeleteEdgeConfirm.value = false
 }
 
 function handleDeleteNode(nodeId: string) {
@@ -204,6 +235,35 @@ async function handleSave() {
       console.error(`Failed to save quest ${quest.id}:`, error)
     }
   }
+}
+
+function handleOpenImport() {
+  showImportDialog.value = true
+}
+
+function handleImportQuests(quests: Quest[]) {
+  let index = editorNodes.value.length
+  for (const quest of quests) {
+    const position = {
+      x: 100 + (index % 4) * 250,
+      y: 100 + Math.floor(index / 4) * 150
+    }
+    addNode(quest, position)
+    index++
+  }
+  sidebarQuests.value = [...sidebarQuests.value, ...quests]
+}
+
+function handleExport() {
+  const data = exportData()
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `quests-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 onMounted(() => {
@@ -269,6 +329,14 @@ onMounted(() => {
   background: #6b7280;
   color: white;
   border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-outline {
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
   border-radius: 6px;
   cursor: pointer;
 }

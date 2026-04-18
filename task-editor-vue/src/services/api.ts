@@ -18,6 +18,7 @@ export const QuestService = {
   getAll: () => api.get<ApiResponse<Quest[]>>('/quests'),
   getById: (id: string) => api.get<ApiResponse<Quest>>(`/quests/${id}`),
   create: (quest: Quest) => api.post<ApiResponse<Quest>>('/quests', quest),
+  batchCreate: (quests: Quest[]) => api.post<ApiResponse<{count: number}>>('/quests/batch', quests),
   update: (id: string, quest: Quest) => api.put<ApiResponse<Quest>>(`/quests/${id}`, quest),
   delete: (id: string) => api.delete(`/quests/${id}`)
 }

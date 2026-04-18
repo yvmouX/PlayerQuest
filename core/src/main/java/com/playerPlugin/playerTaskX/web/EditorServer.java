@@ -29,6 +29,7 @@ public class EditorServer {
             .get("/api/quests", ctx -> taskController.getAll(ctx))
             .get("/api/quests/{id}", ctx -> taskController.getById(ctx))
             .post("/api/quests", ctx -> taskController.create(ctx))
+            .post("/api/quests/batch", ctx -> taskController.batchCreate(ctx))
             .put("/api/quests/{id}", ctx -> taskController.update(ctx))
             .delete("/api/quests/{id}", ctx -> taskController.delete(ctx))
             // 奖励模板
