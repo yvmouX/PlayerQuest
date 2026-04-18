@@ -12,6 +12,9 @@
 **/.vite/
 **/dist/
 
+# Web assets (auto-built from frontend)
+core/src/main/resources/web/
+
 # Eclipse
 .classpath
 .project
