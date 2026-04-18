@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.manager;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
-import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
@@ -83,35 +82,6 @@ public class TaskManager {
     public void handleEvent(Player player, Event event) {
         if (questEngine != null) {
             questEngine.handleEvent(player, event);
-        }
-        
-        Map<String, TaskProgress> progressMap = playerProgressCache.get(player.getUniqueId());
-        if (progressMap == null) return;
-
-        for (TaskProgress progress : progressMap.values()) {
-            if (progress.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
-            
-            TaskDefinition task = taskCache.get(progress.getTaskId());
-            if (task == null || task.hasGraph()) continue;
-
-            for (Objective objective : task.getObjectives()) {
-                if (objective.matchesEvent(event)) {
-                    objective.applyProgress(player, 1);
-                    int currentProgress = progress.getProgress(objective.getId());
-                    progress.setProgress(objective.getId(), currentProgress + 1);
-                    
-                    if (objective.isCompleted(player)) {
-                        boolean allCompleted = task.getObjectives().stream()
-                            .allMatch(obj -> obj.isCompleted(player));
-                        if (allCompleted) {
-                            progress.setStatus(PTXTaskStatus.COMPLETED);
-                            progress.setCompletedAt(System.currentTimeMillis());
-                        }
-                    }
-                    
-                    asyncSaveProgress(player.getUniqueId(), progress);
-                }
-            }
         }
     }
 

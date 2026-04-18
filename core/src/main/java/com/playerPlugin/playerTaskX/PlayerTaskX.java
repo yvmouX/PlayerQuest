@@ -22,8 +22,6 @@ import com.playerPlugin.playerTaskX.handler.StateNodeHandler;
 import com.playerPlugin.playerTaskX.handler.SubtaskNodeHandler;
 import com.playerPlugin.playerTaskX.handler.TaskNodeHandler;
 import com.playerPlugin.playerTaskX.handler.TimerNodeHandler;
-import com.playerPlugin.playerTaskX.listener.BlockListener;
-import com.playerPlugin.playerTaskX.listener.EntityListener;
 import com.playerPlugin.playerTaskX.listener.GraphEventListener;
 import com.playerPlugin.playerTaskX.manager.RewardManager;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
@@ -89,9 +87,6 @@ public final class PlayerTaskX extends JavaPlugin {
         ylib.getCommandManager().register(new TaskCommand(taskManager));
         ylib.getCommandManager().register(new TaskAdminCommand(taskManager));
 
-        // OLD listener - now handled by GraphEventListener:
-        // getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
-        getServer().getPluginManager().registerEvents(new BlockListener(taskManager), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
         getServer().getPluginManager().registerEvents(new GraphEventListener(questEngine), this);
 
