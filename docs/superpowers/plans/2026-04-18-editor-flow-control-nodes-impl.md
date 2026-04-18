@@ -198,9 +198,9 @@ git commit -m "feat(editor): add ConditionNode component"
       <span class="branch-true">TRUE</span>
       <span class="branch-false">FALSE</span>
     </div>
-    <Handle type="target" :position="Position.Top" style="top: -10px" />
-    <Handle id="true" type="source" :position="Position.Bottom" style="left: 30%" />
-    <Handle id="false" type="source" :position="Position.Bottom" style="left: 70%" />
+    <Handle type="target" :position="Position.Top" />
+    <Handle id="true" type="source" :position="Position.Bottom" style="left: 25%" />
+    <Handle id="false" type="source" :position="Position.Bottom" style="left: 75%" />
   </div>
 </template>
 
@@ -217,8 +217,8 @@ defineProps<{
 
 <style scoped>
 .branch-node {
-  width: 100px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -226,8 +226,8 @@ defineProps<{
   position: relative;
 }
 .node-hexagon {
-  width: 60px;
-  height: 35px;
+  width: 45px;
+  height: 45px;
   background: #8b5cf6;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   display: flex;
@@ -236,15 +236,16 @@ defineProps<{
 }
 .node-label {
   color: white;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   font-weight: bold;
+  z-index: 1;
 }
 .branch-labels {
   display: flex;
   justify-content: space-between;
-  width: 80px;
-  margin-top: 5px;
-  font-size: 0.6rem;
+  width: 50px;
+  margin-top: 2px;
+  font-size: 0.5rem;
   font-weight: bold;
 }
 .branch-true { color: #22c55e; }
@@ -338,7 +339,8 @@ const actionLabel = computed(() => {
 
 <style scoped>
 .action-node {
-  min-width: 180px;
+  width: 180px;
+  height: 60px;
   background: white;
   border: 2px solid #f59e0b;
   border-radius: 8px;
