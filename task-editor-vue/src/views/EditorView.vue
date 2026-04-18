@@ -2,8 +2,7 @@
   <div class="editor-view">
     <Header title="任务编辑器">
       <template #actions>
-        <button @click="handleOpenImport" class="btn-outline">导入</button>
-        <button @click="handleExport" class="btn-outline">导出</button>
+        <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
         <button @click="handleSave" class="btn-primary">保存</button>
         <button @click="handleAddQuest" class="btn-secondary">新建任务</button>
       </template>
@@ -132,10 +131,10 @@
         @cancel="showDeleteEdgeConfirm = false"
       />
       
-      <ImportDialog
-        v-if="showImportDialog"
-        @close="showImportDialog = false"
-        @import="handleImportQuests"
+      <ExampleQuestsDialog
+        v-if="showExamplesDialog"
+        @close="showExamplesDialog = false"
+        @load="handleLoadExamples"
       />
     </div>
   </div>
@@ -163,7 +162,7 @@ import SubtaskNode from '../components/editor/SubtaskNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
-import ImportDialog from '../components/editor/ImportDialog.vue'
+import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {QuestService} from '../services/api'
 import type {Quest, EditorNodeData, TaskNodeData} from '../types'
@@ -184,7 +183,7 @@ const {
 const { project } = useVueFlow()
 
 const showCreateDialog = ref(false)
-const showImportDialog = ref(false)
+const showExamplesDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
@@ -346,11 +345,7 @@ async function handleSave() {
   }
 }
 
-function handleOpenImport() {
-  showImportDialog.value = true
-}
-
-function handleImportQuests(quests: Quest[]) {
+function handleLoadExamples(quests: Quest[]) {
   let index = editorNodes.value.length
   for (const quest of quests) {
     const position = {
@@ -361,18 +356,7 @@ function handleImportQuests(quests: Quest[]) {
     index++
   }
   sidebarQuests.value = [...sidebarQuests.value, ...quests]
-}
-
-function handleExport() {
-  const data = exportData()
-  const json = JSON.stringify(data, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `quests-${Date.now()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  showExamplesDialog.value = false
 }
 
 onMounted(() => {

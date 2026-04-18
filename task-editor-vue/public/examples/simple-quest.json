@@ -1,0 +1,37 @@
+{
+  "id": "example-simple-quest",
+  "name": {
+    "zh-CN": "简单任务",
+    "en-US": "Simple Quest"
+  },
+  "description": {
+    "zh-CN": "一个最简单的任务示例",
+    "en-US": "A simple quest example"
+  },
+  "type": "single",
+  "createdAt": 1704067200000,
+  "updatedAt": 1704067200000,
+  "objectives": [
+    {
+      "id": "obj-1",
+      "type": "BLOCK_BREAK",
+      "target": "DIRT",
+      "count": 10,
+      "finished": false
+    }
+  ],
+  "rewards": [
+    {
+      "id": "reward-1",
+      "type": "xp",
+      "value": 100,
+      "meta": {}
+    },
+    {
+      "id": "reward-2",
+      "type": "money",
+      "value": 50,
+      "meta": {}
+    }
+  ]
+}
