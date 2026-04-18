@@ -1,10 +1,12 @@
 <template>
   <div class="page">
     <Header title="统计">
-      <select v-model="range" @change="loadStats">
-        <option value="7d">近7天</option>
-        <option value="30d">近30天</option>
-      </select>
+      <template #actions>
+        <select v-model="range" @change="loadStats">
+          <option value="7d">近7天</option>
+          <option value="30d">近30天</option>
+        </select>
+      </template>
     </Header>
     
     <div class="content">

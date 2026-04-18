@@ -1,7 +1,9 @@
 <template>
   <div class="page">
     <Header title="玩家进度">
-      <button class="secondary" @click="loadProgress">刷新</button>
+      <template #actions>
+        <button class="secondary" @click="loadProgress">刷新</button>
+      </template>
     </Header>
     
     <div class="filters">

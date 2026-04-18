@@ -1,7 +1,9 @@
 <template>
   <div class="page">
     <Header title="奖励库">
-      <button class="primary" @click="openCreate">+ 新建模板</button>
+      <template #actions>
+        <button class="primary" @click="openCreate">+ 新建模板</button>
+      </template>
     </Header>
     
     <div class="content">
