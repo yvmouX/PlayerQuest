@@ -23,7 +23,7 @@ const iconMap: Record<string, string> = {
   item: '📦', xp: '⭐', money: '💰', command: '⚡'
 }
 const typeLabelMap: Record<string, string> = {
-  item: '物品', xp: '经验', money: '金币', command: '命令'
+  item: '物品', exp: '经验', money: '金币', command: '命令'
 }
 </script>
 

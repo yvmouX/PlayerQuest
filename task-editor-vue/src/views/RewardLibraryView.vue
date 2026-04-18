@@ -58,7 +58,12 @@ const deletingTemplate = ref<RewardTemplate>()
 const loadTemplates = async () => {
   loading.value = true
   const res = await RewardService.getTemplates()
-  templates.value = res.data
+  templates.value = res.data.map((t: any) => ({
+    id: t.id,
+    name: t.content || t.id.substring(0, 8),
+    type: t.type?.toLowerCase() || 'item',
+    value: t.amount || ''
+  }))
   loading.value = false
 }
 

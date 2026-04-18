@@ -65,8 +65,10 @@ tasks {
     runServer {
         minecraftVersion("1.21.8")
         jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
+        // 确保运行前先构建前端
+        dependsOn(project(":core").tasks.named("processResources"))
     }
-    
+
     // 添加Folia支持
     runPaper.folia.registerTask()
 }

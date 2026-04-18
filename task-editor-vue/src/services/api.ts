@@ -28,14 +28,14 @@ export const RewardService = {
   saveTemplate: (template: RewardTemplate) => {
     const typeMap: Record<string, string> = {
       item: 'ITEM',
-      xp: 'XP',
+      xp: 'EXP',
       money: 'MONEY',
       command: 'COMMAND'
     }
     const amount = parseInt(String(template.value), 10)
     const backendData = {
       type: typeMap[template.type] || template.type,
-      content: String(template.value),
+      content: String(template.name),
       amount: isNaN(amount) ? 0 : amount
     }
     if (template.id) {
