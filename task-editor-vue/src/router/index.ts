@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 import EditorView from '../views/EditorView.vue'
 import RewardLibraryView from '../views/RewardLibraryView.vue'
 import PlayerProgressView from '../views/PlayerProgressView.vue'

@@ -23,7 +23,7 @@ allprojects {
     }
 
     dependencies {
-        implementation("com.github.yvmouX:YLib:1.0.0-alpha.8") // 当前使用的是本地仓库！！！
+        implementation("com.github.yvmouX:YLib:1.0.0-alpha.8")
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
 
         compileOnly("org.jetbrains:annotations:24.0.1")

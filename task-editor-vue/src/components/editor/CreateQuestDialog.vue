@@ -27,8 +27,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Quest } from '../../types'
+import {ref} from 'vue'
+import type {Quest} from '../../types'
 
 const emit = defineEmits<{
   close: []

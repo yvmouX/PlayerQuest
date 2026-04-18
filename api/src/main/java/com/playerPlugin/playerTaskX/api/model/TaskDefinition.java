@@ -2,9 +2,9 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.playerPlugin.playerTaskX.api.model.condition.Condition;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
-import com.playerPlugin.playerTaskX.api.model.condition.Condition;
 
 import java.util.ArrayList;
 import java.util.List;

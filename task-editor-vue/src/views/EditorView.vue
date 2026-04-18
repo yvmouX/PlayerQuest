@@ -61,19 +61,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
+import {computed, onMounted, ref} from 'vue'
+import {useVueFlow, VueFlow} from '@vue-flow/core'
+import {Background} from '@vue-flow/background'
+import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
 import QuestNode from '../components/editor/QuestNode.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
-import { useQuestEditor } from '../composables/useQuestEditor'
-import { QuestService } from '../services/api'
-import type { Quest } from '../types'
+import {useQuestEditor} from '../composables/useQuestEditor'
+import {QuestService} from '../services/api'
+import type {Quest} from '../types'
 
 const {
   nodes: editorNodes,

@@ -67,8 +67,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { Quest, QuestObjective, QuestReward } from '../../types'
+import {ref, watch} from 'vue'
+import type {Quest} from '../../types'
 
 const props = defineProps<{
   selectedNode: { id: string; quest: Quest } | null

@@ -1,6 +1,5 @@
 package com.playerPlugin.playerTaskX.web;
 
-import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.http.Context;
@@ -8,12 +7,7 @@ import io.javalin.http.Context;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class StatsController {
 

@@ -1,13 +1,16 @@
 package com.playerPlugin.playerTaskX.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.api.model.RewardDefinition;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.http.Context;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RewardTemplateController {

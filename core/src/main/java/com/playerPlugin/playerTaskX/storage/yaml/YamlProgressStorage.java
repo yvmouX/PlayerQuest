@@ -1,9 +1,9 @@
 package com.playerPlugin.playerTaskX.storage.yaml;
 
-import com.playerPlugin.playerTaskX.api.model.TaskProgress;
-import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.playerPlugin.playerTaskX.api.model.TaskProgress;
+import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 
 import java.io.File;
 import java.io.IOException;

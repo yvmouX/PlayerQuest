@@ -1,8 +1,8 @@
 package com.playerPlugin.playerTaskX.storage.mysql;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 

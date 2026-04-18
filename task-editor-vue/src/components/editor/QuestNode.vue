@@ -14,9 +14,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Handle, Position } from '@vue-flow/core'
-import type { Quest } from '../../types'
+import {computed} from 'vue'
+import {Handle, Position} from '@vue-flow/core'
+import type {Quest} from '../../types'
 
 const props = defineProps<{
   data: {

@@ -5,9 +5,8 @@ import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
-import com.playerPlugin.playerTaskX.api.model.condition.Condition;
-import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
+import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 

@@ -1,5 +1,5 @@
-import { ref, computed } from 'vue'
-import type { Quest, QuestObjective } from '../types'
+import {computed, ref} from 'vue'
+import type {Quest} from '../types'
 
 export interface QuestNodeData {
   id: string
