@@ -395,14 +395,38 @@ git commit -m "feat(editor): add ActionNode component"
 **Files:**
 - Modify: `task-editor-vue/src/composables/useQuestEditor.ts`
 
-- [ ] **Step 1: 更新 QuestNodeData 的 nodeType**
+- [ ] **Step 1: 更新 QuestNodeData 的 nodeType 和 addNode 函数**
 
 ```typescript
 export interface QuestNodeData {
   id: string
-  quest: Quest
+  quest: Quest | null  // 内置节点可能没有 quest
   position: { x: number; y: number }
   nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'  // 扩展
+}
+```
+
+同时更新 `addNode` 函数支持内置节点:
+
+```typescript
+function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action') {
+  if (typeof questOrNodeType === 'string') {
+    // 内置节点类型
+    nodes.value.push({
+      id: `${questOrNodeType}_${Date.now()}`,
+      quest: null,
+      position,
+      nodeType: questOrNodeType
+    })
+  } else {
+    // Quest 节点
+    nodes.value.push({
+      id: questOrNodeType.id,
+      quest: questOrNodeType,
+      position,
+      nodeType: nodeType || 'task'
+    })
+  }
 }
 ```
 
@@ -592,6 +616,8 @@ git commit -m "feat(editor): extend edge validation for Condition, Branch, Actio
 
 - [ ] **Step 2: 添加相关数据和函数**
 
+**依赖:** Task 5 必须先完成，使 `editorNodes.value` 包含 `nodeType` 字段
+
 在 `<script setup>` 中:
 
 ```typescript
@@ -741,9 +767,7 @@ function handleDrop(event: DragEvent) {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top
     })
-    // 调用 addNode 时传入 nodeType
-    const nodeData = { id: `${nodeType}_${Date.now()}`, nodeType, name: '' }
-    addNode(nodeData as any, position)
+    addNode(nodeType as any, position)
     return
   }
   
