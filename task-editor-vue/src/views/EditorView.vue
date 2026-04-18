@@ -2,6 +2,7 @@
   <div class="editor-view">
     <Header title="任务编辑器">
       <template #actions>
+        <button @click="handleCreateNewQuest" class="btn-outline">新建任务</button>
         <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
         <button @click="showHelpDialog = true" class="btn-outline">帮助</button>
         <button @click="handleSave" class="btn-primary">保存</button>
@@ -59,7 +60,7 @@
           draggable="true"
           @dragstart="(e) => handleDragStart(e, quest)"
         >
-          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || quest.id }}</span>
+          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || quest.id }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
           <span class="quest-type">{{ quest.type }}</span>
         </div>
       </aside>
@@ -201,6 +202,7 @@ const { project } = useVueFlow()
 const showExamplesDialog = ref(false)
 const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
+const unsavedQuestIds = ref<Set<string>>(new Set())
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -211,6 +213,27 @@ function confirmDeleteEdge() {
     selectedEdgeForDelete.value = null
   }
   showDeleteEdgeConfirm.value = false
+}
+
+function handleCreateNewQuest() {
+  const tempId = `temp_${Date.now()}`
+  const newQuest: Quest = {
+    id: tempId,
+    name: { 'zh-CN': '未命名任务', 'en-US': 'Unnamed Quest' },
+    description: { 'zh-CN': '', 'en-US': '' },
+    type: 'FOREVER',
+    objectives: [],
+    rewards: []
+  }
+  sidebarQuests.value = [...sidebarQuests.value, newQuest]
+  unsavedQuestIds.value = new Set([...unsavedQuestIds.value, tempId])
+  
+  const position = {
+    x: 100 + (editorNodes.value.length % 4) * 250,
+    y: 100 + Math.floor(editorNodes.value.length / 4) * 150
+  }
+  addNode(newQuest, position)
+  selectNode(tempId)
 }
 
 function handleKeyDelete(event) {
@@ -347,6 +370,44 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
 }
 
 async function handleSave() {
+  const tempIds = [...unsavedQuestIds.value]
+  if (tempIds.length > 0) {
+    for (const tempId of tempIds) {
+      const quest = sidebarQuests.value.find(q => q.id === tempId)
+      if (!quest) continue
+      
+      try {
+        const created = await QuestService.create(quest)
+        if (created.code === 0 && created.data) {
+          const newId = created.data.id
+          const oldId = tempId
+          
+          editorNodes.value = editorNodes.value.map(n => {
+            if (n.id === oldId) {
+              return { ...n, id: newId }
+            }
+            return n
+          })
+          
+          edges.value = edges.value.map(e => ({
+            ...e,
+            id: e.id.replace(oldId, newId),
+            source: e.source === oldId ? newId : e.source,
+            target: e.target === oldId ? newId : e.target
+          }))
+          
+          sidebarQuests.value = sidebarQuests.value.map(q => 
+            q.id === oldId ? { ...q, id: newId } : q
+          )
+          
+          unsavedQuestIds.value = new Set([...unsavedQuestIds.value].filter(id => id !== oldId))
+        }
+      } catch (error) {
+        console.error(`Failed to create quest ${tempId}:`, error)
+      }
+    }
+  }
+  
   await saveGraph()
 }
 
