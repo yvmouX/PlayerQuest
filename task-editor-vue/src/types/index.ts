@@ -56,9 +56,37 @@ export interface StatsActivity {
   users: number
 }
 
-export type NodeType = 'start' | 'task' | 'completion'
+export type NodeType = 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'
 
 export type TaskSubType = 'CYCLE' | 'TIMER' | 'FOREVER' | 'LIMIT'
+
+export type ConditionType = 'PERMISSION' | 'HAS_ITEM' | 'KILL_MOB' | 'COLLECT_ITEM' | 'PLAYER_LEVEL' | 'TIME_RANGE' | 'IN_REGION'
+
+export interface ConditionItem {
+  conditionType: ConditionType
+  params: Record<string, any>
+}
+
+export interface ConditionData {
+  type: 'condition'
+  name: string
+  conditions: ConditionItem[]
+}
+
+export interface BranchData {
+  type: 'branch'
+  name: string
+  linkedConditionId: string
+}
+
+export type ActionType = 'GIVE_ITEM' | 'TAKE_ITEM' | 'GIVE_MONEY' | 'TAKE_MONEY' | 'GIVE_XP' | 'SEND_MESSAGE' | 'BROADCAST' | 'EXECUTE_COMMAND' | 'PLAY_SOUND'
+
+export interface ActionData {
+  type: 'action'
+  name: string
+  actionType: ActionType
+  actionParams: Record<string, any>
+}
 
 export interface StartNodeData {
   type: 'start'
@@ -87,4 +115,4 @@ export interface CompletionNodeData {
   callbackMessage?: string
 }
 
-export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData
+export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData
