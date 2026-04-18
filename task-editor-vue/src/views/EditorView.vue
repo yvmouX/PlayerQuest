@@ -305,7 +305,11 @@ async function loadData() {
   try {
     const questsResponse = await QuestService.getAll()
     if (questsResponse.code === 0 && questsResponse.data) {
-      sidebarQuests.value = questsResponse.data
+      sidebarQuests.value = questsResponse.data.map(q => ({
+        ...q,
+        name: typeof q.name === 'string' ? { 'zh-CN': q.name, 'en-US': '' } : q.name,
+        description: typeof q.description === 'string' ? { 'zh-CN': q.description, 'en-US': '' } : q.description
+      }))
     }
     
     const graphsResponse = await GraphService.getAll()
