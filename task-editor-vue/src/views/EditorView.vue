@@ -166,7 +166,7 @@ import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportDialog from '../components/editor/ImportDialog.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {QuestService} from '../services/api'
-import type {Quest} from '../types'
+import type {Quest, EditorNodeData, TaskNodeData} from '../types'
 
 const {
   nodes: editorNodes,
@@ -194,7 +194,7 @@ const flowNodes = computed({
     id: n.id,
     type: n.nodeType,
     position: n.position,
-    data: n
+    data: n.data
   })),
   set: (val) => {
     val.forEach(v => {
@@ -303,8 +303,8 @@ function handleDeleteNode(nodeId: string) {
   removeNode(nodeId)
 }
 
-function handleUpdateQuest(nodeId: string, quest: Partial<Quest>) {
-  updateNode(nodeId, quest)
+function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
+  updateNode(nodeId, nodeData)
 }
 
 function handleAddQuest() {
@@ -319,11 +319,25 @@ function handleCreateQuest(quest: Quest) {
 
 async function handleSave() {
   const data = exportData()
-  for (const quest of data.nodes) {
-    try {
-      await QuestService.update(quest.id, quest)
-    } catch (error) {
-      console.error(`Failed to save quest ${quest.id}:`, error)
+  for (const nodeData of data.nodes) {
+    if (nodeData.type === 'task') {
+      const quest = nodeData as TaskNodeData
+      try {
+        await QuestService.update(quest.id, {
+          id: quest.id,
+          name: quest.name,
+          description: quest.description,
+          type: 'single' as const,
+          taskType: quest.taskType,
+          objectives: quest.objectives,
+          rewards: quest.rewards,
+          resetInterval: quest.resetInterval,
+          timeLimit: quest.timeLimit,
+          expiredAction: quest.expiredAction
+        })
+      } catch (error) {
+        console.error(`Failed to save quest ${quest.id}:`, error)
+      }
     }
   }
 }

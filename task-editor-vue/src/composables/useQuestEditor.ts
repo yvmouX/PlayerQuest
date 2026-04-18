@@ -1,38 +1,93 @@
 import {computed, ref} from 'vue'
-import type {Quest} from '../types'
+import type {Quest, EditorNodeData, StartNodeData, TaskNodeData, CompletionNodeData, ConditionData, BranchData, ActionData, EventData, CounterData, TimerData, StateData, SubtaskData, NodeType} from '../types'
 
 export interface QuestNodeData {
   id: string
-  quest: Quest | null
+  nodeType: NodeType
   position: { x: number; y: number }
-  nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask'
+  data: EditorNodeData
 }
 
 const nodes = ref<QuestNodeData[]>([])
 export const editorNodes = nodes
 
+function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
+  switch (nodeType) {
+    case 'start':
+      return { type: 'start', name: '', description: '' } as StartNodeData
+    case 'task':
+      return {
+        type: 'task',
+        id,
+        name: { 'zh-CN': '', 'en-US': '' },
+        description: { 'zh-CN': '', 'en-US': '' },
+        taskType: 'FOREVER',
+        objectives: [],
+        rewards: []
+      } as TaskNodeData
+    case 'completion':
+      return { type: 'completion', name: '', rewards: [] } as CompletionNodeData
+    case 'condition':
+      return { type: 'condition', name: '', conditions: [] } as ConditionData
+    case 'branch':
+      return { type: 'branch', name: '', linkedConditionId: '' } as BranchData
+    case 'action':
+      return { type: 'action', name: '', actionType: 'GIVE_ITEM', actionParams: {} } as ActionData
+    case 'event':
+      return { type: 'event', name: '', eventTypes: [] } as EventData
+    case 'counter':
+      return { type: 'counter', name: '', resetOn: 'NONE' } as CounterData
+    case 'timer':
+      return { type: 'timer', name: '', timerType: 'DELAY' } as TimerData
+    case 'state':
+      return { type: 'state', name: '', operation: 'COMPLETE_TASK' } as StateData
+    case 'subtask':
+      return { type: 'subtask', name: '' } as SubtaskData
+    default:
+      return { type: 'start', name: '' } as StartNodeData
+  }
+}
+
 export function useQuestEditor() {
   const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
   const selectedNodeId = ref<string | null>(null)
 
-  const selectedNode = computed(() => 
-    nodes.value.find(n => n.id === selectedNodeId.value)
-  )
+  const selectedNode = computed(() => {
+    const node = nodes.value.find(n => n.id === selectedNodeId.value)
+    if (!node) return null
+    return node.data
+  })
 
-  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask') {
+  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: NodeType) {
     if (typeof questOrNodeType === 'string') {
+      const id = `${questOrNodeType}_${Date.now()}`
+      const type = questOrNodeType as NodeType
       nodes.value.push({
-        id: `${questOrNodeType}_${Date.now()}`,
-        quest: null,
+        id,
+        nodeType: type,
         position,
-        nodeType: questOrNodeType
+        data: createDefaultNodeData(type, id)
       })
     } else {
+      const quest = questOrNodeType
+      const type = nodeType || 'task'
+      const taskData: TaskNodeData = {
+        type: 'task',
+        id: quest.id,
+        name: quest.name,
+        description: quest.description,
+        taskType: quest.taskType || 'FOREVER',
+        objectives: quest.objectives,
+        rewards: quest.rewards,
+        resetInterval: quest.resetInterval,
+        timeLimit: quest.timeLimit,
+        expiredAction: quest.expiredAction
+      }
       nodes.value.push({
-        id: questOrNodeType.id,
-        quest: questOrNodeType,
+        id: quest.id,
+        nodeType: type,
         position,
-        nodeType: nodeType || 'task'
+        data: taskData
       })
     }
   }
@@ -42,10 +97,10 @@ export function useQuestEditor() {
     edges.value = edges.value.filter(e => e.source !== nodeId && e.target !== nodeId)
   }
 
-  function updateNode(nodeId: string, quest: Partial<Quest>) {
+  function updateNode(nodeId: string, data: Partial<EditorNodeData>) {
     const node = nodes.value.find(n => n.id === nodeId)
     if (node) {
-      node.quest = { ...node.quest, ...quest }
+      node.data = { ...node.data, ...data } as EditorNodeData
     }
   }
 
@@ -71,7 +126,6 @@ export function useQuestEditor() {
       counter: ['task'],
       timer: ['task'],
       state: ['task', 'completion']
-      // subtask: [] - no outgoing connections
     }
 
     if (!validConnections[sourceType]?.includes(targetType)) {
@@ -110,19 +164,35 @@ export function useQuestEditor() {
   }
 
   function loadQuests(quests: Quest[]) {
-    nodes.value = quests.map((quest, index) => ({
-      id: quest.id,
-      quest,
-      position: {
-        x: 100 + (index % 4) * 250,
-        y: 100 + Math.floor(index / 4) * 150
+    nodes.value = quests.map((quest, index) => {
+      const type = 'task'
+      const taskData: TaskNodeData = {
+        type: 'task',
+        id: quest.id,
+        name: quest.name,
+        description: quest.description,
+        taskType: quest.taskType || 'FOREVER',
+        objectives: quest.objectives,
+        rewards: quest.rewards,
+        resetInterval: quest.resetInterval,
+        timeLimit: quest.timeLimit,
+        expiredAction: quest.expiredAction
       }
-    }))
+      return {
+        id: quest.id,
+        nodeType: type,
+        position: {
+          x: 100 + (index % 4) * 250,
+          y: 100 + Math.floor(index / 4) * 150
+        },
+        data: taskData
+      }
+    })
   }
 
   function exportData() {
     return {
-      nodes: nodes.value.map(n => n.quest),
+      nodes: nodes.value.map(n => n.data),
       edges: edges.value
     }
   }

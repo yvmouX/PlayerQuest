@@ -502,7 +502,7 @@ function updateConditionParams(cond: ConditionItem) {
 
 function saveChanges() {
   if (props.selectedNode) {
-    emit('update', props.selectedNode.id || (editedNode.value as any).id, editedNode.value)
+    emit('update', (editedNode.value as EditorNodeData).type === 'task' ? (editedNode.value as TaskNodeData).id : props.selectedNode.id || '', editedNode.value)
   }
 }
 </script>
