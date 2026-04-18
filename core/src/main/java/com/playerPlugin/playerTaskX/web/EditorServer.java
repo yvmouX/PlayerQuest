@@ -27,14 +27,14 @@ public class EditorServer {
         })
             // 任务管理
             .get("/api/quests", ctx -> taskController.getAll(ctx))
-            .get("/api/quests/:id", ctx -> taskController.getById(ctx))
+            .get("/api/quests/{id}", ctx -> taskController.getById(ctx))
             .post("/api/quests", ctx -> taskController.create(ctx))
-            .put("/api/quests/:id", ctx -> taskController.update(ctx))
-            .delete("/api/quests/:id", ctx -> taskController.delete(ctx))
+            .put("/api/quests/{id}", ctx -> taskController.update(ctx))
+            .delete("/api/quests/{id}", ctx -> taskController.delete(ctx))
             // 奖励模板
             .get("/api/rewards/templates", ctx -> rewardController.getAll(ctx))
             .post("/api/rewards/templates", ctx -> rewardController.save(ctx))
-            .delete("/api/rewards/templates/:id", ctx -> rewardController.delete(ctx))
+            .delete("/api/rewards/templates/{id}", ctx -> rewardController.delete(ctx))
             // 玩家进度
             .get("/api/players/progress", ctx -> progressController.getAll(ctx))
             // 统计
