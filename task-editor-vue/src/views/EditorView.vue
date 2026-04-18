@@ -13,6 +13,17 @@
          @drop="handleDrop"
          @dragover.prevent="handleDragOver">
       <aside class="sidebar">
+        <h3>流程节点</h3>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'condition')">
+          <span>◇ Condition</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'branch')">
+          <span>⬡ Branch</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'action')">
+          <span>▢ Action</span>
+        </div>
+
         <h3>任务列表</h3>
         <div
           v-for="quest in sidebarQuests"
@@ -187,9 +198,25 @@ function handleDragStart(event: DragEvent, quest: Quest) {
   event.dataTransfer?.setData('application/json', JSON.stringify(quest))
 }
 
+function handleNodeDragStart(event: DragEvent, nodeType: string) {
+  event.dataTransfer?.setData('application/node-type', nodeType)
+}
+
 function handleDrop(event: DragEvent) {
   event.preventDefault()
   const questData = event.dataTransfer?.getData('application/json')
+  const nodeType = event.dataTransfer?.getData('application/node-type')
+  
+  if (nodeType) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect()
+    const position = project({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    })
+    addNode(nodeType as any, position)
+    return
+  }
+  
   if (questData) {
     try {
       const quest: Quest = JSON.parse(questData)
@@ -338,6 +365,7 @@ onMounted(() => {
   font-size: 0.7rem;
   color: #9ca3af;
 }
+.node-item { border-left: 3px solid #8b5cf6; }
 .btn-primary {
   padding: 0.5rem 1rem;
   background: #3b82f6;
