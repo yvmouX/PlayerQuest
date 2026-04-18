@@ -12,8 +12,19 @@
     <div class="canvas-wrapper"
          @drop="handleDrop"
          @dragover.prevent="handleDragOver">
-      <aside class="sidebar">
-        <h3>流程节点</h3>
+       <aside class="sidebar">
+         <h3>核心节点</h3>
+         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'start')">
+           <span>▶ Start</span>
+         </div>
+         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'task')">
+           <span>📋 Task</span>
+         </div>
+         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
+           <span>✔ Completion</span>
+         </div>
+
+         <h3>流程节点</h3>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'condition')">
           <span>◇ Condition</span>
         </div>
@@ -114,7 +125,7 @@
       <NodePropertiesPanel
         v-if="selectedNode"
         :selected-node="selectedNode"
-        @close="selectedNode = null"
+        @close="selectNode(null)"
         @update="handleUpdateQuest"
       />
       
@@ -184,7 +195,8 @@ const {
   addEdge,
   removeEdge,
   loadQuests,
-  exportData
+  exportData,
+  selectNode
 } = useQuestEditor()
 
 const { project } = useVueFlow()
@@ -299,11 +311,11 @@ function handleDrop(event: DragEvent) {
 }
 
 function handleNodeClick(event) {
-  editorSelectedNode.value = event.node.id
+  selectNode(event.node.id)
 }
 
 function handlePaneClick() {
-  editorSelectedNode.value = null
+  selectNode(null)
 }
 
 function handleConnect(params) {
