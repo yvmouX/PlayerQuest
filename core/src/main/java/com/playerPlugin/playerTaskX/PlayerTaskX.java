@@ -37,12 +37,14 @@ public final class PlayerTaskX extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // 初始化 YLib 和配置
         YLib ylib = new YLib(this);
         log = ylib.getLogger();
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
         storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
         editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
 
+        // 初始化存储
         String storageTypeStr = storageConfig.getStorageType();
         PTXStorgeType storageType;
         try {
@@ -71,9 +73,11 @@ public final class PlayerTaskX extends JavaPlugin {
         sessionStorage = StorageFactory.createSessionStorage(storageType, getDataFolder(), mysqlConfig);
         sessionManager = new QuestSessionManager();
 
+        // 注册节点处理器
         NodeHandlerRegistry handlerRegistry = new NodeHandlerRegistry();
         registerHandlers(handlerRegistry);
 
+        // 初始化任务引擎
         this.taskManager = new TaskManager(taskStorage, progressStorage);
         this.rewardManager = new RewardManager();
         taskManager.loadTasks();
@@ -82,12 +86,14 @@ public final class PlayerTaskX extends JavaPlugin {
         taskManager.setQuestEngine(questEngine);
         questEngine.restoreSessions();
 
+        // 注册命令和事件
         ylib.getCommandManager().register(new TaskCommand(taskManager));
         ylib.getCommandManager().register(new TaskAdminCommand(taskManager));
 
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
         getServer().getPluginManager().registerEvents(new GraphEventListener(questEngine), this);
 
+        // 启动编辑器服务
         int editorPort = editorConfig.getPort();
         this.editorServer = new EditorServer(taskManager, getDataFolder().toPath());
         editorServer.start(editorPort);
