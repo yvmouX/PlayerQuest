@@ -71,13 +71,14 @@
 
 | 节点 | 可连出 | 可连入 |
 |------|--------|--------|
-| Start | Task、Event | 无 |
-| Task | Task、Completion | Start、Event |
+| Start | Task | 无 |
+| Task | Task、Completion | Start |
 | Completion | 无 | Task |
 
 **约束**
 - 禁止形成环路
 - 禁止倒流（Completion 不可连出）
+- 注：Event 节点在第三期实现，当前版本暂不连接 Event
 
 ## 数据模型
 
