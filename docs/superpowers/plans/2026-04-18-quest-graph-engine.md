@@ -437,9 +437,9 @@ public interface SessionStorage {
 }
 ```
 
-- [ ] **Step 2: Implement for MySQL (create SessionStorageImpl in mysql package)**
+- [ ] **Step 2: Implement MySQLSessionStorage**
 
-Modify `core/src/main/java/com/playerPlugin/playerTaskX/storage/mysql/MySQLSessionStorage.java`:
+Create `core/src/main/java/com/playerPlugin/playerTaskX/storage/mysql/MySQLSessionStorage.java`:
 
 ```java
 package com.playerPlugin.playerTaskX.storage.mysql;
@@ -609,17 +609,186 @@ public class MySQLSessionStorage implements SessionStorage {
 }
 ```
 
-- [ ] **Step 3: Run build**
+- [ ] **Step 3: Implement SQLiteSessionStorage**
+
+Create `core/src/main/java/com/playerPlugin/playerTaskX/storage/sqlite/SQLiteSessionStorage.java`:
+
+```java
+package com.playerPlugin.playerTaskX.storage.sqlite;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.storage.SessionStorage;
+
+import java.io.File;
+import java.sql.*;
+import java.util.*;
+
+public class SQLiteSessionStorage implements SessionStorage {
+    private final File dbFile;
+    private final ObjectMapper mapper;
+    private Connection connection;
+    
+    public SQLiteSessionStorage(File dbFile) {
+        this.dbFile = dbFile;
+        this.mapper = new ObjectMapper();
+        initTables();
+    }
+    
+    private Connection getConnection() throws SQLException {
+        if (connection == null || connection.isClosed()) {
+            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+        }
+        return connection;
+    }
+    
+    private void initTables() {
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS quest_sessions (
+                    player_uuid TEXT NOT NULL,
+                    quest_id TEXT NOT NULL,
+                    current_node_id TEXT,
+                    completed_nodes TEXT,
+                    context_data TEXT,
+                    start_time INTEGER,
+                    last_active INTEGER,
+                    status TEXT,
+                    PRIMARY KEY (player_uuid, quest_id)
+                )
+            """);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to init session tables", e);
+        }
+    }
+    
+    @Override
+    public void save(QuestSession session) {
+        String sql = """ 
+            INSERT OR REPLACE INTO quest_sessions 
+            (player_uuid, quest_id, current_node_id, completed_nodes, context_data, start_time, last_active, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, session.getPlayerId().toString());
+            stmt.setString(2, session.getQuestId());
+            stmt.setString(3, session.getCurrentNodeId());
+            stmt.setString(4, mapper.writeValueAsString(session.getCompletedNodes()));
+            stmt.setString(5, mapper.writeValueAsString(session.getContext()));
+            stmt.setLong(6, session.getStartTime());
+            stmt.setLong(7, session.getLastActiveTime());
+            stmt.setString(8, session.getStatus().name());
+            stmt.executeUpdate();
+        } catch (SQLException | com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("Failed to save session", e);
+        }
+    }
+    
+    @Override
+    public Optional<QuestSession> find(UUID playerId, String questId) {
+        String sql = "SELECT * FROM quest_sessions WHERE player_uuid = ? AND quest_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerId.toString());
+            stmt.setString(2, questId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find session", e);
+        }
+        return Optional.empty();
+    }
+    
+    @Override
+    public Collection<QuestSession> findByPlayer(UUID playerId) {
+        List<QuestSession> sessions = new ArrayList<>();
+        String sql = "SELECT * FROM quest_sessions WHERE player_uuid = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    sessions.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find sessions", e);
+        }
+        return sessions;
+    }
+    
+    @Override
+    public Collection<QuestSession> findAllActive() {
+        List<QuestSession> sessions = new ArrayList<>();
+        String sql = "SELECT * FROM quest_sessions WHERE status = 'IN_PROGRESS'";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                sessions.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find active sessions", e);
+        }
+        return sessions;
+    }
+    
+    @Override
+    public void delete(UUID playerId, String questId) {
+        String sql = "DELETE FROM quest_sessions WHERE player_uuid = ? AND quest_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerId.toString());
+            stmt.setString(2, questId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete session", e);
+        }
+    }
+    
+    private QuestSession mapRow(ResultSet rs) throws SQLException {
+        UUID playerId = UUID.fromString(rs.getString("player_uuid"));
+        String questId = rs.getString("quest_id");
+        String currentNodeId = rs.getString("current_node_id");
+        QuestSession session = new QuestSession(playerId, questId, currentNodeId);
+        
+        String completedNodesJson = rs.getString("completed_nodes");
+        if (completedNodesJson != null) {
+            List<String> completedNodes = mapper.readValue(completedNodesJson, 
+                mapper.getTypeFactory().constructCollectionType(List.class, String.class));
+            completedNodes.forEach(session::markNodeCompleted);
+        }
+        
+        String contextJson = rs.getString("context_data");
+        if (contextJson != null) {
+            Map<String, Object> context = mapper.readValue(contextJson,
+                mapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+            session.updateContext(context);
+        }
+        
+        session.setLastActiveTime(rs.getLong("last_active"));
+        return session;
+    }
+}
+```
+
+- [ ] **Step 4: Run build**
 
 Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
 Expected: BUILD SUCCESSFUL (may have warnings about unchecked)
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add core/src/main/java/com/playerPlugin/playerTaskX/storage/SessionStorage.java
 git add core/src/main/java/com/playerPlugin/playerTaskX/storage/mysql/MySQLSessionStorage.java
-git commit -m "feat(storage): add SessionStorage interface and MySQL implementation"
+git add core/src/main/java/com/playerPlugin/playerTaskX/storage/sqlite/SQLiteSessionStorage.java
+git commit -m "feat(storage): add SessionStorage interface and implementations"
 ```
 
 ---
@@ -808,6 +977,8 @@ git commit -m "feat(engine): add QuestEngine core logic"
 - Create: `core/src/main/java/com/playerPlugin/playerTaskX/handler/TaskNodeHandler.java`
 - Create: `core/src/main/java/com/playerPlugin/playerTaskX/handler/CompletionNodeHandler.java`
 
+**Note:** Player is obtained from session context via `Bukkit.getPlayer(session.getPlayerId())` since NodeHandler.execute() only receives the session.
+
 - [ ] **Step 1: Create StartNodeHandler.java**
 
 ```java
@@ -819,6 +990,7 @@ import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -866,6 +1038,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -882,6 +1055,9 @@ public class TaskNodeHandler implements NodeHandler {
         GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.wait();
         
+        Player player = Bukkit.getPlayer(session.getPlayerId());
+        if (player == null) return NextNodeResult.wait();
+        
         Map<String, Object> data = currentNode.getData();
         if (data == null) return NextNodeResult.wait();
         
@@ -893,10 +1069,10 @@ public class TaskNodeHandler implements NodeHandler {
         
         boolean allComplete = true;
         for (Objective obj : objectives) {
-            if (!obj.isCompleted(/* player from session context */)) {
+            if (!obj.isCompleted(player)) {
                 allComplete = false;
                 if (obj.matchesEvent(event)) {
-                    obj.applyProgress(/* player */, 1);
+                    obj.applyProgress(player, 1);
                 }
             }
         }
@@ -947,6 +1123,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -963,6 +1140,9 @@ public class CompletionNodeHandler implements NodeHandler {
         GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.terminal(session.getCurrentNodeId());
         
+        Player player = Bukkit.getPlayer(session.getPlayerId());
+        if (player == null) return NextNodeResult.terminal(session.getCurrentNodeId());
+        
         Map<String, Object> data = currentNode.getData();
         if (data == null) {
             session.markNodeCompleted(session.getCurrentNodeId());
@@ -972,13 +1152,34 @@ public class CompletionNodeHandler implements NodeHandler {
         List<Map<String, Object>> rewardsData = (List<Map<String, Object>>) data.get("rewards");
         if (rewardsData != null) {
             for (Map<String, Object> rewardData : rewardsData) {
-                // TODO: Grant reward using reward type and params
-                // rewardData contains type (GIVE_ITEM, GIVE_XP, etc.) and value/params
+                grantReward(player, rewardData);
             }
         }
         
         session.markNodeCompleted(session.getCurrentNodeId());
         return NextNodeResult.terminal(session.getCurrentNodeId());
+    }
+    
+    private void grantReward(Player player, Map<String, Object> rewardData) {
+        String type = (String) rewardData.get("type");
+        Object value = rewardData.get("value");
+        
+        switch (type) {
+            case "item" -> {
+                // Parse item from value and give to player
+            }
+            case "xp" -> {
+                if (value instanceof Number) {
+                    player.giveExp(((Number) value).intValue());
+                }
+            }
+            case "money" -> {
+                // Integrate with economy plugin
+            }
+            case "command" -> {
+                // Execute command as player
+            }
+        }
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
@@ -1471,31 +1672,145 @@ git commit -m "feat(handlers): add additional node handlers"
 
 ## Phase 4: Integration
 
-### Task 11: Integrate with TaskManager
+### Task 11: Create GraphEventListener
 
 **Files:**
-- Modify: `core/src/main/java/com/playerPlugin/playerTaskX/manager/TaskManager.java`
+- Create: `core/src/main/java/com/playerPlugin/playerTaskX/listener/GraphEventListener.java`
 
-- [ ] **Step 1: Modify TaskManager to delegate to QuestEngine**
-
-Add QuestEngine field and modify handleEvent:
+- [ ] **Step 1: Create GraphEventListener.java**
 
 ```java
-public class TaskManager {
-    private final TaskStorage taskStorage;
-    private final ProgressStorage progressStorage;
-    private final QuestEngine questEngine;  // NEW
+package com.playerPlugin.playerTaskX.listener;
+
+import com.playerPlugin.playerTaskX.engine.QuestEngine;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+
+public class GraphEventListener implements Listener {
+    private final QuestEngine questEngine;
     
-    public TaskManager(TaskStorage taskStorage, ProgressStorage progressStorage, QuestEngine questEngine) {
-        this.taskStorage = taskStorage;
-        this.progressStorage = progressStorage;
-        this.questEngine = questEngine;  // NEW
+    public GraphEventListener(QuestEngine questEngine) {
+        this.questEngine = questEngine;
     }
     
-    public void handleEvent(Player player, Event event) {
-        // Delegate to quest engine for graph-based tasks
-        questEngine.handleEvent(player, event);
-        // Legacy handling for non-graph tasks continues below...
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityDeath(EntityDeathEvent event) {
+        Player killer = event.getEntity().getKiller();
+        if (killer != null) {
+            Bukkit.getScheduler().runTaskLater(null, () -> {
+                questEngine.handleEvent(killer, event);
+            }, 1L);
+        }
+    }
+    
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Bukkit.getScheduler().runTaskLater(null, () -> {
+            questEngine.handleEvent(player, event);
+        }, 1L);
+    }
+    
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+        Bukkit.getScheduler().runTaskLater(null, () -> {
+            questEngine.handleEvent(player, event);
+        }, 1L);
+    }
+    
+    // Additional event handlers as needed
+}
+```
+
+- [ ] **Step 2: Run build**
+
+Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
+Expected: BUILD SUCCESSFUL
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add core/src/main/java/com/playerPlugin/playerTaskX/listener/GraphEventListener.java
+git commit -m "feat(listener): add GraphEventListener for quest graph events"
+```
+
+---
+
+### Task 12: Initialize QuestEngine and wire dependencies
+
+**Files:**
+- Modify: `core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java`
+
+- [ ] **Step 1: Create PlayerTaskX initialization**
+
+```java
+public class PlayerTaskX extends JavaPlugin {
+    private TaskManager taskManager;
+    private QuestEngine questEngine;
+    private SessionStorage sessionStorage;
+    private QuestSessionManager sessionManager;
+    
+    @Override
+    public void onEnable() {
+        // Initialize session storage based on config
+        sessionStorage = createSessionStorage();
+        
+        // Initialize session manager
+        sessionManager = new QuestSessionManager();
+        
+        // Initialize handler registry and register all handlers
+        NodeHandlerRegistry handlerRegistry = new NodeHandlerRegistry();
+        registerHandlers(handlerRegistry);
+        
+        // Initialize task manager first (without questEngine to break circular dependency)
+        TaskStorage taskStorage = createTaskStorage();
+        taskManager = new TaskManager(taskStorage, progressStorage);
+        
+        // Initialize quest engine with dependencies
+        questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
+        
+        // Now inject questEngine into taskManager using reflection or setter
+        // Or better: refactor TaskManager constructor to accept questEngine
+        injectQuestEngineIntoTaskManager();
+        
+        // Restore any active sessions from database
+        questEngine.restoreSessions();
+        
+        // Register event listener
+        getServer().getPluginManager().registerEvents(
+            new GraphEventListener(questEngine), this);
+    }
+    
+    private void injectQuestEngineIntoTaskManager() {
+        // Option 1: Use reflection
+        // Option 2: Add setter method to TaskManager
+        // Option 3: Refactor TaskManager to accept questEngine in constructor
+        // Using Option 3 - modify TaskManager in next task
+    }
+    
+    private void registerHandlers(NodeHandlerRegistry registry) {
+        registry.register(new StartNodeHandler());
+        registry.register(new TaskNodeHandler());
+        registry.register(new CompletionNodeHandler());
+        registry.register(new ConditionNodeHandler());
+        registry.register(new BranchNodeHandler());
+        registry.register(new ActionNodeHandler());
+        registry.register(new EventNodeHandler());
+        registry.register(new CounterNodeHandler());
+        registry.register(new TimerNodeHandler());
+        registry.register(new StateNodeHandler());
+        registry.register(new SubtaskNodeHandler());
     }
 }
 ```
@@ -1508,13 +1823,67 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 3: Commit**
 
 ```bash
+git add core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java
+git commit -m "feat(engine): initialize QuestEngine and wire dependencies"
+```
+
+---
+
+### Task 13: Refactor TaskManager to use QuestEngine
+
+**Files:**
+- Modify: `core/src/main/java/com/playerPlugin/playerTaskX/manager/TaskManager.java`
+
+- [ ] **Step 1: Refactor TaskManager to accept and use QuestEngine**
+
+```java
+public class TaskManager {
+    private final TaskStorage taskStorage;
+    private final ProgressStorage progressStorage;
+    private QuestEngine questEngine;  // Nullable, set via setter
+    
+    public TaskManager(TaskStorage taskStorage, ProgressStorage progressStorage) {
+        this.taskStorage = taskStorage;
+        this.progressStorage = progressStorage;
+    }
+    
+    public void setQuestEngine(QuestEngine questEngine) {
+        this.questEngine = questEngine;
+    }
+    
+    public void handleEvent(Player player, Event event) {
+        // Delegate to quest engine if available
+        if (questEngine != null) {
+            questEngine.handleEvent(player, event);
+        }
+        // Legacy handling for non-graph tasks continues below...
+    }
+}
+```
+
+- [ ] **Step 2: Update PlayerTaskX to use setter injection**
+
+```java
+// In PlayerTaskX.onEnable():
+questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
+taskManager.setQuestEngine(questEngine);
+```
+
+- [ ] **Step 3: Run build**
+
+Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
+Expected: BUILD SUCCESSFUL
+
+- [ ] **Step 4: Commit**
+
+```bash
 git add core/src/main/java/com/playerPlugin/playerTaskX/manager/TaskManager.java
 git commit -m "refactor(engine): integrate QuestEngine into TaskManager"
 ```
 
 ---
 
-### Task 12: Refactor EditorServer (remove GraphManager)
+### Task 14: Refactor EditorServer (remove GraphManager)
 
 **Files:**
 - Modify: `core/src/main/java/com/playerPlugin/playerTaskX/web/EditorServer.java`
@@ -1565,115 +1934,6 @@ Expected: BUILD SUCCESSFUL
 git add core/src/main/java/com/playerPlugin/playerTaskX/web/EditorServer.java
 git commit -m "refactor(api): remove GraphManager and graph storage endpoints"
 ```
-
----
-
-### Task 13: Create GraphEventListener
-
-**Files:**
-- Create: `core/src/main/java/com/playerPlugin/playerTaskX/listener/GraphEventListener.java`
-
-- [ ] **Step 1: Create GraphEventListener.java**
-
-```java
-package com.playerPlugin.playerTaskX.listener;
-
-import com.playerPlugin.playerTaskX.engine.QuestEngine;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.player.PlayerEvent;
-import org.bukkit.event.block.BlockEvent;
-import org.bukkit.event.inventory.InventoryEvent;
-import // ... other event imports
-
-public class GraphEventListener implements Listener {
-    private final QuestEngine questEngine;
-    
-    public GraphEventListener(QuestEngine questEngine) {
-        this.questEngine = questEngine;
-    }
-    
-    @EventHandler
-    public void onEntityDeath(EntityDeathEvent event) {
-        Player killer = event.getEntity().getKiller();
-        if (killer != null) {
-            questEngine.handleEvent(killer, event);
-        }
-    }
-    
-    // Add handlers for other event types that can advance quest progress
-}
-```
-
-- [ ] **Step 2: Run build**
-
-Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
-Expected: BUILD SUCCESSFUL
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add core/src/main/java/com/playerPlugin/playerTaskX/listener/GraphEventListener.java
-git commit -m "feat(listener): add GraphEventListener for quest graph events"
-```
-
----
-
-### Task 14: Initialize QuestEngine on server startup
-
-**Files:**
-- Modify: `core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java`
-
-- [ ] **Step 1: Initialize QuestEngine and register components**
-
-```java
-public class PlayerTaskX extends JavaPlugin {
-    private TaskManager taskManager;
-    private QuestEngine questEngine;  // NEW
-    private SessionStorage sessionStorage;  // NEW
-    
-    @Override
-    public void onEnable() {
-        // Initialize storage
-        ProgressStorage progressStorage = createProgressStorage();
-        
-        // Initialize session storage based on config
-        sessionStorage = createSessionStorage();
-        
-        // Initialize task manager (now requires questEngine reference)
-        taskManager = new TaskManager(taskStorage, progressStorage, questEngine);
-        
-        // Register event listener
-        getServer().getPluginManager().registerEvents(
-            new GraphEventListener(questEngine), this);
-    }
-    
-    private SessionStorage createSessionStorage() {
-        String storageType = getConfig().getString("storage.type", "mysql");
-        if ("mysql".equals(storageType)) {
-            String host = getConfig().getString("storage.mysql.host", "localhost");
-            int port = getConfig().getInt("storage.mysql.port", 3306);
-            String database = getConfig().getString("storage.mysql.database", "playertaskx");
-            String username = getConfig().getString("storage.mysql.username", "root");
-            String password = getConfig().getString("storage.mysql.password", "");
-            
-            HikariConfig hikariConfig = new HikariConfig();
-            hikariConfig.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database);
-            hikariConfig.setUsername(username);
-            hikariConfig.setPassword(password);
-            hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            HikariDataSource dataSource = new HikariDataSource(hikariConfig);
-            
-            return new MySQLSessionStorage(dataSource);
-        } else {
-            // SQLite implementation
-            File dataFile = new File(getDataFolder(), "sessions.db");
-            return new SQLiteSessionStorage(dataFile);
-        }
-    }
-}
 ```
 
 - [ ] **Step 2: Run build**
@@ -1697,10 +1957,14 @@ git commit -m "feat(engine): initialize QuestEngine on server startup"
 **Files:**
 - Create: `core/src/main/resources/migrations/add_quest_sessions.sql`
 
+**Note:** Design decision to use separate `quest_sessions` table instead of extending `quest_progress`. Rationale: keeps concerns separate (progress tracking vs graph traversal state), avoids schema bloating on the progress table.
+
 - [ ] **Step 1: Create migration script**
 
 ```sql
 -- Migration: Add quest_sessions table for graph execution
+-- Separate table keeps graph traversal state distinct from progress tracking
+
 CREATE TABLE IF NOT EXISTS quest_sessions (
     player_uuid VARCHAR(36) NOT NULL,
     quest_id VARCHAR(255) NOT NULL,
@@ -1714,10 +1978,6 @@ CREATE TABLE IF NOT EXISTS quest_sessions (
     INDEX idx_player (player_uuid),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Optional: Migrate existing progress entries to sessions
--- INSERT INTO quest_sessions (player_uuid, quest_id, current_node_id, start_time, last_active, status)
--- SELECT player_id, task_id, NULL, accepted_at, last_active, status FROM progress;
 ```
 
 - [ ] **Step 2: Commit**
