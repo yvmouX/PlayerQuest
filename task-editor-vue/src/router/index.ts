@@ -1,11 +1,11 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import {createRouter, createWebHashHistory} from 'vue-router'
 import EditorView from '../views/EditorView.vue'
 import RewardLibraryView from '../views/RewardLibraryView.vue'
 import PlayerProgressView from '../views/PlayerProgressView.vue'
 import StatisticsView from '../views/StatisticsView.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     { path: '/', redirect: '/editor' },
     { path: '/editor', name: 'editor', component: EditorView },
