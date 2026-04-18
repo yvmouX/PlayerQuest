@@ -150,7 +150,7 @@ import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
 import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
 import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
-import {setToast} from '../composables/useToast'
+import {setToast, useToast} from '../composables/useToast'
 import {QuestService} from '../services/api'
 import type {EditorNodeData, Quest, NodeType} from '../types'
 
