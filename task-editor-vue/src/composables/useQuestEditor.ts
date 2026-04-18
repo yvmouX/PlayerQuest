@@ -3,9 +3,9 @@ import type {Quest} from '../types'
 
 export interface QuestNodeData {
   id: string
-  quest: Quest
+  quest: Quest | null
   position: { x: number; y: number }
-  nodeType: 'start' | 'task' | 'completion'  // 必填
+  nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'
 }
 
 export function useQuestEditor() {
@@ -17,12 +17,22 @@ export function useQuestEditor() {
     nodes.value.find(n => n.id === selectedNodeId.value)
   )
 
-  function addNode(quest: Quest, position: { x: number; y: number }) {
-    nodes.value.push({
-      id: quest.id,
-      quest,
-      position
-    })
+  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action') {
+    if (typeof questOrNodeType === 'string') {
+      nodes.value.push({
+        id: `${questOrNodeType}_${Date.now()}`,
+        quest: null,
+        position,
+        nodeType: questOrNodeType
+      })
+    } else {
+      nodes.value.push({
+        id: questOrNodeType.id,
+        quest: questOrNodeType,
+        position,
+        nodeType: nodeType || 'task'
+      })
+    }
   }
 
   function removeNode(nodeId: string) {
@@ -38,37 +48,30 @@ export function useQuestEditor() {
   }
 
   function addEdge(source: string, target: string, label?: string) {
-    // 禁止自身连接
     if (source === target) return
-    
-    // 根据节点类型验证连线规则
+
     const sourceNode = nodes.value.find(n => n.id === source)
     const targetNode = nodes.value.find(n => n.id === target)
-    
+
     if (!sourceNode || !targetNode) return
-    
-    // 获取节点类型
-    const sourceType = sourceNode.nodeType || 'task'  // 默认为 task（向后兼容）
-    const targetType = targetNode.nodeType || 'task'
-    
-    // 验证连线规则:
-    // Start → Task
-    // Task → Task / Completion
-    // Completion → (nothing)
-    if (sourceType === 'start' && targetType !== 'task') {
-      console.warn('Cannot connect: Start can only connect to Task')
+
+    const sourceType = sourceNode.nodeType
+    const targetType = targetNode.nodeType
+
+    const validConnections: Record<string, string[]> = {
+      start: ['task', 'condition'],
+      task: ['task', 'completion', 'action'],
+      completion: ['action'],
+      condition: ['branch'],
+      branch: ['task', 'completion'],
+      action: ['task', 'completion']
+    }
+
+    if (!validConnections[sourceType]?.includes(targetType)) {
+      console.warn(`Cannot connect: ${sourceType} cannot connect to ${targetType}`)
       return
     }
-    if (sourceType === 'task' && targetType === 'start') {
-      console.warn('Cannot connect: Task cannot connect to Start')
-      return
-    }
-    if (sourceType === 'completion') {
-      console.warn('Cannot connect: Completion cannot be a source')
-      return
-    }
-    
-    // 禁止环路 - 简单的 DFS 检查
+
     const visited = new Set<string>()
     const stack = [source]
     while (stack.length > 0) {
@@ -76,17 +79,16 @@ export function useQuestEditor() {
       if (current === target) continue
       if (visited.has(current)) continue
       visited.add(current)
-      
       edges.value
         .filter(e => e.source === current)
         .forEach(e => stack.push(e.target))
     }
-    
+
     if (visited.has(target)) {
       console.warn('Cannot create edge: would create a cycle')
       return
     }
-    
+
     const id = `${source}-${target}`
     if (edges.value.some(e => e.id === id)) return
     edges.value.push({ id, source, target, label })
