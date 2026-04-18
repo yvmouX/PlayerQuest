@@ -49,6 +49,10 @@
         <template #node-completion="{ data }">
           <CompletionNode :data="data" />
         </template>
+
+        <template #node-condition="{ data }">
+          <ConditionNode :data="data" />
+        </template>
       </VueFlow>
       
       <NodePropertiesPanel
@@ -92,6 +96,7 @@ import Header from '../components/layout/Header.vue'
 import TaskNode from '../components/editor/TaskNode.vue'
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
+import ConditionNode from '../components/editor/ConditionNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
