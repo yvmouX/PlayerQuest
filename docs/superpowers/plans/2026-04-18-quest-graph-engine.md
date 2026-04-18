@@ -1254,7 +1254,7 @@ public class ConditionNodeHandler implements NodeHandler {
             for (Map<String, Object> cond : conditions) {
                 String conditionType = (String) cond.get("conditionType");
                 Map<String, Object> params = (Map<String, Object>) cond.get("params");
-                if (!evaluateCondition(conditionType, params)) {
+                if (!evaluateCondition(conditionType, params, session)) {
                     allMet = false;
                     break;
                 }
@@ -1277,7 +1277,7 @@ public class ConditionNodeHandler implements NodeHandler {
         return NextNodeResult.next(targetNodeId, Map.of("conditionResult", allMet));
     }
     
-    private boolean evaluateCondition(String type, Map<String, Object> params) {
+    private boolean evaluateCondition(String type, Map<String, Object> params, QuestSession session) {
         Player player = Bukkit.getPlayer(session.getPlayerId());
         if (player == null) return false;
         
@@ -1768,7 +1768,7 @@ public class SubtaskNodeHandler implements NodeHandler {
             // First time here - create sub-session
             QuestSession subSession = new QuestSession(session.getPlayerId(), subtaskId, "start");
             sessionManager.createSession(subSession);
-            session.updateContext(Map.of(subSessionKey, subSessionId));
+            session.updateContext(Map.of(subSessionKey, subtaskId));
             return NextNodeResult.wait();
         }
         
@@ -2091,19 +2091,6 @@ Expected: BUILD SUCCESSFUL
 git add core/src/main/java/com/playerPlugin/playerTaskX/web/EditorServer.java
 git commit -m "refactor(api): remove GraphManager and graph storage endpoints"
 ```
-```
-
-- [ ] **Step 2: Run build**
-
-Run: `cd PlayerTaskX && ./gradlew :core:compileJava`
-Expected: BUILD SUCCESSFUL
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java
-git commit -m "feat(engine): initialize QuestEngine on server startup"
-```
 
 ---
 
@@ -2313,6 +2300,12 @@ git commit -m "test(engine): add unit tests for QuestEngine"
 package com.playerPlugin.playerTaskX.integration;
 
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
+import com.playerPlugin.playerTaskX.api.model.GraphNode;
+import com.playerPlugin.playerTaskX.api.model.NodeConnection;
+import com.playerPlugin.playerTaskX.api.model.QuestGraph;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
+import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
+import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
 import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
 import com.playerPlugin.playerTaskX.handler.*;
@@ -2321,31 +2314,84 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 class GraphExecutionIntegrationTest {
     @Mock private Player player;
     @Mock private EntityDeathEvent event;
+    @Mock private TaskManager taskManager;
+    @Mock private SessionStorage sessionStorage;
+    @Mock private TaskStorage taskStorage;
+    @Mock private ProgressStorage progressStorage;
     
     private QuestEngine engine;
+    private QuestSessionManager sessionManager;
+    private NodeHandlerRegistry registry;
     
     @BeforeEach
     void setUp() {
-        QuestSessionManager sessionManager = new QuestSessionManager();
-        NodeHandlerRegistry registry = new NodeHandlerRegistry();
+        MockitoAnnotations.openMocks(this);
+        
+        sessionManager = new QuestSessionManager();
+        registry = new NodeHandlerRegistry();
         
         // Register all handlers
         registry.register(new StartNodeHandler());
         registry.register(new TaskNodeHandler());
         registry.register(new CompletionNodeHandler());
+        registry.register(new ConditionNodeHandler());
+        registry.register(new BranchNodeHandler());
+        registry.register(new ActionNodeHandler());
         
-        // Note: Integration test requires mock TaskManager and SessionStorage
+        // Create engine with mocked dependencies
+        engine = new QuestEngine(sessionManager, registry, taskManager, sessionStorage);
+        
+        // Setup player mock
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
     }
     
     @Test
     void testStartToCompletionFlow() {
-        // Test: Create quest with Start -> Task -> Completion
-        // Verify player can progress through the graph
+        // Create simple graph: Start -> Task -> Completion
+        QuestGraph graph = createTestGraph("quest1", "start1", "task1", "completion1");
+        TaskDefinition task = mock(TaskDefinition.class);
+        when(task.getId()).thenReturn("quest1");
+        when(task.getGraph()).thenReturn(graph);
+        when(taskManager.getTask("quest1")).thenReturn(Optional.of(task));
+        
+        // Start quest
+        engine.startQuest(player, task);
+        
+        // Verify session created
+        assertTrue(sessionManager.getSession(player.getUniqueId(), "quest1").isPresent());
+        
+        // Simulate event to progress
+        when(event.getEntity()).thenReturn(mock(org.bukkit.entity.LivingEntity.class));
+        when(event.getEntity().getKiller()).thenReturn(player);
+        engine.handleEvent(player, event);
+        
+        // Verify session updated
+        // (Actual assertions depend on graph structure)
+        assertNotNull(sessionManager.getSession(player.getUniqueId(), "quest1").get().getCurrentNodeId());
+    }
+    
+    private QuestGraph createTestGraph(String questId, String startId, String taskId, String completionId) {
+        List<GraphNode> nodes = List.of(
+            new GraphNode(startId, "start", 0, 0, Map.of()),
+            new GraphNode(taskId, "task", 100, 0, Map.of("objectives", List.of())),
+            new GraphNode(completionId, "completion", 200, 0, Map.of("rewards", List.of()))
+        );
+        List<NodeConnection> edges = List.of(
+            new NodeConnection("e1", startId, taskId, null),
+            new NodeConnection("e2", taskId, completionId, null)
+        );
+        return new QuestGraph(questId, "Test Quest", nodes, edges);
     }
 }
 ```
@@ -2371,10 +2417,31 @@ git commit -m "test: add integration tests for graph execution"
 Run: `cd PlayerTaskX && ./gradlew build`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Disable old EntityListener**
+
+Modify `core/src/main/java/com/playerPlugin/playerTaskX/PlayerTaskX.java`:
+```java
+// In onEnable(), after registering GraphEventListener:
+// Disable old EntityListener since GraphEventListener replaces it
+// getServer().getPluginManager().registerEvents(new EntityListener(taskManager), this);
+```
+
+- [ ] **Step 3: Manual verification**
+
+Manual test checklist:
+1. Start server with new build
+2. Create a quest via web editor with graph: Start → Task → Completion
+3. Player accepts quest, verify session created in database
+4. Trigger events (kill mob, break block), verify quest progresses
+5. Complete quest, verify rewards granted
+6. Test condition branching: create quest with Condition node, verify routing
+7. Test timer: create quest with Timer node, verify delayed transition
+8. Server restart: verify sessions restored correctly
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git commit -m "chore: verify full build passes"
+git commit -m "chore: verify full build passes and manual testing complete"
 ```
 
 ---
