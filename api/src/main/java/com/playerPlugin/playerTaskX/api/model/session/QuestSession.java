@@ -51,4 +51,8 @@ public class QuestSession {
     public void setStatus(PTXTaskStatus status) {
         this.status = status;
     }
+    
+    public void setLastActiveTime(long lastActiveTime) {
+        this.lastActiveTime = lastActiveTime;
+    }
 }
