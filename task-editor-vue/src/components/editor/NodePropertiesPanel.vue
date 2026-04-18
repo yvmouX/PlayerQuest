@@ -398,7 +398,6 @@ const conditionNodes = computed(() => {
 })
 
 const editedNode = ref<NodeData>(createDefaultNode())
-const isLoadingNode = ref(false)
 
 function createDefaultNode(): NodeData {
   const node = {
@@ -411,7 +410,6 @@ function createDefaultNode(): NodeData {
 
 watch(() => props.selectedNode, (node) => {
   if (node) {
-    isLoadingNode.value = true
     editedNode.value = JSON.parse(JSON.stringify(node))
     if (editedNode.value.type === 'task') {
       const taskNode = editedNode.value as TaskNodeData
@@ -422,14 +420,25 @@ watch(() => props.selectedNode, (node) => {
         taskNode.description = { 'zh-CN': taskNode.description, 'en-US': '' }
       }
     }
-    isLoadingNode.value = false
+    lastEmittedNode = JSON.stringify(editedNode.value)
   }
 }, { immediate: true })
 
-watch(editedNode, (newNode) => {
-  if (props.selectedNode && !isLoadingNode.value) {
-    const nodeId = newNode.type === 'task' ? (newNode as TaskNodeData).id : props.selectedNode.id || ''
-    emit('update', nodeId, editedNode.value)
+let saveTimeout: number | null = null
+let lastEmittedNode: string | null = null
+
+watch(editedNode, () => {
+  if (props.selectedNode) {
+    const nodeData = JSON.stringify(editedNode.value)
+    if (nodeData === lastEmittedNode) return
+    
+    if (saveTimeout) clearTimeout(saveTimeout)
+    saveTimeout = window.setTimeout(() => {
+      const newNode = editedNode.value
+      const nodeId = newNode.type === 'task' ? (newNode as TaskNodeData).id : props.selectedNode.id || ''
+      lastEmittedNode = JSON.stringify(editedNode.value)
+      emit('update', nodeId, editedNode.value)
+    }, 300)
   }
 }, { deep: true })
 
