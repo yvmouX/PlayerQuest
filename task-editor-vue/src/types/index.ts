@@ -138,7 +138,6 @@ export interface ActionData {
 
 export interface StartNodeData {
   type: 'start'
-  name: string
   description?: string
   startCondition?: object
 }
@@ -158,9 +157,30 @@ export interface TaskNodeData {
 
 export interface CompletionNodeData {
   type: 'completion'
-  name: string
   rewards: QuestReward[]
   callbackMessage?: string
 }
 
 export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData | EventData | CounterData | TimerData | StateData | SubtaskData
+
+export interface NodeConnection {
+  id: string
+  sourceId: string
+  targetId: string
+  label?: string
+}
+
+export interface GraphNode {
+  id: string
+  nodeType: string
+  x: number
+  y: number
+  data: EditorNodeData
+}
+
+export interface QuestGraph {
+  id: string
+  name: string
+  nodes: GraphNode[]
+  edges: NodeConnection[]
+}

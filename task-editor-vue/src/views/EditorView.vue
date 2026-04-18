@@ -146,6 +146,8 @@
         v-if="showHelpDialog"
         @close="showHelpDialog = false"
       />
+      
+      <Toast ref="toastRef" />
     </div>
   </div>
 </template>
@@ -173,8 +175,10 @@ import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
 import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
+import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
-import {QuestService} from '../services/api'
+import {setToast} from '../composables/useToast'
+import {QuestService, GraphService} from '../services/api'
 import type {Quest, EditorNodeData, TaskNodeData} from '../types'
 
 const {
@@ -187,7 +191,8 @@ const {
   addEdge,
   removeEdge,
   loadQuests,
-  exportData,
+  loadGraph,
+  saveGraph,
   selectNode
 } = useQuestEditor()
 
@@ -198,6 +203,7 @@ const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 function confirmDeleteEdge() {
   if (selectedEdgeForDelete.value) {
@@ -209,6 +215,10 @@ function confirmDeleteEdge() {
 
 function handleKeyDelete(event) {
   if (event.key === 'Delete' || event.key === 'Backspace') {
+    const target = event.target as HTMLElement
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return
+    }
     if (selectedEdgeForDelete.value) {
       removeEdge(selectedEdgeForDelete.value)
       selectedEdgeForDelete.value = null
@@ -257,13 +267,20 @@ const selectedNode = computed(() => editorSelectedNode.value)
 
 async function loadData() {
   try {
-    const response = await QuestService.getAll()
-    if (response.code === 0 && response.data) {
-      loadQuests(response.data)
-      sidebarQuests.value = response.data
+    const [questsResponse, graphsResponse] = await Promise.all([
+      QuestService.getAll(),
+      GraphService.getAll()
+    ])
+    if (questsResponse.code === 0 && questsResponse.data) {
+      sidebarQuests.value = questsResponse.data
+      if (graphsResponse.code === 0 && graphsResponse.data && graphsResponse.data.length > 0) {
+        loadGraph(graphsResponse.data[0])
+      } else {
+        loadQuests(questsResponse.data, [])
+      }
     }
   } catch (error) {
-    console.error('Failed to load quests:', error)
+    console.error('Failed to load data:', error)
   }
 }
 
@@ -329,31 +346,8 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
 }
 
-function getLocalizedText(obj: Record<string, string> | string | undefined, fallback: string = ''): string {
-  if (!obj) return fallback
-  if (typeof obj === 'string') return obj
-  return obj['zh-CN'] || obj['en-US'] || fallback
-}
-
 async function handleSave() {
-  const data = exportData()
-  for (const nodeData of data.nodes) {
-    if (nodeData.type === 'task') {
-      const quest = nodeData as TaskNodeData
-      try {
-        await QuestService.update(quest.id, {
-          id: quest.id,
-          name: getLocalizedText(quest.name),
-          description: getLocalizedText(quest.description),
-          taskType: quest.taskType || 'FOREVER',
-          objectives: quest.objectives || [],
-          rewards: quest.rewards || []
-        })
-      } catch (error) {
-        console.error(`Failed to save quest ${quest.id}:`, error)
-      }
-    }
-  }
+  await saveGraph()
 }
 
 function handleLoadExamples(quests: Quest[]) {
@@ -373,6 +367,9 @@ function handleLoadExamples(quests: Quest[]) {
 onMounted(() => {
   loadData()
   window.addEventListener('keydown', handleKeyDelete)
+  if (toastRef.value) {
+    setToast(toastRef)
+  }
 })
 
 onUnmounted(() => {

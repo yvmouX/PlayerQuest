@@ -8,10 +8,6 @@
       <!-- Start Node -->
       <template v-if="selectedNode.type === 'start'">
         <div class="form-group">
-          <label>名称</label>
-          <input v-model="editedNode.name" placeholder="节点名称" />
-        </div>
-        <div class="form-group">
           <label>描述</label>
           <textarea v-model="editedNode.description" rows="3" placeholder="描述..." />
         </div>
@@ -101,10 +97,6 @@
 
       <!-- Completion Node -->
       <template v-else-if="selectedNode.type === 'completion'">
-        <div class="form-group">
-          <label>名称</label>
-          <input v-model="editedNode.name" placeholder="完成节点名称" />
-        </div>
         <div class="form-group">
           <label>回调消息</label>
           <textarea v-model="editedNode.callbackMessage" rows="2" placeholder="完成后发送的消息..." />

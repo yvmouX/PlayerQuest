@@ -1,5 +1,7 @@
 import {computed, ref} from 'vue'
-import type {Quest, EditorNodeData, StartNodeData, TaskNodeData, CompletionNodeData, ConditionData, BranchData, ActionData, EventData, CounterData, TimerData, StateData, SubtaskData, NodeType} from '../types'
+import type {Quest, EditorNodeData, StartNodeData, TaskNodeData, CompletionNodeData, ConditionData, BranchData, ActionData, EventData, CounterData, TimerData, StateData, SubtaskData, NodeType, QuestGraph, GraphNode, NodeConnection} from '../types'
+import {useToast} from './useToast'
+import {GraphService} from '../services/api'
 
 export interface QuestNodeData {
   id: string
@@ -9,12 +11,14 @@ export interface QuestNodeData {
 }
 
 const nodes = ref<QuestNodeData[]>([])
+const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
+const currentGraphId = ref<string | null>(null)
 export const editorNodes = nodes
 
 function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
   switch (nodeType) {
     case 'start':
-      return { type: 'start', name: '', description: '' } as StartNodeData
+      return { type: 'start', description: '' } as StartNodeData
     case 'task':
       return {
         type: 'task',
@@ -26,7 +30,7 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
         rewards: []
       } as TaskNodeData
     case 'completion':
-      return { type: 'completion', name: '', rewards: [] } as CompletionNodeData
+      return { type: 'completion', rewards: [] } as CompletionNodeData
     case 'condition':
       return { type: 'condition', name: '', conditions: [] } as ConditionData
     case 'branch':
@@ -44,12 +48,11 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
     case 'subtask':
       return { type: 'subtask', name: '' } as SubtaskData
     default:
-      return { type: 'start', name: '' } as StartNodeData
+      return { type: 'start', description: '' } as StartNodeData
   }
 }
 
 export function useQuestEditor() {
-  const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
   const selectedNodeId = ref<string | null>(null)
 
   const selectedNode = computed(() => {
@@ -129,7 +132,7 @@ export function useQuestEditor() {
     }
 
     if (!validConnections[sourceType]?.includes(targetType)) {
-      console.warn(`Cannot connect: ${sourceType} cannot connect to ${targetType}`)
+      useToast().error(`无法连接：${sourceType} 不能连接到 ${targetType}`)
       return
     }
 
@@ -146,7 +149,7 @@ export function useQuestEditor() {
     }
 
     if (visited.has(target)) {
-      console.warn('Cannot create edge: would create a cycle')
+      useToast().error('无法创建连接：会导致循环')
       return
     }
 
@@ -163,7 +166,7 @@ export function useQuestEditor() {
     selectedNodeId.value = nodeId
   }
 
-  function loadQuests(quests: Quest[]) {
+  function loadQuests(quests: Quest[], graphEdges: NodeConnection[] = []) {
     nodes.value = quests.map((quest, index) => {
       const type = 'task'
       const taskData: TaskNodeData = {
@@ -188,12 +191,53 @@ export function useQuestEditor() {
         data: taskData
       }
     })
+    edges.value = graphEdges.map(e => ({ id: e.id, source: e.sourceId, target: e.targetId, label: e.label }))
   }
 
-  function exportData() {
+  function exportGraph(): QuestGraph {
     return {
-      nodes: nodes.value.map(n => n.data),
-      edges: edges.value
+      id: currentGraphId.value || 'default',
+      name: 'Quest Graph',
+      nodes: nodes.value.map(n => ({
+        id: n.id,
+        nodeType: n.nodeType,
+        x: n.position.x,
+        y: n.position.y,
+        data: n.data
+      })),
+      edges: edges.value.map(e => ({
+        id: e.id,
+        sourceId: e.source,
+        targetId: e.target,
+        label: e.label
+      }))
+    }
+  }
+
+  function loadGraph(graph: QuestGraph) {
+    currentGraphId.value = graph.id
+    nodes.value = graph.nodes.map((n: GraphNode) => ({
+      id: n.id,
+      nodeType: n.nodeType as NodeType,
+      position: { x: n.x, y: n.y },
+      data: n.data as EditorNodeData
+    }))
+    edges.value = graph.edges.map((e: NodeConnection) => ({
+      id: e.id,
+      source: e.sourceId,
+      target: e.targetId,
+      label: e.label
+    }))
+  }
+
+  async function saveGraph() {
+    try {
+      const graph = exportGraph()
+      await GraphService.save(graph)
+      useToast().success('图保存成功')
+    } catch (error) {
+      useToast().error('保存图失败')
+      console.error('Failed to save graph:', error)
     }
   }
 
@@ -209,6 +253,8 @@ export function useQuestEditor() {
     removeEdge,
     selectNode,
     loadQuests,
-    exportData
+    loadGraph,
+    exportGraph,
+    saveGraph
   }
 }
