@@ -8,8 +8,10 @@ export interface QuestNodeData {
   nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'
 }
 
+const nodes = ref<QuestNodeData[]>([])
+export const editorNodes = nodes
+
 export function useQuestEditor() {
-  const nodes = ref<QuestNodeData[]>([])
   const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
   const selectedNodeId = ref<string | null>(null)
 
