@@ -4,6 +4,7 @@ import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.logger.Logger;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
+import com.playerPlugin.playerTaskX.configuration.GeneralConfiguration;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.command.TaskAdminCommand;
@@ -28,13 +29,14 @@ public final class PlayerTaskX extends JavaPlugin {
     private QuestEngine questEngine;
     private SessionStorage sessionStorage;
     private QuestSessionManager sessionManager;
+    private GeneralConfiguration generalConfig;
 
     @Override
     public void onEnable() {
         YLib ylib = new YLib(this);
         log = ylib.getLogger();
+        generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
 
-        saveDefaultConfig();
         String storageTypeStr = getConfig().getString("storage.type", "SQLITE");
         PTXStorgeType storageType;
         try {
