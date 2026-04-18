@@ -473,7 +473,7 @@ function addEdge(source: string, target: string, label?: string) {
     task: ['task', 'completion', 'action'],
     completion: ['action'],
     condition: ['branch'],
-    branch: ['task'],  // branch 有 TRUE/FALSE 两个出口，实际由前端控制
+    branch: ['task', 'completion'],  // branch 有 TRUE/FALSE 两个出口，可连向 task 或 completion
     action: ['task', 'completion']
   }
   
@@ -635,6 +635,7 @@ git commit -m "feat(editor): extend edge validation for Condition, Branch, Actio
 
 ```typescript
 import type { ConditionData, BranchData, ActionData, ConditionItem } from '../../types'
+import { editorNodes } from '../../composables/useQuestEditor'
 
 // 添加 computed 获取 condition 节点列表
 const conditionNodes = computed(() => {
@@ -832,5 +833,5 @@ cd task-editor-vue && npm run build
 - [ ] **Step 3: 提交**
 
 ```bash
-git add -A && git commit -m "feat(editor): complete phase 2 flow control nodes - Condition, Branch, Action"
+git add task-editor-vue/src/ && git commit -m "feat(editor): complete phase 2 flow control nodes - Condition, Branch, Action"
 ```
