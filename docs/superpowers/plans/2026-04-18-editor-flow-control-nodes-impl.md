@@ -112,7 +112,7 @@ git commit -m "feat(editor): add Condition, Branch, Action types for phase 2"
 <template>
   <div class="condition-node">
     <div class="node-diamond">
-      <span class="node-icon">?</span>
+      <span class="node-icon">COND</span>
     </div>
     <Handle type="target" :position="Position.Left" />
     <Handle type="source" :position="Position.Bottom" />
@@ -150,7 +150,7 @@ defineProps<{
 }
 .node-icon {
   color: white;
-  font-size: 1.2rem;
+  font-size: 0.7rem;
   font-weight: bold;
   transform: rotate(-45deg);
 }
@@ -338,7 +338,7 @@ const actionLabel = computed(() => {
 
 <style scoped>
 .action-node {
-  min-width: 120px;
+  min-width: 180px;
   background: white;
   border: 2px solid #f59e0b;
   border-radius: 8px;
@@ -599,8 +599,7 @@ import type { ConditionData, BranchData, ActionData, ConditionItem } from '../..
 
 // 添加 computed 获取 condition 节点列表
 const conditionNodes = computed(() => {
-  // 从 nodes 或其他方式获取
-  return []
+  return editorNodes.value.filter(n => n.nodeType === 'condition')
 })
 
 function addCondition() {
@@ -626,6 +625,8 @@ function updateConditionParams(cond: ConditionItem) {
       break
     case 'HAS_ITEM':
     case 'KILL_MOB':
+      cond.params = { mobType: '', count: 1 }
+      break
     case 'COLLECT_ITEM':
       cond.params = { itemId: '', count: 1 }
       break
