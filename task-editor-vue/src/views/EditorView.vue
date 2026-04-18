@@ -24,6 +24,23 @@
           <span>▢ Action</span>
         </div>
 
+        <h3>高级节点</h3>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'event')">
+          <span>⚡ Event</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'counter')">
+          <span>🔢 Counter</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'timer')">
+          <span>⏱️ Timer</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'state')">
+          <span>🔧 State</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'subtask')">
+          <span>📁 Subtask</span>
+        </div>
+
         <h3>任务列表</h3>
         <div
           v-for="quest in sidebarQuests"
@@ -72,6 +89,26 @@
         <template #node-action="{ data }">
           <ActionNode :data="data" />
         </template>
+
+        <template #node-event="{ data }">
+          <EventNode :data="data" />
+        </template>
+
+        <template #node-counter="{ data }">
+          <CounterNode :data="data" />
+        </template>
+
+        <template #node-timer="{ data }">
+          <TimerNode :data="data" />
+        </template>
+
+        <template #node-state="{ data }">
+          <StateNode :data="data" />
+        </template>
+
+        <template #node-subtask="{ data }">
+          <SubtaskNode :data="data" />
+        </template>
       </VueFlow>
       
       <NodePropertiesPanel
@@ -118,6 +155,11 @@ import CompletionNode from '../components/editor/CompletionNode.vue'
 import ConditionNode from '../components/editor/ConditionNode.vue'
 import BranchNode from '../components/editor/BranchNode.vue'
 import ActionNode from '../components/editor/ActionNode.vue'
+import EventNode from '../components/editor/EventNode.vue'
+import CounterNode from '../components/editor/CounterNode.vue'
+import TimerNode from '../components/editor/TimerNode.vue'
+import StateNode from '../components/editor/StateNode.vue'
+import SubtaskNode from '../components/editor/SubtaskNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'

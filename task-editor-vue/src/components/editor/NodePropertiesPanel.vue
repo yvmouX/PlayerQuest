@@ -227,6 +227,143 @@
           </div>
         </template>
       </template>
+
+      <!-- Event Node -->
+      <template v-else-if="selectedNode.type === 'event'">
+        <div class="form-group">
+          <label>名称</label>
+          <input v-model="editedNode.name" placeholder="事件节点名称" />
+        </div>
+        <div class="form-group">
+          <label>监听事件</label>
+          <select v-model="editedNode.eventTypes" multiple>
+            <optgroup label="玩家动作">
+              <option value="LOGIN">登录</option>
+              <option value="LOGOUT">登出</option>
+              <option value="CHAT">聊天</option>
+              <option value="COMMAND">执行命令</option>
+              <option value="JUMP">跳跃</option>
+              <option value="SNEAK">蹲下</option>
+              <option value="SPRINT">疾跑</option>
+              <option value="DROP_ITEM">丢弃物品</option>
+              <option value="PICKUP_ITEM">拾取物品</option>
+            </optgroup>
+            <optgroup label="战斗">
+              <option value="PLAYER_KILL">玩家击杀</option>
+              <option value="ENTITY_KILL">实体击杀</option>
+              <option value="PLAYER_DEATH">玩家死亡</option>
+              <option value="PVP_KILL">PVP击杀</option>
+            </optgroup>
+            <optgroup label="方块交互">
+              <option value="BLOCK_BREAK">破坏方块</option>
+              <option value="BLOCK_PLACE">放置方块</option>
+              <option value="BLOCK_INTERACT">交互方块</option>
+            </optgroup>
+            <optgroup label="物品">
+              <option value="ITEM_CRAFT">合成物品</option>
+              <option value="ITEM_USE">使用物品</option>
+              <option value="ITEM_CONSUME">消耗物品</option>
+            </optgroup>
+            <optgroup label="移动">
+              <option value="PLAYER_MOVE">移动</option>
+              <option value="PLAYER_TELEPORT">传送</option>
+              <option value="ENTER_REGION">进入区域</option>
+              <option value="LEAVE_REGION">离开区域</option>
+            </optgroup>
+            <optgroup label="实体">
+              <option value="ENTITY_DAMAGE">实体受伤</option>
+              <option value="ENTITY_DEATH">实体死亡</option>
+              <option value="ENTITY_SPAWN">实体生成</option>
+            </optgroup>
+            <optgroup label="其他">
+              <option value="PLAYER_LEVEL_UP">升级</option>
+              <option value="PLAYER_RESPAWN">重生</option>
+              <option value="VILLAGER_TRADE">村民交易</option>
+              <option value="PLAYER_BOUNT">悬赏</option>
+            </optgroup>
+          </select>
+        </div>
+      </template>
+
+      <!-- Counter Node -->
+      <template v-else-if="selectedNode.type === 'counter'">
+        <div class="form-group">
+          <label>名称</label>
+          <input v-model="editedNode.name" placeholder="计数器名称" />
+        </div>
+        <div class="form-group">
+          <label>重置时机</label>
+          <select v-model="editedNode.resetOn">
+            <option value="NONE">不重置</option>
+            <option value="TASK_COMPLETE">任务完成时</option>
+            <option value="DAILY">每日重置</option>
+            <option value="MANUAL">手动重置</option>
+          </select>
+        </div>
+      </template>
+
+      <!-- Timer Node -->
+      <template v-else-if="selectedNode.type === 'timer'">
+        <div class="form-group">
+          <label>名称</label>
+          <input v-model="editedNode.name" placeholder="定时器名称" />
+        </div>
+        <div class="form-group">
+          <label>定时类型</label>
+          <select v-model="editedNode.timerType">
+            <option value="DELAY">延迟执行</option>
+            <option value="COOLDOWN">冷却时间</option>
+            <option value="INTERVAL">周期执行</option>
+          </select>
+        </div>
+        <template v-if="editedNode.timerType === 'DELAY'">
+          <div class="form-group">
+            <label>延迟秒数</label>
+            <input v-model.number="editedNode.delaySeconds" type="number" placeholder="60" />
+          </div>
+        </template>
+        <template v-else-if="editedNode.timerType === 'COOLDOWN'">
+          <div class="form-group">
+            <label>冷却秒数</label>
+            <input v-model.number="editedNode.cooldownSeconds" type="number" placeholder="300" />
+          </div>
+        </template>
+        <template v-else-if="editedNode.timerType === 'INTERVAL'">
+          <div class="form-group">
+            <label>周期秒数</label>
+            <input v-model.number="editedNode.intervalSeconds" type="number" placeholder="60" />
+          </div>
+          <div class="form-group">
+            <label>重复次数 (-1=无限)</label>
+            <input v-model.number="editedNode.repeatCount" type="number" placeholder="-1" />
+          </div>
+        </template>
+      </template>
+
+      <!-- State Node -->
+      <template v-else-if="selectedNode.type === 'state'">
+        <div class="form-group">
+          <label>名称</label>
+          <input v-model="editedNode.name" placeholder="状态节点名称" />
+        </div>
+        <div class="form-group">
+          <label>操作类型</label>
+          <select v-model="editedNode.operation">
+            <option value="COMPLETE_TASK">强制完成任务</option>
+            <option value="FAIL_TASK">强制任务失败</option>
+            <option value="RESET_TASK">重置任务进度</option>
+            <option value="SET_PLAYER_STATE">设置玩家状态</option>
+          </select>
+        </div>
+      </template>
+
+      <!-- Subtask Node -->
+      <template v-else-if="selectedNode.type === 'subtask'">
+        <div class="form-group">
+          <label>分组名称</label>
+          <input v-model="editedNode.name" placeholder="子任务分组" />
+        </div>
+      </template>
     </div>
     <div class="panel-footer">
       <button class="save-btn" @click="saveChanges">保存</button>
@@ -236,10 +373,10 @@
 
 <script setup lang="ts">
 import {ref, watch, computed} from 'vue'
-import type {StartNodeData, TaskNodeData, CompletionNodeData, QuestObjective, QuestReward, ConditionData, BranchData, ActionData, ConditionItem} from '../../types'
+import type {StartNodeData, TaskNodeData, CompletionNodeData, QuestObjective, QuestReward, ConditionData, BranchData, ActionData, ConditionItem, EventData, CounterData, TimerData, StateData, SubtaskData} from '../../types'
 import { editorNodes } from '../../composables/useQuestEditor'
 
-type NodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData
+type NodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData | EventData | CounterData | TimerData | StateData | SubtaskData
 
 const props = defineProps<{
   selectedNode: NodeData | null
@@ -251,7 +388,19 @@ const emit = defineEmits<{
 }>()
 
 const panelTitle = computed(() => {
-  const titles: Record<string, string> = { start: 'Start 节点', task: '任务属性', completion: '完成节点', condition: '条件节点', branch: '分支节点', action: '动作节点' }
+  const titles: Record<string, string> = { 
+    start: 'Start 节点', 
+    task: '任务属性', 
+    completion: '完成节点', 
+    condition: '条件节点', 
+    branch: '分支节点', 
+    action: '动作节点',
+    event: '事件节点',
+    counter: '计数器',
+    timer: '定时器',
+    state: '状态节点',
+    subtask: '子任务'
+  }
   return titles[props.selectedNode?.type || ''] || '属性'
 })
 

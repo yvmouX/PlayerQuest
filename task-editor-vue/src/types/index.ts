@@ -56,9 +56,57 @@ export interface StatsActivity {
   users: number
 }
 
-export type NodeType = 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'
+export type NodeType = 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask'
 
 export type TaskSubType = 'CYCLE' | 'TIMER' | 'FOREVER' | 'LIMIT'
+
+export type EventType = 
+  | 'LOGIN' | 'LOGOUT' | 'CHAT' | 'COMMAND' | 'JUMP' | 'SNEAK' | 'SPRINT' | 'DROP_ITEM' | 'PICKUP_ITEM'
+  | 'PLAYER_KILL' | 'ENTITY_KILL' | 'PLAYER_DEATH' | 'PVP_KILL'
+  | 'BLOCK_BREAK' | 'BLOCK_PLACE' | 'BLOCK_INTERACT'
+  | 'ITEM_CRAFT' | 'ITEM_USE' | 'ITEM_CONSUME'
+  | 'PLAYER_MOVE' | 'PLAYER_TELEPORT' | 'ENTER_REGION' | 'LEAVE_REGION'
+  | 'ENTITY_DAMAGE' | 'ENTITY_DEATH' | 'ENTITY_SPAWN'
+  | 'PLAYER_LEVEL_UP' | 'PLAYER_RESPAWN' | 'VILLAGER_TRADE' | 'PLAYER_BOUNT'
+
+export type CounterResetType = 'NONE' | 'TASK_COMPLETE' | 'DAILY' | 'MANUAL'
+
+export type TimerType = 'DELAY' | 'COOLDOWN' | 'INTERVAL'
+
+export type StateOperation = 'COMPLETE_TASK' | 'FAIL_TASK' | 'RESET_TASK' | 'SET_PLAYER_STATE'
+
+export interface EventData {
+  type: 'event'
+  name: string
+  eventTypes: EventType[]
+}
+
+export interface CounterData {
+  type: 'counter'
+  name: string
+  resetOn: CounterResetType
+}
+
+export interface TimerData {
+  type: 'timer'
+  name: string
+  timerType: TimerType
+  delaySeconds?: number
+  cooldownSeconds?: number
+  intervalSeconds?: number
+  repeatCount?: number
+}
+
+export interface StateData {
+  type: 'state'
+  name: string
+  operation: StateOperation
+}
+
+export interface SubtaskData {
+  type: 'subtask'
+  name: string
+}
 
 export type ConditionType = 'PERMISSION' | 'HAS_ITEM' | 'KILL_MOB' | 'COLLECT_ITEM' | 'PLAYER_LEVEL' | 'TIME_RANGE' | 'IN_REGION'
 
@@ -115,4 +163,4 @@ export interface CompletionNodeData {
   callbackMessage?: string
 }
 
-export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData
+export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData | EventData | CounterData | TimerData | StateData | SubtaskData

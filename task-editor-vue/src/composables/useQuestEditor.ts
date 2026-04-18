@@ -5,7 +5,7 @@ export interface QuestNodeData {
   id: string
   quest: Quest | null
   position: { x: number; y: number }
-  nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action'
+  nodeType: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask'
 }
 
 const nodes = ref<QuestNodeData[]>([])
@@ -19,7 +19,7 @@ export function useQuestEditor() {
     nodes.value.find(n => n.id === selectedNodeId.value)
   )
 
-  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action') {
+  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask') {
     if (typeof questOrNodeType === 'string') {
       nodes.value.push({
         id: `${questOrNodeType}_${Date.now()}`,
@@ -61,12 +61,17 @@ export function useQuestEditor() {
     const targetType = targetNode.nodeType
 
     const validConnections: Record<string, string[]> = {
-      start: ['task', 'condition'],
-      task: ['task', 'completion', 'action'],
+      start: ['task', 'condition', 'event'],
+      task: ['task', 'completion', 'action', 'timer'],
       completion: ['action'],
       condition: ['branch'],
       branch: ['task', 'completion'],
-      action: ['task', 'completion']
+      action: ['task', 'completion'],
+      event: ['task'],
+      counter: ['task'],
+      timer: ['task'],
+      state: ['task', 'completion']
+      // subtask: [] - no outgoing connections
     }
 
     if (!validConnections[sourceType]?.includes(targetType)) {
