@@ -61,7 +61,7 @@
         @node-click="handleNodeClick"
         @pane-click="handlePaneClick"
         @connect="handleConnect"
-        @edge-click="handleEdgeClick"
+        @edge-click="(e) => { selectedEdgeForDelete = e.edge.id; showDeleteEdgeConfirm = true }"
       >
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
@@ -186,8 +186,37 @@ const { project } = useVueFlow()
 const showCreateDialog = ref(false)
 const showImportDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
-const selectedEdgeId = ref<string | null>(null)
 const showDeleteEdgeConfirm = ref(false)
+const selectedEdgeForDelete = ref<string | null>(null)
+
+function confirmDeleteEdge() {
+  if (selectedEdgeForDelete.value) {
+    removeEdge(selectedEdgeForDelete.value)
+    selectedEdgeForDelete.value = null
+  }
+  showDeleteEdgeConfirm.value = false
+}
+
+function handleKeyDelete(event) {
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (selectedEdgeForDelete.value) {
+      removeEdge(selectedEdgeForDelete.value)
+      selectedEdgeForDelete.value = null
+    }
+  }
+}
+
+const flowEdges = computed({
+  get: () => editorEdges.value.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label,
+    type: 'smoothstep'
+  })),
+  set: (val) => {
+  }
+})
 
 const flowNodes = computed({
   get: () => editorNodes.value.map(n => ({
@@ -203,18 +232,6 @@ const flowNodes = computed({
         node.position = v.position
       }
     })
-  }
-})
-
-const flowEdges = computed({
-  get: () => editorEdges.value.map(e => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'smoothstep'
-  })),
-  set: (val) => {
   }
 })
 
@@ -284,19 +301,6 @@ function handlePaneClick() {
 
 function handleConnect(params) {
   addEdge(params.source, params.target)
-}
-
-function handleEdgeClick(event) {
-  selectedEdgeId.value = event.edge.id
-  showDeleteEdgeConfirm.value = true
-}
-
-function confirmDeleteEdge() {
-  if (selectedEdgeId.value) {
-    removeEdge(selectedEdgeId.value)
-    selectedEdgeId.value = null
-  }
-  showDeleteEdgeConfirm.value = false
 }
 
 function handleDeleteNode(nodeId: string) {
