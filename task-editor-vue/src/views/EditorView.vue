@@ -2,7 +2,6 @@
   <div class="editor-view">
     <Header title="任务编辑器">
       <template #actions>
-        <button @click="handleCreateNewQuest" class="btn-outline">新建任务</button>
         <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
         <button @click="showHelpDialog = true" class="btn-outline">帮助</button>
         <button @click="handleSave" class="btn-primary">保存</button>
@@ -60,9 +59,9 @@
           draggable="true"
           @dragstart="(e) => handleDragStart(e, quest)"
         >
-          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || quest.id }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
-          <span class="quest-type">{{ quest.type }}</span>
+          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || '未命名任务' }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
         </div>
+        <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
       </aside>
       
       <VueFlow
@@ -225,13 +224,13 @@ function handleCreateNewQuest() {
     objectives: [],
     rewards: []
   }
-  sidebarQuests.value = [...sidebarQuests.value, newQuest]
-  unsavedQuestIds.value = new Set([...unsavedQuestIds.value, tempId])
+  sidebarQuests.value = [newQuest]
+  unsavedQuestIds.value = new Set([tempId])
   
-  const position = {
-    x: 100 + (editorNodes.value.length % 4) * 250,
-    y: 100 + Math.floor(editorNodes.value.length / 4) * 150
-  }
+  editorNodes.value = []
+  editorEdges.value = []
+  
+  const position = { x: 100, y: 100 }
   addNode(newQuest, position)
   selectNode(tempId)
 }
@@ -451,7 +450,9 @@ onUnmounted(() => {
   display: flex;
 }
 .sidebar {
-  width: 200px;
+  width: max-content;
+  min-width: 200px;
+  max-width: 350px;
   background: white;
   border-right: 1px solid #e5e7eb;
   padding: 1rem;
@@ -507,5 +508,19 @@ onUnmounted(() => {
   border: 1px solid #3b82f6;
   border-radius: 6px;
   cursor: pointer;
+}
+.btn-new-quest {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.btn-new-quest:hover {
+  background: #7c3aed;
 }
 </style>
