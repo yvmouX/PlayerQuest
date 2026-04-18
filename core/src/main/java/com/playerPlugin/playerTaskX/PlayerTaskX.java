@@ -83,6 +83,7 @@ public final class PlayerTaskX extends JavaPlugin {
         taskManager.loadTasks();
 
         questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
+        taskManager.setQuestEngine(questEngine);
         questEngine.restoreSessions();
 
         ylib.getCommandManager().register(new TaskCommand(taskManager));

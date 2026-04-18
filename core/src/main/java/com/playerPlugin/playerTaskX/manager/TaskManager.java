@@ -7,6 +7,8 @@ import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.reward.Reward;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
+import com.playerPlugin.playerTaskX.engine.QuestEngine;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -17,10 +19,15 @@ public class TaskManager {
     private final ProgressStorage progressStorage;
     private final Map<String, TaskDefinition> taskCache = new HashMap<>();
     private final Map<UUID, Map<String, TaskProgress>> playerProgressCache = new HashMap<>();
+    private QuestEngine questEngine;
 
     public TaskManager(TaskStorage taskStorage, ProgressStorage progressStorage) {
         this.taskStorage = taskStorage;
         this.progressStorage = progressStorage;
+    }
+
+    public void setQuestEngine(QuestEngine questEngine) {
+        this.questEngine = questEngine;
     }
 
     public void loadTasks() {
@@ -62,10 +69,22 @@ public class TaskManager {
         progressStorage.save(player.getUniqueId(), progress);
         playerProgressCache.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
             .put(taskId, progress);
+        
+        if (questEngine != null && task.hasGraph()) {
+            Player actualPlayer = Bukkit.getPlayer(player.getUniqueId());
+            if (actualPlayer != null) {
+                questEngine.startQuest(actualPlayer, task);
+            }
+        }
+        
         return true;
     }
 
     public void handleEvent(Player player, Event event) {
+        if (questEngine != null) {
+            questEngine.handleEvent(player, event);
+        }
+        
         Map<String, TaskProgress> progressMap = playerProgressCache.get(player.getUniqueId());
         if (progressMap == null) return;
 
@@ -73,7 +92,7 @@ public class TaskManager {
             if (progress.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
             
             TaskDefinition task = taskCache.get(progress.getTaskId());
-            if (task == null) continue;
+            if (task == null || task.hasGraph()) continue;
 
             for (Objective objective : task.getObjectives()) {
                 if (objective.matchesEvent(event)) {
