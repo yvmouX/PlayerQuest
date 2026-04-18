@@ -13,6 +13,7 @@ export interface Quest {
   rewards: QuestReward[]
   createdAt: number
   updatedAt: number
+  taskType?: TaskSubType
 }
 
 export interface QuestObjective {
@@ -54,3 +55,36 @@ export interface StatsActivity {
   day: string
   users: number
 }
+
+export type NodeType = 'start' | 'task' | 'completion'
+
+export type TaskSubType = 'CYCLE' | 'TIMER' | 'FOREVER' | 'LIMIT'
+
+export interface StartNodeData {
+  type: 'start'
+  name: string
+  description?: string
+  startCondition?: object
+}
+
+export interface TaskNodeData {
+  type: 'task'
+  id: string
+  name: Record<string, string>
+  description: Record<string, string>
+  taskType: TaskSubType
+  objectives: QuestObjective[]
+  rewards: QuestReward[]
+  resetInterval?: number
+  timeLimit?: number
+  expiredAction?: string
+}
+
+export interface CompletionNodeData {
+  type: 'completion'
+  name: string
+  rewards: QuestReward[]
+  callbackMessage?: string
+}
+
+export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData
