@@ -1,15 +1,19 @@
 <template>
   <div class="branch-node">
-    <div class="node-hexagon">
-      <span class="node-label">BRANCH</span>
+    <div class="node-header">
+      <span class="node-icon">⬡</span>
+      <span class="node-type">分支</span>
     </div>
-    <div class="branch-labels">
-      <span class="branch-true">TRUE</span>
-      <span class="branch-false">FALSE</span>
+    <div class="node-body">
+      <span class="node-name">{{ data.name || 'Branch' }}</span>
     </div>
-    <Handle type="target" :position="Position.Top" />
-    <Handle id="true" type="source" :position="Position.Bottom" style="left: 25%" />
-    <Handle id="false" type="source" :position="Position.Bottom" style="left: 75%" />
+    <div class="node-outputs">
+      <div class="output-true">TRUE</div>
+      <div class="output-false">FALSE</div>
+    </div>
+    <Handle type="target" :position="Position.Left" />
+    <Handle id="true" type="source" :position="Position.Right" style="top: 60%" />
+    <Handle id="false" type="source" :position="Position.Right" style="top: 85%" />
   </div>
 </template>
 
@@ -26,37 +30,45 @@ defineProps<{
 
 <style scoped>
 .branch-node {
-  width: 60px;
-  height: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  min-width: 160px;
+  background: white;
+  border: 2px solid #8b5cf6;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
 }
-.node-hexagon {
-  width: 45px;
-  height: 45px;
-  background: #8b5cf6;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+.node-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
 }
-.node-label {
-  color: white;
-  font-size: 0.5rem;
-  font-weight: bold;
-  z-index: 1;
+.node-icon { font-size: 1rem; }
+.node-type {
+  font-size: 0.7rem;
+  color: #6b7280;
 }
-.branch-labels {
+.node-body {
+  padding: 0.5rem 0.75rem;
+}
+.node-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4c1d95;
+}
+.node-outputs {
   display: flex;
-  justify-content: space-between;
-  width: 50px;
-  margin-top: 2px;
-  font-size: 0.5rem;
-  font-weight: bold;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.5rem;
 }
-.branch-true { color: #22c55e; }
-.branch-false { color: #ef4444; }
+.node-outputs > div {
+  font-size: 0.65rem;
+  font-weight: bold;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+.output-true { color: #22c55e; background: #dcfce7; }
+.output-false { color: #ef4444; background: #fee2e2; }
 </style>

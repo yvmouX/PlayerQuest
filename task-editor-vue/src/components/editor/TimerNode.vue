@@ -35,8 +35,7 @@ const timerTypeLabel = computed(() => {
 
 <style scoped>
 .timer-node {
-  width: 120px;
-  height: 60px;
+  min-width: 140px;
   background: white;
   border: 2px solid #f59e0b;
   border-radius: 8px;
@@ -57,7 +56,7 @@ const timerTypeLabel = computed(() => {
   color: #92400e;
 }
 .node-body {
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 .node-name {
   font-size: 0.85rem;

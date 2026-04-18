@@ -25,8 +25,7 @@ defineProps<{
 
 <style scoped>
 .counter-node {
-  width: 120px;
-  height: 60px;
+  min-width: 140px;
   background: white;
   border: 2px solid #22c55e;
   border-radius: 8px;
@@ -47,7 +46,7 @@ defineProps<{
   color: #166534;
 }
 .node-body {
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 .node-name {
   font-size: 0.85rem;

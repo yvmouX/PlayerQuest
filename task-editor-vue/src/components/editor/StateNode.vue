@@ -36,8 +36,7 @@ const operationLabel = computed(() => {
 
 <style scoped>
 .state-node {
-  width: 120px;
-  height: 60px;
+  min-width: 140px;
   background: white;
   border: 2px solid #6b7280;
   border-radius: 8px;
@@ -58,7 +57,7 @@ const operationLabel = computed(() => {
   color: #374151;
 }
 .node-body {
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 .node-name {
   font-size: 0.85rem;

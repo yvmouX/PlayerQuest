@@ -1,10 +1,14 @@
 <template>
   <div class="condition-node">
-    <div class="node-diamond">
-      <span class="node-icon">COND</span>
+    <div class="node-header">
+      <span class="node-icon">◇</span>
+      <span class="node-type">条件</span>
+    </div>
+    <div class="node-body">
+      <span class="node-name">{{ data.name || 'Condition' }}</span>
     </div>
     <Handle type="target" :position="Position.Left" />
-    <Handle type="source" :position="Position.Bottom" />
+    <Handle type="source" :position="Position.Right" />
   </div>
 </template>
 
@@ -21,26 +25,32 @@ defineProps<{
 
 <style scoped>
 .condition-node {
-  width: 60px;
-  height: 60px;
+  min-width: 160px;
+  background: white;
+  border: 2px solid #8b5cf6;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+.node-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
 }
-.node-diamond {
-  width: 50px;
-  height: 50px;
-  background: #8b5cf6;
-  transform: rotate(45deg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
-}
-.node-icon {
-  color: white;
+.node-icon { font-size: 1rem; }
+.node-type {
   font-size: 0.7rem;
-  font-weight: bold;
-  transform: rotate(-45deg);
+  color: #6b7280;
+}
+.node-body {
+  padding: 0.5rem 0.75rem;
+}
+.node-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4c1d95;
 }
 </style>
