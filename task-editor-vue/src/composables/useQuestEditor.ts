@@ -6,7 +6,6 @@ import type {
   ConditionData,
   CounterData,
   EditorNodeData,
-  EventData,
   GraphNode,
   NodeConnection,
   NodeType,
@@ -19,7 +18,6 @@ import type {
   TimerData
 } from '../types'
 import {useToast} from './useToast'
-import {GraphService} from '../services/api'
 
 export interface QuestNodeData {
   id: string
@@ -248,15 +246,8 @@ export function useQuestEditor() {
     }))
   }
 
-  async function saveGraph() {
-    try {
-      const graph = exportGraph()
-      await GraphService.save(graph)
-      useToast().success('图保存成功')
-    } catch (error) {
-      useToast().error('保存图失败')
-      console.error('Failed to save graph:', error)
-    }
+  function saveGraph(): QuestGraph {
+    return exportGraph()
   }
 
   return {

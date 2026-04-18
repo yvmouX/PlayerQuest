@@ -178,7 +178,7 @@ import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
 import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {setToast} from '../composables/useToast'
-import {GraphService, QuestService} from '../services/api'
+import {QuestService} from '../services/api'
 import type {EditorNodeData, Quest, TaskNodeData} from '../types'
 
 const {
@@ -192,7 +192,7 @@ const {
   removeEdge,
   loadQuests,
   loadGraph,
-  saveGraph,
+  exportGraph,
   selectNode,
   currentGraphId
 } = useQuestEditor()
@@ -309,13 +309,8 @@ async function loadData() {
       sidebarQuests.value = questsResponse.data
     }
     
-    const graphsResponse = await GraphService.getAll()
-    if (graphsResponse.code === 0 && graphsResponse.data && graphsResponse.data.length > 0) {
-      loadGraph(graphsResponse.data[0])
-    } else {
-      editorNodes.value = []
-      editorEdges.value = []
-    }
+    editorNodes.value = []
+    editorEdges.value = []
   } catch (error) {
     console.error('Failed to load data:', error)
   }
@@ -332,18 +327,12 @@ function handleDragStart(event: DragEvent, quest: Quest) {
 function handleSelectQuest(quest: Quest) {
   selectedQuestId.value = quest.id
   
-  GraphService.getById(quest.id).then(res => {
-    if (res.code === 0 && res.data) {
-      loadGraph(res.data)
-    } else {
-      editorNodes.value = []
-      editorEdges.value = []
-    }
-  }).catch(err => {
-    console.error('Failed to load graph for quest:', err)
+  if (quest.graph) {
+    loadGraph(quest.graph)
+  } else {
     editorNodes.value = []
     editorEdges.value = []
-  })
+  }
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
@@ -401,6 +390,8 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
 }
 
 async function handleSave() {
+  const graph = exportGraph()
+  
   const tempIds = [...unsavedQuestIds.value]
   if (tempIds.length > 0) {
     for (const tempId of tempIds) {
@@ -417,7 +408,8 @@ async function handleSave() {
           taskType: taskData.taskType || 'FOREVER',
           objectives: taskData.objectives || [],
           rewards: taskData.rewards || [],
-          conditions: []
+          conditions: [],
+          graph: graph.id === tempId ? graph : undefined
         })
         if (created.code === 0 && created.data) {
           const newId = created.data.id
@@ -450,7 +442,7 @@ async function handleSave() {
     }
   }
   
-  await saveGraph()
+  setToast(toastRef.value, 'success', '保存成功')
 }
 
 function handleLoadExamples(quests: Quest[]) {

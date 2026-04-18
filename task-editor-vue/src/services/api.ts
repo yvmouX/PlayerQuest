@@ -64,10 +64,3 @@ export const StatsService = {
   getActivity: (range: '7d' | '30d' = '7d') =>
     api.get<ApiResponse<StatsActivity[]>>('/stats/activity', { params: { range } })
 }
-
-export const GraphService = {
-  getAll: () => api.get<ApiResponse<QuestGraph[]>>('/graphs'),
-  getById: (id: string) => api.get<ApiResponse<QuestGraph>>(`/graphs/${id}`),
-  save: (graph: QuestGraph) => api.put<ApiResponse<QuestGraph>>(`/graphs/${graph.id}`, graph),
-  delete: (id: string) => api.delete(`/graphs/${id}`)
-}
