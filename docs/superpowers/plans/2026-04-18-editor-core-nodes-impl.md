@@ -104,6 +104,9 @@ git commit -m "feat(editor): add node types and task subtypes to frontend types"
 **Files:**
 - Create: `task-editor-vue/src/components/editor/StartNode.vue`
 - Modify: `task-editor-vue/src/views/EditorView.vue`（注册节点类型）
+- Modify: `task-editor-vue/src/types/index.ts`（已在 Task 1 中添加）
+
+**节点创建机制:** Start 节点需要从侧边栏创建。在 `sidebarQuests` 中会有内置的"Start 节点"选项，拖入画布后自动设置为 `nodeType: 'start'`
 
 - [ ] **Step 1: 创建 StartNode.vue**
 
@@ -181,6 +184,8 @@ git commit -m "feat(editor): add StartNode component"
 **Files:**
 - Create: `task-editor-vue/src/components/editor/CompletionNode.vue`
 - Modify: `task-editor-vue/src/views/EditorView.vue`
+
+**节点创建机制:** Completion 节点同样从侧边栏创建
 
 - [ ] **Step 1: 创建 CompletionNode.vue**
 
@@ -729,6 +734,9 @@ git add task-editor-vue/src/components/editor/NodePropertiesPanel.vue task-edito
 git commit -m "feat(editor): add NodePropertiesPanel supporting all 3 node types"
 ```
 
+**清理遗留文件:**
+- Task 完成后可删除 `QuestNode.vue` 和旧的 `PropertiesPanel.vue`（它们已被新组件替代）
+
 ---
 
 ## Task 6: 修改 useQuestEditor 添加连线规则验证
@@ -743,7 +751,7 @@ export interface QuestNodeData {
   id: string
   quest: Quest
   position: { x: number; y: number }
-  nodeType?: 'start' | 'task' | 'completion'  // 新增
+  nodeType: 'start' | 'task' | 'completion'  // 必填
 }
 ```
 
@@ -756,10 +764,30 @@ function addEdge(source: string, target: string, label?: string) {
   // 禁止自身连接
   if (source === target) return
   
-  // Completion 节点不可作为 source
+  // 根据节点类型验证连线规则
   const sourceNode = nodes.value.find(n => n.id === source)
-  if (sourceNode?.nodeType === 'completion') {
-    console.warn('Cannot create edge: Completion node cannot be a source')
+  const targetNode = nodes.value.find(n => n.id === target)
+  
+  if (!sourceNode || !targetNode) return
+  
+  // 获取节点类型
+  const sourceType = sourceNode.nodeType || 'task'  // 默认为 task（向后兼容）
+  const targetType = targetNode.nodeType || 'task'
+  
+  // 验证连线规则:
+  // Start → Task
+  // Task → Task / Completion
+  // Completion → (nothing)
+  if (sourceType === 'start' && targetType !== 'task') {
+    console.warn('Cannot connect: Start can only connect to Task')
+    return
+  }
+  if (sourceType === 'task' && targetType === 'start') {
+    console.warn('Cannot connect: Task cannot connect to Start')
+    return
+  }
+  if (sourceType === 'completion') {
+    console.warn('Cannot connect: Completion cannot be a source')
     return
   }
   
@@ -785,6 +813,17 @@ function addEdge(source: string, target: string, label?: string) {
   const id = `${source}-${target}`
   if (edges.value.some(e => e.id === id)) return
   edges.value.push({ id, source, target, label })
+}
+```
+
+**同时需要修改 `QuestNodeData` 的 `nodeType` 为必填:**
+
+```typescript
+export interface QuestNodeData {
+  id: string
+  quest: Quest
+  position: { x: number; y: number }
+  nodeType: 'start' | 'task' | 'completion'  // 改为必填
 }
 ```
 
