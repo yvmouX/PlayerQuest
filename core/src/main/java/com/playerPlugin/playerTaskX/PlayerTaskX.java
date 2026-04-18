@@ -4,7 +4,9 @@ import cn.yvmou.ylib.YLib;
 import cn.yvmou.ylib.api.logger.Logger;
 import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
+import com.playerPlugin.playerTaskX.configuration.EditorConfiguration;
 import com.playerPlugin.playerTaskX.configuration.GeneralConfiguration;
+import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.command.TaskAdminCommand;
@@ -30,14 +32,18 @@ public final class PlayerTaskX extends JavaPlugin {
     private SessionStorage sessionStorage;
     private QuestSessionManager sessionManager;
     private GeneralConfiguration generalConfig;
+    private StorgeConfiguration storageConfig;
+    private EditorConfiguration editorConfig;
 
     @Override
     public void onEnable() {
         YLib ylib = new YLib(this);
         log = ylib.getLogger();
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
+        storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
+        editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
 
-        String storageTypeStr = getConfig().getString("storage.type", "SQLITE");
+        String storageTypeStr = storageConfig.getStorageType();
         PTXStorgeType storageType;
         try {
             storageType = PTXStorgeType.valueOf(storageTypeStr.toUpperCase());
@@ -50,11 +56,11 @@ public final class PlayerTaskX extends JavaPlugin {
         ProgressStorage progressStorage;
         StorageFactory.MySQLConfig mysqlConfig = new StorageFactory.MySQLConfig();
         if (storageType == PTXStorgeType.MYSQL) {
-            mysqlConfig.host = getConfig().getString("storage.mysql.host", "localhost");
-            mysqlConfig.port = getConfig().getInt("storage.mysql.port", 3306);
-            mysqlConfig.database = getConfig().getString("storage.mysql.database", "playertaskx");
-            mysqlConfig.username = getConfig().getString("storage.mysql.username", "root");
-            mysqlConfig.password = getConfig().getString("storage.mysql.password", "");
+            mysqlConfig.host = storageConfig.getMysqlHost();
+            mysqlConfig.port = storageConfig.getMysqlPort();
+            mysqlConfig.database = storageConfig.getMysqlDatabase();
+            mysqlConfig.username = storageConfig.getMysqlUsername();
+            mysqlConfig.password = storageConfig.getMysqlPassword();
             taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder(), mysqlConfig);
             progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder(), mysqlConfig);
         } else {
@@ -82,7 +88,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
         getServer().getPluginManager().registerEvents(new GraphEventListener(questEngine), this);
 
-        int editorPort = getConfig().getInt("editor.port", 8080);
+        int editorPort = editorConfig.getPort();
         this.editorServer = new EditorServer(taskManager, getDataFolder().toPath());
         editorServer.start(editorPort);
 
