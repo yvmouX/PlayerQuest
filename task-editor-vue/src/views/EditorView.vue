@@ -329,6 +329,12 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
 }
 
+function getLocalizedText(obj: Record<string, string> | string | undefined, fallback: string = ''): string {
+  if (!obj) return fallback
+  if (typeof obj === 'string') return obj
+  return obj['zh-CN'] || obj['en-US'] || fallback
+}
+
 async function handleSave() {
   const data = exportData()
   for (const nodeData of data.nodes) {
@@ -337,15 +343,11 @@ async function handleSave() {
       try {
         await QuestService.update(quest.id, {
           id: quest.id,
-          name: quest.name,
-          description: quest.description,
-          type: 'single' as const,
-          taskType: quest.taskType,
-          objectives: quest.objectives,
-          rewards: quest.rewards,
-          resetInterval: quest.resetInterval,
-          timeLimit: quest.timeLimit,
-          expiredAction: quest.expiredAction
+          name: getLocalizedText(quest.name),
+          description: getLocalizedText(quest.description),
+          taskType: quest.taskType || 'FOREVER',
+          objectives: quest.objectives || [],
+          rewards: quest.rewards || []
         })
       } catch (error) {
         console.error(`Failed to save quest ${quest.id}:`, error)
