@@ -8,8 +8,9 @@
 
 **/build/
 **/bin/
-**/bin/.worktrees/
-.worktrees/
+**/node_modules/
+**/.vite/
+**/dist/
 
 # Eclipse
 .classpath

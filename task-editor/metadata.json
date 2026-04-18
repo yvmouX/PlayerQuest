@@ -1,5 +1,0 @@
-{
-  "name": "MC Quest Editor",
-  "description": "A web-based editor for Minecraft Quest Plugin management, featuring quest creation, player progress tracking, and statistics.",
-  "requestFramePermissions": []
-}
