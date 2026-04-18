@@ -51,7 +51,7 @@
         </template>
       </VueFlow>
       
-      <PropertiesPanel
+      <NodePropertiesPanel
         v-if="selectedNode"
         :selected-node="selectedNode"
         @close="selectedNode = null"
@@ -89,11 +89,10 @@ import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
-import QuestNode from '../components/editor/QuestNode.vue'
 import TaskNode from '../components/editor/TaskNode.vue'
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
-import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
+import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportDialog from '../components/editor/ImportDialog.vue'
