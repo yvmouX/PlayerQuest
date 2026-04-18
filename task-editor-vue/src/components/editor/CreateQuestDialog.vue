@@ -1,29 +1,31 @@
 <template>
-  <div class="dialog-overlay" @click.self="$emit('close')">
-    <div class="dialog">
-      <h3>创建新任务</h3>
-      <div class="form-group">
-        <label>任务类型</label>
-        <select v-model="newQuest.type">
-          <option value="single">单一任务</option>
-          <option value="multi">多阶段任务</option>
-          <option value="series">系列任务</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>名称 (中文)</label>
-        <input v-model="newQuest.name['zh-CN']" />
-      </div>
-      <div class="form-group">
-        <label>名称 (英文)</label>
-        <input v-model="newQuest.name['en-US']" />
-      </div>
-      <div class="dialog-actions">
-        <button @click="$emit('close')">取消</button>
-        <button @click="handleCreate" class="btn-primary">创建</button>
+  <Teleport to="body">
+    <div class="dialog-overlay" @click.self="$emit('close')">
+      <div class="dialog">
+        <h3>创建新任务</h3>
+        <div class="form-group">
+          <label>任务类型</label>
+          <select v-model="newQuest.type">
+            <option value="single">单一任务</option>
+            <option value="multi">多阶段任务</option>
+            <option value="series">系列任务</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>名称 (中文)</label>
+          <input v-model="newQuest.name['zh-CN']" placeholder="输入任务名称" />
+        </div>
+        <div class="form-group">
+          <label>名称 (英文)</label>
+          <input v-model="newQuest.name['en-US']" placeholder="Quest name" />
+        </div>
+        <div class="dialog-actions">
+          <button @click="$emit('close')">取消</button>
+          <button @click="handleCreate" class="btn-primary">创建</button>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
