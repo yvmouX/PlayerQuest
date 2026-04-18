@@ -38,11 +38,8 @@
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
         
-        <template #node-quest=" { data } ">
-          <QuestNode 
-            :data="data" 
-            @delete="handleDeleteNode" 
-          />
+        <template #node-task="{ data }">
+          <TaskNode :data="data" @delete="handleDeleteNode" />
         </template>
         
         <template #node-start="{ data }">
@@ -93,6 +90,7 @@ import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
 import QuestNode from '../components/editor/QuestNode.vue'
+import TaskNode from '../components/editor/TaskNode.vue'
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
 import PropertiesPanel from '../components/editor/PropertiesPanel.vue'
