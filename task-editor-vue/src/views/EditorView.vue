@@ -5,7 +5,6 @@
         <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
         <button @click="showHelpDialog = true" class="btn-outline">帮助</button>
         <button @click="handleSave" class="btn-primary">保存</button>
-        <button @click="handleAddQuest" class="btn-secondary">新建任务</button>
       </template>
     </Header>
     
@@ -129,12 +128,6 @@
         @update="handleUpdateQuest"
       />
       
-      <CreateQuestDialog
-        v-if="showCreateDialog"
-        @close="showCreateDialog = false"
-        @create="handleCreateQuest"
-      />
-      
       <ConfirmDialog
         v-if="showDeleteEdgeConfirm"
         title="删除连接"
@@ -158,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {useVueFlow, VueFlow} from '@vue-flow/core'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
@@ -177,7 +170,6 @@ import TimerNode from '../components/editor/TimerNode.vue'
 import StateNode from '../components/editor/StateNode.vue'
 import SubtaskNode from '../components/editor/SubtaskNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
-import CreateQuestDialog from '../components/editor/CreateQuestDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
 import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
@@ -201,7 +193,6 @@ const {
 
 const { project } = useVueFlow()
 
-const showCreateDialog = ref(false)
 const showExamplesDialog = ref(false)
 const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
@@ -221,6 +212,9 @@ function handleKeyDelete(event) {
     if (selectedEdgeForDelete.value) {
       removeEdge(selectedEdgeForDelete.value)
       selectedEdgeForDelete.value = null
+    } else if (editorSelectedNode.value) {
+      removeNode(editorSelectedNode.value.id)
+      selectNode(null)
     }
   }
 }
@@ -234,6 +228,11 @@ const flowEdges = computed({
     type: 'smoothstep'
   })),
   set: (val) => {
+    const newEdgeIds = new Set(val.map(e => e.id))
+    const currentEdgeIds = new Set(editorEdges.value.map(e => e.id))
+    if (newEdgeIds.size !== currentEdgeIds.size || [...newEdgeIds].some(id => !currentEdgeIds.has(id))) {
+      editorEdges.value = editorEdges.value.filter(e => newEdgeIds.has(e.id))
+    }
   }
 })
 
@@ -330,16 +329,6 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
 }
 
-function handleAddQuest() {
-  showCreateDialog.value = true
-}
-
-function handleCreateQuest(quest: Quest) {
-  const center = project({ x: 400, y: 300 })
-  addNode(quest, center)
-  showCreateDialog.value = false
-}
-
 async function handleSave() {
   const data = exportData()
   for (const nodeData of data.nodes) {
@@ -381,6 +370,11 @@ function handleLoadExamples(quests: Quest[]) {
 
 onMounted(() => {
   loadData()
+  window.addEventListener('keydown', handleKeyDelete)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDelete)
 })
 </script>
 
