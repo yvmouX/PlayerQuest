@@ -23,8 +23,8 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
       return {
         type: 'task',
         id,
-        name: { 'zh-CN': '', 'en-US': '' },
-        description: { 'zh-CN': '', 'en-US': '' },
+        name: '',
+        description: '',
         taskType: 'FOREVER',
         objectives: [],
         rewards: []

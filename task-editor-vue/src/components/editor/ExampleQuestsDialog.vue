@@ -12,8 +12,8 @@
             class="example-card"
           >
             <div class="example-info">
-              <h4>{{ example.data.name['zh-CN'] || example.data.name['en-US'] }}</h4>
-              <p>{{ example.data.description['zh-CN'] || example.data.description['en-US'] }}</p>
+              <h4>{{ example.data.name || '未命名' }}</h4>
+              <p>{{ example.data.description || '' }}</p>
             </div>
             <button @click="handleLoad(example.data)" class="btn-load">加载</button>
           </div>

@@ -29,16 +29,12 @@
           </select>
         </div>
         <div class="form-group">
-          <label>名称 (中文)</label>
-          <input v-model="editedNode.name['zh-CN']" placeholder="任务名称" />
+          <label>名称</label>
+          <input v-model="editedNode.name" placeholder="任务名称" />
         </div>
         <div class="form-group">
-          <label>名称 (英文)</label>
-          <input v-model="editedNode.name['en-US']" placeholder="Quest Name" />
-        </div>
-        <div class="form-group">
-          <label>描述 (中文)</label>
-          <textarea v-model="editedNode.description['zh-CN']" rows="3" />
+          <label>描述</label>
+          <textarea v-model="editedNode.description" rows="3" placeholder="描述..." />
         </div>
 
         <!-- CYCLE / TIMER 动态字段 -->
@@ -413,15 +409,6 @@ function createDefaultNode(): NodeData {
 watch(() => props.selectedNode, (node) => {
   if (node) {
     editedNode.value = JSON.parse(JSON.stringify(node))
-    if (editedNode.value.type === 'task') {
-      const taskNode = editedNode.value as TaskNodeData
-      if (typeof taskNode.name === 'string') {
-        taskNode.name = { 'zh-CN': taskNode.name, 'en-US': '' }
-      }
-      if (typeof taskNode.description === 'string') {
-        taskNode.description = { 'zh-CN': taskNode.description, 'en-US': '' }
-      }
-    }
     lastEmittedNode = JSON.stringify(editedNode.value)
   }
 }, { immediate: true })

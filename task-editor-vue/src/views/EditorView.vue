@@ -59,7 +59,7 @@
           :class="{ 'selected-quest': selectedQuestId === quest.id }"
           @click="handleSelectQuest(quest)"
         >
-          <span class="quest-name">{{ quest.name['zh-CN'] || quest.name['en-US'] || '未命名任务' }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
+          <span class="quest-name">{{ quest.name || '未命名任务' }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
         </div>
         <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
       </aside>
@@ -219,8 +219,8 @@ function handleCreateNewQuest() {
   const tempId = `temp_${Date.now()}`
   const newQuest: Quest = {
     id: tempId,
-    name: { 'zh-CN': '未命名任务', 'en-US': 'Unnamed Quest' },
-    description: { 'zh-CN': '', 'en-US': '' },
+    name: '未命名任务',
+    description: '',
     type: 'FOREVER',
     objectives: [],
     rewards: []
@@ -305,11 +305,7 @@ async function loadData() {
   try {
     const questsResponse = await QuestService.getAll()
     if (questsResponse.code === 0 && questsResponse.data) {
-      sidebarQuests.value = questsResponse.data.map(q => ({
-        ...q,
-        name: typeof q.name === 'string' ? { 'zh-CN': q.name, 'en-US': '' } : q.name,
-        description: typeof q.description === 'string' ? { 'zh-CN': q.description, 'en-US': '' } : q.description
-      }))
+      sidebarQuests.value = questsResponse.data
     }
     
     const graphsResponse = await GraphService.getAll()
@@ -394,12 +390,6 @@ function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
 }
 
-function getLocalizedText(obj: Record<string, string> | string | undefined, fallback: string = ''): string {
-  if (!obj) return fallback
-  if (typeof obj === 'string') return obj
-  return obj['zh-CN'] || obj['en-US'] || fallback
-}
-
 async function handleSave() {
   const tempIds = [...unsavedQuestIds.value]
   if (tempIds.length > 0) {
@@ -412,8 +402,8 @@ async function handleSave() {
       try {
         const created = await QuestService.create({
           id: tempId,
-          name: getLocalizedText(taskData.name),
-          description: getLocalizedText(taskData.description),
+          name: taskData.name,
+          description: taskData.description,
           taskType: taskData.taskType || 'FOREVER',
           objectives: taskData.objectives || [],
           rewards: taskData.rewards || [],

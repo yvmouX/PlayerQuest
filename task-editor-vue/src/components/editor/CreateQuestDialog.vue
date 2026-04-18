@@ -12,12 +12,8 @@
           </select>
         </div>
         <div class="form-group">
-          <label>名称 (中文)</label>
-          <input v-model="newQuest.name['zh-CN']" placeholder="输入任务名称" />
-        </div>
-        <div class="form-group">
-          <label>名称 (英文)</label>
-          <input v-model="newQuest.name['en-US']" placeholder="Quest name" />
+          <label>名称</label>
+          <input v-model="newQuest.name" placeholder="输入任务名称" />
         </div>
         <div class="dialog-actions">
           <button @click="$emit('close')">取消</button>
@@ -39,8 +35,8 @@ const emit = defineEmits<{
 
 const newQuest = ref<Quest>({
   id: `quest_${Date.now()}`,
-  name: { 'zh-CN': '', 'en-US': '' },
-  description: { 'zh-CN': '', 'en-US': '' },
+  name: '',
+  description: '',
   type: 'single',
   objectives: [],
   rewards: [],

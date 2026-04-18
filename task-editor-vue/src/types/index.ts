@@ -6,8 +6,8 @@ export interface ApiResponse<T> {
 
 export interface Quest {
   id: string
-  name: Record<string, string>
-  description: Record<string, string>
+  name: string
+  description: string
   type: 'single' | 'multi' | 'series'
   objectives: QuestObjective[]
   rewards: QuestReward[]
@@ -145,8 +145,8 @@ export interface StartNodeData {
 export interface TaskNodeData {
   type: 'task'
   id: string
-  name: Record<string, string>
-  description: Record<string, string>
+  name: string
+  description: string
   taskType: TaskSubType
   objectives: QuestObjective[]
   rewards: QuestReward[]

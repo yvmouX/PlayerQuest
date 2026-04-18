@@ -1,13 +1,7 @@
 {
   "id": "example-event-quest",
-  "name": {
-    "zh-CN": "事件任务",
-    "en-US": "Event Quest"
-  },
-  "description": {
-    "zh-CN": "当特定游戏事件发生时自动触发的任务",
-    "en-US": "Quest triggered by game events"
-  },
+  "name": "事件任务",
+  "description": "当特定游戏事件发生时自动触发的任务",
   "type": "single",
   "createdAt": 1704067200000,
   "updatedAt": 1704067200000,

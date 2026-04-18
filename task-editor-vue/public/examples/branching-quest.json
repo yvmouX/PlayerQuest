@@ -1,13 +1,7 @@
 {
   "id": "example-branching-quest",
-  "name": {
-    "zh-CN": "分支任务",
-    "en-US": "Branching Quest"
-  },
-  "description": {
-    "zh-CN": "根据玩家选择产生不同结果的任务",
-    "en-US": "Quest with branching outcomes"
-  },
+  "name": "分支任务",
+  "description": "根据玩家选择产生不同结果的任务",
   "type": "single",
   "createdAt": 1704067200000,
   "updatedAt": 1704067200000,
