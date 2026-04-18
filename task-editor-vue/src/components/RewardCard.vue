@@ -2,8 +2,9 @@
   <div class="card">
     <div class="card-icon">{{ iconMap[template.type] }}</div>
     <div class="card-body">
-      <h3>{{ template.name }}</h3>
-      <p class="type-label">{{ typeLabelMap[template.type] }} | {{ template.value }}</p>
+      <h3>{{ template.name || '未命名' }}</h3>
+      <p class="type-label">{{ typeLabelMap[template.type] }}</p>
+      <p class="value-label">值: {{ template.value || template.meta?.content || '-' }}</p>
     </div>
     <div class="card-actions">
       <button @click="$emit('edit')">编辑</button>

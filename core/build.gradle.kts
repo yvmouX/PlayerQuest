@@ -25,6 +25,33 @@ dependencies {
 
 }
 
-// 前端构建产物嵌入可以通过以下方式之一实现：
-// 1. 运行 npm run build 后手动复制 dist/* 到 src/main/resources/web/
-// 2. 或者修改 EditorServer 直接从 ${project.rootDir}/task-editor-vue/dist 读取静态文件
+// 定义前端构建任务
+val frontendBuild by tasks.registering {
+    description = "Build frontend assets"
+    group = "build"
+    
+    doLast {
+        val frontendDir = rootProject.projectDir.resolve("task-editor-vue")
+        val webDir = projectDir.resolve("src/main/resources/web")
+        
+        // 运行 npm build (Windows 需要 npm.cmd)
+        val npmCmd = if (System.getProperty("os.name").contains("Windows")) "npm.cmd" else "npm"
+        project.rootProject.exec {
+            workingDir(frontendDir)
+            commandLine(npmCmd, "run", "build")
+        }
+        
+        // 复制构建产物到 web 目录
+        val distDir = frontendDir.resolve("dist")
+        if (distDir.exists()) {
+            webDir.deleteRecursively()
+            distDir.copyRecursively(webDir)
+            println("Frontend build copied to $webDir")
+        }
+    }
+}
+
+// 确保在 processResources 之前完成前端构建
+tasks.processResources {
+    dependsOn(frontendBuild)
+}

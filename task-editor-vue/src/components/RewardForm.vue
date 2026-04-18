@@ -58,12 +58,15 @@ watch(() => props.template, (t) => {
 }, { immediate: true })
 
 const handleSubmit = () => {
-  emit('save', {
-    id: props.template?.id || '',
+  const template: RewardTemplate = {
     name: form.name,
     type: form.type as RewardTemplate['type'],
     value: form.value
-  } as RewardTemplate)
+  }
+  if (props.template?.id) {
+    template.id = props.template.id
+  }
+  emit('save', template)
 }
 </script>
 

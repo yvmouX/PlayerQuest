@@ -25,7 +25,24 @@ export const QuestService = {
 
 export const RewardService = {
   getTemplates: () => api.get<ApiResponse<RewardTemplate[]>>('/rewards/templates'),
-  saveTemplate: (template: RewardTemplate) => api.post<ApiResponse<RewardTemplate>>('/rewards/templates', template),
+  saveTemplate: (template: RewardTemplate) => {
+    const typeMap: Record<string, string> = {
+      item: 'ITEM',
+      xp: 'XP',
+      money: 'MONEY',
+      command: 'COMMAND'
+    }
+    const amount = parseInt(String(template.value), 10)
+    const backendData = {
+      type: typeMap[template.type] || template.type,
+      content: String(template.value),
+      amount: isNaN(amount) ? 0 : amount
+    }
+    if (template.id) {
+      backendData.id = template.id
+    }
+    return api.post('/rewards/templates', backendData)
+  },
   deleteTemplate: (id: string) => api.delete(`/rewards/templates/${id}`)
 }
 
