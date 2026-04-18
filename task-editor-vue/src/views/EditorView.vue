@@ -430,7 +430,7 @@ async function handleSave() {
           }))
           
           sidebarQuests.value = sidebarQuests.value.map(q => 
-            q.id === oldId ? { ...q, id: newId, name: taskData.name, description: taskData.description } : q
+            q.id === oldId ? created.data : q
           )
           
           currentGraphId.value = newId
