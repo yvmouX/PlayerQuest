@@ -124,7 +124,7 @@ const showDeleteEdgeConfirm = ref(false)
 const flowNodes = computed({
   get: () => editorNodes.value.map(n => ({
     id: n.id,
-    type: 'quest',
+    type: n.nodeType,
     position: n.position,
     data: n
   })),
