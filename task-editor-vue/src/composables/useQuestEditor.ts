@@ -1,7 +1,23 @@
 import {computed, ref} from 'vue'
-import type {Quest, EditorNodeData, StartNodeData, TaskNodeData, CompletionNodeData, ConditionData, BranchData, ActionData, EventData, CounterData, TimerData, StateData, SubtaskData, NodeType, QuestGraph, GraphNode, NodeConnection} from '../types'
 import {useToast} from './useToast'
-import {GraphService} from '../services/api'
+import type {
+  ActionData,
+  BranchData,
+  CompletionNodeData,
+  ConditionData,
+  CounterData,
+  EditorNodeData,
+  GraphNode,
+  NodeConnection,
+  NodeType,
+  Quest,
+  QuestGraph,
+  StartNodeData,
+  StateData,
+  SubtaskData,
+  TaskNodeData,
+  TimerData
+} from '../types'
 
 export interface QuestNodeData {
   id: string
@@ -12,8 +28,9 @@ export interface QuestNodeData {
 
 const nodes = ref<QuestNodeData[]>([])
 const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
-const currentGraphId = ref<string | null>(null)
+const currentQuestId = ref<string | null>(null)
 export const editorNodes = nodes
+export const editorEdges = edges
 
 function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
   switch (nodeType) {
@@ -61,43 +78,23 @@ export function useQuestEditor() {
     return node.data
   })
 
-  function addNode(questOrNodeType: Quest | string, position: { x: number; y: number }, nodeType?: NodeType) {
-    if (typeof questOrNodeType === 'string') {
-      const id = `${questOrNodeType}_${Date.now()}`
-      const type = questOrNodeType as NodeType
-      nodes.value.push({
-        id,
-        nodeType: type,
-        position,
-        data: createDefaultNodeData(type, id)
-      })
-    } else {
-      const quest = questOrNodeType
-      const type = nodeType || 'task'
-      const taskData: TaskNodeData = {
-        type: 'task',
-        id: quest.id,
-        name: quest.name,
-        description: quest.description,
-        taskType: quest.taskType || 'FOREVER',
-        objectives: quest.objectives,
-        rewards: quest.rewards,
-        resetInterval: quest.resetInterval,
-        timeLimit: quest.timeLimit,
-        expiredAction: quest.expiredAction
-      }
-      nodes.value.push({
-        id: quest.id,
-        nodeType: type,
-        position,
-        data: taskData
-      })
-    }
+  function addNode(nodeType: NodeType, position: { x: number; y: number }) {
+    const id = `${nodeType}_${Date.now()}`
+    nodes.value.push({
+      id,
+      nodeType,
+      position,
+      data: createDefaultNodeData(nodeType, id)
+    })
+    return id
   }
 
   function removeNode(nodeId: string) {
     nodes.value = nodes.value.filter(n => n.id !== nodeId)
     edges.value = edges.value.filter(e => e.source !== nodeId && e.target !== nodeId)
+    if (selectedNodeId.value === nodeId) {
+      selectedNodeId.value = null
+    }
   }
 
   function updateNode(nodeId: string, data: Partial<EditorNodeData>) {
@@ -112,7 +109,6 @@ export function useQuestEditor() {
 
     const sourceNode = nodes.value.find(n => n.id === source)
     const targetNode = nodes.value.find(n => n.id === target)
-
     if (!sourceNode || !targetNode) return
 
     const sourceType = sourceNode.nodeType
@@ -143,9 +139,7 @@ export function useQuestEditor() {
       if (current === target) continue
       if (visited.has(current)) continue
       visited.add(current)
-      edges.value
-        .filter(e => e.source === current)
-        .forEach(e => stack.push(e.target))
+      edges.value.filter(e => e.source === current).forEach(e => stack.push(e.target))
     }
 
     if (visited.has(target)) {
@@ -166,37 +160,33 @@ export function useQuestEditor() {
     selectedNodeId.value = nodeId
   }
 
-  function loadQuests(quests: Quest[], graphEdges: NodeConnection[] = []) {
-    nodes.value = quests.map((quest, index) => {
-      const type = 'task'
-      const taskData: TaskNodeData = {
-        type: 'task',
-        id: quest.id,
-        name: quest.name,
-        description: quest.description,
-        taskType: quest.taskType || 'FOREVER',
-        objectives: quest.objectives,
-        rewards: quest.rewards,
-        resetInterval: quest.resetInterval,
-        timeLimit: quest.timeLimit,
-        expiredAction: quest.expiredAction
-      }
-      return {
-        id: quest.id,
-        nodeType: type,
-        position: {
-          x: 100 + (index % 4) * 250,
-          y: 100 + Math.floor(index / 4) * 150
-        },
-        data: taskData
-      }
-    })
-    edges.value = graphEdges.map(e => ({ id: e.id, source: e.sourceId, target: e.targetId, label: e.label }))
+  function clearEditor() {
+    nodes.value = []
+    edges.value = []
+    currentQuestId.value = null
+    selectedNodeId.value = null
   }
 
-  function exportGraph(): QuestGraph {
+  function loadGraph(questId: string, graph: QuestGraph) {
+    currentQuestId.value = questId
+    nodes.value = graph.nodes.map((n: GraphNode) => ({
+      id: n.id,
+      nodeType: n.nodeType as NodeType,
+      position: { x: n.x, y: n.y },
+      data: n.data as EditorNodeData
+    }))
+    edges.value = graph.edges.map((e: NodeConnection) => ({
+      id: e.id,
+      source: e.sourceId,
+      target: e.targetId,
+      label: e.label
+    }))
+  }
+
+  function exportGraph(): QuestGraph | null {
+    if (!currentQuestId.value) return null
     return {
-      id: currentGraphId.value || 'default',
+      id: currentQuestId.value,
       name: 'Quest Graph',
       nodes: nodes.value.map(n => ({
         id: n.id,
@@ -214,36 +204,19 @@ export function useQuestEditor() {
     }
   }
 
-  function loadGraph(graph: QuestGraph) {
-    currentGraphId.value = graph.id
-    nodes.value = graph.nodes.map((n: GraphNode) => ({
-      id: n.id,
-      nodeType: n.nodeType as NodeType,
-      position: { x: n.x, y: n.y },
-      data: n.data as EditorNodeData
-    }))
-    edges.value = graph.edges.map((e: NodeConnection) => ({
-      id: e.id,
-      source: e.sourceId,
-      target: e.targetId,
-      label: e.label
-    }))
-  }
-
-  async function saveGraph() {
-    try {
-      const graph = exportGraph()
-      await GraphService.save(graph)
-      useToast().success('图保存成功')
-    } catch (error) {
-      useToast().error('保存图失败')
-      console.error('Failed to save graph:', error)
+  function getCurrentQuestGraph(): { questId: string; graph: QuestGraph } | null {
+    const graph = exportGraph()
+    if (!graph) return null
+    return {
+      questId: currentQuestId.value!,
+      graph
     }
   }
 
   return {
     nodes,
     edges,
+    currentQuestId,
     selectedNode,
     selectedNodeId,
     addNode,
@@ -252,9 +225,9 @@ export function useQuestEditor() {
     addEdge,
     removeEdge,
     selectNode,
-    loadQuests,
+    clearEditor,
     loadGraph,
     exportGraph,
-    saveGraph
+    getCurrentQuestGraph
   }
 }

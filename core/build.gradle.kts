@@ -22,7 +22,14 @@ dependencies {
     // for ReDoc UI
     implementation("io.javalin.community.openapi:javalin-redoc-plugin:${openapi}")
 
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.mockito:mockito-core:5.8.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 
+tasks.test {
+    useJUnitPlatform()
 }
 
 // 定义前端构建任务

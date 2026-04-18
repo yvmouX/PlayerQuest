@@ -4,8 +4,10 @@ import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.storage.mysql.MySQLProgressStorage;
+import com.playerPlugin.playerTaskX.storage.mysql.MySQLSessionStorage;
 import com.playerPlugin.playerTaskX.storage.mysql.MySQLTaskStorage;
 import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteProgressStorage;
+import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteSessionStorage;
 import com.playerPlugin.playerTaskX.storage.sqlite.SQLiteTaskStorage;
 import com.playerPlugin.playerTaskX.storage.yaml.YamlProgressStorage;
 import com.playerPlugin.playerTaskX.storage.yaml.YamlTaskStorage;
@@ -29,6 +31,14 @@ public class StorageFactory {
             case SQLITE -> new SQLiteProgressStorage(dataFolder);
             case MYSQL -> new MySQLProgressStorage(mysqlConfig.host, mysqlConfig.port, mysqlConfig.database, mysqlConfig.username, mysqlConfig.password);
             default -> throw new IllegalArgumentException("Unknown storage type: " + type);
+        };
+    }
+
+    public static SessionStorage createSessionStorage(PTXStorgeType type, File dataFolder, MySQLConfig mysqlConfig) {
+        return switch (type) {
+            case SQLITE -> new SQLiteSessionStorage(new File(dataFolder, "quest_sessions.db"));
+            case MYSQL -> new MySQLSessionStorage(mysqlConfig.host, mysqlConfig.port, mysqlConfig.database, mysqlConfig.username, mysqlConfig.password);
+            default -> new SQLiteSessionStorage(new File(dataFolder, "quest_sessions.db"));
         };
     }
 

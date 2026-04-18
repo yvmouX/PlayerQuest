@@ -4,26 +4,48 @@
       <template #actions>
         <button @click="showExamplesDialog = true" class="btn-outline">加载示例</button>
         <button @click="showHelpDialog = true" class="btn-outline">帮助</button>
-        <button @click="handleSave" class="btn-primary">保存</button>
+        <button @click="handleSave" class="btn-primary" :disabled="!hasUnsavedChanges">保存</button>
       </template>
     </Header>
     
     <div class="canvas-wrapper"
          @drop="handleDrop"
          @dragover.prevent="handleDragOver">
-       <aside class="sidebar">
-         <h3>核心节点</h3>
-         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'start')">
-           <span>▶ Start</span>
-         </div>
-         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'task')">
-           <span>📋 Task</span>
-         </div>
-         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
-           <span>✔ Completion</span>
-         </div>
+      <aside class="sidebar">
+        <h3>任务列表</h3>
+        <div
+          v-for="quest in sidebarQuests"
+          :key="quest.id"
+          class="sidebar-item"
+          :class="{ 'selected-quest': selectedQuestId === quest.id }"
+          @click="handleSelectQuest(quest)"
+          @dblclick.stop="startEditQuestName(quest)"
+        >
+          <input
+            v-if="editingQuestId === quest.id"
+            v-model="editingQuestName"
+            class="quest-name-input"
+            @blur="saveQuestName"
+            @keydown.enter="saveQuestName"
+            @keydown.escape="cancelEditQuestName"
+            @click.stop
+            ref="questNameInput"
+          />
+          <span v-else class="quest-name">{{ quest.name || '未命名任务' }}</span>
+          <span v-if="selectedQuestId === quest.id" class="current-badge">当前</span>
+        </div>
+        <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
 
-         <h3>流程节点</h3>
+        <h3>节点工具</h3>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'start')">
+          <span>▶ Start</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'task')">
+          <span>📋 Task</span>
+        </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
+          <span>✔ Completion</span>
+        </div>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'condition')">
           <span>◇ Condition</span>
         </div>
@@ -33,35 +55,12 @@
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'action')">
           <span>▢ Action</span>
         </div>
-
-        <h3>高级节点</h3>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'event')">
-          <span>⚡ Event</span>
-        </div>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'counter')">
           <span>🔢 Counter</span>
         </div>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'timer')">
           <span>⏱️ Timer</span>
         </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'state')">
-          <span>🔧 State</span>
-        </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'subtask')">
-          <span>📁 Subtask</span>
-        </div>
-
-        <h3>任务列表</h3>
-        <div
-          v-for="quest in sidebarQuests"
-          :key="quest.id"
-          class="sidebar-item"
-          :class="{ 'selected-quest': selectedQuestId === quest.id }"
-          @click="handleSelectQuest(quest)"
-        >
-          <span class="quest-name">{{ quest.name || '未命名任务' }}{{ unsavedQuestIds.has(quest.id) ? ' (未保存)' : '' }}</span>
-        </div>
-        <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
       </aside>
       
       <VueFlow
@@ -100,24 +99,12 @@
           <ActionNode :data="data" />
         </template>
 
-        <template #node-event="{ data }">
-          <EventNode :data="data" />
-        </template>
-
         <template #node-counter="{ data }">
           <CounterNode :data="data" />
         </template>
 
         <template #node-timer="{ data }">
           <TimerNode :data="data" />
-        </template>
-
-        <template #node-state="{ data }">
-          <StateNode :data="data" />
-        </template>
-
-        <template #node-subtask="{ data }">
-          <SubtaskNode :data="data" />
         </template>
       </VueFlow>
       
@@ -153,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useVueFlow, VueFlow} from '@vue-flow/core'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
@@ -166,34 +153,32 @@ import CompletionNode from '../components/editor/CompletionNode.vue'
 import ConditionNode from '../components/editor/ConditionNode.vue'
 import BranchNode from '../components/editor/BranchNode.vue'
 import ActionNode from '../components/editor/ActionNode.vue'
-import EventNode from '../components/editor/EventNode.vue'
 import CounterNode from '../components/editor/CounterNode.vue'
 import TimerNode from '../components/editor/TimerNode.vue'
-import StateNode from '../components/editor/StateNode.vue'
-import SubtaskNode from '../components/editor/SubtaskNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
 import EditorHelpDialog from '../components/editor/EditorHelpDialog.vue'
 import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
-import {setToast} from '../composables/useToast'
-import {QuestService, GraphService} from '../services/api'
-import type {Quest, EditorNodeData, TaskNodeData} from '../types'
+import {setToast, useToast} from '../composables/useToast'
+import {QuestService} from '../services/api'
+import type {EditorNodeData, Quest, NodeType} from '../types'
 
 const {
   nodes: editorNodes,
   edges: editorEdges,
+  currentQuestId,
   selectedNode: editorSelectedNode,
   addNode,
   removeNode,
   updateNode,
   addEdge,
   removeEdge,
-  loadQuests,
+  selectNode,
+  clearEditor,
   loadGraph,
-  saveGraph,
-  selectNode
+  getCurrentQuestGraph
 } = useQuestEditor()
 
 const { project } = useVueFlow()
@@ -201,11 +186,49 @@ const { project } = useVueFlow()
 const showExamplesDialog = ref(false)
 const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
-const unsavedQuestIds = ref<Set<string>>(new Set())
 const selectedQuestId = ref<string | null>(null)
 const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+const unsavedQuests = ref<Map<string, Quest>>(new Map())
+const editingQuestId = ref<string | null>(null)
+const editingQuestName = ref('')
+const questNameInput = ref<HTMLInputElement | null>(null)
+
+const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId.value || ''))
+
+const flowNodes = computed({
+  get: () => editorNodes.value.map(n => ({
+    id: n.id,
+    type: n.nodeType,
+    position: n.position,
+    data: n.data
+  })),
+  set: (val) => {
+    val.forEach(v => {
+      const node = editorNodes.value.find(n => n.id === v.id)
+      if (node) {
+        node.position = v.position
+      }
+    })
+  }
+})
+
+const flowEdges = computed({
+  get: () => editorEdges.value.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label,
+    type: 'smoothstep'
+  })),
+  set: (val) => {
+    const newEdgeIds = new Set(val.map(e => e.id))
+    editorEdges.value = editorEdges.value.filter(e => newEdgeIds.has(e.id))
+  }
+})
+
+const selectedNode = computed(() => editorSelectedNode.value)
 
 function confirmDeleteEdge() {
   if (selectedEdgeForDelete.value) {
@@ -223,20 +246,15 @@ function handleCreateNewQuest() {
     description: '',
     type: 'FOREVER',
     objectives: [],
-    rewards: []
+    rewards: [],
+    taskType: 'FOREVER'
   }
   sidebarQuests.value = [...sidebarQuests.value, newQuest]
-  unsavedQuestIds.value = new Set([...unsavedQuestIds.value, tempId])
-  
-  const position = {
-    x: 100 + (editorNodes.value.length % 4) * 250,
-    y: 100 + Math.floor(editorNodes.value.length / 4) * 150
-  }
-  addNode(newQuest, position)
-  selectNode(tempId)
+  unsavedQuests.value.set(tempId, newQuest)
+  handleSelectQuest(newQuest)
 }
 
-function handleKeyDelete(event) {
+function handleKeyDelete(event: KeyboardEvent) {
   if (event.key === 'Delete' || event.key === 'Backspace') {
     const target = event.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
@@ -247,93 +265,97 @@ function handleKeyDelete(event) {
       selectedEdgeForDelete.value = null
     } else if (editorSelectedNode.value) {
       removeNode(editorSelectedNode.value.id)
-      selectNode(null)
     }
   }
-}
-
-const flowEdges = computed({
-  get: () => {
-    const edges = editorEdges.value.map(e => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label: e.label,
-      type: 'smoothstep'
-    }))
-    if (selectedQuestId.value) {
-      const visibleNodeIds = new Set(flowNodes.value.map(n => n.id))
-      return edges.filter(e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target))
-    }
-    return edges
-  },
-  set: (val) => {
-    const newEdgeIds = new Set(val.map(e => e.id))
-    const currentEdgeIds = new Set(editorEdges.value.map(e => e.id))
-    if (newEdgeIds.size !== currentEdgeIds.size || [...newEdgeIds].some(id => !currentEdgeIds.has(id))) {
-      editorEdges.value = editorEdges.value.filter(e => newEdgeIds.has(e.id))
-    }
-  }
-})
-
-const flowNodes = computed({
-  get: () => {
-    const nodes = editorNodes.value.map(n => ({
-      id: n.id,
-      type: n.nodeType,
-      position: n.position,
-      data: n.data
-    }))
-    if (selectedQuestId.value) {
-      return nodes.filter(n => n.data.type !== 'task' || (n.data as any).id === selectedQuestId.value)
-    }
-    return nodes
-  },
-  set: (val) => {
-    val.forEach(v => {
-      const node = editorNodes.value.find(n => n.id === v.id)
-      if (node) {
-        node.position = v.position
-      }
-    })
-  }
-})
-
-const selectedNode = computed(() => editorSelectedNode.value)
-
-async function loadData() {
-  try {
-    const questsResponse = await QuestService.getAll()
-    if (questsResponse.code === 0 && questsResponse.data) {
-      sidebarQuests.value = questsResponse.data
-    }
-    
-    const graphsResponse = await GraphService.getAll()
-    if (graphsResponse.code === 0 && graphsResponse.data && graphsResponse.data.length > 0) {
-      loadGraph(graphsResponse.data[0])
-    } else {
-      editorNodes.value = []
-      editorEdges.value = []
-    }
-  } catch (error) {
-    console.error('Failed to load data:', error)
-  }
-}
-
-function handleDragOver(event: DragEvent) {
-  event.dataTransfer!.dropEffect = 'copy'
-}
-
-function handleDragStart(event: DragEvent, quest: Quest) {
-  event.dataTransfer?.setData('application/json', JSON.stringify(quest))
 }
 
 function handleSelectQuest(quest: Quest) {
+  if (editingQuestId.value) {
+    cancelEditQuestName()
+  }
   selectedQuestId.value = quest.id
-  editorNodes.value = editorNodes.value.map(n => ({
-    ...n,
-    hidden: n.data.type === 'task' && (n.data as any).id !== quest.id
-  }))
+   
+  if (quest.graph && quest.graph.nodes.length > 0) {
+    loadGraph(quest.id, quest.graph)
+  } else {
+    clearEditor()
+    const startId = addNode('start', { x: 250, y: 50 })
+    const taskId = addNode('task', { x: 250, y: 200 })
+    const completionId = addNode('completion', { x: 250, y: 350 })
+    addEdge(startId, taskId)
+    addEdge(taskId, completionId)
+    loadGraph(quest.id, {
+      id: quest.id,
+      name: quest.name,
+      nodes: editorNodes.value.map(n => ({
+        id: n.id,
+        nodeType: n.nodeType,
+        x: n.position.x,
+        y: n.position.y,
+        data: n.data
+      })),
+      edges: editorEdges.value.map(e => ({
+        id: e.id,
+        sourceId: e.source,
+        targetId: e.target,
+        label: e.label
+      }))
+    })
+  }
+  
+  unsavedQuests.value.delete(quest.id)
+}
+
+function startEditQuestName(quest: Quest) {
+  editingQuestId.value = quest.id
+  editingQuestName.value = quest.name || ''
+  setTimeout(() => {
+    questNameInput.value?.focus()
+    questNameInput.value?.select()
+  }, 10)
+}
+
+async function saveQuestName() {
+  if (!editingQuestId.value) return
+  
+  const questId = editingQuestId.value
+  const newName = editingQuestName.value.trim()
+  const quest = sidebarQuests.value.find(q => q.id === questId)
+  
+  if (!quest) {
+    cancelEditQuestName()
+    return
+  }
+  
+  if (newName === quest.name) {
+    cancelEditQuestName()
+    return
+  }
+  
+  try {
+    const updatedQuest: Quest = { ...quest, name: newName }
+    const response = await QuestService.update(questId, updatedQuest)
+    
+    if (response.code === 0 && response.data) {
+      sidebarQuests.value = sidebarQuests.value.map(q => 
+        q.id === questId ? response.data : q
+      )
+      useToast().success('任务名称已更新')
+    } else {
+      useToast().error('更新失败: ' + response.msg)
+    }
+  } catch (error) {
+    console.error('Failed to update quest name:', error)
+    useToast().error('更新失败')
+  }
+  
+  editingQuestId.value = null
+  editingQuestName.value = ''
+}
+
+function cancelEditQuestName() {
+  editingQuestId.value = null
+  editingQuestName.value = ''
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
@@ -342,35 +364,30 @@ function handleNodeDragStart(event: DragEvent, nodeType: string) {
 
 function handleDrop(event: DragEvent) {
   event.preventDefault()
-  const questData = event.dataTransfer?.getData('application/json')
   const nodeType = event.dataTransfer?.getData('application/node-type')
   
-  if (nodeType) {
-    const rect = (event.target as HTMLElement).getBoundingClientRect()
-    const position = project({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    })
-    addNode(nodeType as any, position)
+  if (!nodeType || !selectedQuestId.value) {
+    useToast().error('请先选择一个任务')
     return
   }
   
-  if (questData) {
-    try {
-      const quest: Quest = JSON.parse(questData)
-      const rect = (event.target as HTMLElement).getBoundingClientRect()
-      const position = project({
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      })
-      addNode(quest, position)
-    } catch (e) {
-      console.error('Failed to parse dropped quest data:', e)
-    }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const position = project({
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  })
+  
+  const nodeId = addNode(nodeType as NodeType, position)
+  const graph = getCurrentQuestGraph()
+  if (graph) {
+    unsavedQuests.value.set(graph.questId, {
+      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+      graph: graph.graph
+    })
   }
 }
 
-function handleNodeClick(event) {
+function handleNodeClick(event: { node: { id: string } }) {
   selectNode(event.node.id)
 }
 
@@ -378,82 +395,90 @@ function handlePaneClick() {
   selectNode(null)
 }
 
-function handleConnect(params) {
+function handleConnect(params: { source: string; target: string }) {
   addEdge(params.source, params.target)
+  const graph = getCurrentQuestGraph()
+  if (graph) {
+    unsavedQuests.value.set(graph.questId, {
+      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+      graph: graph.graph
+    })
+  }
 }
 
 function handleDeleteNode(nodeId: string) {
   removeNode(nodeId)
+  const graph = getCurrentQuestGraph()
+  if (graph) {
+    unsavedQuests.value.set(graph.questId, {
+      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+      graph: graph.graph
+    })
+  }
 }
 
 function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
+  const graph = getCurrentQuestGraph()
+  if (graph) {
+    unsavedQuests.value.set(graph.questId, {
+      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+      graph: graph.graph
+    })
+  }
 }
 
 async function handleSave() {
-  const tempIds = [...unsavedQuestIds.value]
-  if (tempIds.length > 0) {
-    for (const tempId of tempIds) {
-      const node = editorNodes.value.find(n => n.id === tempId && n.data.type === 'task')
-      if (!node) continue
-      
-      const taskData = node.data as TaskNodeData
-      
-      try {
-        const created = await QuestService.create({
-          id: tempId,
-          name: taskData.name,
-          description: taskData.description,
-          taskType: taskData.taskType || 'FOREVER',
-          objectives: taskData.objectives || [],
-          rewards: taskData.rewards || [],
-          conditions: []
-        })
-        if (created.code === 0 && created.data) {
-          const newId = created.data.id
-          const oldId = tempId
-          
-          editorNodes.value = editorNodes.value.map(n => {
-            if (n.id === oldId) {
-              return { ...n, id: newId }
-            }
-            return n
-          })
-          
-          editorEdges.value = editorEdges.value.map(e => ({
-            ...e,
-            id: e.id.replace(oldId, newId),
-            source: e.source === oldId ? newId : e.source,
-            target: e.target === oldId ? newId : e.target
-          }))
-          
-          sidebarQuests.value = sidebarQuests.value.map(q => 
-            q.id === oldId ? { ...q, id: newId, name: taskData.name, description: taskData.description } : q
-          )
-          
-          unsavedQuestIds.value = new Set([...unsavedQuestIds.value].filter(id => id !== oldId))
-        }
-      } catch (error) {
-        console.error(`Failed to create quest ${tempId}:`, error)
-      }
-    }
-  }
+  const questId = selectedQuestId.value
+  if (!questId) return
   
-  await saveGraph()
+  const questToSave = unsavedQuests.value.get(questId) || sidebarQuests.value.find(q => q.id === questId)
+  if (!questToSave) return
+  
+  const graphData = getCurrentQuestGraph()
+  if (!graphData) return
+  
+  try {
+    const questWithGraph: Quest = {
+      ...questToSave,
+      graph: graphData.graph
+    }
+    
+    const response = await QuestService.create(questWithGraph)
+    
+    if (response.code === 0 && response.data) {
+      sidebarQuests.value = sidebarQuests.value.map(q => 
+        q.id === questId ? response.data : q
+      )
+      unsavedQuests.value.delete(questId)
+      useToast().success('保存成功')
+    } else {
+      useToast().error('保存失败: ' + response.msg)
+    }
+  } catch (error) {
+    console.error('Failed to save quest:', error)
+    useToast().error('保存失败')
+  }
 }
 
 function handleLoadExamples(quests: Quest[]) {
-  let index = editorNodes.value.length
-  for (const quest of quests) {
-    const position = {
-      x: 100 + (index % 4) * 250,
-      y: 100 + Math.floor(index / 4) * 150
+  quests.forEach(quest => {
+    if (!sidebarQuests.value.find(q => q.id === quest.id)) {
+      sidebarQuests.value = [...sidebarQuests.value, quest]
     }
-    addNode(quest, position)
-    index++
-  }
-  sidebarQuests.value = [...sidebarQuests.value, ...quests]
+  })
   showExamplesDialog.value = false
+}
+
+async function loadData() {
+  try {
+    const questsResponse = await QuestService.getAll()
+    if (questsResponse.code === 0 && questsResponse.data) {
+      sidebarQuests.value = questsResponse.data
+    }
+  } catch (error) {
+    console.error('Failed to load data:', error)
+  }
 }
 
 onMounted(() => {
@@ -484,26 +509,30 @@ onUnmounted(() => {
 .sidebar {
   width: max-content;
   min-width: 200px;
-  max-width: 350px;
+  max-width: 280px;
   background: white;
   border-right: 1px solid #e5e7eb;
   padding: 1rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .sidebar h3 {
-  margin-top: 0;
-  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
   color: #6b7280;
+  text-transform: uppercase;
 }
 .sidebar-item {
   padding: 0.5rem;
-  margin-bottom: 0.5rem;
   background: #f3f4f6;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 0.85rem;
 }
 .sidebar-item:hover {
   background: #e5e7eb;
@@ -513,14 +542,22 @@ onUnmounted(() => {
   border: 1px solid #3b82f6;
 }
 .quest-name {
-  font-size: 0.85rem;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
 }
-.quest-type {
+.current-badge {
   font-size: 0.7rem;
-  color: #9ca3af;
+  background: #3b82f6;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
 }
-.node-item { border-left: 3px solid #8b5cf6; }
+.node-item { 
+  border-left: 3px solid #8b5cf6;
+}
 .btn-primary {
   padding: 0.5rem 1rem;
   background: #3b82f6;
@@ -529,13 +566,9 @@ onUnmounted(() => {
   border-radius: 6px;
   cursor: pointer;
 }
-.btn-secondary {
-  padding: 0.5rem 1rem;
-  background: #6b7280;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }
 .btn-outline {
   padding: 0.5rem 1rem;
@@ -558,5 +591,14 @@ onUnmounted(() => {
 }
 .btn-new-quest:hover {
   background: #7c3aed;
+}
+.quest-name-input {
+  flex: 1;
+  padding: 2px 4px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  outline: none;
+  min-width: 0;
 }
 </style>

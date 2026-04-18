@@ -14,6 +14,7 @@ export interface Quest {
   createdAt: number
   updatedAt: number
   taskType?: TaskSubType
+  graph?: QuestGraph
 }
 
 export interface QuestObjective {

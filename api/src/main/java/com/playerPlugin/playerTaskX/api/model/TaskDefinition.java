@@ -18,6 +18,7 @@ public class TaskDefinition {
     private final List<Objective> objectives;
     private final List<Reward> rewards;
     private final List<Condition> conditions;
+    private final QuestGraph graph;
 
     @JsonCreator
     public TaskDefinition(
@@ -27,7 +28,8 @@ public class TaskDefinition {
             @JsonProperty("taskType") PTXTaskType taskType,
             @JsonProperty("objectives") List<Objective> objectives,
             @JsonProperty("rewards") List<Reward> rewards,
-            @JsonProperty("conditions") List<Condition> conditions
+            @JsonProperty("conditions") List<Condition> conditions,
+            @JsonProperty("graph") QuestGraph graph
     ) {
         this.id = id;
         this.name = name;
@@ -36,6 +38,7 @@ public class TaskDefinition {
         this.objectives = objectives != null ? new ArrayList<>(objectives) : new ArrayList<>();
         this.rewards = rewards != null ? new ArrayList<>(rewards) : new ArrayList<>();
         this.conditions = conditions != null ? new ArrayList<>(conditions) : new ArrayList<>();
+        this.graph = graph;
     }
 
     public String getId() { return id; }
@@ -45,6 +48,8 @@ public class TaskDefinition {
     public List<Objective> getObjectives() { return objectives; }
     public List<Reward> getRewards() { return rewards; }
     public List<Condition> getConditions() { return conditions; }
+    public QuestGraph getGraph() { return graph; }
+    public boolean hasGraph() { return graph != null && !graph.getNodes().isEmpty(); }
 
     @Override
     public boolean equals(Object o) {

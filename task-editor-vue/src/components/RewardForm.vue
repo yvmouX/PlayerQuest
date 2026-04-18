@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
-import type { RewardTemplate } from '../types'
+import {reactive, watch} from 'vue'
+import type {RewardTemplate} from '../types'
 
 const props = defineProps<{
   show: boolean
