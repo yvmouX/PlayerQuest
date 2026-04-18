@@ -19,8 +19,19 @@
           class="sidebar-item"
           :class="{ 'selected-quest': selectedQuestId === quest.id }"
           @click="handleSelectQuest(quest)"
+          @dblclick.stop="startEditQuestName(quest)"
         >
-          <span class="quest-name">{{ quest.name || '未命名任务' }}</span>
+          <input
+            v-if="editingQuestId === quest.id"
+            v-model="editingQuestName"
+            class="quest-name-input"
+            @blur="saveQuestName"
+            @keydown.enter="saveQuestName"
+            @keydown.escape="cancelEditQuestName"
+            @click.stop
+            ref="questNameInput"
+          />
+          <span v-else class="quest-name">{{ quest.name || '未命名任务' }}</span>
           <span v-if="selectedQuestId === quest.id" class="current-badge">当前</span>
         </div>
         <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
@@ -180,6 +191,9 @@ const showDeleteEdgeConfirm = ref(false)
 const selectedEdgeForDelete = ref<string | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const unsavedQuests = ref<Map<string, Quest>>(new Map())
+const editingQuestId = ref<string | null>(null)
+const editingQuestName = ref('')
+const questNameInput = ref<HTMLInputElement | null>(null)
 
 const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId.value || ''))
 
@@ -256,8 +270,11 @@ function handleKeyDelete(event: KeyboardEvent) {
 }
 
 function handleSelectQuest(quest: Quest) {
+  if (editingQuestId.value) {
+    cancelEditQuestName()
+  }
   selectedQuestId.value = quest.id
-  
+   
   if (quest.graph && quest.graph.nodes.length > 0) {
     loadGraph(quest.id, quest.graph)
   } else {
@@ -287,6 +304,58 @@ function handleSelectQuest(quest: Quest) {
   }
   
   unsavedQuests.value.delete(quest.id)
+}
+
+function startEditQuestName(quest: Quest) {
+  editingQuestId.value = quest.id
+  editingQuestName.value = quest.name || ''
+  setTimeout(() => {
+    questNameInput.value?.focus()
+    questNameInput.value?.select()
+  }, 10)
+}
+
+async function saveQuestName() {
+  if (!editingQuestId.value) return
+  
+  const questId = editingQuestId.value
+  const newName = editingQuestName.value.trim()
+  const quest = sidebarQuests.value.find(q => q.id === questId)
+  
+  if (!quest) {
+    cancelEditQuestName()
+    return
+  }
+  
+  if (newName === quest.name) {
+    cancelEditQuestName()
+    return
+  }
+  
+  try {
+    const updatedQuest: Quest = { ...quest, name: newName }
+    const response = await QuestService.update(questId, updatedQuest)
+    
+    if (response.code === 0 && response.data) {
+      sidebarQuests.value = sidebarQuests.value.map(q => 
+        q.id === questId ? response.data : q
+      )
+      useToast().success('任务名称已更新')
+    } else {
+      useToast().error('更新失败: ' + response.msg)
+    }
+  } catch (error) {
+    console.error('Failed to update quest name:', error)
+    useToast().error('更新失败')
+  }
+  
+  editingQuestId.value = null
+  editingQuestName.value = ''
+}
+
+function cancelEditQuestName() {
+  editingQuestId.value = null
+  editingQuestName.value = ''
 }
 
 function handleNodeDragStart(event: DragEvent, nodeType: string) {
@@ -522,5 +591,14 @@ onUnmounted(() => {
 }
 .btn-new-quest:hover {
   background: #7c3aed;
+}
+.quest-name-input {
+  flex: 1;
+  padding: 2px 4px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  outline: none;
+  min-width: 0;
 }
 </style>
