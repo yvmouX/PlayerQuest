@@ -230,7 +230,6 @@ function handleCreateNewQuest() {
     description: '',
     type: 'FOREVER',
     objectives: [],
-    rewards: [],
     taskType: 'FOREVER'
   }
   sidebarQuests.value = [...sidebarQuests.value, newQuest]

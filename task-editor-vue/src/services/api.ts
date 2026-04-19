@@ -4,7 +4,6 @@ import type {
   PlayerProgress,
   Quest,
   QuestGraph,
-  RewardTemplate,
   ObjectiveTemplate,
   ActionTemplate,
   StatsActivity,
@@ -31,29 +30,6 @@ export const QuestService = {
   batchCreate: (quests: Quest[]) => api.post<ApiResponse<{count: number}>>('/quests/batch', quests),
   update: (id: string, quest: Quest) => api.put<ApiResponse<Quest>>(`/quests/${id}`, quest),
   delete: (id: string) => api.delete(`/quests/${id}`)
-}
-
-export const RewardService = {
-  getTemplates: () => api.get<ApiResponse<RewardTemplate[]>>('/rewards/templates'),
-  saveTemplate: (template: RewardTemplate) => {
-    const typeMap: Record<string, string> = {
-      item: 'ITEM',
-      xp: 'EXP',
-      money: 'MONEY',
-      command: 'COMMAND'
-    }
-    const amount = parseInt(String(template.value), 10)
-    const backendData = {
-      type: typeMap[template.type] || template.type,
-      content: String(template.name),
-      amount: isNaN(amount) ? 0 : amount
-    }
-    if (template.id) {
-      backendData.id = template.id
-    }
-    return api.post('/rewards/templates', backendData)
-  },
-  deleteTemplate: (id: string) => api.delete(`/rewards/templates/${id}`)
 }
 
 export const ObjectiveService = {

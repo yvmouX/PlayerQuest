@@ -4,7 +4,6 @@
       <h1>PlayerTaskX</h1>
       <nav>
         <router-link to="/editor">任务编辑器</router-link>
-        <router-link to="/rewards">奖励库</router-link>
         <router-link to="/objectives">目标库</router-link>
         <router-link to="/actions">行为库</router-link>
         <router-link to="/players">玩家进度</router-link>

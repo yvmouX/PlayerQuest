@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.manager;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
-import com.playerPlugin.playerTaskX.api.model.reward.Reward;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
@@ -96,10 +95,6 @@ public class TaskManager {
 
         TaskDefinition task = taskCache.get(taskId);
         if (task == null) return false;
-
-        for (Reward reward : task.getRewards()) {
-            reward.grant(player);
-        }
 
         progress.setStatus(PTXTaskStatus.CLAIMED);
         progress.setClaimedAt(System.currentTimeMillis());

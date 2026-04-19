@@ -7,7 +7,6 @@ import java.nio.file.Path;
 
 public class EditorServer {
     private final TaskEditorController taskController;
-    private final RewardTemplateController rewardController;
     private final ObjectiveTemplateController objectiveController;
     private final ActionTemplateController actionController;
     private final PlayerProgressController progressController;
@@ -16,7 +15,6 @@ public class EditorServer {
 
     public EditorServer(TaskManager taskManager, Path dataFolder) {
         this.taskController = new TaskEditorController(taskManager);
-        this.rewardController = new RewardTemplateController(taskManager, dataFolder);
         this.objectiveController = new ObjectiveTemplateController(dataFolder);
         this.actionController = new ActionTemplateController(dataFolder);
         this.progressController = new PlayerProgressController(taskManager);
@@ -36,10 +34,6 @@ public class EditorServer {
             .post("/api/quests/batch", ctx -> taskController.batchCreate(ctx))
             .put("/api/quests/{id}", ctx -> taskController.update(ctx))
             .delete("/api/quests/{id}", ctx -> taskController.delete(ctx))
-            // 奖励模板
-            .get("/api/rewards/templates", ctx -> rewardController.getAll(ctx))
-            .post("/api/rewards/templates", ctx -> rewardController.save(ctx))
-            .delete("/api/rewards/templates/{id}", ctx -> rewardController.delete(ctx))
             // 目标模板
             .get("/api/objectives/templates", ctx -> objectiveController.getAll(ctx))
             .get("/api/objectives/templates/{id}", ctx -> objectiveController.getById(ctx))

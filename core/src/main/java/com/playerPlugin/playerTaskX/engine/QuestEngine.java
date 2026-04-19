@@ -113,16 +113,6 @@ public class QuestEngine {
     private void completeQuest(QuestSession session, TaskDefinition task) {
         session.setStatus(PTXTaskStatus.COMPLETED);
         session.markNodeCompleted(session.getCurrentNodeId());
-        
-        Player player = Bukkit.getPlayer(session.getPlayerId());
-        if (player == null) {
-            log.warn("Cannot grant rewards - player {} not online", session.getPlayerId());
-            return;
-        }
-        
-        for (var reward : task.getRewards()) {
-            reward.grant(player);
-        }
     }
     
     private String findStartNode(QuestGraph graph) {

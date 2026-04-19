@@ -39,7 +39,6 @@ const newQuest = ref<Quest>({
   description: '',
   type: 'single',
   objectives: [],
-  rewards: [],
   createdAt: Date.now(),
   updatedAt: Date.now()
 })

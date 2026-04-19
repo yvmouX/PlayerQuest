@@ -17,7 +17,6 @@ import {Handle, Position} from '@vue-flow/core'
 defineProps<{
   data: {
     name: string
-    rewards?: any[]
     callbackMessage?: string
   }
 }>()

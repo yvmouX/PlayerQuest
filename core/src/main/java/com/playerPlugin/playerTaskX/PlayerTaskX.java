@@ -16,7 +16,6 @@ import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
 import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.handler.*;
 import com.playerPlugin.playerTaskX.listener.GraphEventListener;
-import com.playerPlugin.playerTaskX.manager.RewardManager;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import com.playerPlugin.playerTaskX.storage.SessionStorage;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
@@ -27,7 +26,6 @@ import java.io.File;
 
 public final class PlayerTaskX extends JavaPlugin {
     private TaskManager taskManager;
-    private RewardManager rewardManager;
     private EditorServer editorServer;
     private Logger log;
     private QuestEngine questEngine;
@@ -67,7 +65,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // 初始化任务引擎
         this.taskManager = new TaskManager(taskStorage, progressStorage);
-        this.rewardManager = new RewardManager();
         taskManager.loadTasks();
 
         questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);

@@ -61,7 +61,7 @@ class GraphExecutionIntegrationTest {
         List<NodeConnection> edges = List.of();
         QuestGraph graph = new QuestGraph("q1", "Test", nodes, edges);
         TaskDefinition task = new TaskDefinition("q1", "Test", "desc", PTXTaskType.FOREVER, 
-            List.of(), List.of(), List.of(), graph);
+            List.of(), List.of(), graph);
         
         UUID playerId = UUID.randomUUID();
         

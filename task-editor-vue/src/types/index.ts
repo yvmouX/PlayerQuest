@@ -10,7 +10,6 @@ export interface Quest {
   description: string
   type: 'single' | 'multi' | 'series'
   objectives: QuestObjective[]
-  rewards: QuestReward[]
   createdAt: number
   updatedAt: number
   taskType?: TaskSubType
@@ -25,14 +24,7 @@ export interface QuestObjective {
   finished: boolean
 }
 
-export interface QuestReward {
-  id: string
-  type: 'item' | 'xp' | 'money' | 'command'
-  value: string | number
-  meta?: any
-}
-
-export interface RewardTemplate {
+export interface ObjectiveTemplate {
   id: string
   name: string
   type: 'item' | 'xp' | 'money' | 'command'
