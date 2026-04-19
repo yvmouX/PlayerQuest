@@ -354,6 +354,11 @@ function handleDrop(event: DragEvent) {
     return
   }
   
+  if ((nodeType === 'start' || nodeType === 'task') && editorNodes.value.some(n => n.nodeType === nodeType)) {
+    useToast().error(`${nodeType === 'start' ? '开始' : '任务'}节点已存在，每个流程只能有一个`)
+    return
+  }
+  
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const position = project({
     x: event.clientX - rect.left,

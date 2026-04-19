@@ -1,5 +1,7 @@
 package com.playerPlugin.playerTaskX.web;
 
+import com.playerPlugin.playerTaskX.api.model.GraphNode;
+import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import io.javalin.http.Context;
@@ -15,6 +17,32 @@ public class TaskEditorController {
         this.taskManager = taskManager;
     }
 
+    private void validateGraph(QuestGraph graph) throws IllegalArgumentException {
+        if (graph == null || graph.getNodes() == null || graph.getNodes().isEmpty()) {
+            throw new IllegalArgumentException("Graph must have at least one node");
+        }
+
+        long startCount = graph.getNodes().stream()
+                .filter(n -> "start".equals(n.getNodeType()))
+                .count();
+        if (startCount > 1) {
+            throw new IllegalArgumentException("Graph can only have one start node, found " + startCount);
+        }
+
+        long taskCount = graph.getNodes().stream()
+                .filter(n -> "task".equals(n.getNodeType()))
+                .count();
+        if (taskCount > 1) {
+            throw new IllegalArgumentException("Graph can only have one task node, found " + taskCount);
+        }
+
+        long completionCount = graph.getNodes().stream()
+                .filter(n -> "completion".equals(n.getNodeType()))
+                .count();
+        if (completionCount > 1) {
+            throw new IllegalArgumentException("Graph can only have one completion node, found " + completionCount);
+        }
+    }
 
     public void getAll(Context ctx) {
         Collection<TaskDefinition> tasks = taskManager.getAllTasks();
@@ -34,8 +62,13 @@ public class TaskEditorController {
     public void create(Context ctx) {
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
+            if (task.hasGraph()) {
+                validateGraph(task.getGraph());
+            }
             taskManager.saveTask(task);
             ctx.status(201).json(ApiResponse.success(task));
+        } catch (IllegalArgumentException e) {
+            ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         } catch (Exception e) {
             ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         }
@@ -45,8 +78,13 @@ public class TaskEditorController {
         String id = ctx.pathParam("id");
         try {
             TaskDefinition task = ctx.bodyAsClass(TaskDefinition.class);
+            if (task.hasGraph()) {
+                validateGraph(task.getGraph());
+            }
             taskManager.saveTask(task);
             ctx.json(ApiResponse.success(task));
+        } catch (IllegalArgumentException e) {
+            ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         } catch (Exception e) {
             ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         }
@@ -65,11 +103,17 @@ public class TaskEditorController {
             int count = 0;
             for (Object obj : tasks) {
                 if (obj instanceof TaskDefinition) {
-                    taskManager.saveTask((TaskDefinition) obj);
+                    TaskDefinition task = (TaskDefinition) obj;
+                    if (task.hasGraph()) {
+                        validateGraph(task.getGraph());
+                    }
+                    taskManager.saveTask(task);
                     count++;
                 }
             }
             ctx.status(201).json(ApiResponse.success(Map.of("count", count)));
+        } catch (IllegalArgumentException e) {
+            ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         } catch (Exception e) {
             ctx.status(400).json(ApiResponse.error(400, "Invalid task data: " + e.getMessage()));
         }
