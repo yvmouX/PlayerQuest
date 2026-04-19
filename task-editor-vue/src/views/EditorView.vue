@@ -354,8 +354,9 @@ function handleDrop(event: DragEvent) {
     return
   }
   
-  if ((nodeType === 'start' || nodeType === 'task') && editorNodes.value.some(n => n.nodeType === nodeType)) {
-    useToast().error(`${nodeType === 'start' ? '开始' : '任务'}节点已存在，每个流程只能有一个`)
+  if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && editorNodes.value.some(n => n.nodeType === nodeType)) {
+    const names: Record<string, string> = { start: '开始', task: '任务', completion: '完成' }
+    useToast().error(`${names[nodeType]}节点已存在，每个流程只能有一个`)
     return
   }
   
