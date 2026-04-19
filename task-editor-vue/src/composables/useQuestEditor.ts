@@ -31,8 +31,8 @@ export interface QuestEdgeData {
 
 const vueFlowStore = useVueFlow()
 
-const nodes = toRef(vueFlowStore, 'nodes') as unknown as import('vue').Ref<QuestNodeData[]>
-const edges = toRef(vueFlowStore, 'edges') as unknown as import('vue').Ref<QuestEdgeData[]>
+const nodes = vueFlowStore.nodes as unknown as import('vue').Ref<QuestNodeData[]>
+const edges = vueFlowStore.edges as unknown as import('vue').Ref<QuestEdgeData[]>
 const setNodes = (newNodes: QuestNodeData[]) => {
   const graphNodes = newNodes.map(n => ({
     id: n.id,
