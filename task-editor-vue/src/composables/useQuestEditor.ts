@@ -36,7 +36,7 @@ const edges = toRef(vueFlowStore, 'edges') as unknown as import('vue').Ref<Quest
 const setNodes = (newNodes: QuestNodeData[]) => {
   const graphNodes = newNodes.map(n => ({
     id: n.id,
-    type: n.nodeType,
+    type: n.type,
     position: n.position,
     data: n.data,
     draggable: true,
