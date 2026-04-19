@@ -112,7 +112,7 @@ export function useQuestEditor() {
       useToast().error(`${typeName}节点已存在，每个流程只能有一个`)
       return
     }
-    const id = crypto.randomUUID()
+    const id = `${nodeType}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`
     const newNode = {
       id,
       type: nodeType,
