@@ -29,8 +29,6 @@ public class TriggerNodeHandler implements NodeHandler {
         
         boolean conditionMet = evaluateCondition(conditionType, conditionConfig, session);
         
-        session.markNodeCompleted(session.getCurrentNodeId());
-        
         List<String> nextNodes = graph.getEdges().stream()
             .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
             .map(NodeConnection::getTargetId)
@@ -46,6 +44,7 @@ public class TriggerNodeHandler implements NodeHandler {
             return NextNodeResult.terminal(session.getCurrentNodeId());
         }
         
+        session.markNodeCompleted(session.getCurrentNodeId());
         return NextNodeResult.next(nextNodes.get(0));
     }
     
