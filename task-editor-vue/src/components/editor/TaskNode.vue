@@ -2,7 +2,7 @@
   <div class="task-node" :class="`type-${data.taskType?.toLowerCase()}`">
     <div class="node-header">
       <span class="node-type">{{ taskTypeLabel }}</span>
-      <button class="delete-btn" @click.stop="$emit('delete', data.id)">×</button>
+      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
       <h3 class="node-name">{{ questName }}</h3>
@@ -20,10 +20,11 @@ import type {TaskNodeData} from '../../types'
 
 const props = defineProps<{
   data: TaskNodeData
+  nodeId: string
 }>()
 
 defineEmits<{
-  delete: [id: string]
+  delete: [nodeId: string]
 }>()
 
 const taskTypeLabel = computed(() => {

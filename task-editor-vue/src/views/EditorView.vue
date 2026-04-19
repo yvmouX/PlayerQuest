@@ -73,24 +73,24 @@
           <TaskNode :data="data" @delete="handleDeleteNode" />
         </template>
         
-        <template #node-start="{ data }">
-          <StartNode :data="data" />
+        <template #node-start="{ data, id }">
+          <StartNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
 
-        <template #node-completion="{ data }">
-          <CompletionNode :data="data" />
+        <template #node-completion="{ data, id }">
+          <CompletionNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
 
-        <template #node-trigger="{ data }">
-          <TriggerNode :data="data" />
+        <template #node-trigger="{ data, id }">
+          <TriggerNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
 
-        <template #node-objective="{ data }">
-          <ObjectiveNode :data="data" />
+        <template #node-objective="{ data, id }">
+          <ObjectiveNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
 
-        <template #node-action="{ data }">
-          <ActionNode :data="data" />
+        <template #node-action="{ data, id }">
+          <ActionNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
       </VueFlow>
       

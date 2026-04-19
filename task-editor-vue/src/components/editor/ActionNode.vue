@@ -3,6 +3,7 @@
     <div class="node-header">
       <span class="node-icon">⚙️</span>
       <span class="node-type">行为</span>
+      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Action' }}</span>
@@ -21,6 +22,11 @@ import type {ActionData} from '../../types'
 
 const props = defineProps<{
   data: ActionData
+  nodeId: string
+}>()
+
+defineEmits<{
+  delete: [nodeId: string]
 }>()
 
 const actionLabel = computed(() => {
@@ -59,6 +65,17 @@ const actionLabel = computed(() => {
   font-size: 0.7rem;
   color: #9a3412;
 }
+.delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #9a3412;
+  padding: 0 2px;
+  line-height: 1;
+}
+.delete-btn:hover { color: #ef4444; }
 .node-body {
   padding: 0.5rem 0.75rem;
   display: flex;

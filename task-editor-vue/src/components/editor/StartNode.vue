@@ -3,6 +3,7 @@
     <div class="node-header">
       <span class="node-icon">▶</span>
       <span class="node-type">开始</span>
+      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Start' }}</span>
@@ -19,6 +20,11 @@ defineProps<{
     name: string
     description?: string
   }
+  nodeId: string
+}>()
+
+defineEmits<{
+  delete: [nodeId: string]
 }>()
 </script>
 
@@ -44,6 +50,17 @@ defineProps<{
   font-size: 0.7rem;
   color: #166534;
 }
+.delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #166534;
+  padding: 0 2px;
+  line-height: 1;
+}
+.delete-btn:hover { color: #ef4444; }
 .node-body {
   padding: 0.5rem 0.75rem;
 }

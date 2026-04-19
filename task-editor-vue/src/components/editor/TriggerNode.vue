@@ -3,6 +3,7 @@
     <div class="node-header">
       <span class="node-icon">⚡</span>
       <span class="node-type">触发</span>
+      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Trigger' }}</span>
@@ -20,6 +21,11 @@ import type {TriggerData} from '../../types'
 
 const props = defineProps<{
   data: TriggerData
+  nodeId: string
+}>()
+
+defineEmits<{
+  delete: [nodeId: string]
 }>()
 
 const conditionLabel = computed(() => {
@@ -54,6 +60,17 @@ const conditionLabel = computed(() => {
   font-size: 0.7rem;
   color: #854d0e;
 }
+.delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #854d0e;
+  padding: 0 2px;
+  line-height: 1;
+}
+.delete-btn:hover { color: #ef4444; }
 .node-body {
   padding: 0.5rem 0.75rem;
   display: flex;
