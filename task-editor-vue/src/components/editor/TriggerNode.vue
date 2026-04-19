@@ -8,8 +8,8 @@
       <span class="node-name">{{ data.name || 'Trigger' }}</span>
       <span class="node-condition">{{ conditionLabel }}</span>
     </div>
-    <Handle type="target" :position="Position.Left" />
-    <Handle type="source" :position="Position.Right" />
+    <Handle type="target" :position="Position.Left" class="handle-target" />
+    <Handle type="source" :position="Position.Right" class="handle-source" />
   </div>
 </template>
 
@@ -68,5 +68,39 @@ const conditionLabel = computed(() => {
 .node-condition {
   font-size: 0.7rem;
   color: #a16207;
+}
+.handle-target {
+  width: 16px !important;
+  height: 16px !important;
+  background: #eab308 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-target::after {
+  content: '−';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.handle-source {
+  width: 16px !important;
+  height: 16px !important;
+  background: #eab308 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-source::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
 }
 </style>

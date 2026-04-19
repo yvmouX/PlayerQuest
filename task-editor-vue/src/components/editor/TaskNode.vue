@@ -8,8 +8,8 @@
       <h3 class="node-name">{{ questName }}</h3>
       <p class="node-desc">{{ objectiveSummary }}</p>
     </div>
-    <Handle type="target" :position="Position.Left" />
-    <Handle type="source" :position="Position.Right" />
+    <Handle type="target" :position="Position.Left" class="handle-target" />
+    <Handle type="source" :position="Position.Right" class="handle-source" />
   </div>
 </template>
 
@@ -91,5 +91,39 @@ const objectiveSummary = computed(() => {
 .node-desc {
   font-size: 0.8rem;
   color: #6b7280;
+}
+.handle-target {
+  width: 16px !important;
+  height: 16px !important;
+  background: #3b82f6 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-target::after {
+  content: '−';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.handle-source {
+  width: 16px !important;
+  height: 16px !important;
+  background: #3b82f6 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-source::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
 }
 </style>

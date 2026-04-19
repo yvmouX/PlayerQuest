@@ -7,7 +7,7 @@
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Completion' }}</span>
     </div>
-    <Handle type="target" :position="Position.Left" />
+    <Handle type="target" :position="Position.Left" class="handle-target" />
   </div>
 </template>
 
@@ -51,5 +51,22 @@ defineProps<{
   font-size: 0.85rem;
   font-weight: 500;
   color: #b91c1c;
+}
+.handle-target {
+  width: 16px !important;
+  height: 16px !important;
+  background: #ef4444 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-target::after {
+  content: '−';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
 }
 </style>

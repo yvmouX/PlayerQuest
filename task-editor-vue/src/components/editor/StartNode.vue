@@ -7,7 +7,7 @@
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Start' }}</span>
     </div>
-    <Handle type="source" :position="Position.Right" />
+    <Handle type="source" :position="Position.Right" class="handle-source" />
   </div>
 </template>
 
@@ -51,5 +51,22 @@ defineProps<{
   font-size: 0.85rem;
   font-weight: 500;
   color: #15803d;
+}
+.handle-source {
+  width: 16px !important;
+  height: 16px !important;
+  background: #22c55e !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+}
+.handle-source::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
 }
 </style>
