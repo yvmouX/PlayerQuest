@@ -271,6 +271,7 @@ interface ActionData {
 interface CompletionData {
   name: string
   callbackMessage?: string
+  taskId: string  // 关联的 Task 节点 ID，用于获取 taskType
 }
 ```
 
@@ -282,7 +283,7 @@ interface CompletionData {
 - ~~Branch 节点~~ - 分支逻辑由多个并联 Objective 实现
 - ~~Counter 节点~~ - 计数器功能可由 Action 实现
 - ~~Timer 节点~~ - 计时器功能可由 Action 实现
-- ~~Subtask 节点~~ - 子任务逻辑由串联 Objective 实现（需扩展）
+- ~~Subtask 节点~~ - 子任务功能不在本期范围内
 
 ---
 
@@ -355,11 +356,66 @@ interface EditorNode {
 - `/api/objectives/templates` - 获取所有模板
 - `/api/objectives/templates/{id}` - 获取单个模板
 
+**目标模板数据结构：**
+
+```typescript
+interface ObjectiveTemplate {
+  id: string
+  name: string
+  description: string
+  type: 'kill_mob' | 'collect_item' | 'break_block' | 'talk_to_npc' | 'reach_location' | 'custom'
+  defaultConfig: {
+    target?: string      // 目标标识（如僵尸类型、物品ID）
+    amount?: number     // 数量
+    location?: { x: number, y: number, z: number, world: string }
+    [key: string]: any  // 其他动态参数
+  }
+}
+```
+
+**预设目标类型：**
+| 类型 | 参数 |
+|------|------|
+| kill_mob | target（生物类型）, amount（数量） |
+| collect_item | target（物品ID）, amount（数量） |
+| break_block | target（方块类型）, amount（数量） |
+| talk_to_npc | target（NPC ID） |
+| reach_location | location（坐标+世界） |
+
 ### 行为库（Action Library）
 
 预设行为模板存储在后端，提供 API 供前端引用：
 - `/api/actions/templates` - 获取所有模板
 - `/api/actions/templates/{id}` - 获取单个模板
+
+**行为模板数据结构：**
+
+```typescript
+interface ActionTemplate {
+  id: string
+  name: string
+  description: string
+  type: 'give_item' | 'execute_command' | 'send_message' | 'play_effect' | 'sound' | 'custom'
+  defaultConfig: {
+    item?: string       // 物品ID（give_item）
+    amount?: number    // 数量
+    command?: string   // 命令（execute_command）
+    message?: string   // 消息内容（send_message）
+    effect?: string    // 粒子效果类型（play_effect）
+    sound?: string     // 声音（sound）
+    [key: string]: any  // 其他动态参数
+  }
+}
+```
+
+**预设行为类型：**
+| 类型 | 参数 |
+|------|------|
+| give_item | item（物品ID）, amount（数量） |
+| execute_command | command（命令，可含 %player% 占位符） |
+| send_message | message（消息内容，支持颜色代码） |
+| play_effect | effect（粒子效果）, location（位置） |
+| sound | sound（声音名称）, volume, pitch |
 
 ---
 
