@@ -197,7 +197,6 @@ export interface TaskNodeData {
 export interface CompletionNodeData {
   type: 'completion'
   name: string
-  taskId: string
   callbackMessage?: string
 }
 

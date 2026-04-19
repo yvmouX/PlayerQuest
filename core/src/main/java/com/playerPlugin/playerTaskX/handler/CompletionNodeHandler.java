@@ -26,9 +26,7 @@ public class CompletionNodeHandler implements NodeHandler {
         Player player = Bukkit.getPlayer(session.getPlayerId());
         if (player == null) return NextNodeResult.terminal(session.getCurrentNodeId());
         
-        Map<String, Object> data = currentNode.getData();
-        String taskId = (String) data.get("taskId");
-        String taskType = getTaskType(graph, taskId);
+        String taskType = getTaskType(graph);
         
         // 根据 taskType 处理重置逻辑
         handleTaskTypeReset(session, taskType);
@@ -50,11 +48,9 @@ public class CompletionNodeHandler implements NodeHandler {
         return NextNodeResult.next(nextNodeId);
     }
     
-    private String getTaskType(QuestGraph graph, String taskId) {
-        if (taskId == null) return "FOREVER";
-        
+    private String getTaskType(QuestGraph graph) {
         GraphNode taskNode = graph.getNodes().stream()
-            .filter(n -> taskId.equals(n.getId()) && "task".equals(n.getNodeType()))
+            .filter(n -> "task".equals(n.getNodeType()))
             .findFirst()
             .orElse(null);
         

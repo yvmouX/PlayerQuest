@@ -242,15 +242,6 @@
           <input v-model="editedNode.name" placeholder="完成节点名称" />
         </div>
         <div class="form-group">
-          <label>关联任务节点</label>
-          <select v-model="editedNode.taskId">
-            <option value="">-- 选择 Task --</option>
-            <option v-for="n in taskNodes" :key="n.id" :value="n.id">
-              {{ n.data.name || n.id }}
-            </option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>回调消息</label>
           <textarea v-model="editedNode.callbackMessage" rows="2" placeholder="完成后发送的消息..." />
         </div>

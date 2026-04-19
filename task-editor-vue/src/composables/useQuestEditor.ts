@@ -62,7 +62,7 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
     case 'action':
       return { type: 'action', name: '', templateId: '', customConfig: {} } as ActionData
     case 'completion':
-      return { type: 'completion', name: '', taskId: '', callbackMessage: '' } as CompletionNodeData
+      return { type: 'completion', name: '', callbackMessage: '' } as CompletionNodeData
     default:
       return { type: 'start', description: '' } as StartNodeData
   }
