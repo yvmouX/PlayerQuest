@@ -1,11 +1,13 @@
 <template>
   <div class="action-node">
     <div class="node-header">
-      <span class="node-icon">{{ actionIcon }}</span>
-      <span class="node-type">{{ actionLabel }}</span>
+      <span class="node-icon">⚙️</span>
+      <span class="node-type">行为</span>
     </div>
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Action' }}</span>
+      <span class="node-template" v-if="data.templateId">📚 {{ data.templateId }}</span>
+      <span class="node-custom" v-else-if="data.customConfig?.type">{{ actionLabel }}</span>
     </div>
     <Handle type="target" :position="Position.Left" />
     <Handle type="source" :position="Position.Right" />
@@ -21,66 +23,55 @@ const props = defineProps<{
   data: ActionData
 }>()
 
-const actionIcon = computed(() => {
-  const icons: Record<string, string> = {
-    GIVE_ITEM: '📦',
-    TAKE_ITEM: '📤',
-    GIVE_MONEY: '💰',
-    TAKE_MONEY: '💸',
-    GIVE_XP: '⭐',
-    SEND_MESSAGE: '💬',
-    BROADCAST: '📢',
-    EXECUTE_COMMAND: '⚡',
-    PLAY_SOUND: '🎵'
-  }
-  return icons[props.data.actionType] || '⚙️'
-})
-
 const actionLabel = computed(() => {
   const labels: Record<string, string> = {
-    GIVE_ITEM: '发放物品',
-    TAKE_ITEM: '扣除物品',
-    GIVE_MONEY: '发放货币',
-    TAKE_MONEY: '扣除货币',
-    GIVE_XP: '发放经验',
-    SEND_MESSAGE: '发送消息',
-    BROADCAST: '全服广播',
-    EXECUTE_COMMAND: '执行命令',
-    PLAY_SOUND: '播放音效'
+    'give_item': '发放物品',
+    'execute_command': '执行命令',
+    'send_message': '发送消息',
+    'play_effect': '播放特效',
+    'sound': '播放音效',
+    'give_xp': '发放经验'
   }
-  return labels[props.data.actionType] || props.data.actionType
+  const type = props.data.customConfig?.type
+  return labels[type || ''] || type || ''
 })
 </script>
 
 <style scoped>
 .action-node {
-  width: 180px;
-  height: 60px;
+  width: 160px;
   background: white;
-  border: 2px solid #f59e0b;
+  border: 2px solid #f97316;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);
 }
 .node-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.75rem;
-  background: #fef3c7;
-  border-bottom: 1px solid #fde68a;
+  background: #ffedd5;
+  border-bottom: 1px solid #fed7aa;
 }
 .node-icon { font-size: 1rem; }
 .node-type {
   font-size: 0.7rem;
-  color: #92400e;
+  color: #9a3412;
 }
 .node-body {
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 .node-name {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #78350f;
+  color: #7c2d12;
+}
+.node-template, .node-custom {
+  font-size: 0.7rem;
+  color: #c2410c;
 }
 </style>
