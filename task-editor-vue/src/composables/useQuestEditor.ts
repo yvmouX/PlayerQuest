@@ -31,6 +31,15 @@ export interface QuestNodeData {
 const nodes = ref<QuestNodeData[]>([])
 const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
 const currentQuestId = ref<string | null>(null)
+
+const validConnections: Record<string, string[]> = {
+  start: ['trigger', 'task'],
+  trigger: ['task'],
+  task: ['objective', 'completion'],
+  objective: ['action', 'completion'],
+  action: ['action', 'completion'],
+  completion: ['action']
+}
 export const editorNodes = nodes
 export const editorEdges = edges
 
@@ -103,15 +112,6 @@ export function useQuestEditor() {
 
     const sourceType = sourceNode.nodeType
     const targetType = targetNode.nodeType
-
-    const validConnections: Record<string, string[]> = {
-      start: ['trigger', 'task'],        // Start 可连 Trigger 或 Task
-      trigger: ['task'],                   // Trigger 只能连 Task
-      task: ['objective', 'completion'],   // Task 可连多个 Objective 或直接连 Completion
-      objective: ['action', 'completion'], // Objective 可连 Action 或 Completion
-      action: ['action', 'completion'],    // Action 可连另一个 Action 或 Completion
-      completion: ['action']              // Completion 可连 Action
-    }
 
     if (!validConnections[sourceType]?.includes(targetType)) {
       useToast().error(`无法连接：${sourceType} 不能连接到 ${targetType}`)
