@@ -2,6 +2,8 @@ package com.playerPlugin.playerTaskX.storage.yaml;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 
@@ -24,6 +26,26 @@ public class YamlProgressStorage implements ProgressStorage {
 
     private File getPlayerFolder(UUID playerId) {
         return new File(dataFolder, playerId.toString());
+    }
+
+    @Override
+    public void create(UUID playerId, TaskDefinition taskDefinition) {
+        File file = new File(getPlayerFolder(playerId), taskDefinition.getId() + ".yml");
+        if (file.exists()) {
+            throw new IllegalStateException("Progress already exists for player: " + playerId + " task: " + taskDefinition.getId());
+        }
+        TaskProgress progress = new TaskProgress(playerId, taskDefinition.getId());
+        progress.setStatus(PTXTaskStatus.IN_PROGRESS);
+        save(playerId, progress);
+    }
+
+    @Override
+    public void update(UUID playerId, TaskProgress progress) {
+        File file = new File(getPlayerFolder(playerId), progress.getTaskId() + ".yml");
+        if (!file.exists()) {
+            throw new IllegalStateException("Progress does not exist for player: " + playerId + " task: " + progress.getTaskId());
+        }
+        save(playerId, progress);
     }
 
     @Override

@@ -1,6 +1,8 @@
 package com.playerPlugin.playerTaskX.storage.mysql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
+import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.zaxxer.hikari.HikariConfig;
@@ -46,6 +48,42 @@ public class MySQLProgressStorage implements ProgressStorage {
             """);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize MySQL tables", e);
+        }
+    }
+
+    @Override
+    public void create(UUID playerId, TaskDefinition taskDefinition) {
+        String sql = "INSERT INTO progress (player_id, task_id, data) VALUES (?, ?, ?)";
+        TaskProgress progress = new TaskProgress(playerId, taskDefinition.getId());
+        progress.setStatus(PTXTaskStatus.IN_PROGRESS);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, playerId.toString());
+            stmt.setString(2, progress.getTaskId());
+            stmt.setString(3, mapper.writeValueAsString(progress));
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to create progress for player: " + playerId, e);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize progress for player: " + playerId, e);
+        }
+    }
+
+    @Override
+    public void update(UUID playerId, TaskProgress progress) {
+        String sql = "UPDATE progress SET data = ? WHERE player_id = ? AND task_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, mapper.writeValueAsString(progress));
+            stmt.setString(2, playerId.toString());
+            stmt.setString(3, progress.getTaskId());
+            if (stmt.executeUpdate() == 0) {
+                throw new IllegalStateException("Progress does not exist for player: " + playerId + " task: " + progress.getTaskId());
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update progress for player: " + playerId, e);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize progress for player: " + playerId, e);
         }
     }
 
