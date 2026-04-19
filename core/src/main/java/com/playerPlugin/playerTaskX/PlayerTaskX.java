@@ -23,6 +23,8 @@ import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public final class PlayerTaskX extends JavaPlugin {
     private TaskManager taskManager;
     private RewardManager rewardManager;
@@ -47,12 +49,15 @@ public final class PlayerTaskX extends JavaPlugin {
         editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
 
         // 初始化存储
+        File basePath = getDataFolder();
+        File storageDir = new File(basePath, "data");
         String taskStorageType = storageConfig.getStorageType_TaskDefinition();
         String progressStorageType = storageConfig.getStorageType_PlayerProgress();
+        String sessionStorageType = storageConfig.getStorageType_Session();
 
-        taskStorage = StorageFactory.createTaskStorage(taskStorageType, getDataFolder(), storageConfig);
-        progressStorage = StorageFactory.createProgressStorage(progressStorageType, getDataFolder(), storageConfig);
-        sessionStorage = StorageFactory.createSessionStorage(taskStorageType, getDataFolder(), storageConfig);
+        taskStorage = StorageFactory.createTaskStorage(taskStorageType, storageDir, storageConfig);
+        progressStorage = StorageFactory.createProgressStorage(progressStorageType, storageDir, storageConfig);
+        sessionStorage = StorageFactory.createSessionStorage(sessionStorageType, storageDir, storageConfig);
 
         sessionManager = new QuestSessionManager();
 

@@ -13,6 +13,9 @@ public class StorgeConfiguration {
     @ConfigValue(value = "storage-type.player-progress", description = "Storage type for player progress data")
     private String StorageType_PlayerProgress = "JSON";
 
+    @ConfigValue(value = "storage-type.session", description = "Storage type for session data")
+    private String StorageType_Session = "JSON";
+
     @ConfigValue(value = "mysql.host", description = "MySQL host address")
     private String mysqlHost = "localhost";
 
@@ -45,6 +48,14 @@ public class StorgeConfiguration {
 
     public void setStorageType_PlayerProgress(String StorageType_PlayerProgress) {
         this.StorageType_PlayerProgress = StorageType_PlayerProgress;
+    }
+
+    public String getStorageType_Session() {
+        return StorageType_Session;
+    }
+
+    public void setStorageType_Session(String StorageType_Session) {
+        this.StorageType_Session = StorageType_Session;
     }
 
     public String getMysqlHost() {
