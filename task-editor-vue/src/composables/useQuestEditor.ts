@@ -113,12 +113,13 @@ export function useQuestEditor() {
       return
     }
     const id = crypto.randomUUID()
-    setNodes([...nodes.value, {
+    const newNode = {
       id,
       type: nodeType,
       position,
       data: createDefaultNodeData(nodeType, id)
-    }])
+    }
+    setNodes([...nodes.value, newNode])
     return id
   }
 

@@ -241,7 +241,7 @@ function handleSelectQuest(quest: Quest) {
       name: quest.name,
       nodes: nodes.value.map(n => ({
         id: n.id,
-        nodeType: n.nodeType,
+        nodeType: n.type,
         x: n.position.x,
         y: n.position.y,
         data: n.data
