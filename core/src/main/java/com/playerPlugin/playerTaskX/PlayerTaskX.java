@@ -29,11 +29,13 @@ public final class PlayerTaskX extends JavaPlugin {
     private EditorServer editorServer;
     private Logger log;
     private QuestEngine questEngine;
-    private SessionStorage sessionStorage;
     private QuestSessionManager sessionManager;
     private GeneralConfiguration generalConfig;
     private StorgeConfiguration storageConfig;
     private EditorConfiguration editorConfig;
+    private TaskStorage taskStorage;
+    private ProgressStorage progressStorage;
+    private SessionStorage sessionStorage;
 
     @Override
     public void onEnable() {
@@ -45,32 +47,13 @@ public final class PlayerTaskX extends JavaPlugin {
         editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
 
         // 初始化存储
-        String storageTypeStr = storageConfig.getStorageType();
-        PTXStorgeType storageType;
-        try {
-            storageType = PTXStorgeType.valueOf(storageTypeStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid storage type: " + storageTypeStr + ", defaulting to SQLITE");
-            storageType = PTXStorgeType.SQLITE;
-        }
+        String taskStorageType = storageConfig.getStorageType_TaskDefinition();
+        String progressStorageType = storageConfig.getStorageType_PlayerProgress();
 
-        TaskStorage taskStorage;
-        ProgressStorage progressStorage;
-        StorageFactory.MySQLConfig mysqlConfig = new StorageFactory.MySQLConfig();
-        if (storageType == PTXStorgeType.MYSQL) {
-            mysqlConfig.host = storageConfig.getMysqlHost();
-            mysqlConfig.port = storageConfig.getMysqlPort();
-            mysqlConfig.database = storageConfig.getMysqlDatabase();
-            mysqlConfig.username = storageConfig.getMysqlUsername();
-            mysqlConfig.password = storageConfig.getMysqlPassword();
-            taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder(), mysqlConfig);
-            progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder(), mysqlConfig);
-        } else {
-            taskStorage = StorageFactory.createTaskStorage(storageType, getDataFolder(), null);
-            progressStorage = StorageFactory.createProgressStorage(storageType, getDataFolder(), null);
-        }
+        taskStorage = StorageFactory.createTaskStorage(taskStorageType, getDataFolder(), storageConfig);
+        progressStorage = StorageFactory.createProgressStorage(progressStorageType, getDataFolder(), storageConfig);
+        sessionStorage = StorageFactory.createSessionStorage(taskStorageType, getDataFolder(), storageConfig);
 
-        sessionStorage = StorageFactory.createSessionStorage(storageType, getDataFolder(), mysqlConfig);
         sessionManager = new QuestSessionManager();
 
         // 注册节点处理器
@@ -98,7 +81,7 @@ public final class PlayerTaskX extends JavaPlugin {
         this.editorServer = new EditorServer(taskManager, getDataFolder().toPath());
         editorServer.start(editorPort);
 
-        log.info("PlayerTaskX enabled - Storage: " + storageType);
+        log.info("PlayerTaskX enabled");
     }
 
     private void registerHandlers(NodeHandlerRegistry registry) {
