@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.handler;
 
+import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
@@ -26,54 +27,62 @@ public class CompletionNodeHandler implements NodeHandler {
         if (player == null) return NextNodeResult.terminal(session.getCurrentNodeId());
         
         Map<String, Object> data = currentNode.getData();
-        if (data == null) {
-            session.markNodeCompleted(session.getCurrentNodeId());
+        String taskId = (String) data.get("taskId");
+        String taskType = getTaskType(graph, taskId);
+        
+        // 根据 taskType 处理重置逻辑
+        handleTaskTypeReset(session, taskType);
+        
+        session.markNodeCompleted(session.getCurrentNodeId());
+        
+        // 执行 Completion 后续的 Action 节点
+        List<String> nextNodes = graph.getEdges().stream()
+            .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
+            .map(e -> e.getTargetId())
+            .toList();
+        
+        if (nextNodes.isEmpty()) {
             return NextNodeResult.terminal(session.getCurrentNodeId());
         }
         
-        List<Map<String, Object>> rewardsData = (List<Map<String, Object>>) data.get("rewards");
-        if (rewardsData != null) {
-            for (Map<String, Object> rewardData : rewardsData) {
-                grantReward(player, rewardData);
-            }
-        }
-        
-        session.markNodeCompleted(session.getCurrentNodeId());
-        return NextNodeResult.terminal(session.getCurrentNodeId());
+        // 返回第一个后续节点（通常是 Action）
+        String nextNodeId = nextNodes.get(0);
+        return NextNodeResult.next(nextNodeId);
     }
     
-    private void grantReward(Player player, Map<String, Object> rewardData) {
-        String type = (String) rewardData.get("type");
-        Object value = rewardData.get("value");
+    private String getTaskType(QuestGraph graph, String taskId) {
+        if (taskId == null) return "FOREVER";
         
-        switch (type) {
-            case "item" -> {
-                if (value instanceof String materialName) {
-                    try {
-                        org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
-                        int amount = ((Number) rewardData.getOrDefault("amount", 1)).intValue();
-                        player.getInventory().addItem(new org.bukkit.inventory.ItemStack(material, amount));
-                    } catch (IllegalArgumentException e) {
-                        org.slf4j.LoggerFactory.getLogger(CompletionNodeHandler.class)
-                            .warn("Invalid material for reward: {}", value);
-                    }
-                }
+        GraphNode taskNode = graph.getNodes().stream()
+            .filter(n -> taskId.equals(n.getId()) && "task".equals(n.getNodeType()))
+            .findFirst()
+            .orElse(null);
+        
+        if (taskNode == null) return "FOREVER";
+        
+        Map<String, Object> data = taskNode.getData();
+        if (data == null) return "FOREVER";
+        
+        Object taskType = data.get("taskType");
+        return taskType != null ? taskType.toString() : "FOREVER";
+    }
+    
+    private void handleTaskTypeReset(QuestSession session, String taskType) {
+        switch (taskType) {
+            case "CYCLE", "TIMER" -> {
+                // 重置任务状态，保留进度
+                session.resetProgress();
             }
-            case "xp" -> {
-                if (value instanceof Number) {
-                    player.giveExp(((Number) value).intValue());
-                }
+            case "FOREVER" -> {
+                // 任务保持完成状态
+                session.setStatus(PTXTaskStatus.COMPLETED);
             }
-            case "money" -> {
-                org.slf4j.LoggerFactory.getLogger(CompletionNodeHandler.class)
-                    .info("Money reward of {} pending economy plugin integration", value);
+            case "LIMIT" -> {
+                // 任务结束，不再可接取
+                session.setStatus(PTXTaskStatus.CLAIMED);
             }
-            case "command" -> {
-                if (value instanceof String command) {
-                    if (command.startsWith("/")) command = command.substring(1);
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
-                        command.replace("%player%", player.getName()));
-                }
+            case "NONE" -> {
+                // 无特殊逻辑
             }
         }
     }
