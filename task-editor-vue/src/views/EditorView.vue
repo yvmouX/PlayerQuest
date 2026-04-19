@@ -69,8 +69,8 @@
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
         
-        <template #node-task="{ data }">
-          <TaskNode :data="data" @delete="handleDeleteNode" />
+        <template #node-task="{ data, id }">
+          <TaskNode :data="data" :node-id="id" @delete="handleDeleteNode" />
         </template>
         
         <template #node-start="{ data, id }">
