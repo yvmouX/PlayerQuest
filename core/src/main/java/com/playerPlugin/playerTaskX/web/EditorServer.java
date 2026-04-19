@@ -8,6 +8,8 @@ import java.nio.file.Path;
 public class EditorServer {
     private final TaskEditorController taskController;
     private final RewardTemplateController rewardController;
+    private final ObjectiveTemplateController objectiveController;
+    private final ActionTemplateController actionController;
     private final PlayerProgressController progressController;
     private final StatsController statsController;
     private Javalin javalin;
@@ -15,6 +17,8 @@ public class EditorServer {
     public EditorServer(TaskManager taskManager, Path dataFolder) {
         this.taskController = new TaskEditorController(taskManager);
         this.rewardController = new RewardTemplateController(taskManager, dataFolder);
+        this.objectiveController = new ObjectiveTemplateController(dataFolder);
+        this.actionController = new ActionTemplateController(dataFolder);
         this.progressController = new PlayerProgressController(taskManager);
         this.statsController = new StatsController(taskManager);
     }
@@ -36,6 +40,16 @@ public class EditorServer {
             .get("/api/rewards/templates", ctx -> rewardController.getAll(ctx))
             .post("/api/rewards/templates", ctx -> rewardController.save(ctx))
             .delete("/api/rewards/templates/{id}", ctx -> rewardController.delete(ctx))
+            // 目标模板
+            .get("/api/objectives/templates", ctx -> objectiveController.getAll(ctx))
+            .get("/api/objectives/templates/{id}", ctx -> objectiveController.getById(ctx))
+            .post("/api/objectives/templates", ctx -> objectiveController.save(ctx))
+            .delete("/api/objectives/templates/{id}", ctx -> objectiveController.delete(ctx))
+            // 行为模板
+            .get("/api/actions/templates", ctx -> actionController.getAll(ctx))
+            .get("/api/actions/templates/{id}", ctx -> actionController.getById(ctx))
+            .post("/api/actions/templates", ctx -> actionController.save(ctx))
+            .delete("/api/actions/templates/{id}", ctx -> actionController.delete(ctx))
             // 玩家进度
             .get("/api/players/progress", ctx -> progressController.getAll(ctx))
             // 统计

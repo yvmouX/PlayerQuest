@@ -40,6 +40,22 @@ export interface RewardTemplate {
   meta?: any
 }
 
+export interface ObjectiveTemplate {
+  id: string
+  name: string
+  description: string
+  type: 'kill_mob' | 'collect_item' | 'break_block' | 'talk_to_npc' | 'reach_location' | 'custom'
+  defaultConfig: Record<string, any>
+}
+
+export interface ActionTemplate {
+  id: string
+  name: string
+  description: string
+  type: 'give_item' | 'execute_command' | 'send_message' | 'play_effect' | 'sound' | 'give_xp' | 'custom'
+  defaultConfig: Record<string, any>
+}
+
 export interface PlayerProgress {
   playerUuid: string
   questId: string

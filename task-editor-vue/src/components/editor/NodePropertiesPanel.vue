@@ -100,7 +100,12 @@
         </div>
         <div class="form-group">
           <label>目标库模板</label>
-          <input v-model="editedNode.templateId" placeholder="模板ID（可选）" />
+          <select v-model="selectedObjectiveTemplate" @change="onObjectiveTemplateChange">
+            <option value="">-- 选择模板（可选） --</option>
+            <option v-for="t in objectiveTemplates" :key="t.id" :value="t.id">
+              {{ t.name }} ({{ t.type }})
+            </option>
+          </select>
         </div>
         <div class="section-divider">
           <h4>自定义配置</h4>
@@ -159,7 +164,12 @@
         </div>
         <div class="form-group">
           <label>行为库模板</label>
-          <input v-model="editedNode.templateId" placeholder="模板ID（可选）" />
+          <select v-model="selectedActionTemplate" @change="onActionTemplateChange">
+            <option value="">-- 选择模板（可选） --</option>
+            <option v-for="t in actionTemplates" :key="t.id" :value="t.id">
+              {{ t.name }} ({{ t.type }})
+            </option>
+          </select>
         </div>
         <div class="section-divider">
           <h4>自定义配置</h4>
@@ -250,15 +260,18 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue'
+import {computed, ref, watch, onMounted} from 'vue'
 import type {
   ActionData,
+  ActionTemplate,
   CompletionNodeData,
   ObjectiveData,
+  ObjectiveTemplate,
   StartNodeData,
   TaskNodeData,
   TriggerData
 } from '../../types'
+import {ObjectiveService, ActionService} from '../../services/api'
 import {editorNodes} from '../../composables/useQuestEditor'
 
 type NodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData
@@ -271,6 +284,50 @@ const emit = defineEmits<{
   close: []
   update: [id: string, node: Partial<NodeData>]
 }>()
+
+const objectiveTemplates = ref<ObjectiveTemplate[]>([])
+const actionTemplates = ref<ActionTemplate[]>([])
+const selectedObjectiveTemplate = ref('')
+const selectedActionTemplate = ref('')
+
+onMounted(async () => {
+  try {
+    const objResp = await ObjectiveService.getTemplates()
+    if (objResp.code === 0) {
+      objectiveTemplates.value = objResp.data || []
+    }
+  } catch (e) {
+    console.error('Failed to load objective templates:', e)
+  }
+  try {
+    const actResp = await ActionService.getTemplates()
+    if (actResp.code === 0) {
+      actionTemplates.value = actResp.data || []
+    }
+  } catch (e) {
+    console.error('Failed to load action templates:', e)
+  }
+})
+
+function onObjectiveTemplateChange() {
+  const template = objectiveTemplates.value.find(t => t.id === selectedObjectiveTemplate.value)
+  if (template) {
+    editedNode.value.templateId = template.id
+    editedNode.value.customConfig = { ...template.defaultConfig }
+  } else {
+    editedNode.value.templateId = ''
+  }
+}
+
+function onActionTemplateChange() {
+  const template = actionTemplates.value.find(t => t.id === selectedActionTemplate.value)
+  if (template) {
+    editedNode.value.templateId = template.id
+    editedNode.value.customConfig = { ...template.defaultConfig }
+  } else {
+    editedNode.value.templateId = ''
+  }
+}
 
 const panelTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -303,6 +360,11 @@ watch(() => props.selectedNode, (node) => {
   if (node) {
     editedNode.value = JSON.parse(JSON.stringify(node))
     lastEmittedNode = JSON.stringify(editedNode.value)
+    if (node.type === 'objective') {
+      selectedObjectiveTemplate.value = (node as ObjectiveData).templateId || ''
+    } else if (node.type === 'action') {
+      selectedActionTemplate.value = (node as ActionData).templateId || ''
+    }
   }
 }, { immediate: true })
 

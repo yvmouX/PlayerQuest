@@ -5,6 +5,8 @@ import type {
   Quest,
   QuestGraph,
   RewardTemplate,
+  ObjectiveTemplate,
+  ActionTemplate,
   StatsActivity,
   StatsCompletion
 } from '../types'
@@ -52,6 +54,18 @@ export const RewardService = {
     return api.post('/rewards/templates', backendData)
   },
   deleteTemplate: (id: string) => api.delete(`/rewards/templates/${id}`)
+}
+
+export const ObjectiveService = {
+  getTemplates: () => api.get<ApiResponse<ObjectiveTemplate[]>>('/objectives/templates'),
+  saveTemplate: (template: ObjectiveTemplate) => api.post<ApiResponse<ObjectiveTemplate>>('/objectives/templates', template),
+  deleteTemplate: (id: string) => api.delete(`/objectives/templates/${id}`)
+}
+
+export const ActionService = {
+  getTemplates: () => api.get<ApiResponse<ActionTemplate[]>>('/actions/templates'),
+  saveTemplate: (template: ActionTemplate) => api.post<ApiResponse<ActionTemplate>>('/actions/templates', template),
+  deleteTemplate: (id: string) => api.delete(`/actions/templates/${id}`)
 }
 
 export const PlayerService = {

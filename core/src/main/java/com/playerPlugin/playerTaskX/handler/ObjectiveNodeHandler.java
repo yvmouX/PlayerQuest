@@ -3,9 +3,11 @@ package com.playerPlugin.playerTaskX.handler;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.NodeConnection;
+import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.api.service.TemplateService;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -105,7 +107,13 @@ public class ObjectiveNodeHandler implements NodeHandler {
     }
     
     private Map<String, Object> getTemplateConfig(String templateId) {
-        return null;
+        ObjectiveTemplate template = TemplateService.getObjectiveTemplate(templateId);
+        if (template == null) {
+            org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
+                .warn("Objective template not found: {}", templateId);
+            return null;
+        }
+        return template.getDefaultConfig();
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
