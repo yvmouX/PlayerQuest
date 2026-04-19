@@ -1,29 +1,19 @@
 import {computed, ref, toRef} from 'vue'
-import {useVueFlow, applyNodeChanges, applyEdgeChanges} from '@vue-flow/core'
+import {useVueFlow} from '@vue-flow/core'
 import {useToast} from './useToast'
 import type {
   ActionData,
-  BranchData,
   CompletionNodeData,
-  ConditionData,
-  CounterData,
   EditorNodeData,
   GraphNode,
-  NodeChange,
-  EdgeChange,
   NodeConnection,
   NodeType,
   ObjectiveData,
-  Quest,
   QuestGraph,
   StartNodeData,
-  StateData,
-  SubtaskData,
   TaskNodeData,
-  TimerData,
   TriggerData
 } from '../types'
-import type {Ref} from 'vue'
 
 export interface QuestNodeData {
   id: string
@@ -39,79 +29,36 @@ export interface QuestEdgeData {
   label?: string
 }
 
-let nodesRef: Ref<QuestNodeData[]> | null = null
-let edgesRef: Ref<QuestEdgeData[]> | null = null
-let setNodesFn: ((nodes: QuestNodeData[]) => void) | null = null
-let setEdgesFn: ((edges: QuestEdgeData[]) => void) | null = null
-let onNodesChangeFn: ((changes: NodeChange[]) => void) | null = null
-let onEdgesChangeFn: ((changes: EdgeChange[]) => void) | null = null
-let vueFlowStore: ReturnType<typeof useVueFlow> | null = null
+const vueFlowStore = useVueFlow()
 
-function initVueFlowState() {
-  if (vueFlowStore) return
-  
-  vueFlowStore = useVueFlow()
-  
-  nodesRef = toRef(vueFlowStore, 'nodes') as unknown as Ref<QuestNodeData[]>
-  edgesRef = toRef(vueFlowStore, 'edges') as unknown as Ref<QuestEdgeData[]>
-  
-  setNodesFn = (newNodes: QuestNodeData[]) => {
-    if (vueFlowStore) {
-      const graphNodes = newNodes.map(n => ({
-        id: n.id,
-        type: n.nodeType,
-        position: n.position,
-        data: n.data,
-        draggable: true,
-        selectable: true
-      }))
-      vueFlowStore.setNodes(graphNodes)
-    }
-  }
-  
-  setEdgesFn = (newEdges: QuestEdgeData[]) => {
-    if (vueFlowStore) {
-      const graphEdges = newEdges.map(e => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-        type: 'smoothstep'
-      }))
-      vueFlowStore.setEdges(graphEdges)
-    }
-  }
-  
-  onNodesChangeFn = (changes: NodeChange[]) => {
-    if (vueFlowStore && nodesRef) {
-      const currentNodes = [...nodesRef.value]
-      const newNodes = applyNodeChanges(changes, currentNodes as any) as QuestNodeData[]
-      nodesRef.value = newNodes
-    }
-  }
-  
-  onEdgesChangeFn = (changes: EdgeChange[]) => {
-    if (vueFlowStore && edgesRef) {
-      const currentEdges = [...edgesRef.value]
-      const newEdges = applyEdgeChanges(changes, currentEdges as any) as QuestEdgeData[]
-      edgesRef.value = newEdges
-    }
-  }
+const nodes = toRef(vueFlowStore, 'nodes') as unknown as import('vue').Ref<QuestNodeData[]>
+const edges = toRef(vueFlowStore, 'edges') as unknown as import('vue').Ref<QuestEdgeData[]>
+const setNodes = (newNodes: QuestNodeData[]) => {
+  const graphNodes = newNodes.map(n => ({
+    id: n.id,
+    type: n.nodeType,
+    position: n.position,
+    data: n.data,
+    draggable: true,
+    selectable: true
+  }))
+  vueFlowStore.setNodes(graphNodes)
 }
-
-function useNodesState(_initialNodes: QuestNodeData[] = []): [Ref<QuestNodeData[]>, (nodes: QuestNodeData[]) => void, (changes: NodeChange[]) => void] {
-  initVueFlowState()
-  return [nodesRef!, setNodesFn!, onNodesChangeFn!]
+const setEdges = (newEdges: QuestEdgeData[]) => {
+  const graphEdges = newEdges.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label,
+    type: 'smoothstep'
+  }))
+  vueFlowStore.setEdges(graphEdges)
 }
-
-function useEdgesState(_initialEdges: QuestEdgeData[] = []): [Ref<QuestEdgeData[]>, (edges: QuestEdgeData[]) => void, (changes: EdgeChange[]) => void] {
-  initVueFlowState()
-  return [edgesRef!, setEdgesFn!, onEdgesChangeFn!]
-}
-
-const [nodes, setNodes, onNodesChange] = useNodesState([])
-const [edges, setEdges, onEdgesChange] = useEdgesState([])
+const onNodesChange = vueFlowStore.onNodesChange
+const onEdgesChange = vueFlowStore.onEdgesChange
 const currentQuestId = ref<string | null>(null)
+
+const NODE_TYPE_NAMES = { start: '开始', task: '任务', completion: '完成' } as const
 
 const validConnections: Record<string, string[]> = {
   start: ['trigger', 'task'],
@@ -161,10 +108,11 @@ export function useQuestEditor() {
   function addNode(nodeType: NodeType, position: { x: number; y: number }) {
     if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && 
         nodes.value.some(n => n.nodeType === nodeType)) {
-      useToast().error(`${nodeType === 'start' ? '开始' : nodeType === 'task' ? '任务' : '完成'}节点已存在，每个流程只能有一个`)
+      const typeName = nodeType === 'start' ? NODE_TYPE_NAMES.start : nodeType === 'task' ? NODE_TYPE_NAMES.task : NODE_TYPE_NAMES.completion
+      useToast().error(`${typeName}节点已存在，每个流程只能有一个`)
       return
     }
-    const id = `${nodeType}_${Date.now()}`
+    const id = crypto.randomUUID()
     setNodes([...nodes.value, {
       id,
       nodeType,
