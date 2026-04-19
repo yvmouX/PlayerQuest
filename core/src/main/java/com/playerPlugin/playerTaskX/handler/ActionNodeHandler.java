@@ -27,10 +27,10 @@ public class ActionNodeHandler implements NodeHandler {
         if (player == null) return NextNodeResult.waiting();
         
         Map<String, Object> data = currentNode.getData();
-        String actionType = (String) data.get("actionType");
-        Map<String, Object> actionParams = (Map<String, Object>) data.get("actionParams");
+        String templateId = (String) data.get("templateId");
+        Map<String, Object> customConfig = (Map<String, Object>) data.get("customConfig");
         
-        executeAction(player, actionType, actionParams);
+        executeAction(player, templateId, customConfig);
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
@@ -40,64 +40,78 @@ public class ActionNodeHandler implements NodeHandler {
             .toList();
         
         if (nextNodes.isEmpty()) {
-            return NextNodeResult.terminal(session.getCurrentNodeId());
+            return NextNodeResult.waiting();
         }
         
-        return NextNodeResult.next(nextNodes.get(0));
+        String nextNodeId = nextNodes.get(0);
+        return NextNodeResult.next(nextNodeId);
     }
     
-    private void executeAction(Player player, String actionType, Map<String, Object> params) {
-        if (params == null) params = Map.of();
+    private void executeAction(Player player, String templateId, Map<String, Object> customConfig) {
+        Map<String, Object> config = customConfig;
+        if (templateId != null && !templateId.isEmpty()) {
+            config = getTemplateConfig(templateId);
+        }
+        
+        if (config == null) return;
+        
+        String actionType = (String) config.get("type");
+        if (actionType == null) return;
+        
         switch (actionType) {
-            case "GIVE_ITEM" -> {
-                String materialName = (String) params.getOrDefault("material", "DIAMOND");
-                int amount = ((Number) params.getOrDefault("amount", 1)).intValue();
-                org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
-                org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(material, amount);
-                player.getInventory().addItem(item);
-            }
-            case "TAKE_ITEM" -> {
-                String materialName = (String) params.getOrDefault("material", "DIAMOND");
-                int amount = ((Number) params.getOrDefault("amount", 1)).intValue();
-                org.bukkit.Material material = org.bukkit.Material.valueOf(materialName.toUpperCase());
-                org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(material, amount);
-                player.getInventory().removeItem(item);
-            }
-            case "GIVE_MONEY" -> {
-                double amount = ((Number) params.getOrDefault("amount", 0)).doubleValue();
-            }
-            case "TAKE_MONEY" -> {
-                double amount = ((Number) params.getOrDefault("amount", 0)).doubleValue();
-            }
-            case "GIVE_XP" -> {
-                int amount = ((Number) params.getOrDefault("amount", 0)).intValue();
-                player.giveExp(amount);
-            }
-            case "SEND_MESSAGE" -> {
-                String message = (String) params.getOrDefault("message", "");
-                player.sendMessage(message);
-            }
-            case "BROADCAST" -> {
-                String message = (String) params.getOrDefault("message", "");
-                Bukkit.broadcastMessage(message);
-            }
-            case "EXECUTE_COMMAND" -> {
-                String command = (String) params.getOrDefault("command", "");
-                if (command.startsWith("/")) {
-                    command = command.substring(1);
+            case "give_item" -> {
+                String itemId = (String) config.get("item");
+                int amount = ((Number) config.getOrDefault("amount", 1)).intValue();
+                try {
+                    org.bukkit.Material material = org.bukkit.Material.valueOf(itemId.toUpperCase());
+                    player.getInventory().addItem(new org.bukkit.inventory.ItemStack(material, amount));
+                } catch (IllegalArgumentException e) {
+                    org.slf4j.LoggerFactory.getLogger(ActionNodeHandler.class)
+                        .warn("Invalid material: {}", itemId);
                 }
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.getName()));
             }
-            case "PLAY_SOUND" -> {
-                String soundName = (String) params.getOrDefault("sound", "ENTITY_PLAYER_LEVELUP");
-                float volume = ((Number) params.getOrDefault("volume", 1.0f)).floatValue();
-                float pitch = ((Number) params.getOrDefault("pitch", 1.0f)).floatValue();
-                player.playSound(player.getLocation(), org.bukkit.Sound.valueOf(soundName.toUpperCase()), volume, pitch);
+            case "execute_command" -> {
+                String command = (String) config.get("command");
+                if (command != null) {
+                    if (command.startsWith("/")) command = command.substring(1);
+                    command = command.replace("%player%", player.getName());
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+                }
+            }
+            case "send_message" -> {
+                String message = (String) config.get("message");
+                if (message != null) {
+                    player.sendMessage(message);
+                }
+            }
+            case "play_effect" -> {
+                String effect = (String) config.get("effect");
+                if (effect != null) {
+                    player.getWorld().playEffect(player.getLocation(), 
+                        org.bukkit.Effect.valueOf(effect.toUpperCase()), 1);
+                }
+            }
+            case "sound" -> {
+                String sound = (String) config.get("sound");
+                float volume = ((Number) config.getOrDefault("volume", 1.0f)).floatValue();
+                float pitch = ((Number) config.getOrDefault("pitch", 1.0f)).floatValue();
+                if (sound != null) {
+                    player.playSound(player.getLocation(), sound, volume, pitch);
+                }
+            }
+            case "give_xp" -> {
+                int xp = ((Number) config.getOrDefault("xp", 0)).intValue();
+                player.giveExp(xp);
             }
             default -> {
-                org.slf4j.LoggerFactory.getLogger(ActionNodeHandler.class).warn("Unknown action type: {}", actionType);
+                org.slf4j.LoggerFactory.getLogger(ActionNodeHandler.class)
+                    .warn("Unknown action type: {}", actionType);
             }
         }
+    }
+    
+    private Map<String, Object> getTemplateConfig(String templateId) {
+        return null;
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
