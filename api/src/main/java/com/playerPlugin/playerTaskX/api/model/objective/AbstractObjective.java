@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.api.model.objective;
 
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 
 import java.util.Map;
 import java.util.UUID;

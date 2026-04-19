@@ -23,7 +23,7 @@ allprojects {
     }
 
     dependencies {
-        implementation("com.github.yvmouX:YLib:1.0.0-alpha.8") // 当前使用的是本地仓库！！！
+        implementation("com.github.yvmouX:YLib:1.0.0-alpha.8")
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
 
         compileOnly("org.jetbrains:annotations:24.0.1")
@@ -65,8 +65,10 @@ tasks {
     runServer {
         minecraftVersion("1.21.8")
         jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
+        // 确保运行前先构建前端
+        dependsOn(project(":core").tasks.named("processResources"))
     }
-    
+
     // 添加Folia支持
     runPaper.folia.registerTask()
 }

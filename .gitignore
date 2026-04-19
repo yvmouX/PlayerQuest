@@ -8,8 +8,12 @@
 
 **/build/
 **/bin/
-**/bin/.worktrees/
-.worktrees/
+**/node_modules/
+**/.vite/
+**/dist/
+
+# Web assets (auto-built from frontend)
+core/src/main/resources/web/
 
 # Eclipse
 .classpath

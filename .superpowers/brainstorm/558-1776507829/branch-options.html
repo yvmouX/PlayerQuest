@@ -1,0 +1,89 @@
+<h2>Branch 节点 - 分支出口方案对比</h2>
+<p class="subtitle">两种分支逻辑的视觉设计</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案 A: 固定两个出口 (if/else)</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;align-items:center;padding:20px">
+      <div style="width:120px;height:60px;background:#8b5cf6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;border:2px solid #7c3aed">
+        <div>
+          <div style="font-size:11px;text-align:center">CONDITION</div>
+          <div style="font-size:10px;text-align:center">条件节点</div>
+        </div>
+      </div>
+      <div style="width:2px;height:20px;background:#ccc"></div>
+      <div style="width:140px;height:70px;background:#fff;border:2px solid #8b5cf6;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-size:11px;color:#6b7280">BRANCH</div>
+        <div style="font-size:10px">分支节点</div>
+      </div>
+      <div style="display:flex;gap:40px;margin-top:15px">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:60px;height:35px;background:#22c55e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold">TRUE</div>
+          <div style="width:2px;height:15px;background:#ccc"></div>
+          <div style="width:50px;height:30px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:60px;height:35px;background:#ef4444;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold">FALSE</div>
+          <div style="width:2px;height:15px;background:#ccc"></div>
+          <div style="width:50px;height:30px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-footer" style="text-align:center;font-size:11px;color:#6b7280;padding:8px">
+      简单明确，适合单一条件判断
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">方案 B: 多个出口 (Switch)</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;align-items:center;padding:20px">
+      <div style="width:120px;height:60px;background:#8b5cf6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;border:2px solid #7c3aed">
+        <div>
+          <div style="font-size:11px;text-align:center">CONDITION</div>
+          <div style="font-size:10px;text-align:center">条件节点</div>
+        </div>
+      </div>
+      <div style="width:2px;height:20px;background:#ccc"></div>
+      <div style="width:140px;height:90px;background:#fff;border:2px solid #8b5cf6;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-size:11px;color:#6b7280">BRANCH</div>
+        <div style="font-size:10px">分支节点</div>
+        <div style="font-size:9px;color:#9ca3af;margin-top:4px">3 个分支</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:15px;width:200px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="width:2px;height:15px;background:#8b5cf6"></div>
+          <div style="width:50px;height:25px;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px">Case A</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="width:2px;height:15px;background:#8b5cf6"></div>
+          <div style="width:50px;height:25px;background:#dbeafe;border:1px solid #3b82f6;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px">Case B</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="width:2px;height:15px;background:#8b5cf6"></div>
+          <div style="width:50px;height:25px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px">Default</div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-footer" style="text-align:center;font-size:11px;color:#6b7280;padding:8px">
+      灵活但复杂，适合多条件分支
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:30px">
+  <div class="pros">
+    <h4>推荐: 方案 A (固定两个出口)</h4>
+    <ul>
+      <li>简单直观，符合 if/else 逻辑</li>
+      <li>玩家任务通常不需要复杂分支</li>
+      <li>可以多个 Branch 节点串联实现多条件</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>方案 B 适用场景</h4>
+    <ul>
+      <li>需要按等级/物品数量等连续值分流</li>
+      <li>任务类型本身很复杂时</li>
+    </ul>
+  </div>
+</div>

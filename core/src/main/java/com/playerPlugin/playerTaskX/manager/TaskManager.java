@@ -3,11 +3,10 @@ package com.playerPlugin.playerTaskX.manager;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
-import com.playerPlugin.playerTaskX.api.model.objective.Objective;
-import com.playerPlugin.playerTaskX.api.model.reward.Reward;
-import com.playerPlugin.playerTaskX.api.model.condition.Condition;
-import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
+import com.playerPlugin.playerTaskX.api.service.TaskStorage;
+import com.playerPlugin.playerTaskX.engine.QuestEngine;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
@@ -18,10 +17,15 @@ public class TaskManager {
     private final ProgressStorage progressStorage;
     private final Map<String, TaskDefinition> taskCache = new HashMap<>();
     private final Map<UUID, Map<String, TaskProgress>> playerProgressCache = new HashMap<>();
+    private QuestEngine questEngine;
 
     public TaskManager(TaskStorage taskStorage, ProgressStorage progressStorage) {
         this.taskStorage = taskStorage;
         this.progressStorage = progressStorage;
+    }
+
+    public void setQuestEngine(QuestEngine questEngine) {
+        this.questEngine = questEngine;
     }
 
     public void loadTasks() {
@@ -34,6 +38,16 @@ public class TaskManager {
 
     public Optional<TaskDefinition> getTask(String taskId) {
         return Optional.ofNullable(taskCache.get(taskId));
+    }
+
+    public void saveTask(TaskDefinition task) {
+        taskStorage.save(task);
+        taskCache.put(task.getId(), task);
+    }
+
+    public void deleteTask(String taskId) {
+        taskStorage.delete(taskId);
+        taskCache.remove(taskId);
     }
 
     public List<TaskDefinition> getAvailableTasks(Player player) {
@@ -53,37 +67,20 @@ public class TaskManager {
         progressStorage.save(player.getUniqueId(), progress);
         playerProgressCache.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
             .put(taskId, progress);
+        
+        if (questEngine != null && task.hasGraph()) {
+            Player actualPlayer = Bukkit.getPlayer(player.getUniqueId());
+            if (actualPlayer != null) {
+                questEngine.startQuest(actualPlayer, task);
+            }
+        }
+        
         return true;
     }
 
     public void handleEvent(Player player, Event event) {
-        Map<String, TaskProgress> progressMap = playerProgressCache.get(player.getUniqueId());
-        if (progressMap == null) return;
-
-        for (TaskProgress progress : progressMap.values()) {
-            if (progress.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
-            
-            TaskDefinition task = taskCache.get(progress.getTaskId());
-            if (task == null) continue;
-
-            for (Objective objective : task.getObjectives()) {
-                if (objective.matchesEvent(event)) {
-                    objective.applyProgress(player, 1);
-                    int currentProgress = progress.getProgress(objective.getId());
-                    progress.setProgress(objective.getId(), currentProgress + 1);
-                    
-                    if (objective.isCompleted(player)) {
-                        boolean allCompleted = task.getObjectives().stream()
-                            .allMatch(obj -> obj.isCompleted(player));
-                        if (allCompleted) {
-                            progress.setStatus(PTXTaskStatus.COMPLETED);
-                            progress.setCompletedAt(System.currentTimeMillis());
-                        }
-                    }
-                    
-                    asyncSaveProgress(player.getUniqueId(), progress);
-                }
-            }
+        if (questEngine != null) {
+            questEngine.handleEvent(player, event);
         }
     }
 
@@ -98,10 +95,6 @@ public class TaskManager {
 
         TaskDefinition task = taskCache.get(taskId);
         if (task == null) return false;
-
-        for (Reward reward : task.getRewards()) {
-            reward.grant(player);
-        }
 
         progress.setStatus(PTXTaskStatus.CLAIMED);
         progress.setClaimedAt(System.currentTimeMillis());
@@ -131,5 +124,15 @@ public class TaskManager {
         progress.setStatus(PTXTaskStatus.ABANDONED);
         progressStorage.save(player.getUniqueId(), progress);
         return true;
+    }
+
+    public Collection<TaskProgress> getAllProgress() {
+        return playerProgressCache.values().stream()
+            .flatMap(map -> map.values().stream())
+            .toList();
+    }
+
+    public Map<UUID, Map<String, TaskProgress>> getPlayerProgressCache() {
+        return playerProgressCache;
     }
 }

@@ -1,3 +1,2 @@
 dependencies {
-    compileOnly("com.googlecode.json-simple:json-simple:1.1.1") // TODO will remove
 }

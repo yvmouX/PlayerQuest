@@ -22,5 +22,43 @@ dependencies {
     // for ReDoc UI
     implementation("io.javalin.community.openapi:javalin-redoc-plugin:${openapi}")
 
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.mockito:mockito-core:5.8.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 
+tasks.test {
+    useJUnitPlatform()
+}
+
+// 定义前端构建任务
+val frontendBuild by tasks.registering {
+    description = "Build frontend assets"
+    group = "build"
+    
+    doLast {
+        val frontendDir = rootProject.projectDir.resolve("task-editor-vue")
+        val webDir = projectDir.resolve("src/main/resources/web")
+        
+        // 运行 npm build (Windows 需要 npm.cmd)
+        val npmCmd = if (System.getProperty("os.name").contains("Windows")) "npm.cmd" else "npm"
+        project.rootProject.exec {
+            workingDir(frontendDir)
+            commandLine(npmCmd, "run", "build")
+        }
+        
+        // 复制构建产物到 web 目录
+        val distDir = frontendDir.resolve("dist")
+        if (distDir.exists()) {
+            webDir.deleteRecursively()
+            distDir.copyRecursively(webDir)
+            println("Frontend build copied to $webDir")
+        }
+    }
+}
+
+// 确保在 processResources 之前完成前端构建
+tasks.processResources {
+    dependsOn(frontendBuild)
 }
