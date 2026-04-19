@@ -76,8 +76,7 @@
           </button>
         </div>
         <div class="tool-hint">
-          <span v-if="currentTool === 'cut'">按住左键拖动切割连线</span>
-          <span v-else>按住 Shift + 左键拖动切割连线</span>
+          <span>按住 Shift + 左键拖动切割连线</span>
         </div>
 </aside>
        
@@ -226,14 +225,15 @@ const editingQuestId = ref<string | null>(null)
 const editingQuestName = ref('')
 const questNameInput = ref<HTMLInputElement | null>(null)
 
-// Tool state
+// Tool state (cut tool is UI only, actual cut requires Shift)
 const currentTool = ref<'select' | 'cut'>('select')
 const isShiftPressed = ref(false)
 const isCutDrawing = ref(false)
 const cutLineStart = ref<{ x: number; y: number } | null>(null)
 const cutLineEnd = ref<{ x: number; y: number } | null>(null)
+const cutMouseDownPos = ref<{ x: number; y: number } | null>(null)
 
-const isCutMode = computed(() => currentTool.value === 'cut' || isShiftPressed.value)
+const isCutMode = computed(() => isShiftPressed.value)
 
 function setTool(tool: 'select' | 'cut') {
   currentTool.value = tool
@@ -251,6 +251,7 @@ function handleKeyUp(event: KeyboardEvent) {
     isCutDrawing.value = false
     cutLineStart.value = null
     cutLineEnd.value = null
+    cutMouseDownPos.value = null
   }
 }
 
@@ -498,6 +499,7 @@ function handleCutMouseDown(event: MouseEvent) {
     y: event.clientY - rect.top
   })
   
+  cutMouseDownPos.value = pos
   isCutDrawing.value = true
   cutLineStart.value = pos
   cutLineEnd.value = pos
@@ -516,6 +518,21 @@ function handleCutMouseMove(event: MouseEvent) {
 function handleCutMouseUp() {
   if (!isCutDrawing.value || !cutLineStart.value || !cutLineEnd.value) {
     isCutDrawing.value = false
+    cutMouseDownPos.value = null
+    return
+  }
+  
+  // Only cut if there was actual mouse movement (drag), not just a click
+  const dx = cutLineEnd.value.x - cutMouseDownPos.value!.x
+  const dy = cutLineEnd.value.y - cutMouseDownPos.value!.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  
+  if (distance < 10) {
+    // Too short, treat as click - don't cut
+    isCutDrawing.value = false
+    cutLineStart.value = null
+    cutLineEnd.value = null
+    cutMouseDownPos.value = null
     return
   }
   
@@ -555,6 +572,7 @@ function handleCutMouseUp() {
   isCutDrawing.value = false
   cutLineStart.value = null
   cutLineEnd.value = null
+  cutMouseDownPos.value = null
 }
 
 function linesIntersect(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number): boolean {
