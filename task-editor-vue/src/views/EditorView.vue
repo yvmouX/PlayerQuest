@@ -65,6 +65,8 @@
         @pane-click="handlePaneClick"
         @connect="handleConnect"
         @edge-click="(e) => { selectedEdgeForDelete = e.edge.id; showDeleteEdgeConfirm = true }"
+        @nodes-change="onNodesChange"
+        @edges-change="onEdgesChange"
       >
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
@@ -126,8 +128,8 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
-import {useVueFlow, VueFlow} from '@vue-flow/core'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {VueFlow, useVueFlow} from '@vue-flow/core'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
@@ -345,6 +347,10 @@ function handleNodeDragStart(event: DragEvent, nodeType: string) {
   event.dataTransfer?.setData('application/node-type', nodeType)
 }
 
+function handleDragOver(event: DragEvent) {
+  event.dataTransfer.dropEffect = 'copy'
+}
+
 function handleDrop(event: DragEvent) {
   event.preventDefault()
   const nodeType = event.dataTransfer?.getData('application/node-type')
@@ -360,18 +366,24 @@ function handleDrop(event: DragEvent) {
     return
   }
   
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const position = project({
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top
-  })
-  
-  const nodeId = addNode(nodeType as NodeType, position)
-  const graph = getCurrentQuestGraph()
-  if (graph) {
-    unsavedQuests.value.set(graph.questId, {
-      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
-      graph: graph.graph
+  const target = event.currentTarget as HTMLElement
+  const vueFlowEl = target.querySelector('.vue-flow') as HTMLElement
+  if (vueFlowEl) {
+    const rect = vueFlowEl.getBoundingClientRect()
+    const position = project({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    })
+    
+    addNode(nodeType as NodeType, position)
+    nextTick(() => {
+      const graph = getCurrentQuestGraph()
+      if (graph) {
+        unsavedQuests.value.set(graph.questId, {
+          ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+          graph: graph.graph
+        })
+      }
     })
   }
 }
@@ -384,15 +396,39 @@ function handlePaneClick() {
   selectNode(null)
 }
 
+function onNodesChange(changes: any[]) {
+  // Apply VueFlow node changes to our state
+  changes.forEach(change => {
+    const node = editorNodes.value.find(n => n.id === change.id)
+    if (!node) return
+    
+    if (change.type === 'position' && change.position) {
+      node.position = change.position
+    } else if (change.type === 'remove') {
+      removeNode(change.id)
+    }
+  })
+}
+
+function onEdgesChange(changes: any[]) {
+  changes.forEach(change => {
+    if (change.type === 'remove') {
+      removeEdge(change.id)
+    }
+  })
+}
+
 function handleConnect(params: { source: string; target: string }) {
   addEdge(params.source, params.target)
-  const graph = getCurrentQuestGraph()
-  if (graph) {
-    unsavedQuests.value.set(graph.questId, {
-      ...sidebarQuests.value.find(q => q.id === graph.questId)!,
-      graph: graph.graph
-    })
-  }
+  nextTick(() => {
+    const graph = getCurrentQuestGraph()
+    if (graph) {
+      unsavedQuests.value.set(graph.questId, {
+        ...sidebarQuests.value.find(q => q.id === graph.questId)!,
+        graph: graph.graph
+      })
+    }
+  })
 }
 
 function handleDeleteNode(nodeId: string) {
