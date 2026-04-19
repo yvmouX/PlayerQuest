@@ -40,26 +40,20 @@
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'start')">
           <span>▶ Start</span>
         </div>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'trigger')">
+          <span>⚡ Trigger</span>
+        </div>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'task')">
           <span>📋 Task</span>
         </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
-          <span>✔ Completion</span>
-        </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'condition')">
-          <span>◇ Condition</span>
-        </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'branch')">
-          <span>⬡ Branch</span>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'objective')">
+          <span>🎯 Objective</span>
         </div>
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'action')">
-          <span>▢ Action</span>
+          <span>⚙️ Action</span>
         </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'counter')">
-          <span>🔢 Counter</span>
-        </div>
-        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'timer')">
-          <span>⏱️ Timer</span>
+        <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
+          <span>✔ Completion</span>
         </div>
       </aside>
       
@@ -87,24 +81,16 @@
           <CompletionNode :data="data" />
         </template>
 
-        <template #node-condition="{ data }">
-          <ConditionNode :data="data" />
+        <template #node-trigger="{ data }">
+          <TriggerNode :data="data" />
         </template>
 
-        <template #node-branch="{ data }">
-          <BranchNode :data="data" />
+        <template #node-objective="{ data }">
+          <ObjectiveNode :data="data" />
         </template>
 
         <template #node-action="{ data }">
           <ActionNode :data="data" />
-        </template>
-
-        <template #node-counter="{ data }">
-          <CounterNode :data="data" />
-        </template>
-
-        <template #node-timer="{ data }">
-          <TimerNode :data="data" />
         </template>
       </VueFlow>
       
@@ -150,11 +136,9 @@ import Header from '../components/layout/Header.vue'
 import TaskNode from '../components/editor/TaskNode.vue'
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
-import ConditionNode from '../components/editor/ConditionNode.vue'
-import BranchNode from '../components/editor/BranchNode.vue'
+import TriggerNode from '../components/editor/TriggerNode.vue'
+import ObjectiveNode from '../components/editor/ObjectiveNode.vue'
 import ActionNode from '../components/editor/ActionNode.vue'
-import CounterNode from '../components/editor/CounterNode.vue'
-import TimerNode from '../components/editor/TimerNode.vue'
 import NodePropertiesPanel from '../components/editor/NodePropertiesPanel.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ExampleQuestsDialog from '../components/editor/ExampleQuestsDialog.vue'
