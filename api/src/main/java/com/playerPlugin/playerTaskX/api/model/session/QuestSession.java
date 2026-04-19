@@ -55,4 +55,10 @@ public class QuestSession {
     public void setLastActiveTime(long lastActiveTime) {
         this.lastActiveTime = lastActiveTime;
     }
+    
+    public void resetProgress() {
+        this.completedNodes.clear();
+        this.context.clear();
+        this.lastActiveTime = System.currentTimeMillis();
+    }
 }
