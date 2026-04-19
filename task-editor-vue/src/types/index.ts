@@ -57,7 +57,7 @@ export interface StatsActivity {
   users: number
 }
 
-export type NodeType = 'start' | 'task' | 'completion' | 'condition' | 'branch' | 'action' | 'event' | 'counter' | 'timer' | 'state' | 'subtask'
+export type NodeType = 'start' | 'trigger' | 'task' | 'objective' | 'action' | 'completion'
 
 export type TaskSubType = 'CYCLE' | 'TIMER' | 'FOREVER' | 'LIMIT'
 
@@ -109,6 +109,26 @@ export interface SubtaskData {
   name: string
 }
 
+export interface TriggerData {
+  type: 'trigger'
+  name: string
+  conditionType: string
+  conditionConfig: Record<string, any>
+}
+
+export interface ObjectiveData {
+  type: 'objective'
+  name: string
+  templateId?: string
+  customConfig?: {
+    type: string
+    target?: string
+    amount?: number
+    location?: { x: number, y: number, z: number, world: string }
+    [key: string]: any
+  }
+}
+
 export type ConditionType = 'PERMISSION' | 'HAS_ITEM' | 'KILL_MOB' | 'COLLECT_ITEM' | 'PLAYER_LEVEL' | 'TIME_RANGE' | 'IN_REGION'
 
 export interface ConditionItem {
@@ -133,8 +153,20 @@ export type ActionType = 'GIVE_ITEM' | 'TAKE_ITEM' | 'GIVE_MONEY' | 'TAKE_MONEY'
 export interface ActionData {
   type: 'action'
   name: string
-  actionType: ActionType
-  actionParams: Record<string, any>
+  templateId?: string
+  customConfig?: {
+    type: string
+    item?: string
+    amount?: number
+    command?: string
+    message?: string
+    effect?: string
+    sound?: string
+    volume?: number
+    pitch?: number
+    xp?: number
+    [key: string]: any
+  }
 }
 
 export interface StartNodeData {
@@ -149,8 +181,6 @@ export interface TaskNodeData {
   name: string
   description: string
   taskType: TaskSubType
-  objectives: QuestObjective[]
-  rewards: QuestReward[]
   resetInterval?: number
   timeLimit?: number
   expiredAction?: string
@@ -158,11 +188,12 @@ export interface TaskNodeData {
 
 export interface CompletionNodeData {
   type: 'completion'
-  rewards: QuestReward[]
+  name: string
+  taskId: string
   callbackMessage?: string
 }
 
-export type EditorNodeData = StartNodeData | TaskNodeData | CompletionNodeData | ConditionData | BranchData | ActionData | EventData | CounterData | TimerData | StateData | SubtaskData
+export type EditorNodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData
 
 export interface NodeConnection {
   id: string
