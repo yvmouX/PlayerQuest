@@ -59,7 +59,11 @@ public class ObjectiveNodeHandler implements NodeHandler {
             config = getTemplateConfig(templateId);
         }
         
-        if (config == null) return true;
+        if (config == null) {
+            org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
+                .warn("Template not found for objective: {}", templateId);
+            return false;
+        }
         
         String objectiveType = (String) config.get("type");
         if (objectiveType == null) return true;
