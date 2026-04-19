@@ -1,4 +1,5 @@
-import {computed, ref} from 'vue'
+import {computed, ref, toRef} from 'vue'
+import {useVueFlow, applyNodeChanges, applyEdgeChanges} from '@vue-flow/core'
 import {useToast} from './useToast'
 import type {
   ActionData,
@@ -8,6 +9,8 @@ import type {
   CounterData,
   EditorNodeData,
   GraphNode,
+  NodeChange,
+  EdgeChange,
   NodeConnection,
   NodeType,
   ObjectiveData,
@@ -20,6 +23,7 @@ import type {
   TimerData,
   TriggerData
 } from '../types'
+import type {Ref} from 'vue'
 
 export interface QuestNodeData {
   id: string
@@ -28,8 +32,85 @@ export interface QuestNodeData {
   data: EditorNodeData
 }
 
-const nodes = ref<QuestNodeData[]>([])
-const edges = ref<{ id: string; source: string; target: string; label?: string }[]>([])
+export interface QuestEdgeData {
+  id: string
+  source: string
+  target: string
+  label?: string
+}
+
+let nodesRef: Ref<QuestNodeData[]> | null = null
+let edgesRef: Ref<QuestEdgeData[]> | null = null
+let setNodesFn: ((nodes: QuestNodeData[]) => void) | null = null
+let setEdgesFn: ((edges: QuestEdgeData[]) => void) | null = null
+let onNodesChangeFn: ((changes: NodeChange[]) => void) | null = null
+let onEdgesChangeFn: ((changes: EdgeChange[]) => void) | null = null
+let vueFlowStore: ReturnType<typeof useVueFlow> | null = null
+
+function initVueFlowState() {
+  if (vueFlowStore) return
+  
+  vueFlowStore = useVueFlow()
+  
+  nodesRef = toRef(vueFlowStore, 'nodes') as unknown as Ref<QuestNodeData[]>
+  edgesRef = toRef(vueFlowStore, 'edges') as unknown as Ref<QuestEdgeData[]>
+  
+  setNodesFn = (newNodes: QuestNodeData[]) => {
+    if (vueFlowStore) {
+      const graphNodes = newNodes.map(n => ({
+        id: n.id,
+        type: n.nodeType,
+        position: n.position,
+        data: n.data,
+        draggable: true,
+        selectable: true
+      }))
+      vueFlowStore.setNodes(graphNodes)
+    }
+  }
+  
+  setEdgesFn = (newEdges: QuestEdgeData[]) => {
+    if (vueFlowStore) {
+      const graphEdges = newEdges.map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label,
+        type: 'smoothstep'
+      }))
+      vueFlowStore.setEdges(graphEdges)
+    }
+  }
+  
+  onNodesChangeFn = (changes: NodeChange[]) => {
+    if (vueFlowStore && nodesRef) {
+      const currentNodes = [...nodesRef.value]
+      const newNodes = applyNodeChanges(changes, currentNodes as any) as QuestNodeData[]
+      nodesRef.value = newNodes
+    }
+  }
+  
+  onEdgesChangeFn = (changes: EdgeChange[]) => {
+    if (vueFlowStore && edgesRef) {
+      const currentEdges = [...edgesRef.value]
+      const newEdges = applyEdgeChanges(changes, currentEdges as any) as QuestEdgeData[]
+      edgesRef.value = newEdges
+    }
+  }
+}
+
+function useNodesState(_initialNodes: QuestNodeData[] = []): [Ref<QuestNodeData[]>, (nodes: QuestNodeData[]) => void, (changes: NodeChange[]) => void] {
+  initVueFlowState()
+  return [nodesRef!, setNodesFn!, onNodesChangeFn!]
+}
+
+function useEdgesState(_initialEdges: QuestEdgeData[] = []): [Ref<QuestEdgeData[]>, (edges: QuestEdgeData[]) => void, (changes: EdgeChange[]) => void] {
+  initVueFlowState()
+  return [edgesRef!, setEdgesFn!, onEdgesChangeFn!]
+}
+
+const [nodes, setNodes, onNodesChange] = useNodesState([])
+const [edges, setEdges, onEdgesChange] = useEdgesState([])
 const currentQuestId = ref<string | null>(null)
 
 const validConnections: Record<string, string[]> = {
@@ -78,19 +159,24 @@ export function useQuestEditor() {
   })
 
   function addNode(nodeType: NodeType, position: { x: number; y: number }) {
+    if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && 
+        nodes.value.some(n => n.nodeType === nodeType)) {
+      useToast().error(`${nodeType === 'start' ? '开始' : nodeType === 'task' ? '任务' : '完成'}节点已存在，每个流程只能有一个`)
+      return
+    }
     const id = `${nodeType}_${Date.now()}`
-    nodes.value.push({
+    setNodes([...nodes.value, {
       id,
       nodeType,
       position,
       data: createDefaultNodeData(nodeType, id)
-    })
+    }])
     return id
   }
 
   function removeNode(nodeId: string) {
-    nodes.value = nodes.value.filter(n => n.id !== nodeId)
-    edges.value = edges.value.filter(e => e.source !== nodeId && e.target !== nodeId)
+    setNodes(nodes.value.filter(n => n.id !== nodeId))
+    setEdges(edges.value.filter(e => e.source !== nodeId && e.target !== nodeId))
     if (selectedNodeId.value === nodeId) {
       selectedNodeId.value = null
     }
@@ -135,11 +221,11 @@ export function useQuestEditor() {
 
     const id = `${source}-${target}`
     if (edges.value.some(e => e.id === id)) return
-    edges.value.push({ id, source, target, label })
+    setEdges([...edges.value, { id, source, target, label }])
   }
 
   function removeEdge(edgeId: string) {
-    edges.value = edges.value.filter(e => e.id !== edgeId)
+    setEdges(edges.value.filter(e => e.id !== edgeId))
   }
 
   function selectNode(nodeId: string | null) {
@@ -147,26 +233,28 @@ export function useQuestEditor() {
   }
 
   function clearEditor() {
-    nodes.value = []
-    edges.value = []
+    setNodes([])
+    setEdges([])
     currentQuestId.value = null
     selectedNodeId.value = null
   }
 
   function loadGraph(questId: string, graph: QuestGraph) {
     currentQuestId.value = questId
-    nodes.value = graph.nodes.map((n: GraphNode) => ({
+    const mappedNodes = graph.nodes.map((n: GraphNode) => ({
       id: n.id,
       nodeType: n.nodeType as NodeType,
       position: { x: n.x, y: n.y },
       data: n.data as EditorNodeData
     }))
-    edges.value = graph.edges.map((e: NodeConnection) => ({
+    const mappedEdges = graph.edges.map((e: NodeConnection) => ({
       id: e.id,
       source: e.sourceId,
       target: e.targetId,
       label: e.label
     }))
+    setNodes(mappedNodes)
+    setEdges(mappedEdges)
   }
 
   function exportGraph(): QuestGraph | null {
@@ -202,6 +290,8 @@ export function useQuestEditor() {
   return {
     nodes,
     edges,
+    onNodesChange,
+    onEdgesChange,
     currentQuestId,
     selectedNode,
     selectedNodeId,
