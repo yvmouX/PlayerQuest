@@ -4,7 +4,6 @@ import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
-import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import org.bukkit.Bukkit;
@@ -30,41 +29,33 @@ public class TaskNodeHandler implements NodeHandler {
         Map<String, Object> data = currentNode.getData();
         if (data == null) return NextNodeResult.waiting();
         
-        List<Objective> objectives = (List<Objective>) data.get("objectives");
-        if (objectives == null || objectives.isEmpty()) {
-            session.markNodeCompleted(session.getCurrentNodeId());
-            return getNextNode(graph, session.getCurrentNodeId());
-        }
-        
-        boolean allComplete = true;
-        for (Objective obj : objectives) {
-            if (!obj.isCompleted(player)) {
-                allComplete = false;
-                if (obj.matchesEvent(event)) {
-                    obj.applyProgress(player, 1);
-                }
-            }
-        }
-        
-        if (allComplete) {
-            session.markNodeCompleted(session.getCurrentNodeId());
-            return getNextNode(graph, session.getCurrentNodeId());
-        }
-        
-        return NextNodeResult.waiting();
-    }
-    
-    private NextNodeResult getNextNode(QuestGraph graph, String currentNodeId) {
+        // Task 节点不再处理 objectives，专注流程控制
+        // 检查是否有连接的 Objective 节点
         List<String> nextNodes = graph.getEdges().stream()
-            .filter(e -> e.getSourceId().equals(currentNodeId))
+            .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
             .map(NodeConnection::getTargetId)
             .toList();
         
         if (nextNodes.isEmpty()) {
-            return NextNodeResult.terminal(currentNodeId);
+            // 没有后续节点，标记任务完成
+            session.markNodeCompleted(session.getCurrentNodeId());
+            return NextNodeResult.terminal(session.getCurrentNodeId());
         }
         
-        return NextNodeResult.next(nextNodes.get(0));
+        // 找到第一个 Objective 或 Completion 节点
+        for (String nextNodeId : nextNodes) {
+            GraphNode nextNode = findNode(graph, nextNodeId);
+            if (nextNode != null) {
+                String nodeType = nextNode.getNodeType();
+                if ("objective".equals(nodeType) || "completion".equals(nodeType)) {
+                    session.markNodeCompleted(session.getCurrentNodeId());
+                    return NextNodeResult.next(nextNodeId);
+                }
+            }
+        }
+        
+        // 没有找到 objective 或 completion，等待
+        return NextNodeResult.waiting();
     }
     
     private GraphNode findNode(QuestGraph graph, String nodeId) {
