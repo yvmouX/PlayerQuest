@@ -10,13 +10,15 @@ import type {
   GraphNode,
   NodeConnection,
   NodeType,
+  ObjectiveData,
   Quest,
   QuestGraph,
   StartNodeData,
   StateData,
   SubtaskData,
   TaskNodeData,
-  TimerData
+  TimerData,
+  TriggerData
 } from '../types'
 
 export interface QuestNodeData {
@@ -36,34 +38,22 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
   switch (nodeType) {
     case 'start':
       return { type: 'start', description: '' } as StartNodeData
+    case 'trigger':
+      return { type: 'trigger', name: '', conditionType: 'quest_complete', conditionConfig: {} } as TriggerData
     case 'task':
       return {
         type: 'task',
         id,
         name: '',
         description: '',
-        taskType: 'FOREVER',
-        objectives: [],
-        rewards: []
+        taskType: 'FOREVER'
       } as TaskNodeData
-    case 'completion':
-      return { type: 'completion', rewards: [] } as CompletionNodeData
-    case 'condition':
-      return { type: 'condition', name: '', conditions: [] } as ConditionData
-    case 'branch':
-      return { type: 'branch', name: '', linkedConditionId: '' } as BranchData
+    case 'objective':
+      return { type: 'objective', name: '', templateId: '', customConfig: {} } as ObjectiveData
     case 'action':
-      return { type: 'action', name: '', actionType: 'GIVE_ITEM', actionParams: {} } as ActionData
-    case 'event':
-      return { type: 'event', name: '', eventTypes: [] } as EventData
-    case 'counter':
-      return { type: 'counter', name: '', resetOn: 'NONE' } as CounterData
-    case 'timer':
-      return { type: 'timer', name: '', timerType: 'DELAY' } as TimerData
-    case 'state':
-      return { type: 'state', name: '', operation: 'COMPLETE_TASK' } as StateData
-    case 'subtask':
-      return { type: 'subtask', name: '' } as SubtaskData
+      return { type: 'action', name: '', templateId: '', customConfig: {} } as ActionData
+    case 'completion':
+      return { type: 'completion', name: '', taskId: '', callbackMessage: '' } as CompletionNodeData
     default:
       return { type: 'start', description: '' } as StartNodeData
   }
@@ -115,16 +105,12 @@ export function useQuestEditor() {
     const targetType = targetNode.nodeType
 
     const validConnections: Record<string, string[]> = {
-      start: ['task', 'condition', 'event'],
-      task: ['task', 'completion', 'action', 'timer'],
-      completion: ['action'],
-      condition: ['branch'],
-      branch: ['task', 'completion'],
-      action: ['task', 'completion'],
-      event: ['task'],
-      counter: ['task'],
-      timer: ['task'],
-      state: ['task', 'completion']
+      start: ['trigger', 'task'],        // Start 可连 Trigger 或 Task
+      trigger: ['task'],                   // Trigger 只能连 Task
+      task: ['objective', 'completion'],   // Task 可连多个 Objective 或直接连 Completion
+      objective: ['action', 'completion'], // Objective 可连 Action 或 Completion
+      action: ['action', 'completion'],    // Action 可连另一个 Action 或 Completion
+      completion: ['action']              // Completion 可连 Action
     }
 
     if (!validConnections[sourceType]?.includes(targetType)) {
