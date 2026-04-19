@@ -1,24 +1,12 @@
 <template>
-  <aside class="properties-panel" v-if="selectedNode">
+  <aside class="properties-panel" v-if="selectedNode && hasProperties">
     <div class="panel-header">
       <h3>{{ panelTitle }}</h3>
       <button class="close-btn" @click="$emit('close')">×</button>
     </div>
     <div class="panel-body">
-      <!-- Start Node -->
-      <template v-if="selectedNode.type === 'start'">
-        <div class="form-group">
-          <label>描述</label>
-          <textarea v-model="editedNode.description" rows="3" placeholder="描述..." />
-        </div>
-      </template>
-
       <!-- Trigger Node -->
-      <template v-else-if="selectedNode.type === 'trigger'">
-        <div class="form-group">
-          <label>名称</label>
-          <input v-model="editedNode.name" placeholder="触发条件名称" />
-        </div>
+      <template v-if="selectedNode.type === 'trigger'">
         <div class="form-group">
           <label>条件类型</label>
           <select v-model="editedNode.conditionType">
@@ -234,18 +222,6 @@
           </div>
         </template>
       </template>
-
-      <!-- Completion Node -->
-      <template v-else-if="selectedNode.type === 'completion'">
-        <div class="form-group">
-          <label>名称</label>
-          <input v-model="editedNode.name" placeholder="完成节点名称" />
-        </div>
-        <div class="form-group">
-          <label>回调消息</label>
-          <textarea v-model="editedNode.callbackMessage" rows="2" placeholder="完成后发送的消息..." />
-        </div>
-      </template>
     </div>
   </aside>
 </template>
@@ -275,6 +251,12 @@ const emit = defineEmits<{
   close: []
   update: [id: string, node: Partial<NodeData>]
 }>()
+
+const hasProperties = computed(() => {
+  if (!props.selectedNode) return false
+  const type = props.selectedNode.type
+  return type !== 'start' && type !== 'completion'
+})
 
 const objectiveTemplates = ref<ObjectiveTemplate[]>([])
 const actionTemplates = ref<ActionTemplate[]>([])

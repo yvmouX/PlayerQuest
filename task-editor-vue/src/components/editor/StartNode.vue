@@ -5,9 +5,6 @@
       <span class="node-type">开始</span>
       <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
-    <div class="node-body">
-      <span class="node-name">{{ data.name || 'Start' }}</span>
-    </div>
     <Handle type="source" :position="Position.Right" class="handle-source" />
   </div>
 </template>
@@ -17,8 +14,7 @@ import {Handle, Position} from '@vue-flow/core'
 
 defineProps<{
   data: {
-    name: string
-    description?: string
+    type: 'start'
   }
   nodeId: string
 }>()

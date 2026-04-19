@@ -48,7 +48,7 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
     case 'start':
       return { type: 'start', description: '' } as StartNodeData
     case 'trigger':
-      return { type: 'trigger', name: '', conditionType: 'quest_complete', conditionConfig: {} } as TriggerData
+      return { type: 'trigger', conditionType: 'quest_complete', conditionConfig: {} } as TriggerData
     case 'task':
       return {
         type: 'task',
@@ -62,9 +62,9 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
     case 'action':
       return { type: 'action', name: '', templateId: '', customConfig: {} } as ActionData
     case 'completion':
-      return { type: 'completion', name: '', callbackMessage: '' } as CompletionNodeData
+      return { type: 'completion' } as CompletionNodeData
     default:
-      return { type: 'start', description: '' } as StartNodeData
+      return { type: 'start' } as StartNodeData
   }
 }
 

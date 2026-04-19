@@ -5,9 +5,6 @@
       <span class="node-type">完成</span>
       <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
-    <div class="node-body">
-      <span class="node-name">{{ data.name || 'Completion' }}</span>
-    </div>
     <Handle type="target" :position="Position.Left" class="handle-target" />
   </div>
 </template>
@@ -17,8 +14,7 @@ import {Handle, Position} from '@vue-flow/core'
 
 defineProps<{
   data: {
-    name: string
-    callbackMessage?: string
+    type: 'completion'
   }
   nodeId: string
 }>()
@@ -61,14 +57,6 @@ defineEmits<{
   line-height: 1;
 }
 .delete-btn:hover { color: #ef4444; }
-.node-body {
-  padding: 0.5rem 0.75rem;
-}
-.node-name {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #b91c1c;
-}
 .handle-target {
   width: 16px !important;
   height: 16px !important;

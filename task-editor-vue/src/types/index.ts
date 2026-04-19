@@ -119,7 +119,6 @@ export interface SubtaskData {
 
 export interface TriggerData {
   type: 'trigger'
-  name: string
   conditionType: string
   conditionConfig: Record<string, any>
 }
@@ -179,8 +178,6 @@ export interface ActionData {
 
 export interface StartNodeData {
   type: 'start'
-  description?: string
-  startCondition?: object
 }
 
 export interface TaskNodeData {
@@ -196,8 +193,6 @@ export interface TaskNodeData {
 
 export interface CompletionNodeData {
   type: 'completion'
-  name: string
-  callbackMessage?: string
 }
 
 export type EditorNodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData

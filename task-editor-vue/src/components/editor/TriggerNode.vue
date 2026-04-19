@@ -6,7 +6,6 @@
       <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
-      <span class="node-name">{{ data.name || 'Trigger' }}</span>
       <span class="node-condition">{{ conditionLabel }}</span>
     </div>
     <Handle type="target" :position="Position.Left" class="handle-target" />
@@ -76,11 +75,6 @@ const conditionLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-.node-name {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #713f12;
 }
 .node-condition {
   font-size: 0.7rem;
