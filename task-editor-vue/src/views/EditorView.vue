@@ -57,20 +57,57 @@
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
           <span>✔ Completion</span>
         </div>
+        
+        <h3>工具</h3>
+        <div class="tool-selector">
+          <button 
+            class="tool-btn" 
+            :class="{ active: currentTool === 'select' }"
+            @click="setTool('select')"
+          >
+            🖐️ 选择
+          </button>
+          <button 
+            class="tool-btn" 
+            :class="{ active: currentTool === 'cut' }"
+            @click="setTool('cut')"
+          >
+            ✂️ 切割
+          </button>
+        </div>
+        <div class="tool-hint">
+          <span v-if="currentTool === 'cut'">按住左键拖动切割连线</span>
+          <span v-else>按住 Shift + 左键拖动切割连线</span>
+        </div>
 </aside>
        
       <VueFlow
+        ref="vueFlowRef"
         v-model:nodes="nodes"
         v-model:edges="edges"
         :default-viewport="{ zoom: 1 }"
+        :class="{ 'cut-mode': isCutMode }"
         @node-click="handleNodeClick"
         @pane-click="handlePaneClick"
         @connect="handleConnect"
         @node-drag-stop="handleNodeDragStop"
         @edge-click="(e) => { selectedEdgeForDelete = e.edge.id; showDeleteEdgeConfirm = true }"
+        @pane-ready="onPaneReady"
       >
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
+        
+        <svg v-if="isCutDrawing && cutLineStart && cutLineEnd" class="cut-line-svg">
+          <line 
+            :x1="cutLineStart.x" 
+            :y1="cutLineStart.y" 
+            :x2="cutLineEnd.x" 
+            :y2="cutLineEnd.y" 
+            stroke="#ef4444" 
+            stroke-width="2" 
+            stroke-dasharray="5,5"
+          />
+        </svg>
         
         <div v-if="!selectedQuestId" class="empty-state-overlay">
           <div class="empty-state-text">点击左侧任务列表中的任务进入编辑</div>
@@ -175,6 +212,8 @@ const {
 
 const { project } = useVueFlow()
 
+const vueFlowRef = ref<any>(null)
+
 const showExamplesDialog = ref(false)
 const showHelpDialog = ref(false)
 const sidebarQuests = ref<Quest[]>([])
@@ -186,6 +225,34 @@ const unsavedQuests = ref<Map<string, Quest>>(new Map())
 const editingQuestId = ref<string | null>(null)
 const editingQuestName = ref('')
 const questNameInput = ref<HTMLInputElement | null>(null)
+
+// Tool state
+const currentTool = ref<'select' | 'cut'>('select')
+const isShiftPressed = ref(false)
+const isCutDrawing = ref(false)
+const cutLineStart = ref<{ x: number; y: number } | null>(null)
+const cutLineEnd = ref<{ x: number; y: number } | null>(null)
+
+const isCutMode = computed(() => currentTool.value === 'cut' || isShiftPressed.value)
+
+function setTool(tool: 'select' | 'cut') {
+  currentTool.value = tool
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Shift') {
+    isShiftPressed.value = true
+  }
+}
+
+function handleKeyUp(event: KeyboardEvent) {
+  if (event.key === 'Shift') {
+    isShiftPressed.value = false
+    isCutDrawing.value = false
+    cutLineStart.value = null
+    cutLineEnd.value = null
+  }
+}
 
 const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId.value || ''))
 
@@ -413,6 +480,93 @@ function handleNodeDragStop() {
   }
 }
 
+function onPaneReady() {
+  if (!vueFlowRef.value) return
+  const el = vueFlowRef.value.$el as HTMLElement
+  el.addEventListener('mousedown', handleCutMouseDown)
+  el.addEventListener('mousemove', handleCutMouseMove)
+  el.addEventListener('mouseup', handleCutMouseUp)
+}
+
+function handleCutMouseDown(event: MouseEvent) {
+  if (!isCutMode.value) return
+  if ((event.target as HTMLElement).closest('.vue-flow-node')) return
+  
+  const rect = vueFlowRef.value.$el.getBoundingClientRect()
+  const pos = project({
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  })
+  
+  isCutDrawing.value = true
+  cutLineStart.value = pos
+  cutLineEnd.value = pos
+}
+
+function handleCutMouseMove(event: MouseEvent) {
+  if (!isCutDrawing.value) return
+  
+  const rect = vueFlowRef.value.$el.getBoundingClientRect()
+  cutLineEnd.value = project({
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  })
+}
+
+function handleCutMouseUp() {
+  if (!isCutDrawing.value || !cutLineStart.value || !cutLineEnd.value) {
+    isCutDrawing.value = false
+    return
+  }
+  
+  const edgesToRemove: string[] = []
+  
+  edges.value.forEach(edge => {
+    const sourceNode = nodes.value.find(n => n.id === edge.source)
+    const targetNode = nodes.value.find(n => n.id === edge.target)
+    if (!sourceNode || !targetNode) return
+    
+    if (linesIntersect(
+      cutLineStart.value.x, cutLineStart.value.y,
+      cutLineEnd.value.x, cutLineEnd.value.y,
+      sourceNode.position.x + 75, sourceNode.position.y + 25,
+      targetNode.position.x + 75, targetNode.position.y + 25
+    )) {
+      edgesToRemove.push(edge.id)
+    }
+  })
+  
+  if (edgesToRemove.length > 0) {
+    edgesToRemove.forEach(id => removeEdge(id))
+    useToast().success(`已切割 ${edgesToRemove.length} 条连线`)
+    
+    const questId = selectedQuestId.value
+    if (questId) {
+      const graph = getCurrentQuestGraph()
+      if (graph) {
+        unsavedQuests.value.set(questId, {
+          ...sidebarQuests.value.find(q => q.id === questId)!,
+          graph: graph.graph
+        })
+      }
+    }
+  }
+  
+  isCutDrawing.value = false
+  cutLineStart.value = null
+  cutLineEnd.value = null
+}
+
+function linesIntersect(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number): boolean {
+  const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
+  if (Math.abs(denom) < 0.0001) return false
+  
+  const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom
+  const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom
+  
+  return ua > 0.01 && ua < 0.99 && ub > 0.01 && ub < 0.99
+}
+
 function handleDeleteNode(nodeId: string) {
   removeNode(nodeId)
   const graph = getCurrentQuestGraph()
@@ -496,8 +650,26 @@ onMounted(() => {
   }
 })
 
+onMounted(() => {
+  loadData()
+  window.addEventListener('keydown', handleKeyDelete)
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+  if (toastRef.value) {
+    setToast(toastRef)
+  }
+})
+
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDelete)
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
+  if (vueFlowRef.value) {
+    const el = vueFlowRef.value.$el as HTMLElement
+    el.removeEventListener('mousedown', handleCutMouseDown)
+    el.removeEventListener('mousemove', handleCutMouseMove)
+    el.removeEventListener('mouseup', handleCutMouseUp)
+  }
   clearEditor()
 })
 </script>
@@ -632,5 +804,50 @@ onUnmounted(() => {
   padding: 2rem;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 8px;
+}
+.tool-selector {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+.tool-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.tool-btn:hover {
+  background: #e5e7eb;
+}
+.tool-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+.tool-hint {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 4px;
+}
+.vue-flow.cut-mode {
+  cursor: crosshair;
+}
+.vue-flow.cut-mode .vue-flow-edge {
+  pointer-events: stroke;
+}
+.cut-line-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
 }
 </style>
