@@ -55,8 +55,8 @@
         <div class="sidebar-item node-item" draggable="true" @dragstart="(e) => handleNodeDragStart(e, 'completion')">
           <span>✔ Completion</span>
         </div>
-      </aside>
-      
+</aside>
+       
       <VueFlow
         v-model:nodes="nodes"
         v-model:edges="edges"
@@ -69,6 +69,10 @@
       >
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
+        
+        <div v-if="!selectedQuestId" class="empty-state-overlay">
+          <div class="empty-state-text">点击左侧任务列表中的任务进入编辑</div>
+        </div>
         
         <template #node-task="{ data, id }">
           <TaskNode :data="data" :node-id="id" @delete="handleDeleteNode" />
@@ -583,5 +587,25 @@ onUnmounted(() => {
   font-size: 0.85rem;
   outline: none;
   min-width: 0;
+}
+.empty-state-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.empty-state-text {
+  font-size: 1.5rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
 }
 </style>
