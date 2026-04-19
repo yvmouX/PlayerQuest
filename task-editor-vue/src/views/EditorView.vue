@@ -58,15 +58,13 @@
       </aside>
       
       <VueFlow
-        v-model:nodes="flowNodes"
-        v-model:edges="flowEdges"
+        v-model:nodes="nodes"
+        v-model:edges="edges"
         :default-viewport="{ zoom: 1 }"
         @node-click="handleNodeClick"
         @pane-click="handlePaneClick"
         @connect="handleConnect"
         @edge-click="(e) => { selectedEdgeForDelete = e.edge.id; showDeleteEdgeConfirm = true }"
-        @nodes-change="onNodesChange"
-        @edges-change="onEdgesChange"
       >
         <Background pattern-color="#aaa" :gap="16" />
         <Controls />
@@ -152,8 +150,8 @@ import {QuestService} from '../services/api'
 import type {EditorNodeData, Quest, NodeType} from '../types'
 
 const {
-  nodes: editorNodes,
-  edges: editorEdges,
+  nodes,
+  edges,
   currentQuestId,
   selectedNode: editorSelectedNode,
   addNode,
@@ -182,37 +180,6 @@ const editingQuestName = ref('')
 const questNameInput = ref<HTMLInputElement | null>(null)
 
 const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId.value || ''))
-
-const flowNodes = computed({
-  get: () => editorNodes.value.map(n => ({
-    id: n.id,
-    type: n.nodeType,
-    position: n.position,
-    data: n.data
-  })),
-  set: (val) => {
-    val.forEach(v => {
-      const node = editorNodes.value.find(n => n.id === v.id)
-      if (node) {
-        node.position = v.position
-      }
-    })
-  }
-})
-
-const flowEdges = computed({
-  get: () => editorEdges.value.map(e => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'smoothstep'
-  })),
-  set: (val) => {
-    const newEdgeIds = new Set(val.map(e => e.id))
-    editorEdges.value = editorEdges.value.filter(e => newEdgeIds.has(e.id))
-  }
-})
 
 const selectedNode = computed(() => editorSelectedNode.value)
 
@@ -272,14 +239,14 @@ function handleSelectQuest(quest: Quest) {
     loadGraph(quest.id, {
       id: quest.id,
       name: quest.name,
-      nodes: editorNodes.value.map(n => ({
+      nodes: nodes.value.map(n => ({
         id: n.id,
         nodeType: n.nodeType,
         x: n.position.x,
         y: n.position.y,
         data: n.data
       })),
-      edges: editorEdges.value.map(e => ({
+      edges: edges.value.map(e => ({
         id: e.id,
         sourceId: e.source,
         targetId: e.target,
@@ -360,7 +327,7 @@ function handleDrop(event: DragEvent) {
     return
   }
   
-  if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && editorNodes.value.some(n => n.nodeType === nodeType)) {
+  if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && nodes.value.some(n => n.nodeType === nodeType)) {
     const names: Record<string, string> = { start: '开始', task: '任务', completion: '完成' }
     useToast().error(`${names[nodeType]}节点已存在，每个流程只能有一个`)
     return
@@ -394,28 +361,6 @@ function handleNodeClick(event: { node: { id: string } }) {
 
 function handlePaneClick() {
   selectNode(null)
-}
-
-function onNodesChange(changes: any[]) {
-  // Apply VueFlow node changes to our state
-  changes.forEach(change => {
-    const node = editorNodes.value.find(n => n.id === change.id)
-    if (!node) return
-    
-    if (change.type === 'position' && change.position) {
-      node.position = change.position
-    } else if (change.type === 'remove') {
-      removeNode(change.id)
-    }
-  })
-}
-
-function onEdgesChange(changes: any[]) {
-  changes.forEach(change => {
-    if (change.type === 'remove') {
-      removeEdge(change.id)
-    }
-  })
 }
 
 function handleConnect(params: { source: string; target: string }) {
