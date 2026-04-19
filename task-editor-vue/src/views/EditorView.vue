@@ -64,6 +64,7 @@
         @node-click="handleNodeClick"
         @pane-click="handlePaneClick"
         @connect="handleConnect"
+        @node-drag-stop="handleNodeDragStop"
         @edge-click="(e) => { selectedEdgeForDelete = e.edge.id; showDeleteEdgeConfirm = true }"
       >
         <Background pattern-color="#aaa" :gap="16" />
@@ -374,6 +375,18 @@ function handleConnect(params: { source: string; target: string }) {
       })
     }
   })
+}
+
+function handleNodeDragStop() {
+  const questId = selectedQuestId.value
+  if (!questId) return
+  const graph = getCurrentQuestGraph()
+  if (graph) {
+    unsavedQuests.value.set(questId, {
+      ...sidebarQuests.value.find(q => q.id === questId)!,
+      graph: graph.graph
+    })
+  }
 }
 
 function handleDeleteNode(nodeId: string) {

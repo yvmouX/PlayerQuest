@@ -8,7 +8,7 @@ import cn.yvmou.ylib.api.config.ConfigValue;
 public class StorgeConfiguration {
 
     @ConfigValue(value = "storage-type.task-definition", description = "Storage type for task definition data")
-    private String StorageType_TaskDefinition = "JSON";
+    private String StorageType_TaskDefinition = "YAML";
 
     @ConfigValue(value = "storage-type.player-progress", description = "Storage type for player progress data")
     private String StorageType_PlayerProgress = "JSON";
