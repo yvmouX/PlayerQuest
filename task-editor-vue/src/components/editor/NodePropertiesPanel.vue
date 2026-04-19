@@ -245,6 +245,7 @@ type NodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | Act
 
 const props = defineProps<{
   selectedNode: NodeData | null
+  nodeId: string | null
 }>()
 
 const emit = defineEmits<{
@@ -349,7 +350,7 @@ watch(editedNode, () => {
     if (saveTimeout) clearTimeout(saveTimeout)
     saveTimeout = window.setTimeout(() => {
       const newNode = editedNode.value
-      const nodeId = newNode.type === 'task' ? (newNode as TaskNodeData).id : props.selectedNode.id || ''
+      const nodeId = props.nodeId || ''
       lastEmittedNode = JSON.stringify(editedNode.value)
       emit('update', nodeId, editedNode.value)
     }, 300)

@@ -145,6 +145,7 @@
       <NodePropertiesPanel
         v-if="editorSelectedNode"
         :selected-node="editorSelectedNode"
+        :node-id="selectedNodeId"
         @close="selectNode(null)"
         @update="handleUpdateQuest"
       />
@@ -675,19 +676,34 @@ async function handleSave() {
   const graphData = getCurrentQuestGraph()
   if (!graphData) return
   
+  const isNewQuest = questId.startsWith('temp_')
+  
   try {
     const questWithGraph: Quest = {
       ...questToSave,
       graph: graphData.graph
     }
     
-    const response = await QuestService.create(questWithGraph)
+    let response
+    if (isNewQuest) {
+      response = await QuestService.create(questWithGraph)
+    } else {
+      response = await QuestService.update(questId, questWithGraph)
+    }
     
     if (response.code === 0 && response.data) {
-      sidebarQuests.value = sidebarQuests.value.map(q => 
-        q.id === questId ? response.data : q
-      )
-      unsavedQuests.value.delete(questId)
+      if (isNewQuest) {
+        sidebarQuests.value = sidebarQuests.value.map(q => 
+          q.id === questId ? response.data : q
+        )
+        unsavedQuests.value.delete(questId)
+        selectedQuestId.value = response.data.id
+      } else {
+        sidebarQuests.value = sidebarQuests.value.map(q => 
+          q.id === questId ? response.data : q
+        )
+        unsavedQuests.value.delete(questId)
+      }
       useToast().success('保存成功')
     } else {
       useToast().error('保存失败: ' + response.msg)
