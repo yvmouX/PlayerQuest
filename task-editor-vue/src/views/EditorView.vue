@@ -478,6 +478,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDelete)
+  clearEditor()
 })
 </script>
 
