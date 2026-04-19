@@ -64,3 +64,36 @@ To run manual tests:
 2. Open the application in a browser
 3. Execute each test case from the checklist above
 4. Mark status as PASSED or FAILED based on actual behavior
+
+
+
+测试检查表
+测试验证文档已创建在 TASK3_TEST_VERIFICATION.md。需要你在浏览器中进行以下测试：
+节点操作：
+- 添加 Start/Task/Completion 节点（单例约束应阻止重复）
+- 添加 Trigger/Objective/Action 节点
+连接操作：
+- 正常连接节点
+- 非法连接被阻止
+- 循环连接被阻止
+位置持久化：
+- 拖拽节点位置
+- 保存后重新加载，位置保持
+删除：
+- 通过按钮和键盘删除
+请启动应用进行测试，确认后告诉我结果。
+- 测试检查表
+  测试验证文档已创建在 TASK3_TEST_VERIFICATION.md。需要你在浏览器中进行以下测试：
+  节点操作：
+  - 添加 Start/Task/Completion 节点（单例约束应阻止重复）
+  - 添加 Trigger/Objective/Action 节点
+  连接操作：
+  - 正常连接节点
+  - 非法连接被阻止
+  - 循环连接被阻止
+  位置持久化：
+  - 拖拽节点位置
+  - 保存后重新加载，位置保持
+  删除：
+  - 通过按钮和键盘删除
+  请启动应用进行测试，确认后告诉我结果。

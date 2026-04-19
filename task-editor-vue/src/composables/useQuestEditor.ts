@@ -17,7 +17,7 @@ import type {
 
 export interface QuestNodeData {
   id: string
-  nodeType: NodeType
+  type: NodeType
   position: { x: number; y: number }
   data: EditorNodeData
 }
@@ -107,7 +107,7 @@ export function useQuestEditor() {
 
   function addNode(nodeType: NodeType, position: { x: number; y: number }) {
     if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && 
-        nodes.value.some(n => n.nodeType === nodeType)) {
+        nodes.value.some(n => n.type === nodeType)) {
       const typeName = nodeType === 'start' ? NODE_TYPE_NAMES.start : nodeType === 'task' ? NODE_TYPE_NAMES.task : NODE_TYPE_NAMES.completion
       useToast().error(`${typeName}节点已存在，每个流程只能有一个`)
       return
@@ -115,7 +115,7 @@ export function useQuestEditor() {
     const id = crypto.randomUUID()
     setNodes([...nodes.value, {
       id,
-      nodeType,
+      type: nodeType,
       position,
       data: createDefaultNodeData(nodeType, id)
     }])
@@ -144,8 +144,8 @@ export function useQuestEditor() {
     const targetNode = nodes.value.find(n => n.id === target)
     if (!sourceNode || !targetNode) return
 
-    const sourceType = sourceNode.nodeType
-    const targetType = targetNode.nodeType
+    const sourceType = sourceNode.type
+    const targetType = targetNode.type
 
     if (!validConnections[sourceType]?.includes(targetType)) {
       useToast().error(`无法连接：${sourceType} 不能连接到 ${targetType}`)
@@ -191,7 +191,7 @@ export function useQuestEditor() {
     currentQuestId.value = questId
     const mappedNodes = graph.nodes.map((n: GraphNode) => ({
       id: n.id,
-      nodeType: n.nodeType as NodeType,
+      type: n.nodeType as NodeType,
       position: { x: n.x, y: n.y },
       data: n.data as EditorNodeData
     }))
@@ -212,7 +212,7 @@ export function useQuestEditor() {
       name: 'Quest Graph',
       nodes: nodes.value.map(n => ({
         id: n.id,
-        nodeType: n.nodeType,
+        nodeType: n.type,
         x: n.position.x,
         y: n.position.y,
         data: n.data
