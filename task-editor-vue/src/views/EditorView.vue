@@ -31,7 +31,9 @@
             @click.stop
             ref="questNameInput"
           />
-          <span v-else class="quest-name">{{ quest.name || '未命名任务' }}</span>
+          <span v-else class="quest-name" :class="{ 'unsaved': unsavedQuests.has(quest.id) }">
+            {{ quest.name || '未命名任务' }}<template v-if="unsavedQuests.has(quest.id)">（未保存）</template>
+          </span>
           <span v-if="selectedQuestId === quest.id" class="current-badge">当前</span>
         </div>
         <button @click="handleCreateNewQuest" class="btn-new-quest">+ 新建任务</button>
@@ -132,6 +134,7 @@
 
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useRouter, onBeforeRouteLeave} from 'vue-router'
 import {VueFlow, useVueFlow} from '@vue-flow/core'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
@@ -186,7 +189,24 @@ const questNameInput = ref<HTMLInputElement | null>(null)
 
 const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId.value || ''))
 
-const selectedNode = computed(() => editorSelectedNode.value)
+const unsavedQuestsSet = computed(() => new Set(unsavedQuests.value.keys()))
+
+const router = useRouter()
+
+let leaveConfirmed = false
+
+onBeforeRouteLeave(() => {
+  if (leaveConfirmed) return true
+  if (unsavedQuests.value.size > 0) {
+    const confirmed = window.confirm('有未保存的更改，确定要离开吗？')
+    if (confirmed) {
+      leaveConfirmed = true
+      return true
+    }
+    return false
+  }
+  return true
+})
 
 function confirmDeleteEdge() {
   if (selectedEdgeForDelete.value) {
@@ -535,6 +555,10 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 140px;
+}
+.quest-name.unsaved {
+  font-style: italic;
+  color: #f97316;
 }
 .current-badge {
   font-size: 0.7rem;
