@@ -3,7 +3,6 @@
     <div class="node-header">
       <span class="node-icon">▶</span>
       <span class="node-type">开始</span>
-      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <Handle type="source" :position="Position.Right" class="handle-source" />
   </div>

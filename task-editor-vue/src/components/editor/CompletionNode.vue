@@ -3,7 +3,6 @@
     <div class="node-header">
       <span class="node-icon">✓</span>
       <span class="node-type">完成</span>
-      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <Handle type="target" :position="Position.Left" class="handle-target" />
   </div>
@@ -17,10 +16,6 @@ defineProps<{
     type: 'completion'
   }
   nodeId: string
-}>()
-
-defineEmits<{
-  delete: [nodeId: string]
 }>()
 </script>
 

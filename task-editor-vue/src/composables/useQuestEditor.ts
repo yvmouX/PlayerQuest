@@ -124,6 +124,10 @@ export function useQuestEditor() {
   }
 
   function removeNode(nodeId: string) {
+    const node = nodes.value.find(n => n.id === nodeId)
+    if (node && (node.type === 'start' || node.type === 'task' || node.type === 'completion')) {
+      return
+    }
     setNodes(nodes.value.filter(n => n.id !== nodeId))
     setEdges(edges.value.filter(e => e.source !== nodeId && e.target !== nodeId))
     if (selectedNodeId.value === nodeId) {

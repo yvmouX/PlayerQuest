@@ -2,7 +2,6 @@
   <div class="task-node" :class="`type-${data.taskType?.toLowerCase()}`">
     <div class="node-header">
       <span class="node-type">{{ taskTypeLabel }}</span>
-      <button class="delete-btn" @click.stop="$emit('delete', nodeId)">×</button>
     </div>
     <div class="node-body">
       <h3 class="node-name">{{ questName }}</h3>
