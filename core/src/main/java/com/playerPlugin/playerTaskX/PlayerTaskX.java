@@ -91,16 +91,11 @@ public final class PlayerTaskX extends JavaPlugin {
 
     private void registerHandlers(NodeHandlerRegistry registry) {
         registry.register(new StartNodeHandler());
+        registry.register(new TriggerNodeHandler());
         registry.register(new TaskNodeHandler());
-        registry.register(new CompletionNodeHandler());
-        registry.register(new ConditionNodeHandler());
-        registry.register(new BranchNodeHandler());
+        registry.register(new ObjectiveNodeHandler());
         registry.register(new ActionNodeHandler());
-        registry.register(new EventNodeHandler());
-        registry.register(new CounterNodeHandler());
-        registry.register(new TimerNodeHandler());
-        registry.register(new StateNodeHandler());
-        registry.register(new SubtaskNodeHandler(sessionManager));
+        registry.register(new CompletionNodeHandler());
     }
 
     @Override
