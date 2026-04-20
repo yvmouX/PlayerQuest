@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.configuration;
 
-import cn.yvmou.ylib.api.config.AutoConfiguration;
-import cn.yvmou.ylib.api.config.ConfigValue;
+import cn.yvmou.ylib.config.AutoConfiguration;
+import cn.yvmou.ylib.config.ConfigValue;
 
 @SuppressWarnings("unused")
 @AutoConfiguration(configFile = "storge.yml", version = "1.0.0")

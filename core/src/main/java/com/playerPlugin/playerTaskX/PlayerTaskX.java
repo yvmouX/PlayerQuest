@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
-import cn.yvmou.ylib.api.logger.Logger;
+import cn.yvmou.ylib.logger.Logger;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
@@ -26,7 +26,6 @@ import java.io.File;
 public final class PlayerTaskX extends JavaPlugin {
     private TaskManager taskManager;
     private EditorServer editorServer;
-    private Logger log;
     private QuestEngine questEngine;
     private QuestSessionManager sessionManager;
     private GeneralConfiguration generalConfig;
@@ -36,11 +35,12 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressStorage progressStorage;
     private SessionStorage sessionStorage;
 
+    public static Logger log = YLib.getyLib().getLogger();
+
     @Override
     public void onEnable() {
         // 初始化 YLib 和配置
-        YLib ylib = new YLib(this);
-        log = ylib.getLogger();
+        YLib ylib = YLib.init(this);
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
         storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
         editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
