@@ -22,7 +22,7 @@ allprojects {
     }
 
     dependencies {
-        implementation("com.github.yvmouX:YLib:1.0.0-alpha.8")
+        implementation("com.github.yvmouX:YLib:1.0.0-alpha.9")
 
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
 
