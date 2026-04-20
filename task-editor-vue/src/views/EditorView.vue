@@ -175,9 +175,9 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
-import {useRouter, onBeforeRouteLeave} from 'vue-router'
-import {VueFlow, useVueFlow} from '@vue-flow/core'
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {onBeforeRouteLeave, useRouter} from 'vue-router'
+import {useVueFlow, VueFlow} from '@vue-flow/core'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
@@ -197,7 +197,7 @@ import Toast from '../components/Toast.vue'
 import {useQuestEditor} from '../composables/useQuestEditor'
 import {setToast, useToast} from '../composables/useToast'
 import {QuestService} from '../services/api'
-import type {EditorNodeData, Quest, NodeType} from '../types'
+import type {EditorNodeData, NodeType, Quest} from '../types'
 
 const {
   nodes,

@@ -1,6 +1,5 @@
 package com.playerPlugin.playerTaskX.web;
 
-import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.manager.TaskManager;

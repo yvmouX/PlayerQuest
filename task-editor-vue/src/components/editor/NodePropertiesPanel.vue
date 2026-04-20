@@ -227,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, watch, onMounted} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import type {
   ActionData,
   ActionTemplate,
@@ -238,7 +238,7 @@ import type {
   TaskNodeData,
   TriggerData
 } from '../../types'
-import {ObjectiveService, ActionService} from '../../services/api'
+import {ActionService, ObjectiveService} from '../../services/api'
 import {editorNodes} from '../../composables/useQuestEditor'
 
 type NodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData

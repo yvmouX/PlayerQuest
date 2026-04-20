@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.api.model.condition.Condition;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
-import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 
 import java.util.ArrayList;
 import java.util.List;
