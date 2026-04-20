@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX.storage.yaml;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 
 import java.io.File;
 import java.io.IOException;

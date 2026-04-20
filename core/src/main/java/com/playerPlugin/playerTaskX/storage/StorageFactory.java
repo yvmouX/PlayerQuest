@@ -32,7 +32,7 @@ public class StorageFactory {
         return createProgressStorage(storageType, dataFolder, config);
     }
 
-    public static SessionStorage createSessionStorage(String type, File dataFolder, StorgeConfiguration config) {
+    public static com.playerPlugin.playerTaskX.api.service.SessionStorage createSessionStorage(String type, File dataFolder, StorgeConfiguration config) {
         PTXStorgeType storageType = parseStorageType(type);
         return createSessionStorage(storageType, dataFolder, config);
     }
@@ -63,7 +63,7 @@ public class StorageFactory {
         };
     }
 
-    private static SessionStorage createSessionStorage(PTXStorgeType type, File dataFolder, StorgeConfiguration config) {
+    private static com.playerPlugin.playerTaskX.api.service.SessionStorage createSessionStorage(PTXStorgeType type, File dataFolder, StorgeConfiguration config) {
         return switch (type) {
             case YAML -> new YamlSessionStorage(dataFolder);
             case JSON -> new JsonSessionStorage(dataFolder);

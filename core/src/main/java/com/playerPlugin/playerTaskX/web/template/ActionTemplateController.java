@@ -1,9 +1,10 @@
-package com.playerPlugin.playerTaskX.web;
+package com.playerPlugin.playerTaskX.web.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
+import com.playerPlugin.playerTaskX.api.model.ActionTemplate;
 import com.playerPlugin.playerTaskX.api.service.TemplateService;
+import com.playerPlugin.playerTaskX.web.ApiResponse;
 import io.javalin.http.Context;
 
 import java.nio.file.Files;
@@ -14,24 +15,24 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ObjectiveTemplateController {
-    private final Map<String, ObjectiveTemplate> templateStore = new ConcurrentHashMap<>();
+public class ActionTemplateController {
+    private final Map<String, ActionTemplate> templateStore = new ConcurrentHashMap<>();
     private final Path templateFile;
     private final ObjectMapper mapper;
 
-    public ObjectiveTemplateController(Path dataFolder) {
-        this.templateFile = dataFolder.resolve("objective-templates.yml");
+    public ActionTemplateController(Path dataFolder) {
+        this.templateFile = dataFolder.resolve("action-templates.yml");
         this.mapper = new ObjectMapper(new YAMLFactory());
         loadTemplates();
-        TemplateService.loadObjectiveTemplates(new ArrayList<>(templateStore.values()));
+        TemplateService.loadActionTemplates(new ArrayList<>(templateStore.values()));
     }
 
     private void loadTemplates() {
         if (Files.exists(templateFile)) {
             try {
-                List<ObjectiveTemplate> list = mapper.readValue(templateFile.toFile(),
-                        mapper.getTypeFactory().constructCollectionType(List.class, ObjectiveTemplate.class));
-                for (ObjectiveTemplate template : list) {
+                List<ActionTemplate> list = mapper.readValue(templateFile.toFile(),
+                        mapper.getTypeFactory().constructCollectionType(List.class, ActionTemplate.class));
+                for (ActionTemplate template : list) {
                     if (template.getId() != null) {
                         templateStore.put(template.getId(), template);
                     }
@@ -44,9 +45,9 @@ public class ObjectiveTemplateController {
 
     private void saveTemplates() {
         try {
-            List<ObjectiveTemplate> list = new ArrayList<>(templateStore.values());
+            List<ActionTemplate> list = new ArrayList<>(templateStore.values());
             mapper.writeValue(templateFile.toFile(), list);
-            TemplateService.loadObjectiveTemplates(list);
+            TemplateService.loadActionTemplates(list);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -58,7 +59,7 @@ public class ObjectiveTemplateController {
 
     public void getById(Context ctx) {
         String id = ctx.pathParam("id");
-        ObjectiveTemplate template = templateStore.get(id);
+        ActionTemplate template = templateStore.get(id);
         if (template == null) {
             ctx.status(404).json(ApiResponse.error(404, "Template not found"));
             return;
@@ -68,9 +69,9 @@ public class ObjectiveTemplateController {
 
     public void save(Context ctx) {
         try {
-            ObjectiveTemplate template = ctx.bodyAsClass(ObjectiveTemplate.class);
+            ActionTemplate template = ctx.bodyAsClass(ActionTemplate.class);
             if (template.getId() == null || template.getId().isEmpty()) {
-                template = new ObjectiveTemplate(
+                template = new ActionTemplate(
                         UUID.randomUUID().toString(),
                         template.getName(),
                         template.getDescription(),
@@ -88,7 +89,7 @@ public class ObjectiveTemplateController {
 
     public void delete(Context ctx) {
         String id = ctx.pathParam("id");
-        ObjectiveTemplate removed = templateStore.remove(id);
+        ActionTemplate removed = templateStore.remove(id);
         if (removed == null) {
             ctx.status(404).json(ApiResponse.error(404, "Template not found"));
             return;

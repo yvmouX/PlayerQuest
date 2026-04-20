@@ -447,7 +447,7 @@ package com.playerPlugin.playerTaskX.storage.mysql;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.zaxxer.hikari.HikariDataSource;
 
 import java.sql.*;
@@ -623,7 +623,7 @@ package com.playerPlugin.playerTaskX.storage.sqlite;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 
 import java.io.File;
 import java.sql.*;
@@ -823,7 +823,7 @@ import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.engine.exception.GraphExecutionException;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -2348,7 +2348,7 @@ import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

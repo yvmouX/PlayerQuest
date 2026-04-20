@@ -16,7 +16,7 @@ import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.handler.*;
 import com.playerPlugin.playerTaskX.listener.GraphEventListener;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import org.bukkit.plugin.java.JavaPlugin;

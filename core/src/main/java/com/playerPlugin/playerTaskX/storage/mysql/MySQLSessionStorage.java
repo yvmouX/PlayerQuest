@@ -3,7 +3,7 @@ package com.playerPlugin.playerTaskX.storage.mysql;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 

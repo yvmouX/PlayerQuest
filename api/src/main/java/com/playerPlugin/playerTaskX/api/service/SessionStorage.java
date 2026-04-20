@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.storage;
+package com.playerPlugin.playerTaskX.api.service;
 
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import java.util.Collection;

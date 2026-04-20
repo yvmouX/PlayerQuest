@@ -1,6 +1,8 @@
 package com.playerPlugin.playerTaskX.web;
 
 import com.playerPlugin.playerTaskX.manager.TaskManager;
+import com.playerPlugin.playerTaskX.web.template.ActionTemplateController;
+import com.playerPlugin.playerTaskX.web.template.ObjectiveTemplateController;
 import io.javalin.Javalin;
 
 import java.nio.file.Path;

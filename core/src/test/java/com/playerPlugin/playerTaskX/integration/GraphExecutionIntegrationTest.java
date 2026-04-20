@@ -11,7 +11,7 @@ import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
 import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
 import com.playerPlugin.playerTaskX.handler.StartNodeHandler;
-import com.playerPlugin.playerTaskX.storage.SessionStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
