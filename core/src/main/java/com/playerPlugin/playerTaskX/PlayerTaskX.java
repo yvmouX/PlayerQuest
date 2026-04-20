@@ -35,12 +35,13 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressStorage progressStorage;
     private SessionStorage sessionStorage;
 
-    public static Logger log = YLib.getyLib().getLogger();
+    private static Logger log;
 
     @Override
     public void onEnable() {
         // 初始化 YLib 和配置
         YLib ylib = YLib.init(this);
+        log = ylib.getLogger();
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
         storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
         editorConfig = ylib.getConfigurationManager().registerConfiguration(EditorConfiguration.class);
