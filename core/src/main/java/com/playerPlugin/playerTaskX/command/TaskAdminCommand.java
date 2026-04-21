@@ -5,7 +5,7 @@ import cn.yvmou.ylib.command.annotation.SubCommand;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import org.bukkit.command.CommandSender;
 
-@Command(name = "playertaskxadmin", description = "PlayerTaskX admin commands")
+@Command(name = "playertaskxadmin", aliases = "ptxa", description = "PlayerTaskX admin commands")
 public class TaskAdminCommand {
 
     private final TaskManager taskManager;
@@ -14,12 +14,14 @@ public class TaskAdminCommand {
         this.taskManager = taskManager;
     }
 
+    /** 显示管理员命令帮助信息 */
     @SubCommand("")
     public void help(CommandSender sender) {
         sender.sendMessage("=== PlayerTaskX Admin Commands ===");
         sender.sendMessage("/taskadmin reload - Reload task configurations");
     }
 
+    /** 重新加载所有任务配置 */
     @SubCommand("reload")
     public void reload(CommandSender sender) {
         taskManager.loadTasks();

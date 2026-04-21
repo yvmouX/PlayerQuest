@@ -18,7 +18,6 @@ public class CompletionNodeHandler implements NodeHandler {
     public String getNodeType() { return "completion"; }
     
     @Override
-    @SuppressWarnings("unchecked")
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
         GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.terminal(session.getCurrentNodeId());

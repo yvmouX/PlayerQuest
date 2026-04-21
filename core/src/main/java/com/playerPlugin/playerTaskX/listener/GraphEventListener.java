@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.listener;
 
+import cn.yvmou.ylib.YLib;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -21,7 +21,7 @@ public class GraphEventListener implements Listener {
     public void onEntityDeath(EntityDeathEvent event) {
         Player killer = event.getEntity().getKiller();
         if (killer != null) {
-            Bukkit.getScheduler().runTaskLater(null, () -> {
+            YLib.getyLib().getScheduler().runLater(() -> {
                 questEngine.handleEvent(killer, event);
             }, 1L);
         }
@@ -30,7 +30,7 @@ public class GraphEventListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        Bukkit.getScheduler().runTaskLater(null, () -> {
+        YLib.getyLib().getScheduler().runLater(() -> {
             questEngine.handleEvent(player, event);
         }, 1L);
     }
@@ -38,7 +38,7 @@ public class GraphEventListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        Bukkit.getScheduler().runTaskLater(null, () -> {
+        YLib.getyLib().getScheduler().runLater(() -> {
             questEngine.handleEvent(player, event);
         }, 1L);
     }

@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.configuration;
 
-import cn.yvmou.ylib.api.config.AutoConfiguration;
-import cn.yvmou.ylib.api.config.ConfigValue;
+import cn.yvmou.ylib.config.AutoConfiguration;
+import cn.yvmou.ylib.config.ConfigValue;
 
 @SuppressWarnings("unused")
 @AutoConfiguration(configFile = "storge.yml", version = "1.0.0")
@@ -11,10 +11,10 @@ public class StorgeConfiguration {
     private String StorageType_TaskDefinition = "YAML";
 
     @ConfigValue(value = "storage-type.player-progress", description = "Storage type for player progress data")
-    private String StorageType_PlayerProgress = "JSON";
+    private String StorageType_PlayerProgress = "YAML";
 
     @ConfigValue(value = "storage-type.session", description = "Storage type for session data")
-    private String StorageType_Session = "JSON";
+    private String StorageType_Session = "YAML";
 
     @ConfigValue(value = "mysql.host", description = "MySQL host address")
     private String mysqlHost = "localhost";

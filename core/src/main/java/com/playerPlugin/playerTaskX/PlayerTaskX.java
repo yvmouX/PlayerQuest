@@ -1,9 +1,10 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
-import cn.yvmou.ylib.api.logger.Logger;
+import cn.yvmou.ylib.logger.Logger;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
+import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.command.TaskAdminCommand;
 import com.playerPlugin.playerTaskX.command.TaskCommand;
@@ -16,7 +17,6 @@ import com.playerPlugin.playerTaskX.event.PlayerJoinHandler;
 import com.playerPlugin.playerTaskX.handler.*;
 import com.playerPlugin.playerTaskX.listener.GraphEventListener;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
-import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.playerPlugin.playerTaskX.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.web.EditorServer;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,7 +26,6 @@ import java.io.File;
 public final class PlayerTaskX extends JavaPlugin {
     private TaskManager taskManager;
     private EditorServer editorServer;
-    private Logger log;
     private QuestEngine questEngine;
     private QuestSessionManager sessionManager;
     private GeneralConfiguration generalConfig;
@@ -36,10 +35,12 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressStorage progressStorage;
     private SessionStorage sessionStorage;
 
+    public static Logger log;
+
     @Override
     public void onEnable() {
         // 初始化 YLib 和配置
-        YLib ylib = new YLib(this);
+        YLib ylib = YLib.init(this);
         log = ylib.getLogger();
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
         storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
