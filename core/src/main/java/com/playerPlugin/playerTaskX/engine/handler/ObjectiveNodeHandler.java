@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.engine.handler;
 
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
-import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
+import com.playerPlugin.playerTaskX.api.model.template.ObjectiveTemplate;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
@@ -45,60 +45,54 @@ public class ObjectiveNodeHandler implements NodeHandler {
     }
     
     private boolean checkObjectiveCompleted(Player player, QuestSession session, String templateId, Event event) {
-        
-        Map<String, Object> config = getTemplateConfig(templateId);
-        if (config == null) {
+        ObjectiveTemplate template = getTemplate(templateId);
+
+        if (template == null) {
             log.warn("Template not found for objective: {}", templateId);
             return false;
-        }
+        };
         
-        String objectiveType = (String) config.get("type");
+        String objectiveType = template.getType();
         if (objectiveType == null) return true;
-        
+
         switch (objectiveType) {
             case "kill_mob" -> {
-                String mobType = (String) config.get("target");
-                int required = ((Number) config.getOrDefault("amount", 1)).intValue();
+                String mobType = (String) template.getDefaultConfig().get("target");
+                int required = ((Number) template.getDefaultConfig().getOrDefault("amount", 1)).intValue();
                 int current = ((Number) session.getContext().getOrDefault("kills_" + mobType, 0)).intValue();
                 return current >= required;
             }
             case "collect_item" -> {
-                String itemId = (String) config.get("target");
-                int required = ((Number) config.getOrDefault("amount", 1)).intValue();
+                String itemId = (String) template.getDefaultConfig().get("target");
+                int required = ((Number) template.getDefaultConfig().getOrDefault("amount", 1)).intValue();
                 int current = ((Number) session.getContext().getOrDefault("collected_" + itemId, 0)).intValue();
                 return current >= required;
             }
             case "break_block" -> {
-                String blockType = (String) config.get("target");
-                int required = ((Number) config.getOrDefault("amount", 1)).intValue();
+                String blockType = (String) template.getDefaultConfig().get("target");
+                int required = ((Number) template.getDefaultConfig().getOrDefault("amount", 1)).intValue();
                 int current = ((Number) session.getContext().getOrDefault("broken_" + blockType, 0)).intValue();
+                log.debug("Current Amount: {}, Required Amound: {}", current, required);
                 return current >= required;
             }
             case "talk_to_npc" -> {
-                String npcId = (String) config.get("target");
+                String npcId = (String) template.getDefaultConfig().get("target");
                 return Boolean.TRUE.equals(session.getContext().get("npc_talked_" + npcId));
             }
-            case "reach_location" -> {
-                Map<String, Object> location = (Map<String, Object>) config.get("location");
-                if (location == null) return true;
-                return Boolean.TRUE.equals(session.getContext().get("reached_location"));
-            }
             default -> {
-                org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
-                    .warn("Unknown objective type: {}", objectiveType);
+                log.warn("Unknown objective type: {}", objectiveType);
                 return true;
             }
         }
     }
     
-    private Map<String, Object> getTemplateConfig(String templateId) {
+    private ObjectiveTemplate getTemplate(String templateId) {
         ObjectiveTemplate template = TemplateService.getObjectiveTemplate(templateId);
         if (template == null) {
-            org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
-                .warn("Objective template not found: {}", templateId);
+            log.warn("Objective template not found: {}", templateId);
             return null;
         }
-        return template.getDefaultConfig();
+        return template;
     }
     
     @Override

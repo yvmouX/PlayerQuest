@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.engine.handler;
 
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
-import com.playerPlugin.playerTaskX.api.model.ActionTemplate;
+import com.playerPlugin.playerTaskX.api.model.template.ActionTemplate;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;

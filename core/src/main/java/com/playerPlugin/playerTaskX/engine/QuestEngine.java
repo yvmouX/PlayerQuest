@@ -8,13 +8,19 @@ import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.api.model.template.ObjectiveTemplate;
 import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import com.playerPlugin.playerTaskX.api.exception.GraphExecutionException;
+import com.playerPlugin.playerTaskX.api.service.TemplateService;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.block.BlockBreakEvent;
 
 import java.util.Collection;
+import java.util.Map;
 
 import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 
@@ -95,7 +101,7 @@ public class QuestEngine {
             
             NextNodeResult result = handler.execute(session, event, graph);
             
-            if (result.getNextNodeId() != null) {
+            if (result.getNextNodeId() != null) { // 如果下一个节点不处于 waiting 状态 前进到下一个节点
                 session.setCurrentNodeId(result.getNextNodeId());
                 session.updateContext(result.getContextUpdate());
                 
@@ -106,6 +112,77 @@ public class QuestEngine {
                 sessionStorage.save(session);
             }
         }
+    }
+
+    /**
+     * 根据事件更新玩家进度
+     * @param player 玩家
+     * @param event 触发的事件
+     */
+    public void updateProgress(Player player, Event event) {
+        Collection<QuestSession> sessions = sessionManager.getPlayerSessions(player.getUniqueId());
+        
+        for (QuestSession session : sessions) {
+            if (session.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
+            
+            TaskDefinition task = taskManager.getTask(session.getQuestId()).orElse(null);
+            if (task == null || !task.hasGraph()) continue;
+            
+            QuestGraph graph = task.getGraph();
+            GraphNode currentNode = helper.findNode(graph, session.getCurrentNodeId());
+            if (currentNode == null || !"objective".equals(currentNode.getNodeType())) continue;
+            
+            Map<String, Object> updates = calculateProgressUpdate(event, player, currentNode, session);
+            if (!updates.isEmpty()) {
+                session.updateContext(updates);
+                sessionStorage.save(session);
+            }
+        }
+    }
+    
+    /**
+     * 根据事件类型和当前节点配置计算需要更新的进度
+     */
+    private Map<String, Object> calculateProgressUpdate(Event event, Player player, GraphNode node, QuestSession session) {
+        Map<String, Object> data = node.getData();
+        String nodeType = (String) data.get("type");
+        String objectiveType = null;
+        String templateID = null;
+        ObjectiveTemplate template = null;
+
+        if (nodeType == null) return Map.of();
+
+        if (nodeType.equals("objective")) { // 必须匹配 objective Node ，只有它包含templateId这个字段
+            templateID = (String) data.get("templateId");
+            template = TemplateService.getObjectiveTemplate(templateID);
+            if (template == null) return Map.of();
+
+            objectiveType = template.getType();
+        }
+
+        if (objectiveType == null) return Map.of();
+        if (templateID == null) return Map.of();
+        
+        if (event instanceof BlockBreakEvent breakEvent) {
+            if ("break_block".equals(objectiveType)) {
+                String targetBlock = (String) template.getDefaultConfig().get("target");
+                String brokenBlock = breakEvent.getBlock().getType().name();
+                if (targetBlock != null && targetBlock.equalsIgnoreCase(brokenBlock)) {
+                    int current = getSessionValue(session, "broken_" + brokenBlock, 0);
+                    return Map.of("broken_" + brokenBlock, current + 1);
+                }
+            }
+        }
+        
+        return Map.of();
+    }
+
+    private int getSessionValue(QuestSession session, String key, int defaultValue) {
+        Object value = session.getContext().get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return defaultValue;
     }
     
     /**
@@ -122,11 +199,13 @@ public class QuestEngine {
             });
     }
     
-    /** 从存储恢复所有活跃会话到内存 */
-    public void restoreSessions() {
+    /** 从存储恢复指定玩家的活跃会话到内存 */
+    public void restorePlayerSession(Player player) {
         Collection<QuestSession> activeSessions = sessionStorage.findAllActive();
         for (QuestSession session : activeSessions) {
-            sessionManager.createSession(session);
+            if (session.getPlayerId().equals(player.getUniqueId())) {
+                sessionManager.createSession(session);
+            };
         }
     }
     

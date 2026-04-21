@@ -69,13 +69,13 @@ public final class PlayerTaskX extends JavaPlugin {
 
         questEngine = new QuestEngine(sessionManager, handlerRegistry, taskManager, sessionStorage);
         taskManager.setQuestEngine(questEngine);
-        questEngine.restoreSessions();
+        //questEngine.restoreSessions();
 
         // 注册命令和事件
         ylib.getCommandManager().register(new TaskCommand(taskManager));
         ylib.getCommandManager().register(new TaskAdminCommand(taskManager));
 
-        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerJoinHandler(taskManager, questEngine), this);
         getServer().getPluginManager().registerEvents(new GraphEventListener(questEngine), this);
 
         // 启动编辑器服务

@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
+import com.playerPlugin.playerTaskX.api.model.template.ObjectiveTemplate;
 import com.playerPlugin.playerTaskX.api.service.TemplateService;
 import com.playerPlugin.playerTaskX.web.ApiResponse;
 import io.javalin.http.Context;

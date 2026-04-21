@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.api.service;
 
-import com.playerPlugin.playerTaskX.api.model.ActionTemplate;
-import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
+import com.playerPlugin.playerTaskX.api.model.template.ActionTemplate;
+import com.playerPlugin.playerTaskX.api.model.template.ObjectiveTemplate;
 
 import java.util.List;
 import java.util.Map;
