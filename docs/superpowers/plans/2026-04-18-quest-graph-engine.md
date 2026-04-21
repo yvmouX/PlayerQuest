@@ -821,7 +821,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
-import com.playerPlugin.playerTaskX.engine.exception.GraphExecutionException;
+import com.playerPlugin.playerTaskX.api.exception.GraphExecutionException;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import com.playerPlugin.playerTaskX.api.service.SessionStorage;
 import org.bukkit.Bukkit;

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.exception;
+package com.playerPlugin.playerTaskX.api.exception;
 
 import com.playerPlugin.playerTaskX.api.model.TaskDefinition;
 import org.jetbrains.annotations.NotNull;

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.engine.exception;
+package com.playerPlugin.playerTaskX.api.exception;
 
 public class GraphExecutionException extends RuntimeException {
     public GraphExecutionException(String message) {

@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.exception;
+package com.playerPlugin.playerTaskX.api.exception;
 
 public class UnauthorizedException extends PlayerTaskException{
     public UnauthorizedException() {

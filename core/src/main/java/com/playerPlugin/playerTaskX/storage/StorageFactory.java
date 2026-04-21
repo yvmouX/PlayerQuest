@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.api.Enum.PTXStorgeType;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.configuration.StorgeConfiguration;
-import com.playerPlugin.playerTaskX.exception.InvalidTaskType;
+import com.playerPlugin.playerTaskX.api.exception.InvalidTaskType;
 import com.playerPlugin.playerTaskX.storage.json.JsonProgressStorage;
 import com.playerPlugin.playerTaskX.storage.json.JsonSessionStorage;
 import com.playerPlugin.playerTaskX.storage.json.JsonTaskStorage;
