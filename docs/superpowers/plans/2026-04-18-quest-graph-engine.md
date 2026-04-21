@@ -2428,39 +2428,46 @@ import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
 import com.playerPlugin.playerTaskX.api.service.TaskStorage;
 import com.playerPlugin.playerTaskX.engine.QuestEngine;
 import com.playerPlugin.playerTaskX.engine.QuestSessionManager;
-import com.playerPlugin.playerTaskX.handler.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GraphExecutionIntegrationTest {
-    @Mock private Player player;
-    @Mock private EntityDeathEvent event;
-    @Mock private TaskManager taskManager;
-    @Mock private SessionStorage sessionStorage;
-    @Mock private TaskStorage taskStorage;
-    @Mock private ProgressStorage progressStorage;
-    
+    @Mock
+    private Player player;
+    @Mock
+    private EntityDeathEvent event;
+    @Mock
+    private TaskManager taskManager;
+    @Mock
+    private SessionStorage sessionStorage;
+    @Mock
+    private TaskStorage taskStorage;
+    @Mock
+    private ProgressStorage progressStorage;
+
     private QuestEngine engine;
     private QuestSessionManager sessionManager;
     private NodeHandlerRegistry registry;
-    
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
         sessionManager = new QuestSessionManager();
         registry = new NodeHandlerRegistry();
-        
+
         // Register all handlers
         registry.register(new StartNodeHandler());
         registry.register(new TaskNodeHandler());
@@ -2468,14 +2475,14 @@ class GraphExecutionIntegrationTest {
         registry.register(new ConditionNodeHandler());
         registry.register(new BranchNodeHandler());
         registry.register(new ActionNodeHandler());
-        
+
         // Create engine with mocked dependencies
         engine = new QuestEngine(sessionManager, registry, taskManager, sessionStorage);
-        
+
         // Setup player mock
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
     }
-    
+
     @Test
     void testStartToCompletionFlow() {
         // Create simple graph: Start -> Task -> Completion
@@ -2484,32 +2491,32 @@ class GraphExecutionIntegrationTest {
         when(task.getId()).thenReturn("quest1");
         when(task.getGraph()).thenReturn(graph);
         when(taskManager.getTask("quest1")).thenReturn(Optional.of(task));
-        
+
         // Start quest
         engine.startQuest(player, task);
-        
+
         // Verify session created
         assertTrue(sessionManager.getSession(player.getUniqueId(), "quest1").isPresent());
-        
+
         // Simulate event to progress
         when(event.getEntity()).thenReturn(mock(org.bukkit.entity.LivingEntity.class));
         when(event.getEntity().getKiller()).thenReturn(player);
         engine.handleEvent(player, event);
-        
+
         // Verify session updated
         // (Actual assertions depend on graph structure)
         assertNotNull(sessionManager.getSession(player.getUniqueId(), "quest1").get().getCurrentNodeId());
     }
-    
+
     private QuestGraph createTestGraph(String questId, String startId, String taskId, String completionId) {
         List<GraphNode> nodes = List.of(
-            new GraphNode(startId, "start", 0, 0, Map.of()),
-            new GraphNode(taskId, "task", 100, 0, Map.of("objectives", List.of())),
-            new GraphNode(completionId, "completion", 200, 0, Map.of("rewards", List.of()))
+                new GraphNode(startId, "start", 0, 0, Map.of()),
+                new GraphNode(taskId, "task", 100, 0, Map.of("objectives", List.of())),
+                new GraphNode(completionId, "completion", 200, 0, Map.of("rewards", List.of()))
         );
         List<NodeConnection> edges = List.of(
-            new NodeConnection("e1", startId, taskId, null),
-            new NodeConnection("e2", taskId, completionId, null)
+                new NodeConnection("e1", startId, taskId, null),
+                new NodeConnection("e2", taskId, completionId, null)
         );
         return new QuestGraph(questId, "Test Quest", nodes, edges);
     }
