@@ -9,27 +9,9 @@ export interface Quest {
   name: string
   description: string
   category?: string
-  type: 'single' | 'multi' | 'series'
-  objectives: QuestObjective[]
   createdAt: number
   updatedAt: number
   graph?: QuestGraph
-}
-
-export interface QuestObjective {
-  id: string
-  type: string
-  target: string
-  count: number
-  finished: boolean
-}
-
-export interface ObjectiveTemplate {
-  id: string
-  name: string
-  type: 'item' | 'xp' | 'money' | 'command'
-  value: string | number
-  meta?: any
 }
 
 export interface ObjectiveTemplate {
@@ -132,25 +114,6 @@ export interface ObjectiveData {
     location?: { x: number, y: number, z: number, world: string }
     [key: string]: any
   }
-}
-
-export type ConditionType = 'PERMISSION' | 'HAS_ITEM' | 'KILL_MOB' | 'COLLECT_ITEM' | 'PLAYER_LEVEL' | 'TIME_RANGE' | 'IN_REGION'
-
-export interface ConditionItem {
-  conditionType: ConditionType
-  params: Record<string, any>
-}
-
-export interface ConditionData {
-  type: 'condition'
-  name: string
-  conditions: ConditionItem[]
-}
-
-export interface BranchData {
-  type: 'branch'
-  name: string
-  linkedConditionId: string
 }
 
 export type ActionType = 'GIVE_ITEM' | 'TAKE_ITEM' | 'GIVE_MONEY' | 'TAKE_MONEY' | 'GIVE_XP' | 'SEND_MESSAGE' | 'BROADCAST' | 'EXECUTE_COMMAND' | 'PLAY_SOUND'

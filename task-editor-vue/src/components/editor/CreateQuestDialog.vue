@@ -4,14 +4,6 @@
       <div class="dialog">
         <h3>创建新任务</h3>
         <div class="form-group">
-          <label>任务类型</label>
-          <select v-model="newQuest.type">
-            <option value="single">单一任务</option>
-            <option value="multi">多阶段任务</option>
-            <option value="series">系列任务</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>名称</label>
           <input v-model="newQuest.name" placeholder="输入任务名称" />
         </div>
@@ -37,8 +29,7 @@ const newQuest = ref<Quest>({
   id: `quest_${Date.now()}`,
   name: '',
   description: '',
-  type: 'single',
-  objectives: [],
+  category: '',
   createdAt: Date.now(),
   updatedAt: Date.now()
 })

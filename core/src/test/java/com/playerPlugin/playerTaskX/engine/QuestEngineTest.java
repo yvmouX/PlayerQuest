@@ -40,8 +40,7 @@ class QuestEngineTest {
         List<NodeConnection> edges = List.of();
         QuestGraph graph = new QuestGraph("g1", "Graph", nodes, edges);
         
-        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, 
-            List.of(), List.of(), graph);
+        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, graph);
         
         assertTrue(task.hasGraph());
         assertEquals("g1", task.getGraph().getId());
@@ -49,8 +48,7 @@ class QuestEngineTest {
     
     @Test
     void testTaskDefinitionWithoutGraph() {
-        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, 
-            List.of(), List.of(), null);
+        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, null);
         
         assertFalse(task.hasGraph());
     }
@@ -65,7 +63,6 @@ class QuestEngineTest {
         );
         QuestGraph graph = new QuestGraph("q1", "Test", nodes, edges);
         
-        return new TaskDefinition("q1", "Test Quest", "desc", null, 
-            List.of(), List.of(), graph);
+        return new TaskDefinition("q1", "Test Quest", "desc", null, graph);
     }
 }

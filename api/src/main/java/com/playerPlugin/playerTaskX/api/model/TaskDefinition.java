@@ -2,19 +2,12 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.playerPlugin.playerTaskX.api.model.condition.Condition;
-import com.playerPlugin.playerTaskX.api.model.objective.Objective;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class TaskDefinition {
     private final String id;
     private final String name;
     private final String description;
     private final String category;
-    private final List<Objective> objectives;
-    private final List<Condition> conditions;
     private final QuestGraph graph;
 
     @JsonCreator
@@ -23,16 +16,12 @@ public class TaskDefinition {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("category") String category,
-            @JsonProperty("objectives") List<Objective> objectives,
-            @JsonProperty("conditions") List<Condition> conditions,
             @JsonProperty("graph") QuestGraph graph
     ) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.category = category;
-        this.objectives = objectives != null ? new ArrayList<>(objectives) : new ArrayList<>();
-        this.conditions = conditions != null ? new ArrayList<>(conditions) : new ArrayList<>();
         this.graph = graph;
     }
 
@@ -40,8 +29,6 @@ public class TaskDefinition {
     public String getName() { return name; }
     public String getDescription() { return description; }
     public String getCategory() { return category; }
-    public List<Objective> getObjectives() { return objectives; }
-    public List<Condition> getConditions() { return conditions; }
     public QuestGraph getGraph() { return graph; }
     public boolean hasGraph() { return graph != null && !graph.getNodes().isEmpty(); }
 

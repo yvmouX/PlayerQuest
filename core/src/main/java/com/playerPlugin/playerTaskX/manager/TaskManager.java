@@ -80,28 +80,23 @@ public class TaskManager {
     }
 
     /**
-     * 获取玩家可接取的任务（所有条件都满足）
+     * 获取玩家可接取的任务
      * @param player 玩家
      * @return 可接取的任务列表
      */
     public List<TaskDefinition> getAvailableTasks(Player player) {
-        return taskCache.values().stream()
-            .filter(task -> task.getConditions().stream().allMatch(c -> c.isMet(player)))
-            .toList();
+        return taskCache.values().stream().toList();
     }
 
     /**
      * 玩家接取任务
      * @param player 玩家
      * @param taskId 任务ID
-     * @return 是否接取成功（任务存在且条件满足返回true）
+     * @return 是否接取成功（任务存在返回true）
      */
     public boolean acceptTask(Player player, String taskId) {
         TaskDefinition task = taskCache.get(taskId);
         if (task == null) return false;
-        if (task.getConditions().stream().anyMatch(c -> !c.isMet(player))) {
-            return false;
-        }
         
         TaskProgress progress = new TaskProgress(player.getUniqueId(), taskId);
         progressStorage.save(player.getUniqueId(), progress);

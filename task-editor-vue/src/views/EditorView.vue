@@ -305,9 +305,7 @@ function handleCreateNewQuest() {
     id: tempId,
     name: '未命名任务',
     description: '',
-    category: '',
-    type: 'single',
-    objectives: []
+    category: ''
   }
   sidebarQuests.value = [...sidebarQuests.value, newQuest]
   unsavedQuests.value.set(tempId, newQuest)
