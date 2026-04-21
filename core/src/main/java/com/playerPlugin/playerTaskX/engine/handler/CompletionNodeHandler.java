@@ -6,6 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.GraphNode;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.engine.GraphHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -14,12 +15,14 @@ import java.util.List;
 import java.util.Map;
 
 public class CompletionNodeHandler implements NodeHandler {
+    private final GraphHelper graphHelper = new GraphHelper();
+
     @Override
     public String getNodeType() { return "completion"; }
     
     @Override
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
-        GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
+        GraphNode currentNode = graphHelper.findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.terminal(session.getCurrentNodeId());
         
         Player player = Bukkit.getPlayer(session.getPlayerId());
@@ -80,13 +83,6 @@ public class CompletionNodeHandler implements NodeHandler {
                 // 无特殊逻辑
             }
         }
-    }
-    
-    private GraphNode findNode(QuestGraph graph, String nodeId) {
-        return graph.getNodes().stream()
-            .filter(n -> n.getId().equals(nodeId))
-            .findFirst()
-            .orElse(null);
     }
     
     @Override

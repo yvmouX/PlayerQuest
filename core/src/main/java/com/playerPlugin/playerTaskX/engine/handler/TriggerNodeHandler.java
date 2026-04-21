@@ -6,6 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
+import com.playerPlugin.playerTaskX.engine.GraphHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -14,13 +15,15 @@ import java.util.List;
 import java.util.Map;
 
 public class TriggerNodeHandler implements NodeHandler {
+    private final GraphHelper graphHelper = new GraphHelper();
+
     @Override
     public String getNodeType() { return "trigger"; }
     
     @Override
     @SuppressWarnings("unchecked")
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
-        GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
+        GraphNode currentNode = graphHelper.findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.waiting();
         
         Map<String, Object> data = currentNode.getData();
@@ -77,13 +80,6 @@ public class TriggerNodeHandler implements NodeHandler {
     
     private boolean checkQuestCompleted(QuestSession session, String questId) {
         return false;
-    }
-    
-    private GraphNode findNode(QuestGraph graph, String nodeId) {
-        return graph.getNodes().stream()
-            .filter(n -> n.getId().equals(nodeId))
-            .findFirst()
-            .orElse(null);
     }
     
     @Override

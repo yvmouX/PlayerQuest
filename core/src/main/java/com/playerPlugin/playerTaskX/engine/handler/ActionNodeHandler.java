@@ -8,6 +8,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
 import com.playerPlugin.playerTaskX.api.service.TemplateService;
+import com.playerPlugin.playerTaskX.engine.GraphHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -16,13 +17,15 @@ import java.util.List;
 import java.util.Map;
 
 public class ActionNodeHandler implements NodeHandler {
+    private final GraphHelper graphHelper = new GraphHelper();
+
     @Override
     public String getNodeType() { return "action"; }
     
     @Override
     @SuppressWarnings("unchecked")
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
-        GraphNode currentNode = findNode(graph, session.getCurrentNodeId());
+        GraphNode currentNode = graphHelper.findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.waiting();
         
         Player player = Bukkit.getPlayer(session.getPlayerId());
@@ -115,13 +118,6 @@ public class ActionNodeHandler implements NodeHandler {
             return null;
         }
         return template.getDefaultConfig();
-    }
-    
-    private GraphNode findNode(QuestGraph graph, String nodeId) {
-        return graph.getNodes().stream()
-            .filter(n -> n.getId().equals(nodeId))
-            .findFirst()
-            .orElse(null);
     }
     
     @Override
