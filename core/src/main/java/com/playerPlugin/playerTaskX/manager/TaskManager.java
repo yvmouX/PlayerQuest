@@ -13,17 +13,14 @@ import org.bukkit.event.Event;
 import java.util.*;
 
 public class TaskManager {
+    private QuestEngine questEngine;
+    // Storage
     private final TaskStorage taskStorage;
     private final ProgressStorage progressStorage;
+    // Cache
     private final Map<String, TaskDefinition> taskCache = new HashMap<>();
     private final Map<UUID, Map<String, TaskProgress>> playerProgressCache = new HashMap<>();
-    private QuestEngine questEngine;
 
-    /**
-     * 构造任务管理器
-     * @param taskStorage 任务存储服务
-     * @param progressStorage 进度存储服务
-     */
     public TaskManager(TaskStorage taskStorage, ProgressStorage progressStorage) {
         this.taskStorage = taskStorage;
         this.progressStorage = progressStorage;
