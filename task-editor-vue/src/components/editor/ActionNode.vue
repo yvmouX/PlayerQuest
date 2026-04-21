@@ -8,7 +8,6 @@
     <div class="node-body">
       <span class="node-name">{{ data.name || 'Action' }}</span>
       <span class="node-template" v-if="data.templateId">📚 {{ data.templateId }}</span>
-      <span class="node-custom" v-else-if="data.customConfig?.type">{{ actionLabel }}</span>
     </div>
     <Handle type="target" :position="Position.Left" class="handle-target" />
     <Handle type="source" :position="Position.Right" class="handle-source" />
@@ -16,7 +15,6 @@
 </template>
 
 <script setup lang="ts">
-import {computed} from 'vue'
 import {Handle, Position} from '@vue-flow/core'
 import type {ActionData} from '../../types'
 
@@ -28,19 +26,6 @@ const props = defineProps<{
 defineEmits<{
   delete: [nodeId: string]
 }>()
-
-const actionLabel = computed(() => {
-  const labels: Record<string, string> = {
-    'give_item': '发放物品',
-    'execute_command': '执行命令',
-    'send_message': '发送消息',
-    'play_effect': '播放特效',
-    'sound': '播放音效',
-    'give_xp': '发放经验'
-  }
-  const type = props.data.customConfig?.type
-  return labels[type || ''] || type || ''
-})
 </script>
 
 <style scoped>
@@ -87,7 +72,7 @@ const actionLabel = computed(() => {
   font-weight: 500;
   color: #7c2d12;
 }
-.node-template, .node-custom {
+.node-template {
   font-size: 0.7rem;
   color: #c2410c;
 }

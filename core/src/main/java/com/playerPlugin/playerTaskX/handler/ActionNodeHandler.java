@@ -30,9 +30,8 @@ public class ActionNodeHandler implements NodeHandler {
         
         Map<String, Object> data = currentNode.getData();
         String templateId = (String) data.get("templateId");
-        Map<String, Object> customConfig = (Map<String, Object>) data.get("customConfig");
         
-        executeAction(player, templateId, customConfig);
+        executeAction(player, templateId);
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
@@ -49,12 +48,8 @@ public class ActionNodeHandler implements NodeHandler {
         return NextNodeResult.next(nextNodeId);
     }
     
-    private void executeAction(Player player, String templateId, Map<String, Object> customConfig) {
-        Map<String, Object> config = customConfig;
-        if (templateId != null && !templateId.isEmpty()) {
-            config = getTemplateConfig(templateId);
-        }
-        
+    private void executeAction(Player player, String templateId) {
+        Map<String, Object> config = getTemplateConfig(templateId);
         if (config == null) return;
         
         String actionType = (String) config.get("type");

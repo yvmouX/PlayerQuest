@@ -107,13 +107,6 @@ export interface ObjectiveData {
   type: 'objective'
   name: string
   templateId?: string
-  customConfig?: {
-    type: string
-    target?: string
-    amount?: number
-    location?: { x: number, y: number, z: number, world: string }
-    [key: string]: any
-  }
 }
 
 export type ActionType = 'GIVE_ITEM' | 'TAKE_ITEM' | 'GIVE_MONEY' | 'TAKE_MONEY' | 'GIVE_XP' | 'SEND_MESSAGE' | 'BROADCAST' | 'EXECUTE_COMMAND' | 'PLAY_SOUND'
@@ -122,19 +115,6 @@ export interface ActionData {
   type: 'action'
   name: string
   templateId?: string
-  customConfig?: {
-    type: string
-    item?: string
-    amount?: number
-    command?: string
-    message?: string
-    effect?: string
-    sound?: string
-    volume?: number
-    pitch?: number
-    xp?: number
-    [key: string]: any
-  }
 }
 
 export interface StartNodeData {

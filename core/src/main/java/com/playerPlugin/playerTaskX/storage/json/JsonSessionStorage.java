@@ -18,12 +18,18 @@ public class JsonSessionStorage implements SessionStorage {
         this.dataFolder.mkdirs();
     }
 
+    private File getPlayerFolder(UUID playerId) {
+        return new File(dataFolder, playerId.toString());
+    }
+
     private File getSessionFile(UUID playerId, String questId) {
-        return new File(dataFolder, playerId.toString() + "_" + questId + ".json");
+        return new File(getPlayerFolder(playerId), questId + ".json");
     }
 
     @Override
     public void save(QuestSession session) {
+        File playerFolder = getPlayerFolder(session.getPlayerId());
+        playerFolder.mkdirs();
         File file = getSessionFile(session.getPlayerId(), session.getQuestId());
         try {
             mapper.writeValue(file, session);
@@ -46,7 +52,9 @@ public class JsonSessionStorage implements SessionStorage {
     @Override
     public Collection<QuestSession> findByPlayer(UUID playerId) {
         List<QuestSession> sessions = new ArrayList<>();
-        File[] files = dataFolder.listFiles((dir, name) -> name.startsWith(playerId.toString() + "_") && name.endsWith(".json"));
+        File playerFolder = getPlayerFolder(playerId);
+        if (!playerFolder.exists()) return sessions;
+        File[] files = playerFolder.listFiles((dir, name) -> name.endsWith(".json"));
         if (files == null) return sessions;
         for (File file : files) {
             try {
@@ -61,16 +69,20 @@ public class JsonSessionStorage implements SessionStorage {
     @Override
     public Collection<QuestSession> findAllActive() {
         List<QuestSession> sessions = new ArrayList<>();
-        File[] files = dataFolder.listFiles((dir, name) -> name.endsWith(".json"));
-        if (files == null) return sessions;
-        for (File file : files) {
-            try {
-                QuestSession session = mapper.readValue(file, QuestSession.class);
-                if (session.getStatus() == com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus.IN_PROGRESS) {
-                    sessions.add(session);
+        File[] playerFolders = dataFolder.listFiles(File::isDirectory);
+        if (playerFolders == null) return sessions;
+        for (File playerFolder : playerFolders) {
+            File[] files = playerFolder.listFiles((dir, name) -> name.endsWith(".json"));
+            if (files == null) continue;
+            for (File file : files) {
+                try {
+                    QuestSession session = mapper.readValue(file, QuestSession.class);
+                    if (session.getStatus() == com.playerPlugin.playerTaskX.api.Enum.PTXTaskStatus.IN_PROGRESS) {
+                        sessions.add(session);
+                    }
+                } catch (IOException e) {
+                    // Skip invalid files
                 }
-            } catch (IOException e) {
-                // Skip invalid files
             }
         }
         return sessions;

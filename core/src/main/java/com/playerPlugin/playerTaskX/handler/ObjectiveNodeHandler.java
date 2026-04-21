@@ -30,9 +30,8 @@ public class ObjectiveNodeHandler implements NodeHandler {
         
         Map<String, Object> data = currentNode.getData();
         String templateId = (String) data.get("templateId");
-        Map<String, Object> customConfig = (Map<String, Object>) data.get("customConfig");
         
-        boolean completed = checkObjectiveCompleted(player, session, templateId, customConfig, event);
+        boolean completed = checkObjectiveCompleted(player, session, templateId, event);
         
         if (!completed) {
             return NextNodeResult.waiting();
@@ -54,13 +53,9 @@ public class ObjectiveNodeHandler implements NodeHandler {
     }
     
     private boolean checkObjectiveCompleted(Player player, QuestSession session, 
-            String templateId, Map<String, Object> customConfig, Event event) {
+            String templateId, Event event) {
         
-        Map<String, Object> config = customConfig;
-        if (templateId != null && !templateId.isEmpty()) {
-            config = getTemplateConfig(templateId);
-        }
-        
+        Map<String, Object> config = getTemplateConfig(templateId);
         if (config == null) {
             org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
                 .warn("Template not found for objective: {}", templateId);

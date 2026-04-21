@@ -76,9 +76,9 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
     case 'trigger':
       return { type: 'trigger', conditionType: 'quest_complete', conditionConfig: {} } as TriggerData
     case 'objective':
-      return { type: 'objective', name: '', templateId: '', customConfig: {} } as ObjectiveData
+      return { type: 'objective', name: '', templateId: '' } as ObjectiveData
     case 'action':
-      return { type: 'action', name: '', templateId: '', customConfig: {} } as ActionData
+      return { type: 'action', name: '', templateId: '' } as ActionData
     case 'completion':
       return { type: 'completion' } as CompletionNodeData
     default:

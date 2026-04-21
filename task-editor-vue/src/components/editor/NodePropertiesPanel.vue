@@ -44,59 +44,12 @@
         <div class="form-group">
           <label>目标库模板</label>
           <select v-model="selectedObjectiveTemplate" @change="onObjectiveTemplateChange">
-            <option value="">-- 选择模板（可选） --</option>
+            <option value="">-- 选择模板（必选） --</option>
             <option v-for="t in objectiveTemplates" :key="t.id" :value="t.id">
               {{ t.name }} ({{ t.type }})
             </option>
           </select>
         </div>
-        <div class="section-divider">
-          <h4>自定义配置</h4>
-        </div>
-        <div class="form-group">
-          <label>目标类型</label>
-          <select v-model="editedNode.customConfig.type">
-            <option value="kill_mob">击杀生物</option>
-            <option value="collect_item">收集物品</option>
-            <option value="break_block">破坏方块</option>
-            <option value="talk_to_npc">与NPC对话</option>
-            <option value="reach_location">到达位置</option>
-          </select>
-        </div>
-        <template v-if="editedNode.customConfig.type === 'kill_mob' || editedNode.customConfig.type === 'collect_item' || editedNode.customConfig.type === 'break_block'">
-          <div class="form-group">
-            <label>目标标识</label>
-            <input v-model="editedNode.customConfig.target" placeholder="如: ZOMBIE, DIAMOND, STONE" />
-          </div>
-          <div class="form-group">
-            <label>数量</label>
-            <input v-model.number="editedNode.customConfig.amount" type="number" min="1" placeholder="1" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'talk_to_npc'">
-          <div class="form-group">
-            <label>NPC ID</label>
-            <input v-model="editedNode.customConfig.target" placeholder="NPC标识" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'reach_location'">
-          <div class="form-group">
-            <label>世界</label>
-            <input v-model="editedNode.customConfig.location.world" placeholder="world" />
-          </div>
-          <div class="form-group">
-            <label>X 坐标</label>
-            <input v-model.number="editedNode.customConfig.location.x" type="number" placeholder="0" />
-          </div>
-          <div class="form-group">
-            <label>Y 坐标</label>
-            <input v-model.number="editedNode.customConfig.location.y" type="number" placeholder="64" />
-          </div>
-          <div class="form-group">
-            <label>Z 坐标</label>
-            <input v-model.number="editedNode.customConfig.location.z" type="number" placeholder="0" />
-          </div>
-        </template>
       </template>
 
       <!-- Action Node -->
@@ -108,74 +61,12 @@
         <div class="form-group">
           <label>行为库模板</label>
           <select v-model="selectedActionTemplate" @change="onActionTemplateChange">
-            <option value="">-- 选择模板（可选） --</option>
+            <option value="">-- 选择模板（必选） --</option>
             <option v-for="t in actionTemplates" :key="t.id" :value="t.id">
               {{ t.name }} ({{ t.type }})
             </option>
           </select>
         </div>
-        <div class="section-divider">
-          <h4>自定义配置</h4>
-        </div>
-        <div class="form-group">
-          <label>行为类型</label>
-          <select v-model="editedNode.customConfig.type">
-            <option value="give_item">发放物品</option>
-            <option value="execute_command">执行命令</option>
-            <option value="send_message">发送消息</option>
-            <option value="play_effect">播放特效</option>
-            <option value="sound">播放音效</option>
-            <option value="give_xp">发放经验</option>
-          </select>
-        </div>
-        <template v-if="editedNode.customConfig.type === 'give_item'">
-          <div class="form-group">
-            <label>物品ID</label>
-            <input v-model="editedNode.customConfig.item" placeholder="minecraft:diamond" />
-          </div>
-          <div class="form-group">
-            <label>数量</label>
-            <input v-model.number="editedNode.customConfig.amount" type="number" min="1" placeholder="1" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'execute_command'">
-          <div class="form-group">
-            <label>命令</label>
-            <input v-model="editedNode.customConfig.command" placeholder="/say Hello %player%" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'send_message'">
-          <div class="form-group">
-            <label>消息</label>
-            <textarea v-model="editedNode.customConfig.message" rows="2" placeholder="消息内容..." />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'play_effect'">
-          <div class="form-group">
-            <label>特效类型</label>
-            <input v-model="editedNode.customConfig.effect" placeholder="HEART" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'sound'">
-          <div class="form-group">
-            <label>音效ID</label>
-            <input v-model="editedNode.customConfig.sound" placeholder="entity.player.levelup" />
-          </div>
-          <div class="form-group">
-            <label>音量</label>
-            <input v-model.number="editedNode.customConfig.volume" type="number" placeholder="1.0" />
-          </div>
-          <div class="form-group">
-            <label>音调</label>
-            <input v-model.number="editedNode.customConfig.pitch" type="number" placeholder="1.0" />
-          </div>
-        </template>
-        <template v-else-if="editedNode.customConfig.type === 'give_xp'">
-          <div class="form-group">
-            <label>经验值</label>
-            <input v-model.number="editedNode.customConfig.xp" type="number" min="1" placeholder="100" />
-          </div>
-        </template>
       </template>
     </div>
   </aside>
@@ -240,7 +131,6 @@ function onObjectiveTemplateChange() {
   const template = objectiveTemplates.value.find(t => t.id === selectedObjectiveTemplate.value)
   if (template) {
     editedNode.value.templateId = template.id
-    editedNode.value.customConfig = { ...template.defaultConfig }
   } else {
     editedNode.value.templateId = ''
   }
@@ -250,7 +140,6 @@ function onActionTemplateChange() {
   const template = actionTemplates.value.find(t => t.id === selectedActionTemplate.value)
   if (template) {
     editedNode.value.templateId = template.id
-    editedNode.value.customConfig = { ...template.defaultConfig }
   } else {
     editedNode.value.templateId = ''
   }
