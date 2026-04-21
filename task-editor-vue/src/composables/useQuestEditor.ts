@@ -11,7 +11,6 @@ import type {
     ObjectiveData,
     QuestGraph,
     StartNodeData,
-    TaskNodeData,
     TriggerData
 } from '../types'
 
@@ -58,12 +57,11 @@ const onNodesChange = vueFlowStore.onNodesChange
 const onEdgesChange = vueFlowStore.onEdgesChange
 const currentQuestId = ref<string | null>(null)
 
-const NODE_TYPE_NAMES = { start: '开始', task: '任务', completion: '完成' } as const
+const NODE_TYPE_NAMES = { start: '开始', completion: '完成' } as const
 
 const validConnections: Record<string, string[]> = {
-  start: ['trigger', 'task'],
-  trigger: ['task'],
-  task: ['objective', 'completion'],
+  start: ['trigger', 'objective'],
+  trigger: ['objective'],
   objective: ['action', 'completion'],
   action: ['action', 'completion'],
   completion: ['action']
@@ -77,14 +75,6 @@ function createDefaultNodeData(nodeType: NodeType, id: string): EditorNodeData {
       return { type: 'start', description: '' } as StartNodeData
     case 'trigger':
       return { type: 'trigger', conditionType: 'quest_complete', conditionConfig: {} } as TriggerData
-    case 'task':
-      return {
-        type: 'task',
-        id,
-        name: '',
-        description: '',
-        taskType: 'FOREVER'
-      } as TaskNodeData
     case 'objective':
       return { type: 'objective', name: '', templateId: '', customConfig: {} } as ObjectiveData
     case 'action':
@@ -106,9 +96,9 @@ export function useQuestEditor() {
   })
 
   function addNode(nodeType: NodeType, position: { x: number; y: number }) {
-    if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && 
+    if ((nodeType === 'start' || nodeType === 'completion') && 
         nodes.value.some(n => n.type === nodeType)) {
-      const typeName = nodeType === 'start' ? NODE_TYPE_NAMES.start : nodeType === 'task' ? NODE_TYPE_NAMES.task : NODE_TYPE_NAMES.completion
+      const typeName = nodeType === 'start' ? NODE_TYPE_NAMES.start : NODE_TYPE_NAMES.completion
       useToast().error(`${typeName}节点已存在，每个流程只能有一个`)
       return
     }

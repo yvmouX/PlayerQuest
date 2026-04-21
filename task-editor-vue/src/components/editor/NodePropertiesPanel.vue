@@ -35,51 +35,6 @@
         </template>
       </template>
 
-      <!-- Task Node -->
-      <template v-else-if="selectedNode.type === 'task'">
-        <div class="form-group">
-          <label>任务 ID</label>
-          <input v-model="editedNode.id" readonly />
-        </div>
-        <div class="form-group">
-          <label>名称</label>
-          <input v-model="editedNode.name" placeholder="任务名称" />
-        </div>
-        <div class="form-group">
-          <label>描述</label>
-          <textarea v-model="editedNode.description" rows="3" placeholder="描述..." />
-        </div>
-        <div class="form-group">
-          <label>类型</label>
-          <select v-model="editedNode.taskType">
-            <option value="CYCLE">循环任务</option>
-            <option value="TIMER">定时任务</option>
-            <option value="FOREVER">永久任务</option>
-            <option value="LIMIT">限时任务</option>
-            <option value="NONE">无特殊</option>
-          </select>
-        </div>
-        <template v-if="editedNode.taskType === 'CYCLE' || editedNode.taskType === 'TIMER'">
-          <div class="form-group">
-            <label>重置间隔 (秒)</label>
-            <input v-model.number="editedNode.resetInterval" type="number" min="1" placeholder="60" />
-          </div>
-        </template>
-        <template v-if="editedNode.taskType === 'LIMIT'">
-          <div class="form-group">
-            <label>限时 (秒)</label>
-            <input v-model.number="editedNode.timeLimit" type="number" min="1" placeholder="300" />
-          </div>
-          <div class="form-group">
-            <label>超时动作</label>
-            <select v-model="editedNode.expiredAction">
-              <option value="EXPIRE">任务过期</option>
-              <option value="FAIL">任务失败</option>
-            </select>
-          </div>
-        </template>
-      </template>
-
       <!-- Objective Node -->
       <template v-else-if="selectedNode.type === 'objective'">
         <div class="form-group">
@@ -235,13 +190,11 @@ import type {
   ObjectiveData,
   ObjectiveTemplate,
   StartNodeData,
-  TaskNodeData,
   TriggerData
 } from '../../types'
 import {ActionService, ObjectiveService} from '../../services/api'
-import {editorNodes} from '../../composables/useQuestEditor'
 
-type NodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData
+type NodeData = StartNodeData | TriggerData | ObjectiveData | ActionData | CompletionNodeData
 
 const props = defineProps<{
   selectedNode: NodeData | null
@@ -307,16 +260,11 @@ const panelTitle = computed(() => {
   const titles: Record<string, string> = {
     start: 'Start 节点',
     trigger: '触发条件',
-    task: '任务属性',
     objective: '目标',
     action: '行为',
     completion: '完成节点'
   }
   return titles[props.selectedNode?.type || ''] || '属性'
-})
-
-const taskNodes = computed(() => {
-  return editorNodes.value.filter(n => n.nodeType === 'task')
 })
 
 const editedNode = ref<NodeData>(createDefaultNode())

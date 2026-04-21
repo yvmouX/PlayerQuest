@@ -117,9 +117,7 @@
           <div class="empty-state-text">点击左侧任务列表中的任务进入编辑</div>
         </div>
         
-        <template #node-task="{ data, id }">
-          <TaskNode :data="data" :node-id="id" />
-        </template>
+
         
         <template #node-start="{ data, id }">
           <StartNode :data="data" :node-id="id" />
@@ -183,7 +181,7 @@ import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
-import TaskNode from '../components/editor/TaskNode.vue'
+
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
 import TriggerNode from '../components/editor/TriggerNode.vue'
@@ -304,7 +302,7 @@ function handleCreateNewQuest() {
 
 function deleteNode(nodeId: string) {
   const node = nodes.value.find(n => n.id === nodeId)
-  if (node && (node.type === 'start' || node.type === 'task' || node.type === 'completion')) {
+  if (node && (node.type === 'start' || node.type === 'completion')) {
     useToast().error('无法删除开始/任务/完成节点')
     return
   }
@@ -330,7 +328,7 @@ function handleKeyDelete(event: KeyboardEvent) {
       selectedEdgeForDelete.value = null
     } else if (selectedNodeId.value) {
       const node = nodes.value.find(n => n.id === selectedNodeId.value)
-      if (node && (node.type === 'start' || node.type === 'task' || node.type === 'completion')) {
+      if (node && (node.type === 'start' || node.type === 'completion')) {
         event.preventDefault()
         useToast().error('无法删除开始/任务/完成节点')
       } else {
@@ -352,10 +350,8 @@ function handleSelectQuest(quest: Quest) {
   } else {
     clearEditor()
     const startId = addNode('start', { x: 250, y: 50 })
-    const taskId = addNode('task', { x: 250, y: 200 })
     const completionId = addNode('completion', { x: 250, y: 350 })
-    addEdge(startId, taskId)
-    addEdge(taskId, completionId)
+    addEdge(startId, completionId)
     loadGraph(quest.id, {
       id: quest.id,
       name: quest.name,
@@ -447,8 +443,8 @@ function handleDrop(event: DragEvent) {
     return
   }
   
-  if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && nodes.value.some(n => n.nodeType === nodeType)) {
-    const names: Record<string, string> = { start: '开始', task: '任务', completion: '完成' }
+  if ((nodeType === 'start' || nodeType === 'completion') && nodes.value.some(n => n.nodeType === nodeType)) {
+    const names: Record<string, string> = { start: '开始', completion: '完成' }
     useToast().error(`${names[nodeType]}节点已存在，每个流程只能有一个`)
     return
   }
@@ -501,9 +497,9 @@ function handleContextMenu(event: MouseEvent) {
 function handleQuickCreateNode(nodeType: NodeType) {
   if (!quickCreateMenuPosition.value) return
   
-  if ((nodeType === 'start' || nodeType === 'task' || nodeType === 'completion') && 
+  if ((nodeType === 'start' || nodeType === 'completion') && 
       nodes.value.some(n => n.type === nodeType)) {
-    const names: Record<string, string> = { start: '开始', task: '任务', completion: '完成' }
+    const names: Record<string, string> = { start: '开始', completion: '完成' }
     useToast().error(`${names[nodeType]}节点已存在，每个流程只能有一个`)
     showQuickCreateMenu.value = false
     return

@@ -12,7 +12,6 @@ export interface Quest {
   objectives: QuestObjective[]
   createdAt: number
   updatedAt: number
-  taskType?: TaskSubType
   graph?: QuestGraph
 }
 
@@ -65,9 +64,7 @@ export interface StatsActivity {
   users: number
 }
 
-export type NodeType = 'start' | 'trigger' | 'task' | 'objective' | 'action' | 'completion'
-
-export type TaskSubType = 'CYCLE' | 'TIMER' | 'FOREVER' | 'LIMIT'
+export type NodeType = 'start' | 'trigger' | 'objective' | 'action' | 'completion'
 
 export type EventType = 
   | 'LOGIN' | 'LOGOUT' | 'CHAT' | 'COMMAND' | 'JUMP' | 'SNEAK' | 'SPRINT' | 'DROP_ITEM' | 'PICKUP_ITEM'
@@ -180,22 +177,11 @@ export interface StartNodeData {
   type: 'start'
 }
 
-export interface TaskNodeData {
-  type: 'task'
-  id: string
-  name: string
-  description: string
-  taskType: TaskSubType
-  resetInterval?: number
-  timeLimit?: number
-  expiredAction?: string
-}
-
 export interface CompletionNodeData {
   type: 'completion'
 }
 
-export type EditorNodeData = StartNodeData | TriggerData | TaskNodeData | ObjectiveData | ActionData | CompletionNodeData
+export type EditorNodeData = StartNodeData | TriggerData | ObjectiveData | ActionData | CompletionNodeData
 
 export interface NodeConnection {
   id: string
