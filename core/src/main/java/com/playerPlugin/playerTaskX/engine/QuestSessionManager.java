@@ -7,14 +7,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class QuestSessionManager {
     /** 玩家会话缓存：玩家UUID -> (任务ID -> 任务会话) */
-    private final Map<UUID, Map<String, QuestSession>> playerSessions = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<String, QuestSession>> sessionCache = new ConcurrentHashMap<>();
     
     /**
      * 创建任务会话并加入缓存
      * @param session 任务会话
      */
     public void createSession(QuestSession session) {
-        playerSessions
+        sessionCache
             .computeIfAbsent(session.getPlayerId(), k -> new ConcurrentHashMap<>())
             .put(session.getQuestId(), session);
     }
@@ -26,7 +26,7 @@ public class QuestSessionManager {
      * @return 任务会话
      */
     public Optional<QuestSession> getSession(UUID playerId, String questId) {
-        Map<String, QuestSession> sessions = playerSessions.get(playerId);
+        Map<String, QuestSession> sessions = sessionCache.get(playerId);
         if (sessions == null) return Optional.empty();
         return Optional.ofNullable(sessions.get(questId));
     }
@@ -37,14 +37,14 @@ public class QuestSessionManager {
      * @return 会话集合（只读）
      */
     public Collection<QuestSession> getPlayerSessions(UUID playerId) {
-        Map<String, QuestSession> sessions = playerSessions.get(playerId);
+        Map<String, QuestSession> sessions = sessionCache.get(playerId);
         if (sessions == null) return Collections.emptyList();
         return Collections.unmodifiableCollection(sessions.values());
     }
     
     /** 获取所有玩家的所有任务会话 */
     public Collection<QuestSession> getAllSessions() {
-        return playerSessions.values().stream()
+        return sessionCache.values().stream()
             .flatMap(m -> m.values().stream())
             .toList();
     }
@@ -55,7 +55,7 @@ public class QuestSessionManager {
      * @param questId 任务ID
      */
     public void removeSession(UUID playerId, String questId) {
-        Map<String, QuestSession> sessions = playerSessions.get(playerId);
+        Map<String, QuestSession> sessions = sessionCache.get(playerId);
         if (sessions != null) {
             sessions.remove(questId);
         }
@@ -66,6 +66,6 @@ public class QuestSessionManager {
      * @param playerId 玩家UUID
      */
     public void clearPlayerSessions(UUID playerId) {
-        playerSessions.remove(playerId);
+        sessionCache.remove(playerId);
     }
 }
