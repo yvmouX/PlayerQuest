@@ -13,20 +13,17 @@ import com.playerPlugin.playerTaskX.api.exception.GraphExecutionException;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+
+import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
 
 public class QuestEngine {
-    private static final Logger log = LoggerFactory.getLogger(QuestEngine.class);
-    
     private final QuestSessionManager sessionManager;
     private final NodeHandlerRegistry handlerRegistry;
     private final TaskManager taskManager;
     private final SessionStorage sessionStorage;
+    private final GraphHelper helper;
     
     /**
      * 构造任务引擎
@@ -43,6 +40,7 @@ public class QuestEngine {
         this.handlerRegistry = handlerRegistry;
         this.taskManager = taskManager;
         this.sessionStorage = sessionStorage;
+        this.helper = new GraphHelper();
     }
     
     /**
@@ -56,7 +54,7 @@ public class QuestEngine {
             throw new GraphExecutionException("Task " + task.getId() + " has no graph");
         }
         
-        String startNodeId = findStartNode(graph);
+        String startNodeId = helper.findStartNode(graph);
         if (startNodeId == null) {
             throw new GraphExecutionException("No start node found in graph");
         }
@@ -75,7 +73,7 @@ public class QuestEngine {
         Collection<QuestSession> sessions = sessionManager.getPlayerSessions(player.getUniqueId());
         
         for (QuestSession session : sessions) {
-            if (session.getStatus() != PTXTaskStatus.IN_PROGRESS) continue;
+            if (session.getStatus() != PTXTaskStatus.IN_PROGRESS) continue; // 如果任务状态不是 IN_PROGRESS --跳过
             
             TaskDefinition task = taskManager.getTask(session.getQuestId()).orElse(null);
             if (task == null || !task.hasGraph()) continue;
@@ -83,7 +81,7 @@ public class QuestEngine {
             QuestGraph graph = task.getGraph();
             String currentNodeId = session.getCurrentNodeId();
             
-            GraphNode currentNode = findNode(graph, currentNodeId);
+            GraphNode currentNode = helper.findNode(graph, currentNodeId);
             if (currentNode == null) {
                 log.warn("Session {} has invalid current node {}", session, currentNodeId);
                 continue;
@@ -138,29 +136,4 @@ public class QuestEngine {
         session.markNodeCompleted(session.getCurrentNodeId());
     }
     
-    /** 在任务图中查找起始节点（nodeType为"start"） */
-    private String findStartNode(QuestGraph graph) {
-        return graph.getNodes().stream()
-            .filter(n -> "start".equals(n.getNodeType()))
-            .map(GraphNode::getId)
-            .findFirst()
-            .orElseGet(() -> graph.getNodes().isEmpty() ? null : graph.getNodes().get(0).getId());
-    }
-    
-    /** 根据节点ID在任务图中查找节点 */
-    private GraphNode findNode(QuestGraph graph, String nodeId) {
-        return graph.getNodes().stream()
-            .filter(n -> n.getId().equals(nodeId))
-            .findFirst()
-            .orElse(null);
-    }
-    
-    /** 获取从指定节点出发的所有边指向的节点 */
-    protected List<GraphNode> getOutgoingEdges(QuestGraph graph, String nodeId) {
-        return graph.getEdges().stream()
-            .filter(e -> e.getSourceId().equals(nodeId))
-            .map(e -> findNode(graph, e.getTargetId()))
-            .filter(Objects::nonNull)
-            .toList();
-    }
 }
