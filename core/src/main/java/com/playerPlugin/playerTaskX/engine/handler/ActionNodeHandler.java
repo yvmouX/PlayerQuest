@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.engine.handler;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.ActionTemplate;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
-import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 import com.playerPlugin.playerTaskX.api.model.session.QuestSession;
@@ -13,7 +12,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
-import java.util.List;
 import java.util.Map;
 
 public class ActionNodeHandler implements NodeHandler {
@@ -38,17 +36,7 @@ public class ActionNodeHandler implements NodeHandler {
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
-        List<String> nextNodes = graph.getEdges().stream()
-            .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
-            .map(NodeConnection::getTargetId)
-            .toList();
-        
-        if (nextNodes.isEmpty()) {
-            return NextNodeResult.waiting();
-        }
-        
-        String nextNodeId = nextNodes.get(0);
-        return NextNodeResult.next(nextNodeId);
+        return graphHelper.getNextNodeResult(session.getCurrentNodeId(), graph, true);
     }
     
     private void executeAction(Player player, String templateId) {

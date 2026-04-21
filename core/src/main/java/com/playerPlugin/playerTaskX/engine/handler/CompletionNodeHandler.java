@@ -11,7 +11,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
-import java.util.List;
 import java.util.Map;
 
 public class CompletionNodeHandler implements NodeHandler {
@@ -35,19 +34,7 @@ public class CompletionNodeHandler implements NodeHandler {
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
-        // 执行 Completion 后续的 Action 节点
-        List<String> nextNodes = graph.getEdges().stream()
-            .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
-            .map(e -> e.getTargetId())
-            .toList();
-        
-        if (nextNodes.isEmpty()) {
-            return NextNodeResult.terminal(session.getCurrentNodeId());
-        }
-        
-        // 返回第一个后续节点（通常是 Action）
-        String nextNodeId = nextNodes.get(0);
-        return NextNodeResult.next(nextNodeId);
+        return graphHelper.getNextNodeResult(session.getCurrentNodeId(), graph, false);
     }
     
     private String getTaskType(QuestGraph graph) {

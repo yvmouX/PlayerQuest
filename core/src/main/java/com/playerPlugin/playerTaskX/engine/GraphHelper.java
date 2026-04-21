@@ -1,7 +1,9 @@
 package com.playerPlugin.playerTaskX.engine;
 
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
+import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
+import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
 
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +20,7 @@ public class GraphHelper {
                 .filter(n -> "start".equals(n.getNodeType()))
                 .map(GraphNode::getId)
                 .findFirst()
-                .orElseGet(() -> graph.getNodes().isEmpty() ? null : graph.getNodes().get(0).getId());
+                .orElseGet(() -> graph.getNodes().isEmpty() ? null : graph.getNodes().getFirst().getId());
     }
 
     /**
@@ -46,5 +48,25 @@ public class GraphHelper {
                 .map(e -> findNode(graph, e.getTargetId()))
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /**
+     * 获取下一个节点的结果
+     * @param currentNodeId 当前节点ID
+     * @param graph 任务图
+     * @param waitingWhenEmpty 当没有下一个节点时返回 waiting 还是 terminal
+     * @return NextNodeResult
+     */
+    public NextNodeResult getNextNodeResult(String currentNodeId, QuestGraph graph, boolean waitingWhenEmpty) {
+        List<String> nextNodes = graph.getEdges().stream()
+                .filter(e -> e.getSourceId().equals(currentNodeId))
+                .map(NodeConnection::getTargetId)
+                .toList();
+
+        if (nextNodes.isEmpty()) {
+            return waitingWhenEmpty ? NextNodeResult.waiting() : NextNodeResult.terminal(currentNodeId);
+        }
+
+        return NextNodeResult.next(nextNodes.getFirst());
     }
 }

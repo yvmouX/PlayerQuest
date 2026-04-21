@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX.engine.handler;
 
 import com.playerPlugin.playerTaskX.api.handler.NodeHandler;
 import com.playerPlugin.playerTaskX.api.model.GraphNode;
-import com.playerPlugin.playerTaskX.api.model.NodeConnection;
 import com.playerPlugin.playerTaskX.api.model.ObjectiveTemplate;
 import com.playerPlugin.playerTaskX.api.model.QuestGraph;
 import com.playerPlugin.playerTaskX.api.model.session.NextNodeResult;
@@ -13,7 +12,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
-import java.util.List;
 import java.util.Map;
 
 public class ObjectiveNodeHandler implements NodeHandler {
@@ -42,17 +40,7 @@ public class ObjectiveNodeHandler implements NodeHandler {
         
         session.markNodeCompleted(session.getCurrentNodeId());
         
-        List<String> nextNodes = graph.getEdges().stream()
-            .filter(e -> e.getSourceId().equals(session.getCurrentNodeId()))
-            .map(NodeConnection::getTargetId)
-            .toList();
-        
-        if (nextNodes.isEmpty()) {
-            return NextNodeResult.waiting();
-        }
-        
-        String nextNodeId = nextNodes.get(0);
-        return NextNodeResult.next(nextNodeId);
+        return graphHelper.getNextNodeResult(session.getCurrentNodeId(), graph, true);
     }
     
     private boolean checkObjectiveCompleted(Player player, QuestSession session, 
