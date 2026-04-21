@@ -41,7 +41,7 @@ class QuestEngineTest {
         List<NodeConnection> edges = List.of();
         QuestGraph graph = new QuestGraph("g1", "Graph", nodes, edges);
         
-        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", PTXTaskType.FOREVER, 
+        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, PTXTaskType.FOREVER, 
             List.of(), List.of(), graph);
         
         assertTrue(task.hasGraph());
@@ -50,7 +50,7 @@ class QuestEngineTest {
     
     @Test
     void testTaskDefinitionWithoutGraph() {
-        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", PTXTaskType.FOREVER, 
+        TaskDefinition task = new TaskDefinition("t1", "Test", "desc", null, PTXTaskType.FOREVER, 
             List.of(), List.of(), null);
         
         assertFalse(task.hasGraph());
@@ -66,7 +66,7 @@ class QuestEngineTest {
         );
         QuestGraph graph = new QuestGraph("q1", "Test", nodes, edges);
         
-        return new TaskDefinition("q1", "Test Quest", "desc", PTXTaskType.FOREVER, 
+        return new TaskDefinition("q1", "Test Quest", "desc", null, PTXTaskType.FOREVER, 
             List.of(), List.of(), graph);
     }
 }

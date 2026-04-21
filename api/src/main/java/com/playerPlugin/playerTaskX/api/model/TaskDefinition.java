@@ -13,6 +13,7 @@ public class TaskDefinition {
     private final String id;
     private final String name;
     private final String description;
+    private final String category;
     private final PTXTaskType taskType;
     private final List<Objective> objectives;
     private final List<Condition> conditions;
@@ -23,6 +24,7 @@ public class TaskDefinition {
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
+            @JsonProperty("category") String category,
             @JsonProperty("type") PTXTaskType taskType,
             @JsonProperty("objectives") List<Objective> objectives,
             @JsonProperty("conditions") List<Condition> conditions,
@@ -31,6 +33,7 @@ public class TaskDefinition {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.category = category;
         this.taskType = taskType != null ? taskType : PTXTaskType.FOREVER;
         this.objectives = objectives != null ? new ArrayList<>(objectives) : new ArrayList<>();
         this.conditions = conditions != null ? new ArrayList<>(conditions) : new ArrayList<>();
@@ -40,6 +43,7 @@ public class TaskDefinition {
     public String getId() { return id; }
     public String getName() { return name; }
     public String getDescription() { return description; }
+    public String getCategory() { return category; }
     public PTXTaskType getTaskType() { return taskType; }
     public List<Objective> getObjectives() { return objectives; }
     public List<Condition> getConditions() { return conditions; }
