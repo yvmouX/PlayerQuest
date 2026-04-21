@@ -1,0 +1,89 @@
+<h2>方案 A - 侧边栏扩展</h2>
+<p class="subtitle">在现有任务列表下方显示任务详情面板</p>
+
+<div class="mockup">
+  <div class="mockup-header">侧边栏布局预览</div>
+  <div class="mockup-body">
+    <div style="display: flex; height: 400px; background: #f5f5f5; font-family: system-ui; font-size: 13px;">
+      <!-- Sidebar -->
+      <div style="width: 260px; background: white; border-right: 1px solid #e5e7eb; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600;">任务列表</div>
+        
+        <!-- Quest Item (Selected) -->
+        <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 6px; padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 500;">每日任务</span>
+            <span style="font-size: 10px; background: #3b82f6; color: white; padding: 2px 6px; border-radius: 10px;">当前</span>
+          </div>
+          <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">未保存</div>
+        </div>
+        
+        <!-- Quest Item -->
+        <div style="background: #f3f4f6; border-radius: 6px; padding: 10px;">
+          <div style="font-weight: 500;">新手任务</div>
+        </div>
+        
+        <button style="background: #8b5cf6; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer;">+ 新建任务</button>
+        
+        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; margin-top: 8px;">任务详情</div>
+        
+        <!-- Quest Details Panel -->
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; flex: 1; overflow-y: auto;">
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px;">任务 ID</label>
+            <div style="background: #e5e7eb; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #374151;">quest_daily_001</div>
+          </div>
+          
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px;">任务名称</label>
+            <input style="width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; box-sizing: border-box;" value="每日任务" />
+          </div>
+          
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px;">任务描述</label>
+            <textarea style="width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; resize: vertical; min-height: 60px; box-sizing: border-box;">每天完成指定任务获取奖励</textarea>
+          </div>
+          
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px;">任务分类</label>
+            <select style="width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; background: white;">
+              <option>日常任务</option>
+              <option>主线任务</option>
+              <option>支线任务</option>
+              <option>活动任务</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600;">节点工具</div>
+        <div style="display: flex; gap: 8px;">
+          <div style="background: #f3f4f6; padding: 8px 12px; border-radius: 4px; font-size: 12px;">⚡ Trigger</div>
+          <div style="background: #f3f4f6; padding: 8px 12px; border-radius: 4px; font-size: 12px;">🎯 Objective</div>
+        </div>
+      </div>
+      
+      <!-- Canvas Area -->
+      <div style="flex: 1; background: #e5e7eb; display: flex; align-items: center; justify-content: center;">
+        <div style="color: #9ca3af;">画布区域</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top: 24px;">
+  <div class="pros">
+    <h4>优点</h4>
+    <ul>
+      <li>与现有列表风格统一</li>
+      <li>不需要改变整体布局</li>
+      <li>任务列表和详情在一起便于对比</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>缺点</h4>
+    <ul>
+      <li>侧边栏变窄或需要滚动</li>
+      <li>详情区域有限</li>
+    </ul>
+  </div>
+</div>

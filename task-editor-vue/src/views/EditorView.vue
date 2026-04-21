@@ -8,6 +8,12 @@
       </template>
     </Header>
     
+    <QuestInfoBar 
+      v-if="selectedQuest" 
+      :quest="selectedQuest" 
+      @update="handleQuestUpdate" 
+    />
+    
     <div class="canvas-wrapper"
          @drop="handleDrop"
          @dragover.prevent="handleDragOver">
@@ -181,6 +187,7 @@ import {Controls} from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import Header from '../components/layout/Header.vue'
+import QuestInfoBar from '../components/editor/QuestInfoBar.vue'
 
 import StartNode from '../components/editor/StartNode.vue'
 import CompletionNode from '../components/editor/CompletionNode.vue'
@@ -260,6 +267,13 @@ const hasUnsavedChanges = computed(() => unsavedQuests.value.has(selectedQuestId
 
 const unsavedQuestsSet = computed(() => new Set(unsavedQuests.value.keys()))
 
+const selectedQuest = computed(() => {
+  if (!selectedQuestId.value) return null
+  const updated = unsavedQuests.value.get(selectedQuestId.value)
+  if (updated) return updated
+  return sidebarQuests.value.find(q => q.id === selectedQuestId.value) || null
+})
+
 const router = useRouter()
 
 let leaveConfirmed = false
@@ -286,14 +300,14 @@ function confirmDeleteEdge() {
 }
 
 function handleCreateNewQuest() {
-  const tempId = `task_${Date.now()}`
+  const tempId = `quest_${Date.now()}`
   const newQuest: Quest = {
     id: tempId,
     name: '未命名任务',
     description: '',
-    type: 'FOREVER',
-    objectives: [],
-    taskType: 'FOREVER'
+    category: '',
+    type: 'single',
+    objectives: []
   }
   sidebarQuests.value = [...sidebarQuests.value, newQuest]
   unsavedQuests.value.set(tempId, newQuest)
@@ -651,6 +665,13 @@ function handleDeleteNode(nodeId: string) {
   deleteNode(nodeId)
 }
 
+function handleQuestUpdate(updatedQuest: Quest) {
+  unsavedQuests.value.set(updatedQuest.id, updatedQuest)
+  sidebarQuests.value = sidebarQuests.value.map(q => 
+    q.id === updatedQuest.id ? updatedQuest : q
+  )
+}
+
 function handleUpdateQuest(nodeId: string, nodeData: EditorNodeData) {
   updateNode(nodeId, nodeData)
   const graph = getCurrentQuestGraph()
@@ -672,7 +693,7 @@ async function handleSave() {
   const graphData = getCurrentQuestGraph()
   if (!graphData) return
   
-  const isNewQuest = questId.startsWith('temp_')
+  const isNewQuest = questId.startsWith('quest_')
   
   try {
     const questWithGraph: Quest = {

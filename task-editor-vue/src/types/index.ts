@@ -8,6 +8,7 @@ export interface Quest {
   id: string
   name: string
   description: string
+  category?: string
   type: 'single' | 'multi' | 'series'
   objectives: QuestObjective[]
   createdAt: number
