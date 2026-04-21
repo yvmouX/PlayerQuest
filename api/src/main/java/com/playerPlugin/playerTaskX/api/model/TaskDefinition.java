@@ -2,7 +2,6 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.playerPlugin.playerTaskX.api.Enum.PTXTaskType;
 import com.playerPlugin.playerTaskX.api.model.condition.Condition;
 import com.playerPlugin.playerTaskX.api.model.objective.Objective;
 
@@ -14,7 +13,6 @@ public class TaskDefinition {
     private final String name;
     private final String description;
     private final String category;
-    private final PTXTaskType taskType;
     private final List<Objective> objectives;
     private final List<Condition> conditions;
     private final QuestGraph graph;
@@ -25,7 +23,6 @@ public class TaskDefinition {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("category") String category,
-            @JsonProperty("type") PTXTaskType taskType,
             @JsonProperty("objectives") List<Objective> objectives,
             @JsonProperty("conditions") List<Condition> conditions,
             @JsonProperty("graph") QuestGraph graph
@@ -34,7 +31,6 @@ public class TaskDefinition {
         this.name = name;
         this.description = description;
         this.category = category;
-        this.taskType = taskType != null ? taskType : PTXTaskType.FOREVER;
         this.objectives = objectives != null ? new ArrayList<>(objectives) : new ArrayList<>();
         this.conditions = conditions != null ? new ArrayList<>(conditions) : new ArrayList<>();
         this.graph = graph;
@@ -44,7 +40,6 @@ public class TaskDefinition {
     public String getName() { return name; }
     public String getDescription() { return description; }
     public String getCategory() { return category; }
-    public PTXTaskType getTaskType() { return taskType; }
     public List<Objective> getObjectives() { return objectives; }
     public List<Condition> getConditions() { return conditions; }
     public QuestGraph getGraph() { return graph; }
