@@ -288,7 +288,7 @@ function confirmDeleteEdge() {
 }
 
 function handleCreateNewQuest() {
-  const tempId = `temp_${Date.now()}`
+  const tempId = `task_${Date.now()}`
   const newQuest: Quest = {
     id: tempId,
     name: '未命名任务',

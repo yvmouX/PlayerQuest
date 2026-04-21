@@ -35,7 +35,7 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressStorage progressStorage;
     private SessionStorage sessionStorage;
 
-    private static Logger log;
+    public static Logger log;
 
     @Override
     public void onEnable() {
