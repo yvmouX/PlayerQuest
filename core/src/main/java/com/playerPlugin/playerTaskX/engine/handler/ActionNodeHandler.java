@@ -21,7 +21,6 @@ public class ActionNodeHandler implements NodeHandler {
     public String getNodeType() { return "action"; }
     
     @Override
-    @SuppressWarnings("unchecked")
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
         GraphNode currentNode = graphHelper.findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.waiting();

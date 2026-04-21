@@ -14,6 +14,8 @@ import org.bukkit.event.Event;
 
 import java.util.Map;
 
+import static com.playerPlugin.playerTaskX.PlayerTaskX.log;
+
 public class ObjectiveNodeHandler implements NodeHandler {
     private final GraphHelper graphHelper = new GraphHelper();
 
@@ -21,7 +23,6 @@ public class ObjectiveNodeHandler implements NodeHandler {
     public String getNodeType() { return "objective"; }
     
     @Override
-    @SuppressWarnings("unchecked")
     public NextNodeResult execute(QuestSession session, Event event, QuestGraph graph) {
         GraphNode currentNode = graphHelper.findNode(graph, session.getCurrentNodeId());
         if (currentNode == null) return NextNodeResult.waiting();
@@ -43,13 +44,11 @@ public class ObjectiveNodeHandler implements NodeHandler {
         return graphHelper.getNextNodeResult(session.getCurrentNodeId(), graph, true);
     }
     
-    private boolean checkObjectiveCompleted(Player player, QuestSession session, 
-            String templateId, Event event) {
+    private boolean checkObjectiveCompleted(Player player, QuestSession session, String templateId, Event event) {
         
         Map<String, Object> config = getTemplateConfig(templateId);
         if (config == null) {
-            org.slf4j.LoggerFactory.getLogger(ObjectiveNodeHandler.class)
-                .warn("Template not found for objective: {}", templateId);
+            log.warn("Template not found for objective: {}", templateId);
             return false;
         }
         
