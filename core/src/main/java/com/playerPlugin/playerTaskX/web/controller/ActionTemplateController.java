@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.web.template;
+package com.playerPlugin.playerTaskX.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

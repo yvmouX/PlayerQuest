@@ -1,7 +1,8 @@
-package com.playerPlugin.playerTaskX.web;
+package com.playerPlugin.playerTaskX.web.controller;
 
 import com.playerPlugin.playerTaskX.api.model.TaskProgress;
 import com.playerPlugin.playerTaskX.manager.TaskManager;
+import com.playerPlugin.playerTaskX.web.ApiResponse;
 import io.javalin.http.Context;
 
 import java.util.*;
