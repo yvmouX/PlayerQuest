@@ -1,5 +1,6 @@
-package com.playerPlugin.playerTaskX.api.model.objective;
+package com.playerPlugin.playerTaskX.api.model.objective.impl;
 
+import com.playerPlugin.playerTaskX.api.model.objective.AbstractObjective;
 import org.bukkit.Material;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockBreakEvent;
