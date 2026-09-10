@@ -6,9 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.reward.CoinReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
-import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 import com.playerPlugin.playerTaskX.core.storage.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.bukkit.Bukkit;
@@ -45,19 +43,14 @@ public final class DailyService {
     private final PlayerQuestRepository repository;
     private final ProgressService progressService;
     private final MoneyReward moneyReward;
-    private final PointsReward pointsReward;
-    private final CoinReward coinReward;
 
     public DailyService(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
-                        ProgressService progressService, MoneyReward moneyReward, PointsReward pointsReward,
-                        CoinReward coinReward) {
+                        ProgressService progressService, MoneyReward moneyReward) {
         this.config = config;
         this.quests = quests;
         this.repository = repository;
         this.progressService = progressService;
         this.moneyReward = moneyReward;
-        this.pointsReward = pointsReward;
-        this.coinReward = coinReward;
     }
 
     /** 当前周期字符串，形如 {@code 2026-09-10}。 */
@@ -141,11 +134,36 @@ public final class DailyService {
     }
 
     /**
-     * 消耗货币刷新玩家的每日任务（只影响该玩家自己）。
+     * 重置玩家的每日任务：重新抽取一批，<b>不扣费、不消耗刷新次数</b>（管理员工具用）。
+     * <p>
+     * 与 {@link #refresh(Player)} 的区别有两处，都是刻意的：
+     * <ul>
+     *   <li><b>不扣费</b>：管理员执行它是为了解决问题（玩家反馈任务做不了、任务配置刚改过），
+     *       若还要先扣玩家的钱，这个工具就没法用了；</li>
+     *   <li><b>不消耗刷新次数</b>：不占用玩家每天有限的刷新额度，
+     *       否则管理员帮玩家重置几次就把玩家的额度用光了。</li>
+     * </ul>
+     * 抽取仍带刷新次数参与种子，因此重置后会拿到与当前不同的一批任务。
+     */
+    public RefreshResult resetDaily(Player player) {
+        return doRefresh(player, false);
+    }
+
+    /**
+     * 玩家自己刷新：扣费、消耗一次刷新次数。
      *
      * @return 刷新结果，供命令与 GUI 决定提示内容
      */
     public RefreshResult refresh(Player player) {
+        return doRefresh(player, true);
+    }
+
+    /**
+     * 刷新主体。
+     *
+     * @param charge 是否扣费并消耗次数
+     */
+    private RefreshResult doRefresh(Player player, boolean charge) {
         if (!config.isDailyEnabled()) {
             return RefreshResult.failed("每日任务未启用");
         }
@@ -157,22 +175,29 @@ public final class DailyService {
         boolean samePeriod = state != null && period.equals(state.period());
         int used = samePeriod ? state.refreshCount() : 0;
 
-        if (samePeriod && used >= config.getDailyRefreshLimit()) {
+        if (charge && samePeriod && used >= config.getDailyRefreshLimit()) {
             return RefreshResult.limitReached(config.getDailyRefreshLimit());
         }
 
         double cost = config.getDailyRefreshCost();
-        if (samePeriod && cost > 0) {
-            ChargeResult charged = charge(player, cost);
-            if (!charged.success()) {
-                return RefreshResult.failed(charged.reason());
+        if (charge && samePeriod && cost > 0) {
+            String failure = chargeMoney(player, cost);
+            if (failure != null) {
+                return RefreshResult.failed(failure);
             }
             assign(playerId, period, used + 1);
-            return RefreshResult.success(cost, charged.currency());
+            return RefreshResult.success(cost);
         }
 
-        assign(playerId, period, used + (samePeriod ? 1 : 0));
-        return RefreshResult.success(samePeriod ? cost : 0.0, null);
+        if (charge) {
+            assign(playerId, period, used + (samePeriod ? 1 : 0));
+        } else {
+            // 管理员重置：抽取用「已用次数 + 1」的种子以便换一批，
+            // 但写回时保持原次数不变，避免占用玩家的刷新额度
+            assign(playerId, period, used + 1, used);
+        }
+        // 免费重发与管理员重置都按 0 费用反馈，避免提示里出现根本没扣的钱
+        return RefreshResult.success(0.0);
     }
 
     /** 玩家在当前周期已刷新的次数。 */
@@ -194,25 +219,34 @@ public final class DailyService {
         return progressService.questsOfType(playerId, QuestType.DAILY);
     }
 
+    /** 重新抽取并写入，写回与抽取用同一个次数。 */
+    private void assign(UUID playerId, String period, int refreshCount) {
+        assign(playerId, period, refreshCount, refreshCount);
+    }
+
     /**
      * 重新抽取并写入玩家的每日任务。
      * <p>
      * 先清空该玩家上一批每日任务（含进度），再按确定性种子抽新的一批，
      * 因此刷新是「换一批任务」而不是「追加」。
+     *
+     * @param seedRefreshCount   参与抽取种子的次数：改变它才能换到不同的一批
+     * @param storedRefreshCount 写回数据库的次数：管理员重置时保持不变，
+     *                           避免占用玩家每日有限的刷新额度
      */
-    private void assign(UUID playerId, String period, int refreshCount) {
+    private void assign(UUID playerId, String period, int seedRefreshCount, int storedRefreshCount) {
         List<Quest> pool = pool();
         if (pool.isEmpty()) {
             // 没有可用任务时也要记录周期，否则每次检查都会重复走一遍流程
             repository.transaction(() -> {
                 repository.deleteByPlayerAndType(playerId, QuestType.DAILY);
-                saveState(playerId, period, refreshCount);
+                saveState(playerId, period, storedRefreshCount);
             });
             return;
         }
 
         int amount = Math.min(config.getDailyAmount(), pool.size());
-        List<Quest> drawn = draw(pool, playerId, period, refreshCount, amount);
+        List<Quest> drawn = draw(pool, playerId, period, seedRefreshCount, amount);
 
         // 用同一时刻计算过期时间，保证同一批任务同时失效
         long now = System.currentTimeMillis();
@@ -223,7 +257,7 @@ public final class DailyService {
             for (Quest quest : drawn) {
                 repository.save(PlayerQuest.assign(playerId, quest, now, expiresAt));
             }
-            saveState(playerId, period, refreshCount);
+            saveState(playerId, period, storedRefreshCount);
         });
 
         // 索引必须跟着换，否则旧任务的下标仍在内存里，进度会记到新任务上
@@ -269,95 +303,40 @@ public final class DailyService {
     }
 
     /**
-     * 扣费。
+     * 扣金币（经 Vault）。
      * <p>
-     * 货币种类由配置 {@code daily.refresh-currency} 决定：
-     * {@code MONEY}（金币）/ {@code POINTS}（点券）/ {@code QUEST_COIN}（任务币）指定单一货币；
-     * {@code AUTO} 则按金币 → 点券 → 任务币的顺序挑一个可用的。
-     * AUTO 的默认顺序把任务币放最后：它通常是玩家攒着兑换奖励的货币，
-     * 不该在玩家装了经济插件时被悄悄花掉。
+     * 刷新费用只用服务器的基础经济：这样管理员在别处看到的余额与这里的扣费是同一份数据，
+     * 不会出现「插件内的一种货币玩家不知道从哪来」的困惑。
+     *
+     * @return 成功返回 null；失败返回给玩家看的原因
      */
-    private ChargeResult charge(Player player, double cost) {
-        String currency = config.getDailyRefreshCurrency();
-        return switch (currency) {
-            case "MONEY" -> chargeMoney(player, cost);
-            case "POINTS" -> chargePoints(player, cost);
-            case "QUEST_COIN" -> chargeCoin(player, cost);
-            default -> {
-                // AUTO：按可用性依次尝试
-                if (moneyReward.available()) {
-                    yield chargeMoney(player, cost);
-                }
-                if (pointsReward.available()) {
-                    yield chargePoints(player, cost);
-                }
-                if (coinReward != null) {
-                    yield chargeCoin(player, cost);
-                }
-                yield new ChargeResult(false, "服务器未安装经济插件（Vault 或 PlayerPoints），也未启用任务币", null);
-            }
-        };
-    }
-
-    private ChargeResult chargeMoney(Player player, double cost) {
+    private String chargeMoney(Player player, double cost) {
         if (!moneyReward.available()) {
-            return new ChargeResult(false, "未安装 Vault 或经济插件，无法使用金币刷新", "money");
+            return "未安装经济插件（Vault），无法扣除刷新费用";
         }
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(player.getUniqueId());
         if (moneyReward.balance(offlinePlayer) < cost) {
-            return new ChargeResult(false, "金币不足，需要 " + moneyReward.describe(cost), "money");
+            return "金币不足，需要 " + moneyReward.describe(cost);
         }
-        if (moneyReward.withdraw(offlinePlayer, cost)) {
-            return new ChargeResult(true, "", "money");
+        if (!moneyReward.withdraw(offlinePlayer, cost)) {
+            return "扣款失败，请稍后再试";
         }
-        return new ChargeResult(false, "扣款失败", "money");
-    }
-
-    private ChargeResult chargePoints(Player player, double cost) {
-        if (!pointsReward.available()) {
-            return new ChargeResult(false, "未安装 PlayerPoints，无法使用点券刷新", "points");
-        }
-        int points = (int) Math.ceil(cost);
-        if (pointsReward.balance(player.getUniqueId()) < points) {
-            return new ChargeResult(false, "点券不足，需要 " + points, "points");
-        }
-        if (pointsReward.take(player.getUniqueId(), points)) {
-            return new ChargeResult(true, "", "points");
-        }
-        return new ChargeResult(false, "扣款失败", "points");
-    }
-
-    private ChargeResult chargeCoin(Player player, double cost) {
-        if (coinReward == null) {
-            return new ChargeResult(false, "任务币未启用", "quest_coin");
-        }
-        long amount = (long) Math.ceil(cost);
-        long balance = coinReward.balance(player.getUniqueId());
-        if (balance < amount) {
-            return new ChargeResult(false, "任务币不足，需要 " + amount + "（当前 " + balance + "）", "quest_coin");
-        }
-        if (coinReward.take(player.getUniqueId(), amount)) {
-            return new ChargeResult(true, "", "quest_coin");
-        }
-        return new ChargeResult(false, "扣款失败", "quest_coin");
-    }
-
-    private record ChargeResult(boolean success, String reason, String currency) {
+        return null;
     }
 
     /** 刷新结果。 */
-    public record RefreshResult(boolean success, double cost, String currency, String error, int limit) {
+    public record RefreshResult(boolean success, double cost, String error, int limit) {
 
-        public static RefreshResult success(double cost, String currency) {
-            return new RefreshResult(true, cost, currency, "", 0);
+        public static RefreshResult success(double cost) {
+            return new RefreshResult(true, cost, "", 0);
         }
 
         public static RefreshResult failed(String error) {
-            return new RefreshResult(false, 0, null, error, 0);
+            return new RefreshResult(false, 0, error, 0);
         }
 
         public static RefreshResult limitReached(int limit) {
-            return new RefreshResult(false, 0, null, "今日刷新次数已用完", limit);
+            return new RefreshResult(false, 0, "今日刷新次数已用完", limit);
         }
     }
 }

@@ -55,11 +55,8 @@ public class PluginConfig {
     @ConfigValue(value = "daily.reset-hour", description = "每日重置时间（小时，0-23）")
     private int dailyResetHour = 4;
 
-    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的默认费用（任务可单独覆盖）")
+    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用（金币，经 Vault 扣除；设为 0 表示免费）")
     private double dailyRefreshCost = 1000.0;
-
-    @ConfigValue(value = "daily.refresh-currency", description = "刷新费用使用的货币：MONEY（金币）、POINTS（点券）、QUEST_COIN（任务币）、AUTO（自动选择可用货币）")
-    private String dailyRefreshCurrency = "AUTO";
 
     @ConfigValue(value = "daily.refresh-limit", description = "每日最多刷新次数")
     private int dailyRefreshLimit = 3;
@@ -136,15 +133,6 @@ public class PluginConfig {
 
     public double getDailyRefreshCost() {
         return dailyRefreshCost;
-    }
-
-    /**
-     * 刷新费用使用的货币，取值 {@code MONEY} / {@code POINTS} / {@code QUEST_COIN} / {@code AUTO}。
-     * <p>
-     * {@code AUTO} 保持旧行为：优先金币，其次点券，都没有则报错提示装经济插件。
-     */
-    public String getDailyRefreshCurrency() {
-        return dailyRefreshCurrency == null ? "AUTO" : dailyRefreshCurrency.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     public int getDailyRefreshLimit() {

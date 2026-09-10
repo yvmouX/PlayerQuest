@@ -32,7 +32,6 @@ objective:
 reward:
   money: "金币"
   points: "点券"
-  quest_coin: "任务币"
   item: "物品"
   command: "自定义命令"
 

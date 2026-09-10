@@ -13,7 +13,7 @@
 没有输出说明今日任务未发放。玩家登录时才会发放，管理员可手动触发：
 
 ```
-/ptxa reroll <玩家>
+/ptxa resetdaily <玩家>
 ```
 
 **2. 任务的目标类型是否被识别？**
@@ -59,7 +59,7 @@
 |---|---|
 | `money` | Vault + 任一经济插件（EssentialsX / CMI 等） |
 | `points` | PlayerPoints |
-| `quest_coin` / `item` / `command` | 无依赖 |
+| `item` / `command` | 无依赖 |
 
 **2. 任务完成了但领取失败？**
 
@@ -147,12 +147,14 @@ editor:
 
 | 提示 | 原因 |
 |---|---|
+| `未安装经济插件（Vault），无法扣除刷新费用` | 刷新要收费但服务器没装 Vault + 经济插件；装一个，或把 `daily.refresh-cost` 设为 `0` |
 | `金币不足，需要 xxx` | 金币不够（`daily.refresh-cost`） |
-| `未安装 Vault 或经济插件，无法使用金币刷新` | `refresh-currency` 设为 `MONEY` 但没装经济插件 |
-| `任务币不足，需要 xxx（当前 yyy）` | 任务币不够，可用 `QUEST_COIN` 或 `AUTO` |
 | `今日刷新次数已用完（上限 N 次）` | `daily.refresh-limit` 限制 |
 
 想让刷新免费：`daily.refresh-cost: 0`。
+
+> **管理员用 `/ptxa resetdaily` 重置不收费、也不消耗刷新次数**——它是排障工具。
+> 若连它都提示经济相关的问题，说明是插件的 bug，请反馈。
 
 ---
 

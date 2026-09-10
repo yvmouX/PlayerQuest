@@ -13,7 +13,7 @@
 | [命令](commands) | 玩家命令与管理员命令的完整清单 |
 | [配置](configuration) | `config.yml` 每一项的含义 |
 | [任务目标](objectives) | 14 种目标类型与各自的配置字段 |
-| [任务奖励](rewards) | 5 种奖励类型与发放规则 |
+| [任务奖励](rewards) | 4 种奖励类型与发放规则 |
 | [网页编辑器](editor) | 浏览器里创建与管理任务、查看玩家进度 |
 | [变量](placeholders) | PlaceholderAPI 变量清单 |
 | [常见问题](faq) | 排查「任务不涨进度」「奖励拿不到」等 |

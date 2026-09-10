@@ -86,7 +86,6 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
             case "daily_refresh_cost" -> formatCost();
             case "claimable" -> String.valueOf(plugin.rewardService().claimableCount(playerId));
             case "active" -> String.valueOf(plugin.progressService().activeQuests(playerId).size());
-            case "quest_coin" -> String.valueOf(plugin.coinReward().balance(playerId));
             default -> handleQuestVariable(playerId, key);
         };
     }
@@ -179,7 +178,7 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
     /** 供调试：列出本扩展全部变量名。 */
     public List<String> knownVariables() {
         return List.of("daily_count", "daily_active", "daily_completed", "daily_claimed",
-                "daily_refresh_left", "daily_refresh_cost", "claimable", "active", "quest_coin",
+                "daily_refresh_left", "daily_refresh_cost", "claimable", "active",
                 "quest_name_<id>", "quest_progress_<id>", "quest_percent_<id>", "quest_status_<id>");
     }
 }

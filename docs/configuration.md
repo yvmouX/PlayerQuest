@@ -81,8 +81,7 @@ daily:
   pool: []                      # 任务池（任务 id 列表）；留空 = 取所有 type=DAILY 的任务
   amount: 3                     # 每位玩家每日抽取数量
   reset-hour: 4                 # 重置时间（小时，0-23）
-  refresh-cost: 1000.0          # 刷新费用
-  refresh-currency: AUTO        # 使用哪种货币
+  refresh-cost: 1000.0          # 刷新费用（金币；0 = 免费）
   refresh-limit: 3              # 每日最多刷新次数
 ```
 
@@ -96,17 +95,18 @@ daily:
 早于该时刻的时间算作**前一天**。设为 `4` 时，某日凌晨 3:30 与前一天 23:00 属于同一个周期，
 符合「熬夜到凌晨还算今天」的直觉。设为 `0` 则按自然日划分。
 
-### `refresh-currency` 取值
+### `refresh-cost` 与基础经济
 
-| 取值 | 说明 |
-|---|---|
-| `AUTO` | 按「金币 → 点券 → 任务币」的顺序挑一个可用的（默认） |
-| `MONEY` | 只用金币，需要 Vault 与经济插件 |
-| `POINTS` | 只用点券，需要 PlayerPoints |
-| `QUEST_COIN` | 只用任务币（插件内建，无需任何经济插件） |
+刷新费用**只用服务器的基础经济**（经 Vault 扣除），因此：
 
-> 任务币在 `AUTO` 里排在最后：它通常是玩家攒着兑换奖励的货币，
-> 不该在服务器装了经济插件时被悄悄花掉。
+- 需要安装 **Vault + 任一经济插件**（EssentialsX、CMI 等）
+- 未安装时玩家执行 `/ptx refresh` 会收到「未安装经济插件（Vault），无法扣除刷新费用」，
+  而**不是**含义模糊的「货币不足」
+- 设为 `0` 则免费刷新，此时无需任何经济插件
+- 管理员用 `/ptxa resetdaily` 重抽**不扣费**（它是排障工具，不是消费入口）
+
+> 早期版本还有「任务币」内建货币与点券刷新，现已移除：插件不再引入
+> 玩家需要额外理解的第二套货币，费用口径与服务器经济完全一致。
 
 ---
 
@@ -127,7 +127,7 @@ editor:
 
 ---
 
-## 完整示例：MySQL + 只用任务币刷新
+## 完整示例：MySQL + 免费刷新
 
 ```yaml
 storage:
@@ -143,8 +143,7 @@ storage:
 daily:
   amount: 5
   reset-hour: 0
-  refresh-cost: 50
-  refresh-currency: QUEST_COIN   # 玩家用任务币刷新，不消耗真实经济
+  refresh-cost: 0                # 免费刷新：无需经济插件
   refresh-limit: 5
 
 progress:

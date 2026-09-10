@@ -281,54 +281,16 @@ class StorageIntegrationTest {
         assertEquals(2, playerQuestRepository.countPlayers());
     }
 
-    // ---------- 任务币 ----------
-
     @Test
-    @DisplayName("任务币：无记录时余额为 0，发放后累加")
-    void coinStartsAtZeroAndAccumulates() {
-        assertEquals(0L, playerQuestRepository.coinBalance(PLAYER));
-
-        assertTrue(playerQuestRepository.addCoin(PLAYER, 100));
-        assertEquals(100L, playerQuestRepository.coinBalance(PLAYER));
-
-        assertTrue(playerQuestRepository.addCoin(PLAYER, 50));
-        assertEquals(150L, playerQuestRepository.coinBalance(PLAYER));
-    }
-
-    @Test
-    @DisplayName("任务币：余额不足时扣款失败且不改动数据")
-    void coinRejectsOverdraft() {
-        playerQuestRepository.addCoin(PLAYER, 30);
-
-        assertFalse(playerQuestRepository.addCoin(PLAYER, -31), "扣款超过余额应失败");
-        assertEquals(30L, playerQuestRepository.coinBalance(PLAYER), "失败时余额不能被改动");
-
-        assertTrue(playerQuestRepository.addCoin(PLAYER, -30), "正好扣完应成功");
-        assertEquals(0L, playerQuestRepository.coinBalance(PLAYER));
-
-        // 余额为 0 时再扣应失败，且不会变成负数
-        assertFalse(playerQuestRepository.addCoin(PLAYER, -1));
-        assertEquals(0L, playerQuestRepository.coinBalance(PLAYER));
-    }
-
-    @Test
-    @DisplayName("任务币：设置余额（管理命令用）与非法值拒绝")
-    void coinSetBalance() {
-        assertTrue(playerQuestRepository.setCoin(PLAYER, 999));
-        assertEquals(999L, playerQuestRepository.coinBalance(PLAYER));
-
-        assertFalse(playerQuestRepository.setCoin(PLAYER, -5), "负数余额应被拒绝");
-        assertEquals(999L, playerQuestRepository.coinBalance(PLAYER));
-    }
-
-    @Test
-    @DisplayName("任务币：不同玩家互不影响")
-    void coinIsPerPlayer() {
+    @DisplayName("有任务记录的玩家 id 列表（网页编辑器管理端用）")
+    void distinctPlayerIds() {
         UUID other = UUID.fromString("99999999-8888-7777-6666-555555555555");
-        playerQuestRepository.addCoin(PLAYER, 10);
-        playerQuestRepository.addCoin(other, 20);
+        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q1"), 0L, 0L));
+        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q2"), 0L, 0L));
+        playerQuestRepository.save(PlayerQuest.assign(other, sampleQuest("q1"), 0L, 0L));
 
-        assertEquals(10L, playerQuestRepository.coinBalance(PLAYER));
-        assertEquals(20L, playerQuestRepository.coinBalance(other));
+        List<UUID> ids = playerQuestRepository.distinctPlayerIds();
+        assertEquals(2, ids.size(), "同一玩家的多条记录应只出现一次: " + ids);
+        assertTrue(ids.contains(PLAYER) && ids.contains(other));
     }
 }

@@ -218,7 +218,6 @@ public final class EditorServer {
             result.put("uuid", playerId.toString());
             String name = Bukkit.getOfflinePlayer(playerId).getName();
             result.put("name", name == null ? "" : name);
-            result.put("questCoin", plugin.coinReward().balance(playerId));
 
             List<Map<String, Object>> records = new ArrayList<>();
             for (var record : plugin.playerQuestRepository().findByPlayer(playerId)) {

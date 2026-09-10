@@ -32,7 +32,6 @@ objective:
 reward:
   money: "Money"
   points: "Points"
-  quest_coin: "Quest Coin"
   item: "Item"
   command: "Custom command"
 

@@ -13,7 +13,6 @@
 |---|---|---|---|
 | `money` | 金币 | Vault + 经济插件 | `amount` |
 | `points` | 点券 | PlayerPoints | `amount` |
-| `quest_coin` | 任务币 | 无（插件内建） | `amount` |
 | `item` | 物品 | 无 | `material` `amount` `name` `lore` |
 | `command` | 自定义命令 | 无 | `command` `as-player` |
 
@@ -32,7 +31,8 @@ amount: 1000
 经 Vault 发放，需要服务器装有 Vault 与任一经济插件（EssentialsX、CMI 等）。
 金额支持小数。
 
-同时，金币也可作为**刷新每日任务的货币**（见 `daily.refresh-currency`）。
+它同时也是**刷新每日任务的唯一费用来源**（见 `daily.refresh-cost`）：
+插件不引入第二套货币，玩家在别处看到的余额就是这里扣除的余额。
 
 ---
 
@@ -44,25 +44,6 @@ amount: 100
 ```
 
 经 PlayerPoints 发放，只接受整数。
-
----
-
-## `quest_coin` 任务币
-
-```yaml
-type: quest_coin
-amount: 50
-```
-
-**插件内建的虚拟货币**，不依赖任何外部插件，余额存于插件自己的数据库表。
-
-适用场景：任务系统专属货币，让玩家攒起来兑换任务商店里的东西，
-与服务器主经济（金币）分离，便于独立控制产出。
-
-同时，任务币也可作为**刷新每日任务的货币**：把 `daily.refresh-currency` 设为 `QUEST_COIN`
-即可实现「用任务币刷新任务」，完全不消耗真实经济。
-
-通过变量 `%playertaskx_quest_coin%` 可在计分板等处显示余额。
 
 ---
 
@@ -118,14 +99,15 @@ as-player: false
 
 ## 组合示例
 
-**简单的每日奖励**：金币 + 少量任务币
+**简单的每日奖励**：金币 + 一点物品
 
 ```yaml
 rewards:
   - type: money
     amount: 500
-  - type: quest_coin
-    amount: 10
+  - type: item
+    material: EXPERIENCE_BOTTLE
+    amount: 3
 ```
 
 **稀有任务奖励**：特殊物品 + 点券 + 全服公告

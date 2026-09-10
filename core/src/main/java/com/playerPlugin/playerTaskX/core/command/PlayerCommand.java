@@ -331,8 +331,8 @@ public class PlayerCommand {
         if (result.success()) {
             messages.send(receiver, "quest.refreshed");
             if (result.cost() > 0) {
-                messages.send(receiver, "quest.refresh-cost",
-                        describeCost(plugin, receiver, result.cost(), result.currency()));
+                // 费用统一是金币，直接用 Vault 的格式化，写法与服务器经济插件一致
+                messages.send(receiver, "quest.refresh-cost", plugin.moneyReward().format(result.cost()));
             }
             return;
         }
@@ -341,25 +341,6 @@ public class PlayerCommand {
             return;
         }
         messages.send(receiver, "quest.refresh-failed", result.error());
-    }
-
-    /**
-     * 费用文案：数字 + 货币显示名。
-     * <p>
-     * 货币 id（{@code money} / {@code points}）走 {@code reward.<id>} 语言键，
-     * 缺失时退回奖励类型自带的显示名，最后才退回原始 id。
-     */
-    private static String describeCost(PlayerTaskX plugin, CommandSender receiver, double cost, String currency) {
-        String amount = cost == Math.rint(cost) ? String.valueOf((long) cost) : String.valueOf(cost);
-        if (currency == null || currency.isBlank()) {
-            return amount;
-        }
-        MessageService messages = plugin.messages();
-        String key = "reward." + currency;
-        String name = messages.has(key)
-                ? TextRenderer.strip(messages.raw(receiver, key))
-                : plugin.rewardTypes().displayName(currency);
-        return amount + " " + name;
     }
 
     /** 补全前缀匹配：空输入表示不过滤；YLib 不会对返回值再过滤一次。 */

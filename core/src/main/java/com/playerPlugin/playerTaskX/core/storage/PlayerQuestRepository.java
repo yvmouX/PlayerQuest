@@ -57,20 +57,4 @@ public interface PlayerQuestRepository {
      * 避免为了遍历而去枚举全服离线玩家。
      */
     java.util.List<UUID> distinctPlayerIds();
-
-    // ---------- 任务币（插件内建虚拟货币） ----------
-
-    /** 查询任务币余额，无记录返回 0。 */
-    long coinBalance(UUID playerId);
-
-    /**
-     * 增减任务币，返回变更后的余额。
-     * <p>
-     * 内部用 upsert 完成「不存在则插入」，因此调用方不需要先建账户。
-     * 余额不会被扣成负数——扣款超出余额时返回 false 且不改动数据。
-     */
-    boolean addCoin(UUID playerId, long delta);
-
-    /** 设置任务币余额（管理命令用），返回是否成功。 */
-    boolean setCoin(UUID playerId, long balance);
 }

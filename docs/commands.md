@@ -22,7 +22,7 @@
 | `/ptx list` | 在聊天里列出当前任务与完成度 |
 | `/ptx progress` | 查看当前任务的进度详情 |
 | `/ptx claim <任务id>` | 领取已完成任务的奖励 |
-| `/ptx refresh` | 刷新每日任务（按配置消耗金币 / 点券 / 任务币） |
+| `/ptx refresh` | 刷新每日任务（消耗金币；未装经济插件时不可用） |
 
 ### 例子
 
@@ -65,7 +65,7 @@
 |---|---|
 | `/ptxa setobjective <玩家> <任务id> <目标序号> <进度>` | 直接设定某个目标的进度 |
 | `/ptxa grant <玩家> <任务id>` | 直接发放任务奖励（**不改变任务状态**） |
-| `/ptxa reroll <玩家>` | 重抽该玩家的每日任务（含次数上限与扣费） |
+| `/ptxa resetdaily <玩家>` | 重置该玩家的每日任务：**不扣费、不消耗刷新次数**（排障工具） |
 
 **目标序号**从 `0` 开始，对应任务里目标的排列顺序，可用 `/ptxa info <id>` 查看。
 
@@ -76,7 +76,7 @@
 /ptxa info daily_mine                   # 这个任务的具体内容
 /ptxa setobjective Steve daily_mine 0 64   # 把 Steve 的第一个目标直接设为 64
 /ptxa grant Steve daily_mine            # 补发一次奖励（比如玩家反馈没收到）
-/ptxa reroll Steve                      # 帮 Steve 换一批每日任务
+/ptxa resetdaily Steve                      # 帮 Steve 换一批每日任务
 ```
 
 ---
@@ -89,7 +89,7 @@
 |---|---|---|
 | `grant` | `give` | `give` 在插件语境里通常指「给物品」，而这里发的是任务奖励 |
 | `setobjective` | `progress` | `progress` 看起来像「查看进度」，实际是写操作 |
-| `reroll` | `daily` | `daily` 看起来像「查看每日任务」，实际是重抽 |
+| `resetdaily` | `daily` / `reroll` | 与玩家的 `refresh` 区分：管理员重置不收费也不消耗次数 |
 
 > 旧名字保留是为了不让已有的管理脚本或快捷栏指令失效。
 

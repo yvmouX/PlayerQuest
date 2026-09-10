@@ -246,7 +246,6 @@ class ProgressServiceTest {
     private static final class FakePlayerQuestRepository implements PlayerQuestRepository {
 
         private final Map<UUID, Map<String, PlayerQuest>> data = new HashMap<>();
-        private final Map<UUID, Long> coins = new HashMap<>();
 
         @Override
         public List<PlayerQuest> findByPlayer(UUID playerId) {
@@ -307,30 +306,6 @@ class ProgressServiceTest {
         @Override
         public List<UUID> distinctPlayerIds() {
             return new ArrayList<>(data.keySet());
-        }
-
-        @Override
-        public long coinBalance(UUID playerId) {
-            return coins.getOrDefault(playerId, 0L);
-        }
-
-        @Override
-        public boolean addCoin(UUID playerId, long delta) {
-            long next = coinBalance(playerId) + delta;
-            if (next < 0) {
-                return false;
-            }
-            coins.put(playerId, next);
-            return true;
-        }
-
-        @Override
-        public boolean setCoin(UUID playerId, long balance) {
-            if (balance < 0) {
-                return false;
-            }
-            coins.put(playerId, balance);
-            return true;
         }
     }
 }

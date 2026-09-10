@@ -63,8 +63,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     private final String sqlUpsertDailyState;
     private final String sqlDeleteDailyState;
 
-    private final String sqlSelectCoin;
-    private final String sqlUpsertCoin;
     private final String sqlSelectDistinctPlayerIds;
 
     public JdbcPlayerQuestRepository(Database database) {
@@ -83,8 +81,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         this.sqlDeleteByType = "DELETE FROM player_quest WHERE player_id = ? AND type = ?";
         this.sqlCountPlayers = "SELECT COUNT(DISTINCT player_id) FROM player_quest";
 
-        this.sqlSelectCoin = "SELECT balance FROM player_coin WHERE player_id = ?";
-        this.sqlUpsertCoin = database.dialect().upsert("player_coin", "player_id", "player_id,balance");
         this.sqlSelectDistinctPlayerIds = "SELECT DISTINCT player_id FROM player_quest";
 
         this.sqlSelectDailyState = "SELECT period, refresh_count, assigned_at"
@@ -235,51 +231,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
             return;
         }
         database.execute(sqlDeleteDailyState, playerId.toString());
-    }
-
-    // ------------------------------------------------------------------
-    // 任务币
-    // ------------------------------------------------------------------
-
-    @Override
-    public long coinBalance(UUID playerId) {
-        if (playerId == null) {
-            return 0L;
-        }
-        Long balance = database.queryOne(sqlSelectCoin, rs -> rs.getLong("balance"), playerId.toString());
-        return balance == null ? 0L : balance;
-    }
-
-    /**
-     * 增减任务币。
-     * <p>
-     * 用「先读后写 + 余额校验」而不是 {@code balance = balance + ?} 的自增语句：
-     * 后者在两种方言下的 upsert 语法不一致，且 SQLite 不支持在 upsert 里引用旧值做条件。
-     * 本插件的余额变更都发生在主线程（领奖、刷新扣费、管理命令），
-     * 因此不存在并发竞争；这样换来实现简单与方言统一。
-     */
-    @Override
-    public boolean addCoin(UUID playerId, long delta) {
-        if (playerId == null) {
-            return false;
-        }
-        long current = coinBalance(playerId);
-        long next = current + delta;
-        if (next < 0) {
-            // 拒绝扣成负数，而不是静默截断为 0——调用方需要知道扣款失败
-            return false;
-        }
-        database.execute(sqlUpsertCoin, playerId.toString(), next);
-        return true;
-    }
-
-    @Override
-    public boolean setCoin(UUID playerId, long balance) {
-        if (playerId == null || balance < 0) {
-            return false;
-        }
-        database.execute(sqlUpsertCoin, playerId.toString(), balance);
-        return true;
     }
 
     // ------------------------------------------------------------------

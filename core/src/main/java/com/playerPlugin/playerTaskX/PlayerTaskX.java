@@ -35,7 +35,6 @@ import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
 import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
-import com.playerPlugin.playerTaskX.core.reward.CoinReward;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
 import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
@@ -77,7 +76,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressDisplay progressDisplay;
     private MoneyReward moneyReward;
     private PointsReward pointsReward;
-    private CoinReward coinReward;
     private DailyService dailyService;
     private EditorServer editorServer;
     private cn.yvmou.ylib.scheduler.UniversalTask actionBarTask;
@@ -137,7 +135,6 @@ public final class PlayerTaskX extends JavaPlugin {
         }
 
         // ---------- 注册表 ----------
-        // 注意顺序：CoinReward 需要仓储，因此注册表必须在存储之后构造
         quests = new QuestRegistryImpl();
         objectiveTypes = new ObjectiveRegistryImpl();
         rewardTypes = new RewardRegistryImpl();
@@ -148,8 +145,7 @@ public final class PlayerTaskX extends JavaPlugin {
         progressService = new ProgressService(quests, objectiveTypes, playerQuestRepository);
         rewardService = new RewardService(quests, rewardTypes, playerQuestRepository);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
-        dailyService = new DailyService(config, quests, playerQuestRepository, progressService,
-                moneyReward, pointsReward, coinReward);
+        dailyService = new DailyService(config, quests, playerQuestRepository, progressService, moneyReward);
 
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
@@ -247,10 +243,8 @@ public final class PlayerTaskX extends JavaPlugin {
     private void registerBuiltInRewards() {
         moneyReward = new MoneyReward();
         pointsReward = new PointsReward();
-        coinReward = new CoinReward(playerQuestRepository);
         rewardTypes.register(moneyReward);
         rewardTypes.register(pointsReward);
-        rewardTypes.register(coinReward);
         rewardTypes.register(new ItemReward());
         rewardTypes.register(new CommandReward());
 
@@ -446,9 +440,14 @@ public final class PlayerTaskX extends JavaPlugin {
         return dailyService;
     }
 
-    /** 任务币奖励类型（同时充当任务币余额读写入口）。 */
-    public CoinReward coinReward() {
-        return coinReward;
+    /**
+     * 金币奖励类型。
+     * <p>
+     * 同时充当「基础经济」的访问点：刷新费用也用它的格式化输出，
+     * 保证提示里的金额写法与服务器经济插件一致。
+     */
+    public MoneyReward moneyReward() {
+        return moneyReward;
     }
 
     public QuestRepository questRepository() {

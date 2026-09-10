@@ -25,12 +25,6 @@
 | `%playertaskx_daily_refresh_left%` | 今日剩余刷新次数 |
 | `%playertaskx_daily_refresh_cost%` | 刷新费用（数字） |
 
-## 任务币
-
-| 变量 | 返回 |
-|---|---|
-| `%playertaskx_quest_coin%` | 玩家的任务币余额 |
-
 ## 指定任务的进度
 
 把 `<任务id>` 替换为任务 id（例如 `daily_mine`）：
@@ -55,7 +49,6 @@
 ```
 &e每日任务 &f%playertaskx_daily_completed%&7/&f%playertaskx_daily_count%
 &7待领取: &a%playertaskx_claimable%
-&7任务币: &6%playertaskx_quest_coin%
 &7刷新次数: &f%playertaskx_daily_refresh_left%
 ```
 

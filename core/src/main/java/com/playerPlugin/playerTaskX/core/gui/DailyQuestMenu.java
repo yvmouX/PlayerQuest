@@ -176,7 +176,8 @@ public final class DailyQuestMenu extends Menu {
         if (hasText("gui.refresh")) {
             label = text("gui.refresh");
         } else if (cost > 0) {
-            label = text("quest.refresh-cost", describeCost(plugin, cost, refreshCurrency(plugin)));
+            // 把本次费用写在按钮上：点击前就能看到代价，比一个无信息量的按钮有用
+            label = text("quest.refresh-cost", plugin.moneyReward().format(cost));
         } else {
             label = textOr("quest.refreshed", "");
         }
@@ -194,7 +195,7 @@ public final class DailyQuestMenu extends Menu {
         if (result.success()) {
             messages().send(player, "quest.refreshed");
             if (result.cost() > 0) {
-                messages().send(player, "quest.refresh-cost", describeCost(plugin, result.cost(), result.currency()));
+                messages().send(player, "quest.refresh-cost", plugin.moneyReward().format(result.cost()));
             }
         } else if (result.limit() > 0) {
             messages().send(player, "quest.refresh-limit", result.limit());
@@ -203,34 +204,5 @@ public final class DailyQuestMenu extends Menu {
         }
         // 不论成败都重建界面：成功换了一批任务，失败也可能是跨天后的免费重发
         refresh();
-    }
-
-    /**
-     * 刷新费用的货币 id。
-     * <p>
-     * 与 {@code DailyService} 的扣费顺序保持一致：装了经济插件走金币，否则走点券。
-     * 这里只用于「点击前」的文案，真正扣什么仍由 DailyService 决定。
-     */
-    private static String refreshCurrency(PlayerTaskX plugin) {
-        boolean money = plugin.rewardTypes().find(MoneyReward.ID)
-                .map(RewardType::available)
-                .orElse(false);
-        return money ? MoneyReward.ID : PointsReward.ID;
-    }
-
-    /**
-     * 费用文案：数字 + 货币显示名。
-     * <p>
-     * 货币 id（{@code money} / {@code points}）走 {@code reward.<id>} 语言键，
-     * 缺失时退回奖励类型自带的显示名，最后才退回原始 id——绝不把内部 id 显示给玩家。
-     */
-    private String describeCost(PlayerTaskX plugin, double cost, String currency) {
-        String amount = formatAmount(cost);
-        if (currency == null || currency.isBlank()) {
-            return amount;
-        }
-        String name = localized(messages(), viewer(), "reward." + currency,
-                plugin.rewardTypes().displayName(currency));
-        return amount + " " + name;
     }
 }

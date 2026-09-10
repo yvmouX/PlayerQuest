@@ -36,15 +36,17 @@ import java.util.Map;
  *   <li>{@code enable <id>} / {@code disable <id>}：切换启用状态并持久化；</li>
  *   <li>{@code setobjective <玩家> <任务> <目标序号> <进度>}：直接设定目标进度（调试）；</li>
  *   <li>{@code grant <玩家> <任务>}：只发奖励不改状态（调试）；</li>
- *   <li>{@code reroll <玩家>}：重抽某玩家的每日任务（调试）。</li>
+ *   <li>{@code resetdaily <玩家>}：重置某玩家的每日任务（不扣费、不消耗次数）。</li>
  * </ul>
  *
  * <h2>命名约定</h2>
- * 子命令一律用「动词/名词」表达真实动作，不用含糊的通用词：
+ * 子命令一律用能表达真实动作的词，且与玩家命令刻意区分：
  * 发放奖励叫 {@code grant} 而不是 {@code give}（后者在插件语境里通常指给物品）；
  * 改进度叫 {@code setobjective} 而不是 {@code progress}（后者看起来像「查看进度」）；
- * 重抽每日任务叫 {@code reroll} 而不是 {@code daily}（后者看起来像「查看每日任务」）。
- * 旧名字保留为隐藏别名，避免已有的管理脚本失效。
+ * 管理员重置每日任务叫 {@code resetdaily}，与玩家的 {@code /ptx refresh} 分开——
+ * 两者效果不同（玩家刷新收费且消耗次数，管理员重置都不），同名会让收费与否无从判断。
+ * <p>
+ * 不保留历史别名：这是开发中的项目，多一个入口就多一处需要维护的文档与校验。
  *
  * <h2>权限为什么只写在类上</h2>
  * {@code @Command(permission=...)} 挂在根节点，而 {@code CommandDispatcher} 每次执行都会先校验根节点，
@@ -112,7 +114,7 @@ public class AdminCommand {
                 .group("调试与修复")
                 .entry("/ptxa setobjective <玩家> <任务> <序号> <进度>", "直接设定目标进度")
                 .entry("/ptxa grant <玩家> <任务>", "直接发放奖励（不改状态）")
-                .entry("/ptxa reroll <玩家>", "重抽每日任务（含次数与扣费）")
+                .entry("/ptxa resetdaily <玩家>", "重置每日任务（不扣费、不消耗次数）")
                 .send(sender);
     }
 
@@ -337,46 +339,20 @@ public class AdminCommand {
     }
 
     /**
-     * {@code reroll <玩家>}：重新抽取某玩家的每日任务（调试用）。
+     * {@code resetdaily <玩家>}：重新抽取该玩家的每日任务（管理员工具）。
      * <p>
-     * 原名为 {@code daily}，看起来像「查看每日任务」，实际是重抽，因此改名。
-     * 走的是与玩家 {@code /ptx refresh} 完全相同的一条路径（含次数上限与扣费），
-     * 否则调试出来的行为与真实刷新不一致。
+     * 命名与玩家的 {@code /ptx refresh} 刻意区分，因为两者效果不同：
+     * <ul>
+     *   <li>{@code refresh}（玩家）：消耗金币与一次刷新次数，换一批任务；</li>
+     *   <li>{@code resetdaily}（管理员）：不扣费、不消耗次数，直接重置——
+     *       它是排障工具（玩家反馈任务做不了、任务配置刚改过），不是消费入口。</li>
+     * </ul>
+     * 用一个名字会让「管理员操作要不要收费」这件事变得无法从命令名判断。
      */
-    @SubCommand(value = "reroll", description = "重抽玩家的每日任务")
-    public void reroll(CommandSender sender, @Arg("player") Player target) {
-        feedback(PlayerTaskX.getInstance(), sender, PlayerTaskX.getInstance().dailyService().refresh(target));
-    }
-
-    // ---------- 旧命令名别名（隐藏，不出现在帮助里） ----------
-
-    /**
-     * {@code progress} → {@link #setObjective} 的旧名字。
-     * <p>
-     * 保留是为了不让已有的管理脚本 / 快捷栏指令失效；
-     * 但它不出现在帮助中，新用法一律以新名字为准。
-     */
-    @SubCommand(value = "progress", description = "（已改名）请使用 setobjective")
-    public void legacyProgress(CommandSender sender,
-                               @Arg("player") Player target,
-                               @Arg(value = "id", suggestion = "suggestQuestIds") String id,
-                               @Arg("slot") int slot,
-                               @Arg("value") int value) {
-        setObjective(sender, target, id, slot, value);
-    }
-
-    /** {@code give} → {@link #grant} 的旧名字，仅为兼容保留。 */
-    @SubCommand(value = "give", description = "（已改名）请使用 grant")
-    public void legacyGive(CommandSender sender,
-                           @Arg("player") Player target,
-                           @Arg(value = "id", suggestion = "suggestQuestIds") String id) {
-        grant(sender, target, id);
-    }
-
-    /** {@code daily} → {@link #reroll} 的旧名字，仅为兼容保留。 */
-    @SubCommand(value = "daily", description = "（已改名）请使用 reroll")
-    public void legacyDaily(CommandSender sender, @Arg("player") Player target) {
-        reroll(sender, target);
+    @SubCommand(value = "resetdaily", description = "重置玩家的每日任务（不扣费、不消耗次数）")
+    public void resetDaily(CommandSender sender, @Arg("player") Player target) {
+        feedback(PlayerTaskX.getInstance(), sender,
+                PlayerTaskX.getInstance().dailyService().resetDaily(target));
     }
 
     // ---------- 补全 ----------
@@ -536,8 +512,7 @@ public class AdminCommand {
         if (result.success()) {
             messages.send(receiver, "quest.refreshed");
             if (result.cost() > 0) {
-                messages.send(receiver, "quest.refresh-cost",
-                        describeCost(plugin, receiver, result.cost(), result.currency()));
+                messages.send(receiver, "quest.refresh-cost", plugin.moneyReward().format(result.cost()));
             }
             return;
         }
@@ -546,15 +521,6 @@ public class AdminCommand {
             return;
         }
         messages.send(receiver, "quest.refresh-failed", result.error());
-    }
-
-    /** 费用文案：数字 + 货币显示名（货币 id 走 {@code reward.<id>} 语言键）。 */
-    private static String describeCost(PlayerTaskX plugin, CommandSender receiver, double cost, String currency) {
-        String amount = formatNumber(cost);
-        if (currency == null || currency.isBlank()) {
-            return amount;
-        }
-        return amount + " " + rewardName(plugin, receiver, currency);
     }
 
     /** 数字文案：去掉整数的小数尾巴（500.0 → 500），小数保持原样。 */
