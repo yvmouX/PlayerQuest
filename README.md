@@ -1,8 +1,41 @@
-# 开发文档
+# PlayerTaskX
+
+面向 Spigot / Paper / Folia / Canvas 的**每日任务与自定义任务**插件：
+任务 = 多个目标 + 多个奖励，支持网页编辑器、游戏内 GUI、多语言与 PlaceholderAPI 变量。
+
+## 文档
+
+在线文档（docsify，随 `main` 自动发布）：**https://yvmouX.github.io/PlayerTaskX/**
+
+也可以直接看仓库里的 Markdown：
+
+| 文档 | 内容 |
+|---|---|
+| [使用文档总览](docs/README.md) | 从这里开始 |
+| [快速开始](docs/quick-start.md) | 安装与 5 分钟跑通第一个任务 |
+| [命令](docs/commands.md) | 玩家命令 / 管理员命令 |
+| [配置](docs/configuration.md) | `config.yml` 全部选项 |
+| [任务目标](docs/objectives.md) | 14 种目标类型 |
+| [任务奖励](docs/rewards.md) | 5 种奖励类型 |
+| [网页编辑器](docs/editor.md) | 浏览器管理界面 |
+| [变量](docs/placeholders.md) | PlaceholderAPI 变量 |
+| [常见问题](docs/faq.md) | 排查手册 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 架构设计与实现说明（开发者向） |
+
+## 构建
+
+```powershell
+.\gradlew.bat build                # 构建 + 跑测试
+.\start-folia.ps1                  # 构建 + 部署到 run\plugins + 启动测试服
+```
+
+产物为 `build/libs/playerTaskX-<版本>-all.jar`（部署用这个 `-all` 版本）。
 
 ---
 
-## 快速跳转
+## 开发文档
+
+### 快速跳转
 
 - [存储](#存储)
 - [YLib 子模块](#ylib-子模块)

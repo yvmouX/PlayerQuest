@@ -1,0 +1,53 @@
+package com.playerPlugin.playerTaskX.core.objective;
+
+import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
+import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
+import com.playerPlugin.playerTaskX.api.objective.Trigger;
+import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+
+import java.util.List;
+import java.util.Map;
+
+/** 目标：附魔。{@code target} 为附魔名，可留空表示任意附魔。 */
+public final class EnchantObjective implements ObjectiveType {
+
+    @Override
+    public String id() {
+        return "enchant";
+    }
+
+    @Override
+    public String displayName() {
+        return "附魔";
+    }
+
+    @Override
+    public Trigger trigger() {
+        return Trigger.ENCHANT;
+    }
+
+    @Override
+    public List<ConfigField> schema() {
+        return List.of(
+                ConfigField.text("target", "附魔", "", "附魔名，如 SHARPNESS、EFFICIENCY；留空或 * 表示任意附魔"),
+                ConfigField.amount(1)
+        );
+    }
+
+    /**
+     * 判定本次附上的附魔是否命中配置：命中返回本次数量，否则返回 0。
+     * <p>
+     * 一次附魔可能产生多个附魔，监听器可逐个上报；
+     * {@code context.target()} 为 {@code null} 时只有「留空 / *」的配置才算命中。
+     *
+     * @param context    动作上下文，{@code target} 为附魔名，可为 null
+     * @param properties 目标配置，读取 {@code target}
+     */
+    @Override
+    public int match(ProgressContext context, Map<String, Object> properties) {
+        if (!targetMatches(context, properties)) {
+            return 0;
+        }
+        return context.amount();
+    }
+}

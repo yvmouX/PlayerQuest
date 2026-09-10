@@ -1,7 +1,6 @@
 plugins {
     java
     `maven-publish`
-    id("xyz.jpenilla.run-paper") version "3.0.2"
     id("com.gradleup.shadow") version "9.3.0"
 }
 
@@ -19,6 +18,11 @@ allprojects {
         maven { url = uri("https://jitpack.io") }
         maven { url = uri("https://repo.tcoded.com/releases") }
         maven { url = uri("https://repo.rosewooddev.io/repository/public/") }
+        // PlaceholderAPI 的官方仓库；用内容过滤限定只在此仓库找它，避免影响其它依赖的解析
+        maven {
+            url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/")
+            content { includeGroup("me.clip") }
+        }
     }
 
     dependencies {
@@ -32,6 +36,15 @@ allprojects {
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
 
         compileOnly("org.jetbrains:annotations:24.0.1")
+
+        // MiniMessage 文本：spigot-api 不含 Adventure（实测 1.21.8 中 net.kyori 类数为 0），
+        // 因此自带一份并在 shadowJar 中重定位，避免与 Paper 自带的 net.kyori.adventure 冲突。
+        implementation("net.kyori:adventure-text-minimessage:4.26.1")
+        implementation("net.kyori:adventure-text-serializer-legacy:4.26.1")
+        implementation("net.kyori:adventure-text-serializer-plain:4.26.1")
+
+        // 软依赖：编译期需要，运行期缺失时对应功能自动降级
+        compileOnly("me.clip:placeholderapi:2.11.6")
 
 
         implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
@@ -62,22 +75,17 @@ allprojects {
         if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible) {
             options.release.set(targetJavaVersion)
         }
+
+        // 保留方法参数名：YLib 的 @Arg 在未显式命名时按参数名匹配，依赖此选项。
+        // （本项目仍一律显式写 @Arg("name")，此处作为双保险。）
+        options.compilerArgs.add("-parameters")
     }
 }
 
 
-tasks {
-    runServer {
-        minecraftVersion("1.21.11")
-        jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8")
-        // 确保运行前先构建前端
-        dependsOn(project(":core").tasks.named("processResources"))
-    }
-
-    // 添加Folia支持
-    runPaper.folia.registerTask()
-}
-
+// 本机测试服由 start-folia.ps1 直接启动 run/ 下的服务端 jar。
+// 原先用 run-paper 插件的 runServer 任务，但它会在每次运行时维护/替换服务端 jar，
+// 与「自行维护 run/ 目录」的工作方式冲突，因此移除该插件。
 tasks.shadowJar {
     // 依赖 core 模块的 jar 任务
     dependsOn(project(":core").tasks.named("jar"))
@@ -91,6 +99,8 @@ tasks.shadowJar {
     // 重定位
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
     relocate("com.fasterxml.jackson", "com.playerPlugin.playerTaskX.libs.jackson")
+    // Adventure 自带一份（Spigot 无此 API），重定位后与 Paper 自带的 net.kyori.adventure 互不干扰
+    relocate("net.kyori", "com.playerPlugin.playerTaskX.libs.kyori")
     
     // 合并 META-INF/services 文件：
     // YLib 自 1.0.0-beta5 起改用 ServiceLoader 定位服务实现（Logger/配置/命令/调度器），

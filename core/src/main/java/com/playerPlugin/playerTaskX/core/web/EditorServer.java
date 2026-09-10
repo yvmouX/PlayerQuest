@@ -1,0 +1,524 @@
+package com.playerPlugin.playerTaskX.core.web;
+
+import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.api.model.Quest;
+import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
+import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
+import com.playerPlugin.playerTaskX.core.storage.StorageException;
+import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import io.javalin.Javalin;
+import io.javalin.http.Context;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * 内置网页编辑器：提供 REST 接口与静态前端资源。
+ *
+ * <h2>为什么用 Javalin 而不是自己写 HTTP</h2>
+ * 编辑器需要静态资源、路由、JSON 三件事，Javalin 一并解决；
+ * 项目本来就依赖它（旧版编辑器遗留），没有引入新依赖。
+ *
+ * <h2>安全</h2>
+ * 这是管理端接口，默认只应监听本机。若配置了 {@code editor.token}，
+ * 所有 {@code /api/*} 请求都必须携带同名请求头，否则拒绝。
+ * 未配置令牌时记录一条告警——因为那意味着任何能访问该端口的人都能改任务。
+ */
+public final class EditorServer {
+
+    private final PlayerTaskX plugin;
+    private Javalin app;
+
+    public EditorServer(PlayerTaskX plugin) {
+        this.plugin = plugin;
+    }
+
+    /** 启动 HTTP 服务；失败只记录日志，不影响插件其它功能。 */
+    public void start(int port) {
+        try {
+            app = Javalin.create(config -> {
+                config.showJavalinBanner = false;
+                config.http.defaultContentType = "application/json; charset=utf-8";
+            });
+
+            registerRoutes();
+            app.start(port);
+
+            plugin.messages().send(org.bukkit.Bukkit.getConsoleSender(),
+                    "editor.started", "127.0.0.1:" + port);
+            if (plugin.config().getEditorToken().isBlank()) {
+                plugin.getLogger().warning("网页编辑器未设置访问令牌（editor.token），"
+                        + "任何能访问该端口的人都可以修改任务；请仅在本机使用或配置令牌。");
+            }
+        } catch (Throwable e) {
+            // 捕获 Throwable 而不是 Exception：网页编辑器是附加功能，
+            // 端口占用、Javalin/Kotlin 类缺失等都不应该让整个插件无法启用
+            plugin.getLogger().severe("网页编辑器启动失败（端口 " + port + "）: " + e);
+            closeQuietly();
+            app = null;
+        }
+    }
+
+    /** 关闭 HTTP 服务。 */
+    public void stop() {
+        closeQuietly();
+    }
+
+    private void closeQuietly() {
+        Javalin instance = app;
+        app = null;
+        if (instance != null) {
+            try {
+                instance.stop();
+            } catch (Throwable ignored) {
+                // 关服阶段的异常无需上报
+            }
+        }
+    }
+
+    private void registerRoutes() {
+        // ---- 令牌校验：只拦 /api/*，静态资源放行（前端本身不含敏感数据） ----
+        app.before("/api/*", this::checkToken);
+
+        // ---- 静态前端 ----
+        app.get("/", ctx -> serveIndex(ctx));
+        app.get("/assets/{file}", ctx -> serveAsset(ctx, "assets/" + ctx.pathParam("file")));
+        app.get("/favicon.ico", ctx -> ctx.status(204));
+
+        // ---- 任务 CRUD ----
+        app.get("/api/quests", ctx -> {
+            List<Map<String, Object>> list = new ArrayList<>();
+            for (Quest quest : plugin.quests().all()) {
+                Map<String, Object> json = QuestJson.toJson(quest);
+                // 顺带把校验问题给出，编辑器可直接标红
+                json.put("problems", plugin.validate(quest));
+                list.add(json);
+            }
+            ctx.result(toJson(list));
+        });
+
+        // ---- 批量接口必须注册在 {id} 之前 ----
+        // 路由按注册顺序匹配，否则 /api/quests/export 会被 /api/quests/{id} 抢先匹配成
+        // 「id 为 export 的任务」，直接返回 404。
+        app.get("/api/quests/export", ctx -> {
+            List<Map<String, Object>> exported = new ArrayList<>();
+            for (Quest quest : plugin.quests().all()) {
+                // 导出不含 problems（派生信息，导入时会重新计算）
+                exported.add(QuestJson.toJson(quest));
+            }
+            ctx.result(toJson(Map.of("version", 1, "quests", exported)));
+        });
+
+        app.post("/api/quests/import", ctx -> {
+            Map<String, Object> body = fromJson(ctx.body());
+            if (body == null) {
+                badRequest(ctx, "请求体不是合法的 JSON 对象");
+                return;
+            }
+            Object rawQuests = body.get("quests");
+            if (!(rawQuests instanceof List<?> list)) {
+                badRequest(ctx, "缺少 quests 数组");
+                return;
+            }
+            // replace=true 时先清空再导入，用于「用备份覆盖当前数据」
+            boolean replace = Boolean.TRUE.equals(body.get("replace"));
+            int imported = 0;
+            List<String> skipped = new ArrayList<>();
+            if (replace) {
+                for (Quest existing : plugin.quests().all()) {
+                    plugin.deleteQuest(existing.id());
+                }
+            }
+            for (Object item : list) {
+                Map<String, Object> node = asMap(item);
+                if (node == null) {
+                    continue;
+                }
+                Quest quest = QuestJson.fromJson(node);
+                if (quest.id() == null || quest.id().isBlank()) {
+                    skipped.add("(缺少 id)");
+                    continue;
+                }
+                plugin.saveQuest(quest);
+                imported++;
+            }
+            ctx.result(toJson(Map.of("ok", true, "imported", imported, "skipped", skipped,
+                    "total", plugin.quests().all().size())));
+        });
+
+        app.get("/api/quests/{id}", ctx -> {
+            Quest quest = plugin.quests().find(ctx.pathParam("id")).orElse(null);
+            if (quest == null) {
+                notFound(ctx, "任务不存在: " + ctx.pathParam("id"));
+                return;
+            }
+            Map<String, Object> json = QuestJson.toJson(quest);
+            json.put("problems", plugin.validate(quest));
+            ctx.result(toJson(json));
+        });
+
+        app.post("/api/quests", ctx -> {
+            Map<String, Object> body = fromJson(ctx.body());
+            if (body == null) {
+                badRequest(ctx, "请求体不是合法的 JSON 对象");
+                return;
+            }
+            Quest quest = QuestJson.fromJson(body);
+            if (quest.id() == null || quest.id().isBlank()) {
+                badRequest(ctx, "任务 id 不能为空");
+                return;
+            }
+            plugin.saveQuest(quest);
+            ctx.result(toJson(Map.of("ok", true, "id", quest.id(),
+                    "problems", plugin.validate(quest))));
+        });
+
+        app.delete("/api/quests/{id}", ctx -> {
+            String id = ctx.pathParam("id");
+            boolean removed = plugin.deleteQuest(id);
+            ctx.result(toJson(Map.of("ok", removed, "id", id)));
+        });
+
+        // ---- 玩家进度：管理员排查「某玩家为什么没进度」 ----
+        app.get("/api/players", ctx -> {
+            // 只列出有任务记录的玩家，避免遍历全服离线玩家
+            List<Map<String, Object>> players = new ArrayList<>();
+            List<UUID> ids = plugin.playerQuestRepository().distinctPlayerIds();
+            for (UUID playerId : ids) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("uuid", playerId.toString());
+                String name = Bukkit.getOfflinePlayer(playerId).getName();
+                entry.put("name", name == null ? "" : name);
+                entry.put("online", Bukkit.getPlayer(playerId) != null);
+                entry.put("quests", plugin.playerQuestRepository().findByPlayer(playerId).size());
+                players.add(entry);
+            }
+            ctx.result(toJson(players));
+        });
+
+        app.get("/api/players/{uuid}", ctx -> {
+            UUID playerId;
+            try {
+                playerId = UUID.fromString(ctx.pathParam("uuid"));
+            } catch (IllegalArgumentException e) {
+                badRequest(ctx, "玩家 UUID 格式不正确");
+                return;
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("uuid", playerId.toString());
+            String name = Bukkit.getOfflinePlayer(playerId).getName();
+            result.put("name", name == null ? "" : name);
+            result.put("questCoin", plugin.coinReward().balance(playerId));
+
+            List<Map<String, Object>> records = new ArrayList<>();
+            for (var record : plugin.playerQuestRepository().findByPlayer(playerId)) {
+                Quest quest = plugin.quests().find(record.questId()).orElse(null);
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("questId", record.questId());
+                entry.put("questName", quest == null ? "" : TextRenderer.strip(quest.name()));
+                entry.put("type", record.type().name());
+                entry.put("status", record.status().name());
+                entry.put("assignedAt", record.assignedAt());
+                entry.put("expiresAt", record.expiresAt());
+                entry.put("percent", quest == null ? 0 : Math.round(record.completionRatio(quest) * 100));
+                // 逐目标给出「当前/需求」，管理员一眼能看出卡在哪一步
+                List<Map<String, Object>> objectives = new ArrayList<>();
+                if (quest != null) {
+                    for (int i = 0; i < quest.objectives().size(); i++) {
+                        var objective = quest.objectives().get(i);
+                        Map<String, Object> slot = new LinkedHashMap<>();
+                        slot.put("index", i);
+                        slot.put("type", objective.type());
+                        slot.put("current", record.progress(i));
+                        slot.put("required", objective.amount());
+                        objectives.add(slot);
+                    }
+                }
+                entry.put("objectives", objectives);
+                records.add(entry);
+            }
+            result.put("progress", records);
+            ctx.result(toJson(result));
+        });
+
+        // ---- schema：目标与奖励类型的字段描述，前端据此动态生成表单 ----
+        app.get("/api/schema", ctx -> {
+            Map<String, Object> schema = new LinkedHashMap<>();
+            schema.put("objectives", typeSchemas(plugin.objectiveTypes()));
+            schema.put("rewards", typeSchemas(plugin.rewardTypes()));
+            ctx.result(toJson(schema));
+        });
+
+        // ---- 语言文件 ----
+        app.get("/api/langs", ctx -> {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (String code : plugin.config().getLanguageAvailable()) {
+                result.put(code, readLang(code));
+            }
+            ctx.result(toJson(result));
+        });
+
+        app.put("/api/langs/{code}", ctx -> {
+            String code = ctx.pathParam("code");
+            Map<String, Object> body = fromJson(ctx.body());
+            if (body == null) {
+                badRequest(ctx, "请求体不是合法的 JSON 对象");
+                return;
+            }
+            Object content = body.get("content");
+            writeLang(code, content == null ? "" : String.valueOf(content));
+            plugin.messages().reload();
+            ctx.result(toJson(Map.of("ok", true, "code", code)));
+        });
+
+        // ---- 统计与重载 ----
+        app.get("/api/stats", ctx -> {
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("quests", plugin.quests().all().size());
+            stats.put("dailyQuests", plugin.quests().daily().size());
+            stats.put("objectives", plugin.objectiveTypes().all().size());
+            stats.put("rewards", plugin.rewardTypes().all().size());
+            stats.put("players", plugin.playerQuestRepository().countPlayers());
+            stats.put("storage", plugin.describeStorage());
+            stats.put("categories", plugin.quests().categories());
+            ctx.result(toJson(stats));
+        });
+
+        app.post("/api/reload", ctx -> {
+            plugin.reloadQuests();
+            ctx.result(toJson(Map.of("ok", true, "quests", plugin.quests().all().size())));
+        });
+
+        // ---- 统一异常处理：把业务异常转成 4xx，而不是让前端只看到 500 ----
+        app.exception(IllegalArgumentException.class, (e, ctx) ->
+                badRequest(ctx, e.getMessage() == null ? "参数不合法" : e.getMessage()));
+        app.exception(IllegalStateException.class, (e, ctx) ->
+                ctx.status(409).result(toJson(Map.of("error",
+                        e.getMessage() == null ? "状态冲突" : e.getMessage()))));
+        app.exception(StorageException.class, (e, ctx) ->
+                ctx.status(500).result(toJson(Map.of("error", "存储错误: " + e.getMessage()))));
+        app.exception(TokenRejected.class, (e, ctx) -> {
+            // checkToken 已写好响应体，这里只需保持 401
+            ctx.status(401);
+        });
+    }
+
+    /** 把目标/奖励类型集合序列化为「类型 → 字段列表」。 */
+    private Map<String, Object> typeSchemas(Object registry) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<?> types = registry instanceof ObjectiveRegistry objectiveRegistry
+                ? new ArrayList<>(objectiveRegistry.all())
+                : registry instanceof RewardRegistry rewardRegistry
+                        ? new ArrayList<>(rewardRegistry.all())
+                        : List.of();
+        for (Object type : types) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            String id;
+            String displayName;
+            List<?> fields;
+            if (type instanceof com.playerPlugin.playerTaskX.api.objective.ObjectiveType objectiveType) {
+                id = objectiveType.id();
+                displayName = objectiveType.displayName();
+                fields = objectiveType.schema();
+            } else if (type instanceof com.playerPlugin.playerTaskX.api.reward.RewardType rewardType) {
+                id = rewardType.id();
+                displayName = rewardType.displayName();
+                fields = rewardType.schema();
+                entry.put("available", rewardType.available());
+                entry.put("unavailableReason", rewardType.unavailableReason());
+            } else {
+                continue;
+            }
+            entry.put("id", id);
+            entry.put("displayName", displayName);
+            entry.put("fields", fields.stream().map(this::fieldToJson).toList());
+            result.put(id, entry);
+        }
+        return result;
+    }
+
+    private Map<String, Object> fieldToJson(Object field) {
+        if (!(field instanceof com.playerPlugin.playerTaskX.api.schema.ConfigField configField)) {
+            return Map.of();
+        }
+        Map<String, Object> json = new LinkedHashMap<>();
+        json.put("key", configField.key());
+        json.put("label", configField.label());
+        json.put("type", configField.type().name());
+        json.put("required", configField.required());
+        json.put("defaultValue", configField.defaultValue());
+        json.put("options", configField.options());
+        json.put("hint", configField.hint());
+        return json;
+    }
+
+    private void checkToken(Context ctx) {
+        String token = plugin.config().getEditorToken();
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        String provided = ctx.header("X-Editor-Token");
+        if (!token.equals(provided)) {
+            ctx.status(401).result(toJson(Map.of("error", "无效或缺失的访问令牌（请求头 X-Editor-Token）")));
+            // 抛出以中断后续处理器
+            throw new TokenRejected();
+        }
+    }
+
+    /** 用于中断请求的内部控制流异常。 */
+    private static final class TokenRejected extends RuntimeException {
+    }
+
+    private void serveIndex(Context ctx) throws IOException {
+        byte[] content = readResource("web/index.html");
+        if (content == null) {
+            ctx.status(404).contentType("text/html; charset=utf-8")
+                    .result("<h1>PlayerTaskX 编辑器未构建</h1>"
+                            + "<p>请先执行前端构建（task-editor-vue 目录下 npm run build），或关闭 editor.enabled。</p>");
+            return;
+        }
+        ctx.contentType("text/html; charset=utf-8").result(new String(content, StandardCharsets.UTF_8));
+    }
+
+    /** 提供 Vite 产出的静态资源（js/css），带正确的内容类型。 */
+    private void serveAsset(Context ctx, String resourcePath) {
+        byte[] content = readResource("web/" + resourcePath);
+        if (content == null) {
+            ctx.status(404).result("");
+            return;
+        }
+        ctx.contentType(contentTypeOf(resourcePath)).result(content);
+    }
+
+    private String contentTypeOf(String path) {
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "text/javascript; charset=utf-8";
+        if (lower.endsWith(".css")) return "text/css; charset=utf-8";
+        if (lower.endsWith(".html")) return "text/html; charset=utf-8";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".json")) return "application/json; charset=utf-8";
+        return "application/octet-stream";
+    }
+
+    /**
+     * 读取资源：优先插件数据目录（便于用户自行替换前端），其次 jar 内。
+     * <p>
+     * 数据目录优先是有意为之——前端改版时不必重新打包插件。
+     */
+    private byte[] readResource(String resourcePath) {
+        File external = new File(plugin.getDataFolder(), resourcePath);
+        if (external.exists() && external.isFile()) {
+            try {
+                return Files.readAllBytes(external.toPath());
+            } catch (IOException ignored) {
+                // 读失败则退回 jar 内资源
+            }
+        }
+        try (var stream = plugin.getResource(resourcePath)) {
+            return stream == null ? null : stream.readAllBytes();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private String readLang(String code) {
+        File file = new File(plugin.getDataFolder(), "lang/" + code + ".yml");
+        if (file.exists()) {
+            try {
+                return Files.readString(file.toPath(), StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                return "";
+            }
+        }
+        try (var stream = plugin.getResource("lang/" + code + ".yml")) {
+            return stream == null ? "" : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    /**
+     * 写入语言文件。
+     * <p>
+     * 先校验能解析成 YAML 再落盘：编辑器里一次手滑的缩进错误不应该让玩家看到
+     * 「Missing message」。
+     */
+    private void writeLang(String code, String content) {
+        YamlConfiguration configuration = new YamlConfiguration();
+        try {
+            configuration.loadFromString(content);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("语言文件不是合法的 YAML: " + e.getMessage(), e);
+        }
+        File file = new File(plugin.getDataFolder(), "lang/" + code + ".yml");
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IllegalStateException("无法创建语言目录: " + parent);
+        }
+        try {
+            Files.writeString(file.toPath(), content, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("写入语言文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    private void notFound(Context ctx, String message) {
+        ctx.status(404).result(toJson(Map.of("error", message)));
+    }
+
+    private void badRequest(Context ctx, String message) {
+        ctx.status(400).result(toJson(Map.of("error", message)));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fromJson(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            Object parsed = Json.MAPPER.readValue(body, Map.class);
+            return parsed instanceof Map ? (Map<String, Object>) parsed : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 把任意对象转成 Map，非对象返回 null（导入时跳过非法条目而不是整体失败）。 */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(Object value) {
+        return value instanceof Map ? (Map<String, Object>) value : null;
+    }
+
+    private String toJson(Object value) {
+        try {
+            return Json.MAPPER.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{\"error\":\"序列化失败\"}";
+        }
+    }
+
+    /** 单例 ObjectMapper：构造开销大，且线程安全。 */
+    private static final class Json {
+        private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+                new com.fasterxml.jackson.databind.ObjectMapper();
+
+        private Json() {
+        }
+    }
+
+    /** 语言代码归一化，避免大小写不一致导致文件找不到。 */
+    public static String normalizeLang(String code) {
+        return code == null ? "" : code.toLowerCase(Locale.ROOT);
+    }
+}

@@ -1,0 +1,98 @@
+# PlayerTaskX language file (English)
+# MiniMessage tags are supported (<red>, <bold>, ...), legacy & color codes also work.
+# Placeholders are numeric: {0}, {1}, ... replaced in order.
+
+prefix: "<gray>[</gray><aqua>PlayerTaskX</aqua><gray>]</gray> "
+
+# ---------- Common ----------
+common:
+  yes: "Yes"
+  no: "No"
+  none: "None"
+  loading: "Loading..."
+
+# ---------- Objective type names ----------
+objective:
+  break_block: "Mine"
+  place_block: "Place"
+  craft: "Craft"
+  fish: "Fish"
+  kill: "Kill"
+  consume: "Consume"
+  enchant: "Enchant"
+  shear: "Shear"
+  breed: "Breed"
+  tame: "Tame"
+  interact: "Interact"
+  chat: "Chat"
+  submit: "Submit"
+  command: "Run command"
+
+# ---------- Reward type names ----------
+reward:
+  money: "Money"
+  points: "Points"
+  quest_coin: "Quest Coin"
+  item: "Item"
+  command: "Custom command"
+
+# ---------- Quests ----------
+quest:
+  progress: "Quest progress"
+  completed-title: "<green>✔ Quest complete</green>"
+  completed-subtitle: "<white>{0}</white>"
+  completed-message: "<green>Quest completed: </green><white>{0}</white><gray> - claim your reward in the quest menu.</gray>"
+  claimed: "<green>Reward claimed: </green><white>{0}</white>"
+  not-completed: "<red>This quest is not complete yet.</red>"
+  already-claimed: "<red>This reward has already been claimed.</red>"
+  unavailable: "<red>This quest is currently unavailable, please contact an administrator.</red>"
+  accepted: "<green>Quest accepted: </green><white>{0}</white>"
+  abandoned: "<yellow>Quest abandoned: </yellow><white>{0}</white>"
+  refreshed: "<green>Daily quests refreshed.</green>"
+  refresh-failed: "<red>Refresh failed: {0}</red>"
+  refresh-limit: "<red>You have used all refreshes for today (limit {0}).</red>"
+  refresh-cost: "<gray>This refresh cost {0}.</gray>"
+  not-found: "<red>Quest not found: {0}</red>"
+
+# ---------- Daily ----------
+daily:
+  none: "<gray>No daily quests available today.</gray>"
+  reset: "<green>A new day - your daily quests have been reset.</green>"
+
+# ---------- Commands ----------
+command:
+  player-only: "<red>This command can only be used by players.</red>"
+  no-permission: "<red>You do not have permission to use this command.</red>"
+  unknown-subcommand: "<red>Unknown subcommand: {0}</red>"
+  reloaded: "<green>Configuration and quests reloaded ({0} quests).</green>"
+  reload-failed: "<red>Reload failed: {0}</red>"
+
+# ---------- GUI ----------
+gui:
+  daily-title: "Daily Quests"
+  quest-list-title: "Quest List"
+  quest-detail-title: "Quest: {0}"
+  reward-title: "Quest Rewards"
+  admin-title: "Quest Admin"
+  objective-title: "Edit Objectives"
+  reward-edit-title: "Edit Rewards"
+  click-to-view: "<yellow>Click for details</yellow>"
+  click-to-claim: "<green>Click to claim reward</green>"
+  in-progress: "<gray>In progress</gray>"
+  completed: "<green>Completed - ready to claim</green>"
+  claimed: "<gray>Claimed</gray>"
+  page-info: "<gray>Page {0}/{1}</gray>"
+  previous: "<yellow>Previous</yellow>"
+  next: "<yellow>Next</yellow>"
+  close: "<red>Close</red>"
+  back: "<yellow>Back</yellow>"
+
+# ---------- Editor ----------
+editor:
+  started: "<green>Web editor started at </green><white>http://{0}</white>"
+  disabled: "<gray>Web editor is disabled.</gray>"
+  token-required: "<red>Access token is missing, please set editor.token in the config.</red>"
+
+# ---------- Errors ----------
+error:
+  internal: "<red>Operation failed, check the console log.</red>"
