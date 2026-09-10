@@ -4,6 +4,7 @@ import cn.yvmou.ylib.command.annotation.Arg;
 import cn.yvmou.ylib.command.annotation.Command;
 import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
+import cn.yvmou.ylib.command.help.CommandHelp;
 import cn.yvmou.ylib.message.MessageService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
@@ -97,25 +98,22 @@ public class AdminCommand {
      */
     private void showHelp(CommandSender sender) {
         MessageService messages = messages();
-        messages.sendRaw(sender, header(messages.raw(sender, "gui.admin-title")));
-
-        helpGroup(sender, "任务管理");
-        helpLine(sender, "/ptxa list", "列出全部任务与校验问题");
-        helpLine(sender, "/ptxa info <id>", "查看单个任务的完整信息");
-        helpLine(sender, "/ptxa enable <id>", "启用任务");
-        helpLine(sender, "/ptxa disable <id>", "禁用任务");
-        helpLine(sender, "/ptxa reload", "从存储重载任务定义");
-
-        helpGroup(sender, "界面与编辑");
-        helpLine(sender, "/ptxa menu", "打开任务管理界面");
-        helpLine(sender, "/ptxa editor", "查看网页编辑器地址与访问令牌");
-
-        helpGroup(sender, "调试与修复");
-        helpLine(sender, "/ptxa setobjective <玩家> <任务> <序号> <进度>", "直接设定目标进度");
-        helpLine(sender, "/ptxa grant <玩家> <任务>", "直接发放奖励（不改状态）");
-        helpLine(sender, "/ptxa reroll <玩家>", "重抽每日任务（含次数与扣费）");
-
-        messages.sendRaw(sender, render("&8提示：&7任务 id 可用 Tab 补全"));
+        CommandHelp.builder(messages.raw(sender, "gui.admin-title"))
+                .subtitle("&8任务 id 可用 Tab 补全")
+                .group("任务管理")
+                .entry("/ptxa list", "列出全部任务与校验问题")
+                .entry("/ptxa info <id>", "查看单个任务的完整信息")
+                .entry("/ptxa enable <id>", "启用任务")
+                .entry("/ptxa disable <id>", "禁用任务")
+                .entry("/ptxa reload", "从存储重载任务定义")
+                .group("界面与编辑")
+                .entry("/ptxa menu", "打开任务管理界面")
+                .entry("/ptxa editor", "查看网页编辑器地址与访问令牌")
+                .group("调试与修复")
+                .entry("/ptxa setobjective <玩家> <任务> <序号> <进度>", "直接设定目标进度")
+                .entry("/ptxa grant <玩家> <任务>", "直接发放奖励（不改状态）")
+                .entry("/ptxa reroll <玩家>", "重抽每日任务（含次数与扣费）")
+                .send(sender);
     }
 
     /**
@@ -187,7 +185,8 @@ public class AdminCommand {
             messages.send(sender, "daily.none");
             return;
         }
-        messages.sendRaw(sender, header(messages.raw(sender, "gui.admin-title") + " &7(" + quests.size() + ")"));
+        messages.sendRaw(sender, render("&8&m-----&r "
+                + messages.raw(sender, "gui.admin-title") + " &7(" + quests.size() + ") &8&m-----"));
         for (Quest quest : quests) {
             messages.sendRaw(sender, questLine(plugin, sender, quest));
             for (String problem : problems(plugin, quest)) {
@@ -478,21 +477,6 @@ public class AdminCommand {
                 + "&7目标 " + quest.objectives().size() + SEPARATOR
                 + "&7奖励 " + quest.rewards().size() + SEPARATOR
                 + "&7启用 &f" + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no"));
-    }
-
-    /** 帮助行：语法 + 一句话说明。 */
-    private static void helpLine(CommandSender sender, String syntax, String description) {
-        messages().sendRaw(sender, render(HELP_PREFIX + syntax + " &7" + description));
-    }
-
-    /** 帮助分组标题：用颜色区分层级，不额外画线，避免刷屏。 */
-    private static void helpGroup(CommandSender sender, String title) {
-        messages().sendRaw(sender, render("&7" + title));
-    }
-
-    /** 小节标题，两侧用删除线画出分隔（纯结构字符）。 */
-    private static String header(String title) {
-        return render("&8&m-----&r " + title + " &8&m-----");
     }
 
     /**

@@ -26,8 +26,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("org.mockito:mockito-core:5.8.0")
     // spigot-api 在主代码里是 compileOnly（运行期由服务端提供），
-    // 但测试编译需要它的类，因此单独给测试加一份
-    testCompileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    // 但测试编译与运行都需要它的类（例如 ChatColor 的颜色码转换），因此单独给测试加一份
+    testImplementation("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

@@ -4,6 +4,7 @@ import cn.yvmou.ylib.command.annotation.Arg;
 import cn.yvmou.ylib.command.annotation.Command;
 import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
+import cn.yvmou.ylib.command.help.CommandHelp;
 import cn.yvmou.ylib.message.MessageService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
@@ -100,22 +101,16 @@ public class PlayerCommand {
     }
 
     /**
-     * 帮助正文：按用途分组。
+     * 帮助正文。
      * <p>
-     * 子命令说明没有对应语言键，因此直写中文——与 {@code @SubCommand(description=...)}
-     * 的内容保持一致，两处都改才不会有偏差。
+     * 条目与说明全部来自注解（{@code @Command(description)} / {@code @SubCommand(description)}），
+     * 由 YLib 的 {@link CommandHelp} 统一渲染——不再手写清单，
+     * 因此新增子命令时忘记改帮助的情况不会发生。样式也与其他 YLib 插件一致。
      */
     private static void showHelp(CommandSender sender) {
-        MessageService messages = messages();
-        messages.sendRaw(sender, header(messages.raw(sender, "quest.progress")));
-
-        helpLine(sender, "/ptx", "打开每日任务界面");
-        helpLine(sender, "/ptx list", "在聊天里列出当前任务与完成度");
-        helpLine(sender, "/ptx progress", "查看当前任务的进度详情");
-        helpLine(sender, "/ptx claim <id>", "领取已完成任务的奖励");
-        helpLine(sender, "/ptx refresh", "刷新每日任务（消耗货币）");
-
-        messages.sendRaw(sender, render("&8提示：任务 id 可用 Tab 补全"));
+        CommandHelp.ofAnnotations(messages().raw(sender, "quest.progress"), PlayerCommand.class)
+                .subtitle("&8任务 id 可用 Tab 补全")
+                .send(sender);
     }
 
     // ---------- 列表 ----------
@@ -303,16 +298,6 @@ public class PlayerCommand {
      */
     private static String render(String raw) {
         return TextRenderer.translateAmpersand(TextRenderer.render(raw));
-    }
-
-    /** 帮助行：语法 + 一句话说明。 */
-    private static void helpLine(CommandSender sender, String syntax, String description) {
-        messages().sendRaw(sender, render("&8» &f" + syntax + " &7" + description));
-    }
-
-    /** 小节标题，两侧用删除线画出分隔（纯结构字符）。 */
-    private static String header(String title) {
-        return render("&8&m-----&r " + title + " &8&m-----");
     }
 
     /** 完成度百分比（0~100，四舍五入）。 */
