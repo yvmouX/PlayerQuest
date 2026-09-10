@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayerTaskX 文档</title>
+  <meta name="description" content="PlayerTaskX —— Minecraft 每日任务与自定义任务插件的使用文档">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <style>
+    /* 深色主题：与插件编辑器的观感保持一致 */
+    :root {
+      --theme-color: #4fc3f7;
+      --base-color: #1e2128;
+      --text-color: #d6dae2;
+      --sidebar-background: #16181d;
+      --sidebar-nav-link-color: #b9c0cc;
+      --sidebar-nav-link-color--active: #4fc3f7;
+      --sidebar-nav-link-font-weight--active: 600;
+      --code-theme-background: #22252c;
+      --blockquote-border-color: #4fc3f7;
+      --table-row-odd-background: #22252c;
+      --hr-border: #2c3038;
+    }
+    body { background: var(--base-color); }
+    .sidebar { border-right: 1px solid #2c3038; }
+    .sidebar-toggle { background-color: #16181d; }
+    .markdown-section { max-width: 900px; }
+    .markdown-section h1 { font-size: 1.9rem; }
+    .markdown-section code { border-radius: 4px; }
+    /* 表格在窄屏下允许横向滚动，避免挤成一团 */
+    .markdown-section table { display: block; overflow-x: auto; width: 100%; }
+    .app-name-link { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app">正在加载文档…</div>
+
+  <script>
+    window.$docsify = {
+      name: 'PlayerTaskX',
+      // 仓库地址：文档右上角的链接，也是「Edit on GitHub」的目标
+      repo: 'yvmouX/PlayerTaskX',
+      loadSidebar: true,
+      subMaxLevel: 3,          // 右侧目录最多展开到三级标题
+      loadNavbar: false,
+      coverpage: false,
+      auto2top: true,          // 切换页面后回到顶部
+      homepage: 'README.md',
+      // 相对路径的资源（如截图）按 docs 目录解析
+      basePath: '',
+      notFoundPage: false,
+      search: {
+        // 中文文档：需要按字符切分，且关闭「保留首尾字符」这类英文优化
+        placeholder: '搜索文档…',
+        noData: '没有找到结果',
+        depth: 3,
+        paths: 'auto',
+      },
+      copyCode: {
+        buttonText: '复制',
+        errorText: '复制失败',
+        successText: '已复制',
+      },
+      themeable: {
+        readyTransition: true,
+        responsiveTables: true,
+      },
+    }
+  </script>
+
+  <!-- docsify 核心与插件（全部来自 CDN，无需构建步骤） -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/front-matter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-powershell.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+</body>
+</html>

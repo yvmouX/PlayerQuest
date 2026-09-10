@@ -1,0 +1,3 @@
+# 关闭 GitHub Pages 的 Jekyll 处理。
+# 必需：docsify 的侧边栏文件以「下划线」开头（_sidebar.md），
+# Jekyll 默认会忽略下划线开头的文件，导致侧边栏 404。

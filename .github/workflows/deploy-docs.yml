@@ -1,0 +1,49 @@
+name: Deploy docs
+
+# 把 docs/ 目录作为 docsify 站点发布到 GitHub Pages。
+# docsify 是纯运行时的 Markdown 渲染器，因此不需要任何构建步骤——
+# 直接把 docs/ 当作静态资源上传即可。
+#
+# 首次使用需要到仓库 Settings → Pages 把 Source 设为 "GitHub Actions"。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  # 允许在 Actions 页面手动触发
+  workflow_dispatch:
+
+# GITHUB_TOKEN 所需的最小权限：读取仓库 + 写入 Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署；排队中的旧任务直接取消，但不打断正在进行的发布
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 上传 docs 目录
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: 发布到 Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
