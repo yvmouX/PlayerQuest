@@ -322,7 +322,8 @@ function toInstances(
 }
 
 function buildQuest(): Quest {
-  const id = form.id.trim()
+  // 兜底成字符串：表单状态异常时也不该让整个编辑器崩掉
+  const id = String(form.id ?? '').trim()
   return {
     id,
     name: form.name.trim() || id,
@@ -390,7 +391,7 @@ const preview = computed(() => {
     }
   })
 
-  const id = form.id.trim()
+  const id = String(form.id ?? '').trim()
   return {
     title: stripTags(form.name) || id || '',
     subtitle: [
@@ -583,7 +584,7 @@ function onRefreshCostInput(event: Event): void {
 /* ---------------- 保存 / 删除 ---------------- */
 
 async function save(): Promise<void> {
-  if (!form.id.trim()) {
+  if (!String(form.id ?? '').trim()) {
     toast.error('任务 ID 不能为空')
     return
   }
@@ -602,11 +603,12 @@ async function save(): Promise<void> {
     }
     // 新建成功后切到编辑态：id 转为只读，避免再改 id 变成「另存一份」
     if (!persisted.value) {
-      editingId.value = result.id
-      loadedId = result.id
-      form.id = result.id
-      if (props.id !== result.id) {
-        await router.replace({ name: 'quest-edit', params: { id: result.id } })
+      const savedId = result.id || quest.id
+      editingId.value = savedId
+      loadedId = savedId
+      form.id = savedId
+      if (props.id !== savedId) {
+        await router.replace({ name: 'quest-edit', params: { id: savedId } })
       }
     }
   } catch (e) {
@@ -621,14 +623,14 @@ async function save(): Promise<void> {
 const copyPending = ref(false)
 
 /** 副本目标 id：<原 id>_copy，已存在时继续加序号，避免覆盖。 */
-const copyTargetId = computed(() => `${form.id.trim() || 'quest'}_copy`)
+const copyTargetId = computed(() => `${String(form.id ?? '').trim() || 'quest'}_copy`)
 const copyMessage = computed(() =>
   `将以当前表单内容创建一个新任务「${copyTargetId.value}」，原任务不会被修改。\n\n`
   + '若该 id 已存在，后端会直接覆盖同名任务。'
 )
 
 function askSaveCopy(): void {
-  if (!form.id.trim()) {
+  if (!String(form.id ?? '').trim()) {
     toast.error('请先填写任务 ID')
     return
   }
@@ -643,14 +645,16 @@ async function saveAsCopy(): Promise<void> {
   try {
     const result = await QuestApi.save({ ...buildQuest(), id: targetId })
     problems.value = [...(result.problems ?? [])]
+    // 以实际提交的 id 为准：后端未回显 id 时也能正确切到副本
+    const savedId = result.id || targetId
     // 切换为「编辑副本」状态，并同步基准快照
-    editingId.value = result.id
-    loadedId = result.id
-    form.id = result.id
+    editingId.value = savedId
+    loadedId = savedId
+    form.id = savedId
     baseline.value = JSON.stringify(buildQuest())
-    toast.success(`已另存为副本 ${result.id}`)
-    if (props.id !== result.id) {
-      await router.replace({ name: 'quest-edit', params: { id: result.id } })
+    toast.success(`已另存为副本 ${savedId}`)
+    if (props.id !== savedId) {
+      await router.replace({ name: 'quest-edit', params: { id: savedId } })
     }
   } catch (e) {
     error.value = `另存为副本失败：${errorMessage(e)}`
