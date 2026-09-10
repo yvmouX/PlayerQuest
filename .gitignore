@@ -14,6 +14,10 @@
 **/.vite/
 **/dist/
 
+# 一次性验证脚本与调试输出（如类型检查、SSR 冒烟、SFC 转储），不应进入版本控制
+*.tmp.mjs
+*.tmp.txt
+
 # Web assets (auto-built from frontend)
 core/src/main/resources/web/
 

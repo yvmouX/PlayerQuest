@@ -1,150 +1,236 @@
-export interface ApiResponse<T> {
-  code: number
-  msg: string
-  data: T
+/**
+ * 与后端 REST 契约一一对应的类型定义。
+ *
+ * <p>权威来源：{@code core/src/main/java/.../core/web/EditorServer.java} 与
+ * {@code QuestJson.java}；字段名与 JSON 保持一致，改名时必须同步后端。
+ *
+ * <p>模型是「任务 = 多目标 + 多奖励」的扁平结构：目标与奖励都只有
+ * {@code type + properties} 两部分，具体字段由 /api/schema 描述，
+ * 因此本文件里<b>不存在</b>任何具体目标/奖励类型的字段定义。
+ */
+
+/** 任务类型：DAILY 需要刷新费用，NORMAL 不需要。 */
+export type QuestType = 'DAILY' | 'NORMAL'
+
+/** schema 里字段的输入类型，决定渲染什么控件（后端 FieldType）。 */
+export type FieldType =
+  | 'STRING'
+  | 'INTEGER'
+  | 'DECIMAL'
+  | 'BOOLEAN'
+  | 'MATERIAL'
+  | 'ENTITY'
+  | 'ENUM'
+
+/** properties 里允许的取值：JSON 能表达的基础类型。 */
+export type PropertyValue = string | number | boolean | null
+
+/** 目标/奖励的属性表，键名由对应 TypeSchema 的 fields 决定。 */
+export type Properties = Record<string, PropertyValue>
+
+/** 单个配置字段的描述（后端 ConfigField）。 */
+export interface FieldSchema {
+  /** 配置键，对应 properties 中的键名 */
+  key: string
+  /** 显示名 */
+  label: string
+  /** 输入类型 */
+  type: FieldType
+  /** 是否必填（仅用于界面提示，是否强制由后端决定） */
+  required: boolean
+  /** 默认值 */
+  defaultValue: PropertyValue
+  /** ENUM 的候选项 */
+  options: string[]
+  /** 帮助文本 */
+  hint: string
 }
 
+/** 一种目标或奖励类型的描述（后端 ObjectiveType / RewardType）。 */
+export interface TypeSchema {
+  /** 类型 id，例如 break_block */
+  id: string
+  /** 显示名，例如 挖掘方块 */
+  displayName: string
+  /** 该类型的字段列表 */
+  fields: FieldSchema[]
+  /** 仅奖励类型提供：false 表示软依赖缺失（如未装经济插件） */
+  available?: boolean
+  /** 仅奖励类型提供：不可用的原因 */
+  unavailableReason?: string
+}
+
+/** GET /api/schema 的响应。 */
+export interface SchemaResponse {
+  objectives: Record<string, TypeSchema>
+  rewards: Record<string, TypeSchema>
+}
+
+/** 一个具体目标实例。 */
+export interface QuestObjective {
+  type: string
+  properties: Properties
+}
+
+/** 一个具体奖励实例。 */
+export interface QuestReward {
+  type: string
+  properties: Properties
+}
+
+/** 任务。列表与详情接口返回的对象都会带上 problems。 */
 export interface Quest {
   id: string
   name: string
-  description: string
-  category?: string
-  createdAt: number
-  updatedAt: number
-  graph?: QuestGraph
+  /** 描述，一行一条 */
+  description: string[]
+  /** Bukkit 材质名 */
+  icon: string
+  category: string
+  type: QuestType
+  /** DAILY 刷新费用 */
+  refreshCost: number
+  enabled: boolean
+  objectives: QuestObjective[]
+  rewards: QuestReward[]
+  /** 后端校验问题；非空表示该任务配置有误 */
+  problems: string[]
 }
 
-export interface ObjectiveTemplate {
+/** POST /api/quests 的响应。 */
+export interface SaveQuestResult {
+  ok: boolean
   id: string
-  name: string
-  description: string
-  type: 'kill_mob' | 'collect_item' | 'break_block' | 'talk_to_npc' | 'reach_location' | 'custom'
-  defaultConfig: Record<string, any>
+  problems: string[]
 }
 
-export interface ActionTemplate {
+/** DELETE /api/quests/{id} 的响应。 */
+export interface DeleteQuestResult {
+  ok: boolean
   id: string
-  name: string
-  description: string
-  type: 'give_item' | 'execute_command' | 'send_message' | 'play_effect' | 'sound' | 'give_xp' | 'custom'
-  defaultConfig: Record<string, any>
 }
 
-export interface PlayerProgress {
-  playerUuid: string
+/** GET /api/langs：语言代码 → YAML 文本。 */
+export type LangMap = Record<string, string>
+
+/** PUT /api/langs/{code} 的响应。 */
+export interface SaveLangResult {
+  ok: boolean
+  code: string
+}
+
+/** GET /api/stats 的响应。 */
+export interface Stats {
+  quests: number
+  dailyQuests: number
+  objectives: number
+  rewards: number
+  players: number
+  /** 存储类型描述，例如 SQLite / MySQL */
+  storage: string
+  categories: string[]
+}
+
+/** POST /api/reload 的响应。 */
+export interface ReloadResult {
+  ok: boolean
+  quests: number
+}
+
+/* ------------------------------------------------------------------ *
+ * 导入 / 导出
+ * ------------------------------------------------------------------ */
+
+/** GET /api/quests/export 的响应（version 目前恒为 1）。 */
+export interface QuestExport {
+  version: number
+  quests: Quest[]
+}
+
+/** POST /api/quests/import 的请求体；replace=true 表示先清空再导入。 */
+export interface QuestImportRequest {
+  quests: Quest[]
+  replace: boolean
+}
+
+/** POST /api/quests/import 的响应；skipped 是未导入的原因列表。 */
+export interface QuestImportResult {
+  ok: boolean
+  imported: number
+  skipped: string[]
+  /** 导入结束后服务端任务总数 */
+  total: number
+}
+
+/* ------------------------------------------------------------------ *
+ * 玩家进度（纯只读）
+ * ------------------------------------------------------------------ */
+
+/** GET /api/players 的列表项。 */
+export interface PlayerSummary {
+  uuid: string
+  name: string
+  /** 玩家当前是否在线 */
+  online: boolean
+  /** 该玩家的任务记录条数 */
+  quests: number
+}
+
+/** 玩家某一目标槽位的进度。 */
+export interface PlayerObjectiveProgress {
+  /** 目标在任务 objectives 数组中的下标，从 0 开始 */
+  index: number
+  /** 目标类型 id，显示名由 /api/schema 决定 */
+  type: string
+  current: number
+  required: number
+}
+
+/** 玩家的一条任务记录。 */
+export interface PlayerQuestProgress {
   questId: string
-  status: 'not_started' | 'in_progress' | 'completed' | 'claimed'
-  progress: Record<string, number>
+  /** 已剥离颜色标签的任务名；任务被删除时为空串 */
+  questName: string
+  type: QuestType
+  /** 后端状态枚举名，界面按原样展示并映射颜色 */
+  status: string
+  /** 接取时间；可能为 null */
+  assignedAt: number | null
+  /** 过期时间；可能为 null 表示不过期 */
+  expiresAt: number | null
+  /** 完成度百分比（0-100），后端已取整 */
+  percent: number
+  objectives: PlayerObjectiveProgress[]
 }
 
-export interface StatsCompletion {
+/** GET /api/players/{uuid} 的响应。 */
+export interface PlayerDetail {
+  uuid: string
   name: string
-  value: number
+  /** 任务币余额 */
+  questCoin: number
+  progress: PlayerQuestProgress[]
 }
 
-export interface StatsActivity {
-  day: string
-  users: number
+/* ------------------------------------------------------------------ *
+ * 通用表格
+ * ------------------------------------------------------------------ */
+
+/** 通用数据表的列描述。 */
+export interface TableColumn {
+  /** 列标识；排序时回传给父组件 */
+  key: string
+  /** 表头文案 */
+  label: string
+  /** 是否可点击排序 */
+  sortable?: boolean
+  /** 对齐方式 */
+  align?: 'left' | 'right' | 'center'
+  /** 列宽（含单位的 CSS 值），不传则由内容决定 */
+  width?: string
+  /** 表头单元格的 title 提示 */
+  title?: string
 }
 
-export type NodeType = 'start' | 'trigger' | 'objective' | 'action' | 'completion'
-
-export type EventType = 
-  | 'LOGIN' | 'LOGOUT' | 'CHAT' | 'COMMAND' | 'JUMP' | 'SNEAK' | 'SPRINT' | 'DROP_ITEM' | 'PICKUP_ITEM'
-  | 'PLAYER_KILL' | 'ENTITY_KILL' | 'PLAYER_DEATH' | 'PVP_KILL'
-  | 'BLOCK_BREAK' | 'BLOCK_PLACE' | 'BLOCK_INTERACT'
-  | 'ITEM_CRAFT' | 'ITEM_USE' | 'ITEM_CONSUME'
-  | 'PLAYER_MOVE' | 'PLAYER_TELEPORT' | 'ENTER_REGION' | 'LEAVE_REGION'
-  | 'ENTITY_DAMAGE' | 'ENTITY_DEATH' | 'ENTITY_SPAWN'
-  | 'PLAYER_LEVEL_UP' | 'PLAYER_RESPAWN' | 'VILLAGER_TRADE' | 'PLAYER_BOUNT'
-
-export type CounterResetType = 'NONE' | 'TASK_COMPLETE' | 'DAILY' | 'MANUAL'
-
-export type TimerType = 'DELAY' | 'COOLDOWN' | 'INTERVAL'
-
-export type StateOperation = 'COMPLETE_TASK' | 'FAIL_TASK' | 'RESET_TASK' | 'SET_PLAYER_STATE'
-
-export interface EventData {
-  type: 'event'
-  name: string
-  eventTypes: EventType[]
-}
-
-export interface CounterData {
-  type: 'counter'
-  name: string
-  resetOn: CounterResetType
-}
-
-export interface TimerData {
-  type: 'timer'
-  name: string
-  timerType: TimerType
-  delaySeconds?: number
-  cooldownSeconds?: number
-  intervalSeconds?: number
-  repeatCount?: number
-}
-
-export interface StateData {
-  type: 'state'
-  name: string
-  operation: StateOperation
-}
-
-export interface SubtaskData {
-  type: 'subtask'
-  name: string
-}
-
-export interface TriggerData {
-  type: 'trigger'
-  conditionType: string
-  conditionConfig: Record<string, any>
-}
-
-export interface ObjectiveData {
-  type: 'objective'
-  name: string
-  templateId?: string
-}
-
-export type ActionType = 'GIVE_ITEM' | 'TAKE_ITEM' | 'GIVE_MONEY' | 'TAKE_MONEY' | 'GIVE_XP' | 'SEND_MESSAGE' | 'BROADCAST' | 'EXECUTE_COMMAND' | 'PLAY_SOUND'
-
-export interface ActionData {
-  type: 'action'
-  name: string
-  templateId?: string
-}
-
-export interface StartNodeData {
-  type: 'start'
-}
-
-export interface CompletionNodeData {
-  type: 'completion'
-}
-
-export type EditorNodeData = StartNodeData | TriggerData | ObjectiveData | ActionData | CompletionNodeData
-
-export interface NodeConnection {
-  id: string
-  sourceId: string
-  targetId: string
-  label?: string
-}
-
-export interface GraphNode {
-  id: string
-  nodeType: string
-  x: number
-  y: number
-  data: EditorNodeData
-}
-
-export interface QuestGraph {
-  id: string
-  name: string
-  nodes: GraphNode[]
-  edges: NodeConnection[]
-}
+/** 排序方向：升序 / 降序。 */
+export type SortDirection = 'asc' | 'desc'

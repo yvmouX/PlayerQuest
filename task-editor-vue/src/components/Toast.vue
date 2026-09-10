@@ -1,70 +1,96 @@
+<!--
+  轻量 Toast：支持同时堆叠多条消息（保存失败 + 校验问题这类场景很常见）。
+  组件挂载时通过 registerToast() 向全局登记，其它模块用 useToast() 调用。
+-->
 <template>
   <Teleport to="body">
-    <Transition name="toast">
-      <div v-if="visible" :class="['toast', type]" @click="dismiss">
-        {{ message }}
-      </div>
-    </Transition>
+    <div class="toast-stack">
+      <TransitionGroup name="toast">
+        <div
+          v-for="item in items"
+          :key="item.id"
+          :class="['toast', item.type]"
+          @click="dismiss(item.id)"
+        >{{ item.message }}</div>
+      </TransitionGroup>
+    </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import {ref} from 'vue'
+import { ref } from 'vue'
+import type { ToastType } from '../composables/useToast'
 
-const visible = ref(false)
-const message = ref('')
-const type = ref<'info' | 'error' | 'success'>('info')
-
-let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-function show(msg: string, toastType: 'info' | 'error' | 'success' = 'info', duration = 3000) {
-  if (timeoutId) clearTimeout(timeoutId)
-  message.value = msg
-  type.value = toastType
-  visible.value = true
-  timeoutId = setTimeout(() => {
-    visible.value = false
-  }, duration)
+interface ToastItem {
+  id: number
+  message: string
+  type: ToastType
 }
 
-function dismiss() {
-  visible.value = false
+const items = ref<ToastItem[]>([])
+let sequence = 0
+
+/** 显示一条消息；错误默认停留更久，方便阅读后端返回的原因。 */
+function show(message: string, type: ToastType = 'info', duration?: number): void {
+  const id = ++sequence
+  items.value = [...items.value, { id, message, type }]
+  const timeout = duration ?? (type === 'error' ? 6000 : 3000)
+  window.setTimeout(() => dismiss(id), timeout)
+}
+
+function dismiss(id: number): void {
+  items.value = items.value.filter(item => item.id !== id)
 }
 
 defineExpose({ show })
 </script>
 
 <style scoped>
-.toast {
+.toast-stack {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
   z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  pointer-events: none;
 }
-.toast.info {
-  background: #3b82f6;
-  color: white;
+
+.toast {
+  pointer-events: auto;
+  max-width: 26rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  word-break: break-word;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
-.toast.error {
-  background: #ef4444;
-  color: white;
-}
+
 .toast.success {
-  background: #22c55e;
-  color: white;
+  border-color: var(--ok);
+  color: var(--ok);
 }
+
+.toast.error {
+  border-color: var(--danger);
+  color: #ffb4b0;
+}
+
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
+
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateX(100%);
+  transform: translateX(1rem);
 }
 </style>

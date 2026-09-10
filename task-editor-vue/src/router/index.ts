@@ -1,19 +1,31 @@
-import {createRouter, createWebHashHistory} from 'vue-router'
-import EditorView from '../views/EditorView.vue'
-import ObjectiveLibraryView from '../views/ObjectiveLibraryView.vue'
-import ActionLibraryView from '../views/ActionLibraryView.vue'
+/**
+ * 路由表。
+ *
+ * <p>用 hash 模式是刻意的：后端只托管 {@code /} 与 {@code /assets/*}，
+ * history 模式下直接访问 {@code /quests} 会 404。
+ */
+import { createRouter, createWebHashHistory } from 'vue-router'
+import LangView from '../views/LangView.vue'
+import OverviewView from '../views/OverviewView.vue'
 import PlayerProgressView from '../views/PlayerProgressView.vue'
-import StatisticsView from '../views/StatisticsView.vue'
+import QuestEditorView from '../views/QuestEditorView.vue'
+import QuestListView from '../views/QuestListView.vue'
+import StatsView from '../views/StatsView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: '/editor' },
-    { path: '/editor', name: 'editor', component: EditorView },
-    { path: '/objectives', name: 'objectives', component: ObjectiveLibraryView },
-    { path: '/actions', name: 'actions', component: ActionLibraryView },
+    // 首页 = 概览仪表盘
+    { path: '/', name: 'overview', component: OverviewView },
+    { path: '/quests', name: 'quest-list', component: QuestListView },
+    // 新建：id 由用户填写，因此单独一条路由
+    { path: '/quests/new', name: 'quest-new', component: QuestEditorView },
+    { path: '/quests/:id/edit', name: 'quest-edit', component: QuestEditorView, props: true },
     { path: '/players', name: 'players', component: PlayerProgressView },
-    { path: '/stats', name: 'stats', component: StatisticsView }
+    { path: '/players/:uuid', name: 'player-detail', component: PlayerProgressView, props: true },
+    { path: '/langs', name: 'langs', component: LangView },
+    { path: '/stats', name: 'stats', component: StatsView },
+    { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
 
