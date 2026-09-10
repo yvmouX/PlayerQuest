@@ -633,7 +633,6 @@ function askSaveCopy(): void {
     return
   }
   copyPending.value = true
-  console.log('DEBUG askSaveCopy -> copyPending =', copyPending.value)
 }
 
 async function saveAsCopy(): Promise<void> {
