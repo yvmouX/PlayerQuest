@@ -5,6 +5,8 @@
 
 /run
 *.bat
+# Gradle wrapper 启动脚本必须纳入版本控制（*.bat 是给临时脚本用的，不要误伤 wrapper）
+!gradlew.bat
 
 **/build/
 **/bin/
