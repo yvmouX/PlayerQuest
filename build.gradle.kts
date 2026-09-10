@@ -22,7 +22,12 @@ allprojects {
     }
 
     dependencies {
-        implementation("com.github.yvmouX:YLib:1.0.0-alpha.9")
+        // 此坐标仅在没有 includeBuild 时生效（如独立构建/IDE 直接解析依赖）；
+        // 版本号跟随当前 YLib 子模块所在分支的 gradle.properties。
+        // 注意：settings.gradle.kts 中的 includeBuild("YLib") 会让 Gradle 用本地 YLib 源码
+        // 替换此依赖，复合构建的依赖替换按 group:name 匹配、版本号不参与匹配，
+        // 因此本地开发始终编译 YLib 源码，改这里不会切换实际使用的 YLib。
+        implementation("com.github.yvmouX:YLib:1.0.0-beta10")
 
         compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
 
@@ -87,8 +92,12 @@ tasks.shadowJar {
     relocate("cn.yvmou.ylib", "com.playerPlugin.playerTaskX.lib.ylib")
     relocate("com.fasterxml.jackson", "com.playerPlugin.playerTaskX.libs.jackson")
     
-    // 优雅地处理重复文件
-    mergeServiceFiles() // 自动合并 META-INF/services 文件
+    // 合并 META-INF/services 文件：
+    // YLib 自 1.0.0-beta5 起改用 ServiceLoader 定位服务实现（Logger/配置/命令/调度器），
+    // shadow 合并时会同步重写服务文件的路径与内容以匹配重定位后的类名，
+    // 缺了它，重定位后的服务文件可能无法被 ServiceLoader 识别。
+    // （YLib 自身另有"重定位安全回退"，因此这里是冗余保险而非硬需求。）
+    mergeServiceFiles()
     
     // 排除签名文件和重复的元数据文件
     exclude(

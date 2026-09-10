@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX;
 
 import cn.yvmou.ylib.YLib;
+import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import com.playerPlugin.playerTaskX.api.handler.NodeHandlerRegistry;
 import com.playerPlugin.playerTaskX.api.service.ProgressStorage;
@@ -40,7 +41,18 @@ public final class PlayerTaskX extends JavaPlugin {
     @Override
     public void onEnable() {
         // 初始化 YLib 和配置
-        YLib ylib = YLib.init(this);
+        // 注意（YLib 1.0.0-beta5+）：init() 会通过 ServiceLoader 定位服务实现，
+        // 找不到实现或 YLib 已被其他插件初始化时会抛出 YLibException（运行时异常），
+        // 这里显式捕获并优雅禁用插件，避免以晦涩堆栈崩溃，也避免 log 为 null 后 NPE。
+        YLib ylib;
+        try {
+            ylib = YLib.init(this);
+        } catch (YLibException e) {
+            getLogger().severe("Failed to initialize YLib: " + e.getMessage());
+            e.printStackTrace();
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         log = ylib.getLogger();
         generalConfig = ylib.getConfigurationManager().registerConfiguration(GeneralConfiguration.class);
         storageConfig = ylib.getConfigurationManager().registerConfiguration(StorgeConfiguration.class);
