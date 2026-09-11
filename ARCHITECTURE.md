@@ -333,26 +333,39 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 **测试总量：103 项全部通过**（引擎 12 / 每日 10 / 存储 15 / 文本 13 / 奖励 19 /
 命令帮助 10 / 字段一致性 7 / 编辑器素材 6 / 进度渲染 5 / GUI 图标 6），`clean build` 全绿。
 
-### 真机验证结论（Paper 1.21.11）
+### 真机验证结论（Folia 26.1.2-8）
 
 启动日志实证：
 
 ```
 [playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db
-[playerTaskX] 数据库为空，已写入示例任务 example_daily_mine（可自由删除或修改）
+[playerTaskX] 已载入 1 个任务
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（1 个任务，13 种目标，5 种奖励）
-[io.javalin.Javalin] Listening on http://localhost:8080/
+[playerTaskX] PlayerTaskX 已启用（1 个任务，14 种目标，5 种奖励）
+[io.javalin.Javalin] Started Server@… @13862ms
 ```
 
-网页编辑器接口实测（HTTP 200，中文正确）：
+网页编辑器接口实测（全部 HTTP 200，中文正确）：
 
 ```
-GET /api/stats  → {"quests":1,"dailyQuests":1,"objectives":13,"rewards":5,
-                   "storage":"SQLite: data/playerTaskX.db","categories":["每日"]}
-GET /api/quests → 含 objectives/rewards 与 problems:["奖励类型 money 不可用（未安装 Vault…）"]
+GET /api/stats    → {"quests":1,"dailyQuests":1,"objectives":14,"rewards":5,
+                     "storage":"SQLite: data/playerTaskX.db","categories":["每日"]}
+GET /api/catalog  → 1506 项材质 + 157 项实体（服务端 26.1.2），中英文名正确
+GET /api/presets  → 7 个目标预设 + 4 个奖励预设（含中文名，UTF-8 落盘正确）
+GET /api/schema   → TARGET 字段类型与 required=false 如实下发
+POST/DELETE /api/presets/...  → 增删生效；缺 type 或非法 kind 返回 400
 ```
+
+gzip 已生效（Javalin 对超过 1500 字节的响应自动压缩）：
+
+```
+/api/catalog              121 KB → 20.7 KB
+/assets/index-*.js        238 KB → 85.7 KB
+```
+
+**清空数据库后重新初始化**：只建 6 张表（quest / quest_objective / quest_reward /
+player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
 
 同时验证了两条重要的健壮性行为：
 
