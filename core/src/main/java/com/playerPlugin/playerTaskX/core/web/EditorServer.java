@@ -107,7 +107,7 @@ public final class EditorServer {
             for (Quest quest : plugin.quests().all()) {
                 Map<String, Object> json = QuestJson.toJson(quest);
                 // 顺带把校验问题给出，编辑器可直接标红
-                json.put("problems", plugin.validate(quest));
+                json.put("problems", plugin.questAdmin().validate(quest));
                 list.add(json);
             }
             ctx.result(toJson(list));
@@ -142,7 +142,7 @@ public final class EditorServer {
             List<String> skipped = new ArrayList<>();
             if (replace) {
                 for (Quest existing : plugin.quests().all()) {
-                    plugin.deleteQuest(existing.id());
+                    plugin.questAdmin().delete(existing.id());
                 }
             }
             for (Object item : list) {
@@ -155,7 +155,7 @@ public final class EditorServer {
                     skipped.add("(缺少 id)");
                     continue;
                 }
-                plugin.saveQuest(quest);
+                plugin.questAdmin().save(quest);
                 imported++;
             }
             ctx.result(toJson(Map.of("ok", true, "imported", imported, "skipped", skipped,
@@ -169,7 +169,7 @@ public final class EditorServer {
                 return;
             }
             Map<String, Object> json = QuestJson.toJson(quest);
-            json.put("problems", plugin.validate(quest));
+            json.put("problems", plugin.questAdmin().validate(quest));
             ctx.result(toJson(json));
         });
 
@@ -184,14 +184,14 @@ public final class EditorServer {
                 badRequest(ctx, "任务 id 不能为空");
                 return;
             }
-            plugin.saveQuest(quest);
+            plugin.questAdmin().save(quest);
             ctx.result(toJson(Map.of("ok", true, "id", quest.id(),
-                    "problems", plugin.validate(quest))));
+                    "problems", plugin.questAdmin().validate(quest))));
         });
 
         app.delete("/api/quests/{id}", ctx -> {
             String id = ctx.pathParam("id");
-            boolean removed = plugin.deleteQuest(id);
+            boolean removed = plugin.questAdmin().delete(id);
             ctx.result(toJson(Map.of("ok", removed, "id", id)));
         });
 
@@ -326,7 +326,7 @@ public final class EditorServer {
         });
 
         app.post("/api/reload", ctx -> {
-            plugin.reloadQuests();
+            plugin.questAdmin().reload();
             ctx.result(toJson(Map.of("ok", true, "quests", plugin.quests().all().size())));
         });
 

@@ -13,7 +13,6 @@ import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
-import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.listener.BlockListener;
 import com.playerPlugin.playerTaskX.core.listener.EntityListener;
@@ -35,6 +34,7 @@ import com.playerPlugin.playerTaskX.core.objective.ShearObjective;
 import com.playerPlugin.playerTaskX.core.objective.SubmitObjective;
 import com.playerPlugin.playerTaskX.core.objective.TameObjective;
 import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
+import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
@@ -82,6 +82,7 @@ public final class PlayerTaskX extends JavaPlugin {
     private MoneyReward moneyReward;
     private PointsReward pointsReward;
     private DailyService dailyService;
+    private QuestAdminService questAdmin;
     private EditorServer editorServer;
     private cn.yvmou.ylib.scheduler.UniversalTask actionBarTask;
     private cn.yvmou.ylib.scheduler.UniversalTask dailyTask;
@@ -151,12 +152,16 @@ public final class PlayerTaskX extends JavaPlugin {
         rewardService = new RewardService(quests, rewardTypes, playerQuestRepository);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
         dailyService = new DailyService(config, quests, playerQuestRepository, progressService);
+        questAdmin = new QuestAdminService(questRepository, quests, objectiveTypes, rewardService,
+                progressService,
+                // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
+                () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList());
 
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
         // 让插件以「零任务」状态启动而不是直接崩掉
         guard("示例任务写入", this::seedIfEmpty);
-        guard("任务载入", this::reloadQuests);
+        guard("任务载入", questAdmin::reload);
 
         // ---------- 事件、命令与调度 ----------
         // 每个子系统独立守护：任何一项失败都应只损失该功能，
@@ -367,36 +372,6 @@ public final class PlayerTaskX extends JavaPlugin {
         log.info("数据库为空，已写入 {} 个示例任务（可自由删除或修改）", examples.size());
     }
 
-    /** 从存储载入任务定义到内存注册表。 */
-    public void reloadQuests() {
-        List<Quest> loaded = questRepository.findAll();
-        quests.replaceAll(loaded);
-        int skipped = 0;
-        for (Quest quest : loaded) {
-            if (!quest.isUsable()) {
-                log.warn("任务 {} 结构不完整（缺少目标），已跳过", quest.id());
-                skipped++;
-                continue;
-            }
-            for (String problem : validate(quest)) {
-                log.warn("任务 {} 配置有问题: {}", quest.id(), problem);
-            }
-        }
-        log.info("已载入 {} 个任务{}", quests.all().size(), skipped > 0 ? "（跳过 " + skipped + " 个）" : "");
-    }
-
-    /** 校验任务引用的目标与奖励类型是否都可用。 */
-    public List<String> validate(Quest quest) {
-        List<String> problems = new java.util.ArrayList<>();
-        for (var objective : quest.objectives()) {
-            if (!objectiveTypes.contains(objective.type())) {
-                problems.add("未知目标类型 " + objective.type());
-            }
-        }
-        problems.addAll(rewardService.validate(quest));
-        return problems;
-    }
-
     // ---------- 供命令 / GUI / 编辑器使用的访问点 ----------
 
     public MessageService messages() {
@@ -435,23 +410,9 @@ public final class PlayerTaskX extends JavaPlugin {
         return dailyService;
     }
 
-    /**
-     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「1000 经验」。
-     * <p>
-     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），其它货币是整数，直接用其显示名。
-     * 没有实际扣费结果时（例如按钮文案），按配置的货币顺序推断。
-     *
-     * @param result 刷新结果；为 null 时按配置顺序推断货币
-     */
-    public String formatRefreshCost(double cost, DailyService.RefreshResult result) {
-        CurrencyType currency = result == null ? null : result.currency();
-        if (currency == null) {
-            currency = CurrencyType.select(config.getDailyRefreshCurrency());
-        }
-        if (currency == CurrencyType.MONEY) {
-            return MoneyReward.format(cost);
-        }
-        return currency.toUnits(cost) + " " + currency.displayName();
+    /** 任务定义维护入口（保存/删除/重载/校验），管理命令、管理 GUI 与编辑器后台共用。 */
+    public QuestAdminService questAdmin() {
+        return questAdmin;
     }
 
     public QuestRepository questRepository() {
@@ -474,32 +435,5 @@ public final class PlayerTaskX extends JavaPlugin {
     /** 存储描述，供编辑器与命令展示。 */
     public String describeStorage() {
         return database == null ? "未连接" : database.description();
-    }
-
-    /**
-     * 保存任务（新增或覆盖）并刷新内存注册表。
-     * <p>
-     * 编辑器、管理命令、管理 GUI 都走这一个入口：
-     * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生，否则会出现
-     * 「库里改了但玩家进度仍按旧定义算」的错位。
-     */
-    public void saveQuest(Quest quest) {
-        questRepository.save(quest);
-        quests.upsert(quest);
-        for (Player player : getServer().getOnlinePlayers()) {
-            progressService.rebuildIndex(player.getUniqueId());
-        }
-    }
-
-    /** 删除任务，并清理其内存定义。 */
-    public boolean deleteQuest(String id) {
-        boolean removed = questRepository.delete(id);
-        if (removed) {
-            quests.remove(id);
-            for (Player player : getServer().getOnlinePlayers()) {
-                progressService.rebuildIndex(player.getUniqueId());
-            }
-        }
-        return removed;
     }
 }

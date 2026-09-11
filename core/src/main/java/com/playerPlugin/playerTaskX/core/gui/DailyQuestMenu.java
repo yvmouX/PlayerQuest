@@ -178,7 +178,7 @@ public final class DailyQuestMenu extends Menu {
         } else if (cost > 0) {
             // 把本次费用写在按钮上：点击前就能看到代价，比一个无信息量的按钮有用。
             // 传 null 让插件按兜底链推断货币（金币 → 点券 → 经验），与实际扣费一致
-            label = text("quest.refresh-cost", plugin.formatRefreshCost(cost, null));
+            label = text("quest.refresh-cost", plugin.dailyService().formatRefreshCost(cost, null));
         } else {
             label = textOr("quest.refreshed", "");
         }
@@ -197,7 +197,7 @@ public final class DailyQuestMenu extends Menu {
             messages().send(player, "quest.refreshed");
             if (result.cost() > 0) {
                 messages().send(player, "quest.refresh-cost",
-                        plugin.formatRefreshCost(result.cost(), result));
+                        plugin.dailyService().formatRefreshCost(result.cost(), result));
             }
         } else if (result.limit() > 0) {
             messages().send(player, "quest.refresh-limit", result.limit());

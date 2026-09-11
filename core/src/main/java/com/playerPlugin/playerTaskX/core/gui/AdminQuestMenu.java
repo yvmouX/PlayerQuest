@@ -212,7 +212,7 @@ public final class AdminQuestMenu extends Menu {
      * 落库成功后<b>必须</b>同步内存注册表（{@code upsert}）：注册表才是引擎与界面的数据源，
      * 只落库不更新内存的话，{@code refresh()} 读到的还是旧定义，按钮看起来「点了没反应」。
      * <p>
-     * 这里用单条 {@code upsert} 而不是 {@code reloadQuests()}：后者要把整张表重新读一遍，
+     * 这里用单条 {@code upsert} 而不是走 {@code questAdmin.reload()}：后者要把整张表重新读一遍，
      * 而管理界面里连点几次开关就会触发多次全量读库，代价与收益不成比例；
      * 需要全量重载时底部另有重载按钮。
      * <p>
@@ -275,12 +275,12 @@ public final class AdminQuestMenu extends Menu {
     /**
      * 重新从存储载入任务定义。
      * <p>
-     * {@code reloadQuests()} 会读库并重建注册表，数据库异常必须显式兜住：
+     * {@code questAdmin.reload()} 会读库并重建注册表，数据库异常必须显式兜住：
      * 让它冒到事件层的话，管理员只会看到「点了没反应」。
      */
     private void reload(PlayerTaskX plugin) {
         try {
-            plugin.reloadQuests();
+            plugin.questAdmin().reload();
         } catch (RuntimeException e) {
             String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             PlayerTaskX.log().error("重载任务失败: " + reason, e);

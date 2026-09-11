@@ -333,7 +333,7 @@ public class PlayerCommand {
             if (result.cost() > 0) {
                 // 费用文案由插件统一渲染：金币走 Vault 的格式，其它货币用其显示名
                 messages.send(receiver, "quest.refresh-cost",
-                        plugin.formatRefreshCost(result.cost(), result));
+                        plugin.dailyService().formatRefreshCost(result.cost(), result));
             }
             return;
         }

@@ -7,6 +7,7 @@ import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
+import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.storage.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.bukkit.Bukkit;
@@ -219,6 +220,26 @@ public final class DailyService {
     /** 玩家当前周期的每日任务（含已完成待领取）。 */
     public List<PlayerQuest> currentQuests(UUID playerId) {
         return progressService.questsOfType(playerId, QuestType.DAILY);
+    }
+
+    /**
+     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「1000 经验」。
+     * <p>
+     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），其它货币是整数，直接用其显示名。
+     * 放在 DailyService 而不是各个调用点：费用文案与实际扣费必须用同一套货币推断，
+     * 分开写迟早会不一致。
+     *
+     * @param result 实际扣费结果；为 null 时（如刷新按钮文案）按配置的货币顺序推断
+     */
+    public String formatRefreshCost(double cost, RefreshResult result) {
+        CurrencyType currency = result == null ? null : result.currency();
+        if (currency == null) {
+            currency = CurrencyType.select(config.getDailyRefreshCurrency());
+        }
+        if (currency == CurrencyType.MONEY) {
+            return MoneyReward.format(cost);
+        }
+        return currency.toUnits(cost) + " " + currency.displayName();
     }
 
     /** 重新抽取并写入，写回与抽取用同一个次数。 */

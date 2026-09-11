@@ -158,14 +158,14 @@ public class AdminCommand {
     /**
      * {@code reload}：从存储重载任务定义。
      * <p>
-     * {@code reloadQuests()} 会读库并重建注册表，数据库异常必须显式捕获：
+     * {@code questAdmin.reload()} 会读库并重建注册表，数据库异常必须显式捕获：
      * 让它冒到框架层的话，管理员只会看到一句「内部错误」，看不到真正原因（比如库被占用）。
      */
     @SubCommand(value = "reload", description = "从存储重载任务定义")
     public void reload(CommandSender sender) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         try {
-            plugin.reloadQuests();
+            plugin.questAdmin().reload();
         } catch (RuntimeException e) {
             PlayerTaskX.log().error("重载任务失败: " + e.getMessage(), e);
             messages().send(sender, "command.reload-failed", describe(e));
@@ -412,7 +412,7 @@ public class AdminCommand {
      * 切换任务的启用状态并落库。
      * <p>
      * {@link Quest} 是 record，没有 setter，所以按字段整份复制出一个新对象再保存；
-     * 保存后必须 {@code reloadQuests()}：内存注册表里还是旧定义，不重载等于没改。
+     * 保存后必须 {@code questAdmin.reload()}：内存注册表里还是旧定义，不重载等于没改。
      */
     private static void setEnabled(CommandSender sender, String id, boolean enabled) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
@@ -427,7 +427,7 @@ public class AdminCommand {
             Quest updated = new Quest(quest.id(), quest.name(), quest.description(), quest.icon(), quest.category(),
                     quest.type(), quest.objectives(), quest.rewards(), quest.refreshCost(), enabled);
             plugin.questRepository().save(updated);
-            plugin.reloadQuests();
+            plugin.questAdmin().reload();
         } catch (RuntimeException e) {
             PlayerTaskX.log().error("保存任务启用状态失败: " + e.getMessage(), e);
             messages.send(sender, "error.internal");
@@ -513,7 +513,7 @@ public class AdminCommand {
             messages.send(receiver, "quest.refreshed");
             if (result.cost() > 0) {
                 messages.send(receiver, "quest.refresh-cost",
-                        plugin.formatRefreshCost(result.cost(), result));
+                        plugin.dailyService().formatRefreshCost(result.cost(), result));
             }
             return;
         }
