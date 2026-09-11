@@ -36,7 +36,7 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
 - 前端产物输出到 `core/src/main/resources/web/`（vite 的 `outDir` 就指在那里），
   **不是 `dist/`**，且该目录已被 gitignore（构建时生成，不要提交）。
 - 服务端控制台的中文乱码通常只是 Windows 终端显示问题，日志与落盘内容是正确 UTF-8。
-- 测试服默认端口：游戏 25565，网页编辑器 8080（见 `run/plugins/playerTaskX/config.yml`）。
+- 测试服默认端口：游戏 25565，网页编辑器 28080（被占用自动 +1，以启动日志为准；见 `run/plugins/playerTaskX/config.yml`）。
   配置里的 `editor.token` 为空时不校验令牌。
 - 停止测试服：RCON 未启用，用 `Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 找到
   folia 进程后 `Stop-Process`。**不要在服务器运行时用外部工具改它的 SQLite 文件**——
@@ -152,5 +152,5 @@ Javalin 6 提供 REST + 静态资源（`/` + `/assets/{file}`），前端用 has
 - **无法自行验证的**：真人进服的游玩路径、actionbar/title 的实际显示效果、
   浏览器里的前端交互（环境没有 playwright，只能靠构建 + 类型检查 + SSR 渲染）。
   这些要如实说明「未验证」，不要声称已验证。
-- 真机冒烟：`.\start-folia.ps1` + 探测 `http://127.0.0.1:8080/api/stats`。
+- 真机冒烟：`.\start-folia.ps1` + 探测 `http://127.0.0.1:28080/api/stats`。
   最近一次实测结论（Folia 26.1.2-8，1506 材质 / 157 实体）记在 `ARCHITECTURE.md`。

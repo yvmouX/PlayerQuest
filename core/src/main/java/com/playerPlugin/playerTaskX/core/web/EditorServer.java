@@ -36,9 +36,13 @@ import java.util.UUID;
  */
 public final class EditorServer {
 
+    /** 首选端口被占用时，依次 +1 尝试的端口个数上限。 */
+    private static final int PORT_ATTEMPTS = 10;
+
     private final PlayerTaskX plugin;
     private final PresetStore presets;
     private Javalin app;
+    private int port = -1;
 
     public EditorServer(PlayerTaskX plugin) {
         this.plugin = plugin;
@@ -46,38 +50,74 @@ public final class EditorServer {
         this.presets = new PresetStore(plugin.getDataFolder());
     }
 
-    /** 启动 HTTP 服务；失败只记录日志，不影响插件其它功能。 */
-    public void start(int port) {
-        try {
-            app = Javalin.create(config -> {
-                config.showJavalinBanner = false;
-                config.http.defaultContentType = "application/json; charset=utf-8";
-                // 素材目录与任务清单都是「一次传输几十上百 KB 的 JSON」，
-                // 编辑器又只在浏览器里用，开 gzip 收益明显且无兼容性风险
-                config.http.gzipOnlyCompression();
-            });
+    /** 实际监听的端口；未启动时为 -1。端口被占用自动 +1 后，这里与配置值可能不同。 */
+    public int port() {
+        return port;
+    }
 
-            registerRoutes();
-            app.start(port);
+    /**
+     * 启动 HTTP 服务；失败只记录日志，不影响插件其它功能。
+     * <p>
+     * 端口被占用时自动 +1 重试（最多 {@value #PORT_ATTEMPTS} 个端口）：
+     * 8080 这类常用端口很容易被开发工具占掉，直接失败会让管理员以为插件坏了。
+     * 但「配置端口 ≠ 实际端口」必须显眼，因此每次换口都记 warn，
+     * 且 {@code /ptxa editor} 一律报告实际端口。
+     */
+    public void start(int preferredPort) {
+        int port = preferredPort;
+        for (int attempt = 0; attempt < PORT_ATTEMPTS; attempt++) {
+            try {
+                // 每次尝试用全新实例：上一次绑定失败的实例状态不可复用
+                app = Javalin.create(config -> {
+                    config.showJavalinBanner = false;
+                    config.http.defaultContentType = "application/json; charset=utf-8";
+                    // 素材目录与任务清单都是「一次传输几十上百 KB 的 JSON」，
+                    // 编辑器又只在浏览器里用，开 gzip 收益明显且无兼容性风险
+                    config.http.gzipOnlyCompression();
+                });
+                registerRoutes();
+                app.start(port);
+                this.port = port;
 
-            plugin.messages().send(org.bukkit.Bukkit.getConsoleSender(),
-                    "editor.started", "127.0.0.1:" + port);
-            if (plugin.config().getEditorToken().isBlank()) {
-                plugin.getLogger().warning("网页编辑器未设置访问令牌（editor.token），"
-                        + "任何能访问该端口的人都可以修改任务；请仅在本机使用或配置令牌。");
+                if (port != preferredPort) {
+                    plugin.getLogger().warning("网页编辑器端口 " + preferredPort + " 被占用，已自动改用 "
+                            + port + "；如需固定端口，请修改 config.yml 的 editor.port 或释放被占端口。");
+                }
+                plugin.messages().send(org.bukkit.Bukkit.getConsoleSender(),
+                        "editor.started", "127.0.0.1:" + port);
+                if (plugin.config().getEditorToken().isBlank()) {
+                    plugin.getLogger().warning("网页编辑器未设置访问令牌（editor.token），"
+                            + "任何能访问该端口的人都可以修改任务；请仅在本机使用或配置令牌。");
+                }
+                return;
+            } catch (io.javalin.util.JavalinBindException e) {
+                closeQuietly();
+                if (attempt + 1 < PORT_ATTEMPTS) {
+                    plugin.getLogger().warning("网页编辑器端口 " + port + " 被占用，自动尝试 " + (port + 1));
+                    port++;
+                } else {
+                    plugin.getLogger().warning("网页编辑器端口 " + port + " 也被占用，已达自动重试上限");
+                }
+            } catch (Throwable e) {
+                // 捕获 Throwable 而不是 Exception：网页编辑器是附加功能，
+                // Javalin/Kotlin 类缺失等都不应该让整个插件无法启用
+                plugin.getLogger().severe("网页编辑器启动失败（端口 " + port + "）: " + e);
+                closeQuietly();
+                app = null;
+                this.port = -1;
+                return;
             }
-        } catch (Throwable e) {
-            // 捕获 Throwable 而不是 Exception：网页编辑器是附加功能，
-            // 端口占用、Javalin/Kotlin 类缺失等都不应该让整个插件无法启用
-            plugin.getLogger().severe("网页编辑器启动失败（端口 " + port + "）: " + e);
-            closeQuietly();
-            app = null;
         }
+        plugin.getLogger().severe("网页编辑器未启动：从 " + preferredPort + " 起连续 "
+                + PORT_ATTEMPTS + " 个端口都被占用。请修改 config.yml 的 editor.port 后重启。");
+        app = null;
+        this.port = -1;
     }
 
     /** 关闭 HTTP 服务。 */
     public void stop() {
         closeQuietly();
+        port = -1;
     }
 
     private void closeQuietly() {

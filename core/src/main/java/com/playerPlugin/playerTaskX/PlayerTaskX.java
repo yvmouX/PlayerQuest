@@ -236,8 +236,8 @@ public final class PlayerTaskX extends JavaPlugin {
     /**
      * 启动内置网页编辑器。
      * <p>
-     * 刻意不做「端口占用就自动换端口」：管理员配了 8080 却实际跑在 8081
-     * 比直接失败更难排查。失败只记录日志，不影响插件其它功能。
+     * 首选端口被占用时由 {@link EditorServer} 自动 +1 并记 warn，
+     * {@code /ptxa editor} 始终报告实际端口。失败只记录日志，不影响插件其它功能。
      */
     private void startEditor() {
         if (!config.isEditorEnabled()) {
@@ -310,5 +310,10 @@ public final class PlayerTaskX extends JavaPlugin {
     /** 存储描述，供编辑器与命令展示。 */
     public String describeStorage() {
         return database == null ? "未连接" : database.description();
+    }
+
+    /** 网页编辑器实例；未启用或启动失败时为 null。 */
+    public EditorServer editorServer() {
+        return editorServer;
     }
 }

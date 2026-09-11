@@ -85,8 +85,8 @@ public class PluginConfig {
     @ConfigValue(value = "editor.enabled", description = "是否启用内置网页编辑器")
     private boolean editorEnabled = true;
 
-    @ConfigValue(value = "editor.port", description = "网页编辑器监听端口")
-    private int editorPort = 8080;
+    @ConfigValue(value = "editor.port", description = "网页编辑器监听端口；被占用时自动 +1 重试，以启动日志为准")
+    private int editorPort = 28080;
 
     @ConfigValue(value = "editor.token", description = "编辑器访问令牌（留空表示不校验，仅建议本机使用）")
     private String editorToken = "";

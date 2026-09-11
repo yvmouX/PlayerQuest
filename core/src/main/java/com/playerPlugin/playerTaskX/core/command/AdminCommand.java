@@ -16,6 +16,7 @@ import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
 import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -136,11 +137,14 @@ public class AdminCommand {
     public void editor(CommandSender sender) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         MessageService messages = plugin.messages();
-        if (!plugin.config().isEditorEnabled()) {
+        // 端口被占用会自动 +1，因此必须报实际端口而不是配置值；
+        // 已启用但启动失败（如连续端口都被占）也在这里如实反馈
+        EditorServer server = plugin.editorServer();
+        if (!plugin.config().isEditorEnabled() || server == null || server.port() <= 0) {
             messages.send(sender, "editor.disabled");
             return;
         }
-        messages.send(sender, "editor.started", "127.0.0.1:" + plugin.config().getEditorPort());
+        messages.send(sender, "editor.started", "127.0.0.1:" + server.port());
         String token = plugin.config().getEditorToken();
         if (token != null && !token.isBlank()) {
             messages.sendRaw(sender, render("&7访问令牌: &f" + token));
