@@ -248,6 +248,10 @@ Javalin 提供 REST + 静态资源（`/` 返回 Vite 构建产物）：
 GET    /api/quests            列表          POST   /api/quests          新建/覆盖
 GET    /api/quests/{id}       详情          DELETE /api/quests/{id}      删除
 GET    /api/schema             目标/奖励类型的字段 schema（驱动前端动态表单）
+GET    /api/catalog            当前版本支持的物品与实体（图标/材质选择器，含中英文名）
+GET    /api/presets            目标与奖励预设（编辑器的便利设施，引擎不认它）
+POST   /api/presets/{kind}     保存预设，kind ∈ {objectives, rewards}
+DELETE /api/presets/{kind}/{id} 删除预设
 GET    /api/langs              语言文件读写
 GET    /api/stats              统计
 ```
@@ -255,13 +259,23 @@ GET    /api/stats              统计
 前端：任务列表 + 表单式编辑器（由 schema 动态渲染目标与奖励配置），
 替代原先的「拖节点连线」图谱编辑器。
 
+**素材目录的版本适配**：`/api/catalog` 遍历运行期的 `Material` / `EntityType` 枚举，
+因此返回的天然就是「当前服务端支持的项」，不需要维护任何版本对照数据；
+英文名读服务端 jar 里的 `en_us.json`，中文名是插件内置的精选表
+（中文译名只存在于客户端资源里，服务端无从获取），未收录项回退英文名。
+
+**预设不在数据库里**：预设只是编辑器的便利设施，运行时引擎完全不认识它，
+因此放在 `plugins/playerTaskX/presets.json`——便于手工编辑、随配置备份，
+也避免为了一个辅助功能去动数据库表结构。
+
 ---
 
 ## 8. 构建与验证
 
 - 事件 → 进度累加 → 达标发奖 的核心链路必须有单元测试（不依赖服务端）。
 - 存储层对 SQLite 做集成测试（临时文件库），MySQL 走同一套 SQL 生成逻辑。
-- `./gradlew build` 必须通过；打包后用 `runServer` 做冒烟验证。
+- `./gradlew build` 必须通过；打包后由 `start-folia.ps1` 启动服务端做冒烟验证
+  （构建 → 复制产物到 `run/plugins` → 启动 `run/folia-*.jar`）。
 
 ---
 
@@ -302,9 +316,9 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 |---|---|---|
 | 1 | `api` 模型与三个扩展点接口 | ✅ 完成 |
 | 2 | 构建配置：依赖、shadow 重定位、`-parameters` | ✅ 完成 |
-| 3 | `core` 存储层（SQLite/MySQL + 方言 + 仓储 + 任务币表） | ✅ 完成（18 项 SQLite 集成测试） |
-| 4 | 引擎：`ProgressService` + 13 种目标类型 + 4 个监听器 | ✅ 完成（12 项引擎单元测试） |
-| 5 | 奖励类型 + 发放（金币/点券/物品/**任务币**/命令） | ✅ 完成 |
+| 3 | `core` 存储层（SQLite/MySQL + 方言 + 仓储） | ✅ 完成（15 项 SQLite 集成测试） |
+| 4 | 引擎：`ProgressService` + 14 种目标类型 + 4 个监听器 | ✅ 完成（12 项引擎单元测试） |
+| 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
 | 6 | 多语言（YLib 消息服务 + MiniMessage 渲染包装） | ✅ 完成 |
 | 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
@@ -312,9 +326,12 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 10 | 玩家 GUI + 管理 GUI | ✅ 完成 |
 | 11 | 命令层（玩家 7 个 / 管理员 10 个子命令 + 补全） | ✅ 完成 |
 | 12 | PlaceholderAPI 变量扩展（反射接入） | ✅ 完成 |
-| 13 | 真机 `runServer` 冒烟验证 | ✅ 完成（Paper 1.21.11，插件成功启用） |
+| 13 | 真机冒烟验证（`start-folia.ps1` + Folia 26.1.2-8） | ✅ 完成（插件成功启用） |
+| 14 | 编辑器：图标/材质选择器（`/api/catalog`，中英文搜索） | ✅ 完成 |
+| 15 | 编辑器：目标与奖励预设（`/api/presets`） | ✅ 完成 |
 
-**测试总量：40 项全部通过**（引擎 12 / 每日 10 / 存储 18），`clean build` 全绿。
+**测试总量：102 项全部通过**（引擎 12 / 每日 10 / 存储 15 / 文本 13 / 奖励 19 /
+命令帮助 10 / 字段一致性 6 / 编辑器素材 6 / 进度渲染 5 / GUI 图标 6），`clean build` 全绿。
 
 ### 真机验证结论（Paper 1.21.11）
 
@@ -351,8 +368,10 @@ GET /api/quests → 含 objectives/rewards 与 problems:["奖励类型 money 不
   只在代码与 SQLite 测试层面覆盖，没有连过真实 MySQL 实例。
 - **玩家实际游玩路径未验证**：需要真人进服（挖掘/合成/击杀等）才能确认进度累加、
   actionbar 推送、GUI 点击等表现层行为；本次只验证到「插件启用 + 命令注册 + HTTP 接口」。
-- **任务币的消耗入口**：目前用于刷新每日任务扣费（`daily.refresh-currency=QUEST_COIN`）
-  与变量展示；未做「任务商店」这类消费界面（需求未要求）。
+- **网页编辑器的界面操作未做浏览器端人工确认**：接口层已实测，但选择器、预设这类
+  纯前端的交互（搜索、多选、拖拽/排序）只保证构建与类型检查通过。
+- **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
+  兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
 
 
 

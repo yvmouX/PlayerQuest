@@ -1,0 +1,149 @@
+package com.playerPlugin.playerTaskX.core.gui;
+
+import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
+import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.FieldType;
+import com.playerPlugin.playerTaskX.core.objective.BreedObjective;
+import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
+import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
+import com.playerPlugin.playerTaskX.core.objective.CommandObjective;
+import com.playerPlugin.playerTaskX.core.objective.ConsumeObjective;
+import com.playerPlugin.playerTaskX.core.objective.CraftObjective;
+import com.playerPlugin.playerTaskX.core.objective.EnchantObjective;
+import com.playerPlugin.playerTaskX.core.objective.FishObjective;
+import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
+import com.playerPlugin.playerTaskX.core.objective.KillObjective;
+import com.playerPlugin.playerTaskX.core.objective.PlaceBlockObjective;
+import com.playerPlugin.playerTaskX.core.objective.ShearObjective;
+import com.playerPlugin.playerTaskX.core.objective.SubmitObjective;
+import com.playerPlugin.playerTaskX.core.objective.TameObjective;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * 目标字段「语义类型」的约束测试。
+ *
+ * <p>把「材质名」声明成 {@code STRING} 不会编译报错、也不会让任何断言变红，
+ * 唯一后果是编辑器只能给管理员一个纯文本框，逼他去查 Bukkit 枚举名——
+ * 钓鱼、繁殖、剪毛、交互四处原本就是这样，属于「不报错的错误」。</p>
+ *
+ * <p>因此这里把「哪个字段该是什么类型」显式钉住。新增目标类型时若把材质/实体
+ * 字段写成 {@code STRING}，本测试会失败并指出具体字段。</p>
+ */
+class ObjectiveFieldTypeConsistencyTest {
+
+    /** 全部内置目标类型，必须与 PlayerTaskX#registerObjectiveTypes 保持一致。 */
+    private static List<ObjectiveType> builtInObjectives() {
+        return List.of(
+                new BreakBlockObjective(),
+                new PlaceBlockObjective(),
+                new CraftObjective(),
+                new FishObjective(),
+                new KillObjective(),
+                new ConsumeObjective(),
+                new EnchantObjective(),
+                new ShearObjective(),
+                new BreedObjective(),
+                new TameObjective(),
+                new InteractObjective(),
+                new ChatObjective(),
+                new SubmitObjective(),
+                new CommandObjective()
+        );
+    }
+
+    private static FieldType typeOf(String typeId, String fieldKey) {
+        ObjectiveType type = builtInObjectives().stream()
+                .filter(candidate -> candidate.id().equals(typeId))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(type, "找不到目标类型 " + typeId + "（类型 id 被改名了？）");
+        ConfigField field = type.schema().stream()
+                .filter(candidate -> candidate.key().equals(fieldKey))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(field, typeId + " 缺少字段 " + fieldKey);
+        return field.type();
+    }
+
+    @Test
+    @DisplayName("取材质名的字段都声明成 MATERIAL，编辑器才会给选择器")
+    void materialFieldsUseMaterialType() {
+        assertEquals(FieldType.MATERIAL, typeOf("break_block", "target"));
+        assertEquals(FieldType.MATERIAL, typeOf("place_block", "target"));
+        assertEquals(FieldType.MATERIAL, typeOf("craft", "target"));
+        assertEquals(FieldType.MATERIAL, typeOf("consume", "target"));
+        assertEquals(FieldType.MATERIAL, typeOf("submit", "target"));
+        // 钓获物是物品材质（COD / SALMON），曾经被误声明为纯文本
+        assertEquals(FieldType.MATERIAL, typeOf("fish", "target"));
+    }
+
+    @Test
+    @DisplayName("取实体名的字段都声明成 ENTITY")
+    void entityFieldsUseEntityType() {
+        assertEquals(FieldType.ENTITY, typeOf("kill", "target"));
+        assertEquals(FieldType.ENTITY, typeOf("tame", "target"));
+        // 繁殖出的幼崽与被剪的羊都是实体，曾经被误声明为纯文本
+        assertEquals(FieldType.ENTITY, typeOf("breed", "target"));
+        assertEquals(FieldType.ENTITY, typeOf("shear", "target"));
+    }
+
+    @Test
+    @DisplayName("方块或实体皆可的字段声明成 TARGET")
+    void blockOrEntityFieldsUseTargetType() {
+        assertEquals(FieldType.TARGET, typeOf("interact", "target"));
+    }
+
+    @Test
+    @DisplayName("真正自由的文本字段仍保持 STRING（不该被上面的规则误伤）")
+    void freeTextFieldsStayString() {
+        // 这些是关键词、附魔名、命令名——开放式输入，没有候选清单可选
+        assertEquals(FieldType.STRING, typeOf("chat", "target"));
+        assertEquals(FieldType.STRING, typeOf("enchant", "target"));
+        assertEquals(FieldType.STRING, typeOf("command", "target"));
+    }
+
+    @Test
+    @DisplayName("每个目标类型都有 INTEGER 的 amount 字段")
+    void everyObjectiveHasIntegerAmount() {
+        Set<String> missing = new TreeSet<>();
+        for (ObjectiveType type : builtInObjectives()) {
+            ConfigField amount = type.schema().stream()
+                    .filter(field -> "amount".equals(field.key()))
+                    .findFirst()
+                    .orElse(null);
+            if (amount == null || amount.type() != FieldType.INTEGER) {
+                missing.add(type.id());
+            }
+        }
+        assertTrue(missing.isEmpty(),
+                "以下目标类型缺少 INTEGER 的 amount 字段，编辑器与引擎都依赖这个统一约定：\n  "
+                        + String.join("\n  ", missing));
+    }
+
+    @Test
+    @DisplayName("字段 key 不重复，且都非空——重复会让表单静默覆盖")
+    void fieldKeysAreUniqueAndNonBlank() {
+        List<String> offenders = new ArrayList<>();
+        for (ObjectiveType type : builtInObjectives()) {
+            Set<String> seen = new TreeSet<>();
+            for (ConfigField field : type.schema()) {
+                if (field.key() == null || field.key().isBlank()) {
+                    offenders.add(type.id() + " 有空 key");
+                } else if (!seen.add(field.key())) {
+                    offenders.add(type.id() + " 重复的字段 key: " + field.key());
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
+    }
+}
