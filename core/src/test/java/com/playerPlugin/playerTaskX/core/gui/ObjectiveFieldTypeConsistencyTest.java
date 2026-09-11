@@ -131,6 +131,27 @@ class ObjectiveFieldTypeConsistencyTest {
     }
 
     @Test
+    @DisplayName("说明里写着「留空表示任意」的字段，必须如实标记为非必填")
+    void optionalFieldsAreNotMarkedRequired() {
+        List<String> offenders = new ArrayList<>();
+        for (ObjectiveType type : builtInObjectives()) {
+            for (ConfigField field : type.schema()) {
+                String hint = field.hint() == null ? "" : field.hint();
+                if (!hint.contains("留空")) {
+                    continue;
+                }
+                // 编辑器据此决定「可留空」提示与红色星号；标反了会给出与实际不符的提示
+                if (field.required()) {
+                    offenders.add(type.id() + "." + field.key() + " 说明里允许留空，却标成了必填");
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "以下字段应使用 optionalMaterial / optionalEntity / optionalBlockOrEntity：\n  "
+                        + String.join("\n  ", offenders));
+    }
+
+    @Test
     @DisplayName("字段 key 不重复，且都非空——重复会让表单静默覆盖")
     void fieldKeysAreUniqueAndNonBlank() {
         List<String> offenders = new ArrayList<>();
