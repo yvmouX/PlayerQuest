@@ -37,10 +37,13 @@ import java.util.UUID;
 public final class EditorServer {
 
     private final PlayerTaskX plugin;
+    private final PresetStore presets;
     private Javalin app;
 
     public EditorServer(PlayerTaskX plugin) {
         this.plugin = plugin;
+        // 预设随编辑器一起构造：它只是编辑器的便利设施，与运行时引擎无关
+        this.presets = new PresetStore(plugin.getDataFolder());
     }
 
     /** 启动 HTTP 服务；失败只记录日志，不影响插件其它功能。 */
@@ -49,6 +52,9 @@ public final class EditorServer {
             app = Javalin.create(config -> {
                 config.showJavalinBanner = false;
                 config.http.defaultContentType = "application/json; charset=utf-8";
+                // 素材目录与任务清单都是「一次传输几十上百 KB 的 JSON」，
+                // 编辑器又只在浏览器里用，开 gzip 收益明显且无兼容性风险
+                config.http.gzipOnlyCompression();
             });
 
             registerRoutes();
@@ -256,6 +262,32 @@ public final class EditorServer {
             schema.put("objectives", typeSchemas(plugin.objectiveTypes()));
             schema.put("rewards", typeSchemas(plugin.rewardTypes()));
             ctx.result(toJson(schema));
+        });
+
+        // ---- 素材目录：图标选择与材质字段搜索用 ----
+        // 内容来自服务端自己的 Material / EntityType 枚举，因此天然只含当前版本支持的项
+        app.get("/api/catalog", ctx -> ctx.result(toJson(MaterialCatalog.build())));
+
+        // ---- 目标 / 奖励预设 ----
+        app.get("/api/presets", ctx -> ctx.result(toJson(presets.all())));
+
+        app.post("/api/presets/{kind}", ctx -> {
+            Map<String, Object> body = fromJson(ctx.body());
+            if (body == null) {
+                badRequest(ctx, "请求体不是合法的 JSON 对象");
+                return;
+            }
+            Map<String, Object> saved = presets.save(ctx.pathParam("kind"), body);
+            if (saved == null) {
+                badRequest(ctx, "预设缺少 type，或 kind 只能是 objectives / rewards");
+                return;
+            }
+            ctx.result(toJson(Map.of("ok", true, "preset", saved)));
+        });
+
+        app.delete("/api/presets/{kind}/{id}", ctx -> {
+            boolean removed = presets.remove(ctx.pathParam("kind"), ctx.pathParam("id"));
+            ctx.result(toJson(Map.of("ok", removed, "id", ctx.pathParam("id"))));
         });
 
         // ---- 语言文件 ----

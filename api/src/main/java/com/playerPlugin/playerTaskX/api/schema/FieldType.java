@@ -16,6 +16,8 @@ public enum FieldType {
     MATERIAL,
     /** 实体类型名（编辑器提供下拉） */
     ENTITY,
+    /** 方块或实体类型名皆可（编辑器同时列出两者） */
+    TARGET,
     /** 下拉选择，候选项见 {@link ConfigField#options()} */
     ENUM
 }

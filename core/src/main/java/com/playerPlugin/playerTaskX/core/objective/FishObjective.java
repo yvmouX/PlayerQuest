@@ -29,7 +29,7 @@ public final class FishObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.text("target", "钓获物", "", "鱼的物品材质名，如 COD、SALMON；留空或 * 表示任意鱼类"),
+                ConfigField.material("target", "钓获物", ""),
                 ConfigField.amount(1)
         );
     }

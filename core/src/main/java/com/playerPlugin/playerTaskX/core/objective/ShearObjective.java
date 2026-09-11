@@ -29,7 +29,7 @@ public final class ShearObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.text("target", "被剪实体", "", "被剪切的实体类型名，如 SHEEP、MOOSHROOM；留空或 * 表示任意实体"),
+                ConfigField.entity("target", "被剪实体", ""),
                 ConfigField.amount(1)
         );
     }

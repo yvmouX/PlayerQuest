@@ -56,6 +56,12 @@ public record ConfigField(
                 "实体类型名，如 ZOMBIE；留空或 * 表示任意");
     }
 
+    /** 方块或实体皆可的目标（例如右键交互的对象）。 */
+    public static ConfigField blockOrEntity(String key, String label, String defaultValue) {
+        return new ConfigField(key, label, FieldType.TARGET, true, defaultValue, List.of(),
+                "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意");
+    }
+
     public static ConfigField options(String key, String label, String defaultValue, List<String> options, String hint) {
         return new ConfigField(key, label, FieldType.ENUM, true, defaultValue, options, hint);
     }
