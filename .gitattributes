@@ -1,0 +1,11 @@
+# 本仓库的机器上 core.autocrlf=true，检出时会把文本文件转成 CRLF。
+# 对下面这些「内容会被程序逐字节读取」的文件固定用 LF，行为不随检出平台变化。
+
+# 从服务端 jar 提取的原版语言文件：原样保留便于与上游对照
+core/src/main/resources/assets/** text eol=lf
+
+# Windows 批处理反过来必须是 CRLF，否则 cmd 解析会出问题
+*.bat text eol=crlf
+
+*.jar binary
+*.png binary
