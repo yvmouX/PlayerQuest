@@ -68,13 +68,6 @@ public final class Schema {
                 "CREATE TABLE IF NOT EXISTS meta ("
                         + "meta_key VARCHAR(64) PRIMARY KEY, "
                         + "meta_value " + text
-                        + ")" + option,
-
-                // 历史遗留：早期的「任务币」内建货币已移除（刷新费用统一走 Vault 金币）。
-                // 这里保留建表语句，避免已有部署在升级时因缺表而报错；新装环境该表始终为空。
-                "CREATE TABLE IF NOT EXISTS player_coin ("
-                        + "player_id VARCHAR(36) PRIMARY KEY, "
-                        + "balance BIGINT NOT NULL DEFAULT 0"
                         + ")" + option
         );
     }
