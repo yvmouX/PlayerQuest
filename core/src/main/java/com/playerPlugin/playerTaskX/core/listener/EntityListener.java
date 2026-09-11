@@ -8,7 +8,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.entity.EntityBreedEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityTameEvent;
@@ -21,7 +20,9 @@ import org.bukkit.inventory.ItemStack;
 import java.util.function.Consumer;
 
 /**
- * 实体相关动作：击杀、垂钓、附魔、剪切、繁殖、与实体交互。
+ * 实体相关动作：击杀、垂钓、剪切、繁殖、驯服、与实体交互。
+ * <p>
+ * 附魔原在此处，已归位到 {@link ItemListener}——它是物品域事件，与实体无关。
  */
 public final class EntityListener extends ProgressListener implements Listener {
 
@@ -29,6 +30,11 @@ public final class EntityListener extends ProgressListener implements Listener {
         super(progress, onProgress);
     }
 
+    /**
+     * 击杀生物 → {@link Trigger#KILL}。
+     * <p>
+     * {@code getKiller()} 为 null 表示非玩家致死（摔落、岩浆等），不计入任何人的进度。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(EntityDeathEvent event) {
         Player killer = event.getEntity().getKiller();
@@ -38,7 +44,12 @@ public final class EntityListener extends ProgressListener implements Listener {
         push(ProgressContext.of(killer, Trigger.KILL, event.getEntityType().name()));
     }
 
-    /** 玩家被击杀时也算对方的击杀进度。 */
+    /**
+     * 玩家击杀玩家 → {@link Trigger#KILL}，目标名固定为 {@code PLAYER}。
+     * <p>
+     * 生物击杀玩家的场景已被 {@link #onDeath} 覆盖，这里只处理 PvP，
+     * 并排除自杀（自己杀自己不算击杀成就）。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player killer = event.getEntity().getKiller();
@@ -48,6 +59,12 @@ public final class EntityListener extends ProgressListener implements Listener {
         push(ProgressContext.of(killer, Trigger.KILL, "PLAYER"));
     }
 
+    /**
+     * 垂钓 → {@link Trigger#FISH}。
+     * <p>
+     * 只认 {@code CAUGHT_FISH} 状态：抛竿、拉空竿、钓到垃圾实体都不是「钓上鱼」。
+     * 目标与数量取钓获物品堆本身——堆可能大于 1，按堆大小计，与合成口径一致。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFish(PlayerFishEvent event) {
         if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH) {
@@ -58,27 +75,27 @@ public final class EntityListener extends ProgressListener implements Listener {
         if (event.getCaught() instanceof org.bukkit.entity.Item item) {
             ItemStack stack = item.getItemStack();
             target = stack.getType().name();
-            // 钓上来的物品堆可能大于 1，按堆大小计，与合成数量口径一致
             amount = Math.max(1, stack.getAmount());
         }
         push(ProgressContext.of(event.getPlayer(), Trigger.FISH, target, amount));
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEnchant(EnchantItemEvent event) {
-        // 一次附魔可能附加多个魔咒，取第一个作为目标判定依据，数量按 1 计
-        String enchantment = event.getEnchantsToAdd().keySet().stream()
-                .findFirst()
-                .map(key -> key.getKey().getKey())
-                .orElse(null);
-        push(new ProgressContext(event.getEnchanter(), Trigger.ENCHANT, enchantment, 1, event.getItem().getType().name()));
-    }
-
+    /**
+     * 剪切 → {@link Trigger#SHEAR}。
+     * <p>
+     * 目标是被剪的实体类型名（如 {@code SHEEP}）；剪毛机等非玩家剪切
+     * 不触发本事件，天然不会误计。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onShear(PlayerShearEntityEvent event) {
         push(ProgressContext.of(event.getPlayer(), Trigger.SHEAR, event.getEntity().getType().name()));
     }
 
+    /**
+     * 繁殖 → {@link Trigger#BREED}，目标是幼崽的实体类型名。
+     * <p>
+     * {@code getBreeder()} 可能不是玩家（插件模拟繁殖），此时不计入任何人。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreed(EntityBreedEvent event) {
         if (!(event.getBreeder() instanceof Player player)) {
@@ -101,6 +118,12 @@ public final class EntityListener extends ProgressListener implements Listener {
         push(ProgressContext.of(player, Trigger.TAME, event.getEntity().getType().name()));
     }
 
+    /**
+     * 与实体交互 → {@link Trigger#INTERACT}。
+     * <p>
+     * 右键实体即算一次交互，{@code mode} 固定为 {@code RIGHT_CLICK_ENTITY}；
+     * 对方块的交互（含左键）由 {@link BlockListener} 负责，两处不会重复计。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInteractEntity(PlayerInteractEntityEvent event) {
         push(new ProgressContext(event.getPlayer(), Trigger.INTERACT,

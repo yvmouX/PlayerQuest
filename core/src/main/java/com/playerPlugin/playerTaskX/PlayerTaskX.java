@@ -19,6 +19,7 @@ import com.playerPlugin.playerTaskX.core.listener.BlockListener;
 import com.playerPlugin.playerTaskX.core.listener.EntityListener;
 import com.playerPlugin.playerTaskX.core.listener.ItemListener;
 import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
+import com.playerPlugin.playerTaskX.core.listener.TextListener;
 import com.playerPlugin.playerTaskX.core.objective.BreedObjective;
 import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
@@ -285,6 +286,7 @@ public final class PlayerTaskX extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlockListener(progressService, onProgress), this);
         getServer().getPluginManager().registerEvents(new EntityListener(progressService, onProgress), this);
         getServer().getPluginManager().registerEvents(new ItemListener(progressService, onProgress), this);
+        getServer().getPluginManager().registerEvents(new TextListener(progressService, onProgress), this);
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(progressService, progressDisplay, this::onPlayerJoin), this);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应

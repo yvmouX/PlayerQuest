@@ -9,9 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
@@ -21,7 +20,11 @@ import org.bukkit.inventory.ShapelessRecipe;
 import java.util.function.Consumer;
 
 /**
- * 物品与文本相关动作：合成、消耗、发言、执行命令。
+ * 物品域动作：合成、消耗、附魔。
+ * <p>
+ * 分组依据是「动作围绕一件物品发生」，与事件在 Bukkit 的包归属无关
+ * （消耗事件在 player 包、附魔事件在 enchantment 包）。附魔原在
+ * EntityListener，属于归位；发言与执行命令与物品无关，归 {@link TextListener}。
  */
 public final class ItemListener extends ProgressListener implements Listener {
 
@@ -29,6 +32,12 @@ public final class ItemListener extends ProgressListener implements Listener {
         super(progress, onProgress);
     }
 
+    /**
+     * 合成 → {@link Trigger#CRAFT}。
+     * <p>
+     * 数量是本次合成的<b>实际产出</b>而不是配方单批产量：
+     * Shift+点击会一次连做多批，批数计算见 {@link #craftedAmount}。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
@@ -54,7 +63,7 @@ public final class ItemListener extends ProgressListener implements Listener {
      * <p>
      * 每个配方格一批只消耗 1 个原料（原版配方皆是如此），因此批数 =
      * 格子里原料最少的那个的数量。背包空间不足时实际产出会小于该值，
-     * 进度会略微超前——宁可略多不可少计，少计正是本次要修的 bug。
+     * 进度会略微超前——宁可略多不可少计，少计正是火把工坊 bug 的根因。
      *
      * @param shiftClick   是否为 Shift+点击（一次连做多批）
      * @param matrix       合成格里的原料，空格子为 null 或 AIR
@@ -80,48 +89,29 @@ public final class ItemListener extends ProgressListener implements Listener {
         return Math.max(1, resultAmount * batches);
     }
 
+    /**
+     * 消耗（吃喝）→ {@link Trigger#CONSUME}。
+     * <p>
+     * 一次事件恰好消耗一件物品，数量恒为 1，无需额外计算。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
         push(ProgressContext.of(event.getPlayer(), Trigger.CONSUME, event.getItem().getType().name()));
     }
 
     /**
-     * 发言。
+     * 附魔 → {@link Trigger#ENCHANT}。
      * <p>
-     * 用 {@link AsyncPlayerChatEvent}（Spigot 标准）而非 Paper 的 AsyncChatEvent：
-     * 后者不在 spigot-api 中，直接用会导致插件在 Spigot 上无法加载。
-     * 该事件是<b>异步</b>的，因此这里只做纯内存的进度判定，不触碰任何 Bukkit 世界 API；
-     * 需要发消息/改物品的动作由主线程后续完成。
+     * 一次附魔可能附加多个魔咒，取第一个作为目标判定依据，数量按 1 计；
+     * {@code extra} 带上被附魔的物品类型，供需要区分「给什么附魔」的目标使用。
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
-        String message = event.getMessage();
-        if (message == null || message.isBlank()) {
-            return;
-        }
-        push(ProgressContext.of(event.getPlayer(), Trigger.CHAT, message));
-    }
-
-    /**
-     * 执行命令。
-     * <p>
-     * 目标统一归一化为<b>不带前导斜杠</b>的命令名（与目标类型的 schema 默认值一致），
-     * 否则 {@code /home} 与配置里的 {@code home} 永远匹配不上。
-     */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onCommand(PlayerCommandPreprocessEvent event) {
-        String raw = event.getMessage();
-        if (raw == null || raw.length() < 2) {
-            return;
-        }
-        String withoutSlash = raw.startsWith("/") ? raw.substring(1) : raw;
-        // 去掉参数，只保留命令本身
-        int space = withoutSlash.indexOf(' ');
-        String command = space > 0 ? withoutSlash.substring(0, space) : withoutSlash;
-        if (command.isBlank()) {
-            return;
-        }
-        push(ProgressContext.of(event.getPlayer(), Trigger.COMMAND, command));
+    public void onEnchant(EnchantItemEvent event) {
+        String enchantment = event.getEnchantsToAdd().keySet().stream()
+                .findFirst()
+                .map(key -> key.getKey().getKey())
+                .orElse(null);
+        push(new ProgressContext(event.getEnchanter(), Trigger.ENCHANT, enchantment, 1, event.getItem().getType().name()));
     }
 
     /** 从配方中取产物；不支持取产物的配方返回 null。 */

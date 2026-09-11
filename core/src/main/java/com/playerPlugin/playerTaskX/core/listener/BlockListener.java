@@ -30,16 +30,32 @@ public final class BlockListener extends ProgressListener implements Listener {
         super(progress, onProgress);
     }
 
+    /**
+     * 挖掘方块 → {@link Trigger#BREAK_BLOCK}。
+     * <p>
+     * {@code MONITOR + ignoreCancelled} 保证被保护插件取消的破坏（领地、
+     * 冒险模式）不会计成进度。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         push(ProgressContext.of(event.getPlayer(), Trigger.BREAK_BLOCK, event.getBlock().getType().name()));
     }
 
+    /**
+     * 放置方块 → {@link Trigger#PLACE_BLOCK}。
+     * <p>
+     * 目标取放置后方块的材质；被取消的放置同样不计。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         push(ProgressContext.of(event.getPlayer(), Trigger.PLACE_BLOCK, event.getBlockPlaced().getType().name()));
     }
 
+    /**
+     * 对方块的交互 → {@link Trigger#INTERACT} 或 {@link Trigger#BREAK_BLOCK}。
+     * <p>
+     * 与实体的交互（右键实体）在 {@link EntityListener}，两处不会重复计。
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
