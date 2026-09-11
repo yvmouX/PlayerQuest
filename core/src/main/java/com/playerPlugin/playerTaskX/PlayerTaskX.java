@@ -43,6 +43,7 @@ import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
@@ -347,33 +348,21 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     /**
-     * 空库时写入一个示例任务。
+     * 空库时写入一批出厂示例任务。
      * <p>
      * 存在的理由：全新安装若一个任务都没有，管理员看不到任何效果也无从对照格式。
-     * 示例任务用固定 id {@code example_daily_mine}，可随时删除，且只在库为空时写入，
-     * 不会覆盖任何已有数据。
+     * 任务定义集中在 {@link ExampleQuests}；统一用 {@code example_} 前缀，可随时删除，
+     * 且只在库为空时写入，不会覆盖任何已有数据。
      */
     private void seedIfEmpty() {
         if (questRepository.count() > 0) {
             return;
         }
-        Quest example = new Quest(
-                "example_daily_mine",
-                // MiniMessage 写法不要用闭合标签：</yellow> 属于「未开启标签的闭合」，
-                // MiniMessage 会直接抛异常（颜色本来就由后续标签覆盖，无需闭合）
-                "<yellow>挖矿日常",
-                List.of("<gray>挖掘 64 个石头", "<gray>完成后可领取 500 金币"),
-                "STONE_PICKAXE",
-                "每日",
-                com.playerPlugin.playerTaskX.api.model.QuestType.DAILY,
-                List.of(com.playerPlugin.playerTaskX.api.model.QuestObjective.of("break_block",
-                        java.util.Map.of("target", "STONE", "amount", 64))),
-                List.of(com.playerPlugin.playerTaskX.api.model.QuestReward.of("money",
-                        java.util.Map.of("amount", 500))),
-                config.getDailyRefreshCost(),
-                true);
-        questRepository.save(example);
-        log.info("数据库为空，已写入示例任务 {}（可自由删除或修改）", example.id());
+        List<Quest> examples = ExampleQuests.all(config.getDailyRefreshCost());
+        for (Quest example : examples) {
+            questRepository.save(example);
+        }
+        log.info("数据库为空，已写入 {} 个示例任务（可自由删除或修改）", examples.size());
     }
 
     /** 从存储载入任务定义到内存注册表。 */

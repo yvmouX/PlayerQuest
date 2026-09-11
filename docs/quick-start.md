@@ -26,11 +26,13 @@ plugins/playerTaskX/
 [playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（1 个任务，14 种目标，5 种奖励）
+[playerTaskX] PlayerTaskX 已启用（13 个任务，14 种目标，5 种奖励）
 ```
 
-**数据库为空时会自动写入一个示例任务**（`example_daily_mine`，挖 64 个石头换 500 金币），
-方便你对照格式、立刻看到效果。不需要时用 `/ptxa disable example_daily_mine` 关掉或直接在编辑器里删除。
+**数据库为空时会自动写入 13 个示例任务**（6 个每日 + 7 个常驻，统一用 `example_` 前缀），
+覆盖了大部分目标类型的写法，方便你对照格式、立刻看到效果：每日任务默认每次抽 3 个，
+登录 `/ptx` 就能玩；常驻任务在编辑器或 `/ptxa list` 里查看。不需要时逐个删除，
+或用 `/ptxa disable example_daily_mine` 之类的命令关掉。
 
 ---
 
