@@ -54,11 +54,14 @@ public final class EntityListener extends ProgressListener implements Listener {
             return;
         }
         String target = null;
+        int amount = 1;
         if (event.getCaught() instanceof org.bukkit.entity.Item item) {
             ItemStack stack = item.getItemStack();
             target = stack.getType().name();
+            // 钓上来的物品堆可能大于 1，按堆大小计，与合成数量口径一致
+            amount = Math.max(1, stack.getAmount());
         }
-        push(ProgressContext.of(event.getPlayer(), Trigger.FISH, target));
+        push(ProgressContext.of(event.getPlayer(), Trigger.FISH, target, amount));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

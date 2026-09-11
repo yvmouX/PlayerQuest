@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -38,9 +39,45 @@ public final class ItemListener extends ProgressListener implements Listener {
         if (result == null) {
             return;
         }
-        // 一次合成可能产出多个（如 4 个火把），按产物数量计入，避免玩家被要求重复合成
-        int amount = Math.max(1, result.getAmount());
+        int amount = craftedAmount(event.isShiftClick(),
+                event.getInventory().getMatrix(), result.getAmount());
         push(ProgressContext.of(player, Trigger.CRAFT, result.getType().name(), amount));
+    }
+
+    /**
+     * 计算本次合成实际产出的数量（纯函数，便于脱离服务端测试）。
+     * <p>
+     * Shift+点击合成时 Bukkit 只触发一次事件，却会按原料连做多批——
+     * 例如火把配方一批产 4 个，背包里放 64 煤 + 64 木棍再 Shift 一点，
+     * 实际产出 256 个，但事件里的产物数量仍是 4。若只按单批产物计数，
+     * 玩家要做远超配置数量的合成才能完成任务。
+     * <p>
+     * 每个配方格一批只消耗 1 个原料（原版配方皆是如此），因此批数 =
+     * 格子里原料最少的那个的数量。背包空间不足时实际产出会小于该值，
+     * 进度会略微超前——宁可略多不可少计，少计正是本次要修的 bug。
+     *
+     * @param shiftClick   是否为 Shift+点击（一次连做多批）
+     * @param matrix       合成格里的原料，空格子为 null 或 AIR
+     * @param resultAmount 单批产物数量
+     */
+    static int craftedAmount(boolean shiftClick, ItemStack[] matrix, int resultAmount) {
+        if (!shiftClick) {
+            return Math.max(1, resultAmount);
+        }
+        int batches = Integer.MAX_VALUE;
+        for (ItemStack ingredient : matrix) {
+            // 不用 Material#isAir：它内部要走注册表，纯数据场景（单测）下会初始化失败；
+            // 空物品堆实际只可能是 null / AIR / 数量为 0
+            if (ingredient != null && ingredient.getType() != Material.AIR
+                    && ingredient.getAmount() > 0) {
+                batches = Math.min(batches, ingredient.getAmount());
+            }
+        }
+        if (batches == Integer.MAX_VALUE) {
+            // 拿不到合成格（理论上进 CraftItemEvent 不会发生），退回单批数量
+            return Math.max(1, resultAmount);
+        }
+        return Math.max(1, resultAmount * batches);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
