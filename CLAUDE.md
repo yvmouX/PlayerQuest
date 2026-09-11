@@ -1,11 +1,15 @@
-# PlayerTaskX — 给编码代理的项目须知
+
+
+
+
+# PlayerTaskX
 
 Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）。
 「任务 = 多个目标 + 多个奖励」，支持网页编辑器、游戏内 GUI、多语言、PlaceholderAPI。
 
-> **这份文件只写「读代码看不出来」的事**：环境陷阱、约束、踩过的坑、协作偏好。
-> 设计与模块划分见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，不要在这里重复——
-> 两处重复必然漂移。面向使用者的文档在 `docs/`（docsify）。
+> 设计与模块划分见 [`ARCHITECTURE.md`](ARCHITECTURE.md)
+>
+> 面向使用者的文档在 `docs/`（docsify）。
 
 ---
 
