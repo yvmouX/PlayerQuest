@@ -6,6 +6,8 @@ import cn.yvmou.ylib.command.annotation.Optional;
 import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.help.CommandHelp;
 import cn.yvmou.ylib.command.help.HelpProvider;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -223,5 +225,67 @@ class YLibCommandHelpTest {
         // 标题 1 行 + 合并后的 1 行
         assertEquals(2, lines.size(), "两条命令应并成一行: " + lines);
         assertTrue(lines.get(1).contains("/a") && lines.get(1).contains("/b"), "同一行应含两条: " + lines);
+    }
+
+    // ---------- 可点击页脚 ----------
+
+    @Test
+    @DisplayName("玩家的页脚是可点击组件：翻页按钮执行正确页码的 help 命令")
+    void footerComponentsCarryClickCommands() {
+        BaseComponent[] firstPage = CommandHelp.ofAnnotations("分页", ManyCommand.class)
+                .pageSize(3).page(1).commandLabel("many")
+                .footerComponents();
+        List<String> firstCommands = clickCommands(firstPage);
+        assertTrue(firstCommands.contains("/many help 2"),
+                "第 1 页应有「下一页」按钮执行 /many help 2: " + firstCommands);
+        assertFalse(firstCommands.contains("/many help 0"), "第 1 页不应有「上一页」按钮: " + firstCommands);
+
+        BaseComponent[] middlePage = CommandHelp.ofAnnotations("分页", ManyCommand.class)
+                .pageSize(3).page(2).commandLabel("many")
+                .footerComponents();
+        List<String> middleCommands = clickCommands(middlePage);
+        assertTrue(middleCommands.contains("/many help 1") && middleCommands.contains("/many help 3"),
+                "中间页应同时有上/下一页按钮: " + middleCommands);
+
+        BaseComponent[] lastPage = CommandHelp.ofAnnotations("分页", ManyCommand.class)
+                .pageSize(3).page(3).commandLabel("many")
+                .footerComponents();
+        List<String> lastCommands = clickCommands(lastPage);
+        assertTrue(lastCommands.contains("/many help 2"), "最后一页应有「上一页」按钮: " + lastCommands);
+        assertFalse(lastCommands.contains("/many help 4"), "最后一页不应有「下一页」按钮: " + lastCommands);
+    }
+
+    @Test
+    @DisplayName("未设置 commandLabel 时回退 @Command(name)，设置后用短名")
+    void footerUsesCommandLabel() {
+        BaseComponent[] fallback = CommandHelp.ofAnnotations("分页", ManyCommand.class)
+                .pageSize(3).footerComponents();
+        assertTrue(clickCommands(fallback).contains("/many help 2"),
+                "默认应取 @Command(name) 的全名");
+
+        BaseComponent[] shortLabel = CommandHelp.ofAnnotations("分页", ManyCommand.class)
+                .pageSize(3).commandLabel("many").footerComponents();
+        assertTrue(clickCommands(shortLabel).contains("/many help 2"), "显式标签应生效");
+    }
+
+    /** 深度优先收集组件树里全部 RUN_COMMAND 点击命令。 */
+    private static List<String> clickCommands(BaseComponent[] components) {
+        List<String> commands = new java.util.ArrayList<>();
+        for (BaseComponent root : components) {
+            collectClickCommands(root, commands);
+        }
+        return commands;
+    }
+
+    private static void collectClickCommands(BaseComponent component, List<String> into) {
+        ClickEvent click = component.getClickEvent();
+        if (click != null && click.getAction() == ClickEvent.Action.RUN_COMMAND) {
+            into.add(click.getValue());
+        }
+        if (component.getExtra() != null) {
+            for (BaseComponent child : component.getExtra()) {
+                collectClickCommands(child, into);
+            }
+        }
     }
 }

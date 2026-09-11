@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.command;
 
 import cn.yvmou.ylib.command.annotation.Arg;
 import cn.yvmou.ylib.command.annotation.Command;
+import cn.yvmou.ylib.command.annotation.Optional;
 import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
 import cn.yvmou.ylib.command.help.CommandHelp;
@@ -82,13 +83,17 @@ public class AdminCommand {
     /** 主命令：直接显示帮助（管理员最常需要的入口）。 */
     @SubCommand(value = "", description = "显示管理员命令清单")
     public void help(CommandSender sender) {
-        showHelp(sender);
+        showHelp(sender, 1);
     }
 
-    /** {@code help}：显式帮助；与无参调用等价，满足「命令名可发现」的直觉。 */
+    /**
+     * {@code help}：显式帮助，与无参调用等价，满足「命令名可发现」的直觉。
+     * <p>
+     * 页码可省略（缺省第 1 页）；聊天页脚翻页按钮执行的 {@code /ptxa help N} 走的也是这里。
+     */
     @SubCommand(value = "help", description = "显示管理员命令清单")
-    public void helpCommand(CommandSender sender) {
-        showHelp(sender);
+    public void helpCommand(CommandSender sender, @Arg(value = "页码") @Optional int page) {
+        showHelp(sender, page);
     }
 
     /**
@@ -98,10 +103,13 @@ public class AdminCommand {
      * 因此这里直写中文简述——这是本类唯一硬编码的玩家可见文案，
      * 与 {@code @SubCommand(description=...)} 里的内容保持一致。
      */
-    private void showHelp(CommandSender sender) {
+    private void showHelp(CommandSender sender, int page) {
         MessageService messages = messages();
         CommandHelp.builder(messages.raw(sender, "gui.admin-title"))
                 .subtitle("&8任务 id 可用 Tab 补全")
+                // 条目是手写清单、没有注解可推断命令名，页脚翻页必须显式给出短名
+                .commandLabel("ptxa")
+                .page(page)
                 .group("任务管理")
                 .entry("/ptxa list", "列出全部任务与校验问题")
                 .entry("/ptxa info <id>", "查看单个任务的完整信息")

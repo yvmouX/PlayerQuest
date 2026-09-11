@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.command;
 
 import cn.yvmou.ylib.command.annotation.Arg;
 import cn.yvmou.ylib.command.annotation.Command;
+import cn.yvmou.ylib.command.annotation.Optional;
 import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
 import cn.yvmou.ylib.command.help.CommandHelp;
@@ -74,7 +75,7 @@ public class PlayerCommand {
     @SubCommand(value = "", description = "打开每日任务界面")
     public void menu(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            showHelp(sender);
+            showHelp(sender, 1);
             return;
         }
         open(sender);
@@ -94,10 +95,14 @@ public class PlayerCommand {
 
     // ---------- 帮助 ----------
 
-    /** {@code help}：玩家命令清单。 */
+    /**
+     * {@code help}：玩家命令清单。
+     * <p>
+     * 页码可省略（缺省第 1 页）；聊天页脚翻页按钮执行的 {@code /ptx help N} 走的也是这里。
+     */
     @SubCommand(value = "help", description = "显示玩家命令清单")
-    public void help(CommandSender sender) {
-        showHelp(sender);
+    public void help(CommandSender sender, @Arg(value = "页码") @Optional int page) {
+        showHelp(sender, page);
     }
 
     /**
@@ -107,9 +112,12 @@ public class PlayerCommand {
      * 由 YLib 的 {@link CommandHelp} 统一渲染——不再手写清单，
      * 因此新增子命令时忘记改帮助的情况不会发生。样式也与其他 YLib 插件一致。
      */
-    private static void showHelp(CommandSender sender) {
+    private static void showHelp(CommandSender sender, int page) {
         CommandHelp.ofAnnotations(messages().raw(sender, "quest.progress"), PlayerCommand.class)
                 .subtitle("&8任务 id 可用 Tab 补全")
+                // 页脚的提示与翻页按钮用短名 ptx，而不是注解里的全名 playertaskx
+                .commandLabel("ptx")
+                .page(page)
                 .send(sender);
     }
 
