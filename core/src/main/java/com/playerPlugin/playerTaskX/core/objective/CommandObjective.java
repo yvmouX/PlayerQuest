@@ -29,7 +29,7 @@ public final class CommandObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.text("target", "命令名", "home", "不带前导斜杠的命令名，如 home；留空或 * 表示任意命令"),
+                ConfigField.optionalText("target", "命令名", "home", "不带前导斜杠的命令名，如 home；留空或 * 表示任意命令"),
                 ConfigField.amount(1)
         );
     }

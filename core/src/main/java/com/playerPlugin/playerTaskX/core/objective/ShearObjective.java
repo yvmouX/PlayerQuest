@@ -29,7 +29,7 @@ public final class ShearObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.entity("target", "被剪实体", ""),
+                ConfigField.optionalEntity("target", "被剪实体", ""),
                 ConfigField.amount(1)
         );
     }

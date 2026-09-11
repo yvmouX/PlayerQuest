@@ -29,7 +29,7 @@ public final class FishObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.material("target", "钓获物", ""),
+                ConfigField.optionalMaterial("target", "钓获物", ""),
                 ConfigField.amount(1)
         );
     }

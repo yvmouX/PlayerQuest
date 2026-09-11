@@ -30,7 +30,7 @@ public final class ChatObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.text("target", "关键词", "", "消息需包含的关键词，可用英文逗号分隔多个（命中任意一个即可）；留空或 * 表示任意发言"),
+                ConfigField.optionalText("target", "关键词", "", "消息需包含的关键词，可用英文逗号分隔多个（命中任意一个即可）；留空或 * 表示任意发言"),
                 ConfigField.amount(1)
         );
     }

@@ -29,7 +29,7 @@ public final class EnchantObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.text("target", "附魔", "", "附魔名，如 SHARPNESS、EFFICIENCY；留空或 * 表示任意附魔"),
+                ConfigField.optionalText("target", "附魔", "", "附魔名，如 SHARPNESS、EFFICIENCY；留空或 * 表示任意附魔"),
                 ConfigField.amount(1)
         );
     }

@@ -29,7 +29,7 @@ public final class TameObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.entity("target", "生物类型", "WOLF"),
+                ConfigField.optionalEntity("target", "生物类型", "WOLF"),
                 ConfigField.amount(1)
         );
     }

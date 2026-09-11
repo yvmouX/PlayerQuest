@@ -29,7 +29,7 @@ public final class BreedObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.entity("target", "幼崽实体", ""),
+                ConfigField.optionalEntity("target", "幼崽实体", ""),
                 ConfigField.amount(1)
         );
     }

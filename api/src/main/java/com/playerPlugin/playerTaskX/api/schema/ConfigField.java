@@ -34,6 +34,11 @@ public record ConfigField(
         return new ConfigField(key, label, FieldType.STRING, true, defaultValue, List.of(), hint);
     }
 
+    /** 允许留空的文本字段（例如「关键词留空表示任意发言」）。 */
+    public static ConfigField optionalText(String key, String label, String defaultValue, String hint) {
+        return new ConfigField(key, label, FieldType.STRING, false, defaultValue, List.of(), hint);
+    }
+
     public static ConfigField integer(String key, String label, int defaultValue, String hint) {
         return new ConfigField(key, label, FieldType.INTEGER, true, defaultValue, List.of(), hint);
     }
@@ -59,6 +64,31 @@ public record ConfigField(
     /** 方块或实体皆可的目标（例如右键交互的对象）。 */
     public static ConfigField blockOrEntity(String key, String label, String defaultValue) {
         return new ConfigField(key, label, FieldType.TARGET, true, defaultValue, List.of(),
+                "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意");
+    }
+
+    /**
+     * 允许留空的材质字段。
+     * <p>
+     * {@code MATERIAL} / {@code ENTITY} / {@code TARGET} 的默认工厂方法都标记为必填，
+     * 因为它们通常确实需要一个具体目标；但「钓上任意鱼」「击杀任意生物」这类语义
+     * 要求字段可以留空。此时必须用这些 {@code optionalXxx} 变体创建，
+     * 编辑器才能如实显示「可留空」，而不是靠猜 hint 文案。
+     */
+    public static ConfigField optionalMaterial(String key, String label, String defaultValue) {
+        return new ConfigField(key, label, FieldType.MATERIAL, false, defaultValue, List.of(),
+                "Bukkit 材质名，如 COD；留空或 * 表示任意");
+    }
+
+    /** 允许留空的实体字段，用于「任意生物」这类目标。 */
+    public static ConfigField optionalEntity(String key, String label, String defaultValue) {
+        return new ConfigField(key, label, FieldType.ENTITY, false, defaultValue, List.of(),
+                "实体类型名，如 COW；留空或 * 表示任意");
+    }
+
+    /** 允许留空的方块或实体字段。 */
+    public static ConfigField optionalBlockOrEntity(String key, String label, String defaultValue) {
+        return new ConfigField(key, label, FieldType.TARGET, false, defaultValue, List.of(),
                 "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意");
     }
 

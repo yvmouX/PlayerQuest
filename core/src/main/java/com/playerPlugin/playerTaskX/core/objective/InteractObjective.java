@@ -29,7 +29,7 @@ public final class InteractObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.blockOrEntity("target", "交互对象", ""),
+                ConfigField.optionalBlockOrEntity("target", "交互对象", ""),
                 ConfigField.options("mode", "交互方式", "ANY",
                         List.of("ANY", "LEFT_CLICK_BLOCK", "RIGHT_CLICK_BLOCK", "RIGHT_CLICK_ENTITY", "LEFT_CLICK_ENTITY"),
                         "限定交互方式，ANY 表示不限"),

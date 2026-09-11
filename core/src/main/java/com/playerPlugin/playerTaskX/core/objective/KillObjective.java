@@ -29,7 +29,7 @@ public final class KillObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.entity("target", "生物类型", "ZOMBIE"),
+                ConfigField.optionalEntity("target", "生物类型", "ZOMBIE"),
                 ConfigField.amount(1)
         );
     }
