@@ -3,20 +3,7 @@ package com.playerPlugin.playerTaskX.core.gui;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.FieldType;
-import com.playerPlugin.playerTaskX.core.objective.BreedObjective;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
-import com.playerPlugin.playerTaskX.core.objective.CommandObjective;
-import com.playerPlugin.playerTaskX.core.objective.ConsumeObjective;
-import com.playerPlugin.playerTaskX.core.objective.CraftObjective;
-import com.playerPlugin.playerTaskX.core.objective.EnchantObjective;
-import com.playerPlugin.playerTaskX.core.objective.FishObjective;
-import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
-import com.playerPlugin.playerTaskX.core.objective.KillObjective;
-import com.playerPlugin.playerTaskX.core.objective.PlaceBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ShearObjective;
-import com.playerPlugin.playerTaskX.core.objective.SubmitObjective;
-import com.playerPlugin.playerTaskX.core.objective.TameObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -41,24 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ObjectiveFieldTypeConsistencyTest {
 
-    /** 全部内置目标类型，必须与 PlayerTaskX#registerObjectiveTypes 保持一致。 */
+    /** 与生产注册共用同一份清单（BuiltIns），不会出现「注册了但测试没跟上」。 */
     private static List<ObjectiveType> builtInObjectives() {
-        return List.of(
-                new BreakBlockObjective(),
-                new PlaceBlockObjective(),
-                new CraftObjective(),
-                new FishObjective(),
-                new KillObjective(),
-                new ConsumeObjective(),
-                new EnchantObjective(),
-                new ShearObjective(),
-                new BreedObjective(),
-                new TameObjective(),
-                new InteractObjective(),
-                new ChatObjective(),
-                new SubmitObjective(),
-                new CommandObjective()
-        );
+        return BuiltIns.objectives();
     }
 
     private static FieldType typeOf(String typeId, String fieldKey) {

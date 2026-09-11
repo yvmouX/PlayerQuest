@@ -38,6 +38,7 @@ public final class ProgressDisplay {
     private final PlayerQuestRepository repository;
     private final cn.yvmou.ylib.message.MessageService messages;
     private final com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry objectiveTypes;
+    private cn.yvmou.ylib.scheduler.UniversalTask refreshTask;
 
     public ProgressDisplay(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
                            cn.yvmou.ylib.message.MessageService messages,
@@ -47,6 +48,47 @@ public final class ProgressDisplay {
         this.repository = repository;
         this.messages = messages;
         this.objectiveTypes = objectiveTypes;
+    }
+
+    /**
+     * 启动 actionbar 定时刷新。轮询间隔与开关是展示层的配置，
+     * 因此定时器归展示层自己所有，入口类只负责启停时机。
+     */
+    public void startAutoRefresh(cn.yvmou.ylib.scheduler.UniversalScheduler scheduler) {
+        if (!config.isActionbarEnabled()) {
+            return;
+        }
+        long interval = config.getActionbarInterval();
+        refreshTask = scheduler.runTimer(this::updateAll, interval, interval);
+    }
+
+    /** 停止 actionbar 定时刷新（插件禁用时调用；未启动过则为空操作）。 */
+    public void shutdown() {
+        if (refreshTask != null) {
+            refreshTask.cancel();
+            refreshTask = null;
+        }
+    }
+
+    /**
+     * 进度变化后的表现：有任务完成则发 title，随后刷新 actionbar。
+     * <p>
+     * 以方法引用交给各进度监听器（Block/Entity/Item/TextListener），
+     * 监听器因此只需要认识 {@code Consumer<ApplyResult>}，不必认识展示层；
+     * 「进度变了要做什么」也就只剩这一个出处。
+     */
+    public void onProgressApplied(com.playerPlugin.playerTaskX.core.engine.ApplyResult result) {
+        Player owner = result.playerId() == null ? null : Bukkit.getPlayer(result.playerId());
+        if (owner == null) {
+            return;
+        }
+        for (String questId : result.completedQuests()) {
+            Quest quest = quests.find(questId).orElse(null);
+            if (quest != null) {
+                notifyCompletion(owner, quest);
+            }
+        }
+        update(owner);
     }
 
     /** 完成提醒：title + actionbar。 */

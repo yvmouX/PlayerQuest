@@ -87,6 +87,22 @@ public final class QuestAdminService {
     }
 
     /**
+     * 空库时写入一批出厂示例任务（清单见 ExampleQuests）。
+     * <p>
+     * 只在库为空时写入，绝不覆盖已有数据；示例统一用 {@code example_} 前缀，可随时删除。
+     * 写入走 {@link #save} 而不是裸写仓储：示例也要同步进注册表与索引。
+     */
+    public void seedIfEmpty(List<Quest> examples) {
+        if (repository.count() > 0 || examples.isEmpty()) {
+            return;
+        }
+        for (Quest example : examples) {
+            save(example);
+        }
+        log(Level.INFO, "数据库为空，已写入 " + examples.size() + " 个示例任务（可自由删除或修改）");
+    }
+
+    /**
      * 保存任务（新增或覆盖）并同步三处状态。
      * <p>
      * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生：

@@ -26,6 +26,8 @@ import java.util.UUID;
 
 /**
  * 每日任务：从全局池按玩家抽取、跨天重置、消耗货币刷新。
+ * 登录时发放由 PlayerListener 触发 {@link #ensureAssigned}；挂线玩家的跨天检查
+ * 由 {@link #startResetCheck} 的定时器负责——定时是必需的，不能只在登录时判断。
  *
  * <h2>为什么用确定性种子</h2>
  * 抽取结果由 {@code hash(playerId, 周期, 刷新次数)} 决定，而不是「随机一次再存库」：
@@ -43,6 +45,7 @@ public final class DailyService {
     private final QuestRegistry quests;
     private final PlayerQuestRepository repository;
     private final ProgressService progressService;
+    private cn.yvmou.ylib.scheduler.UniversalTask resetTask;
 
     public DailyService(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
                         ProgressService progressService) {
@@ -55,6 +58,37 @@ public final class DailyService {
     /** 当前周期字符串，形如 {@code 2026-09-10}。 */
     public String currentPeriod() {
         return periodOf(LocalDateTime.now(), config.getDailyResetHour());
+    }
+
+    /**
+     * 启动跨天检查定时器：挂着不下线的玩家也必须跨天重置。
+     * <p>
+     * 调用方（入口类）只负责在启停时机上调用，轮询参数与发放逻辑都在本类——
+     * 「什么时候该重发」是每日任务的领域知识，不该散落在装配类里。
+     *
+     * @param onlinePlayers 在线玩家供应器，延迟求值（装配完成时还没有玩家）
+     */
+    public void startResetCheck(cn.yvmou.ylib.scheduler.UniversalScheduler scheduler,
+                                cn.yvmou.ylib.message.MessageService messages,
+                                java.util.function.Supplier<java.util.Collection<? extends Player>> onlinePlayers) {
+        if (!config.isDailyEnabled()) {
+            return;
+        }
+        resetTask = scheduler.runTimer(() -> {
+            for (Player player : onlinePlayers.get()) {
+                if (ensureAssigned(player)) {
+                    messages.send(player, "daily.reset");
+                }
+            }
+        }, 100L, 6000L);
+    }
+
+    /** 停止跨天检查定时器（插件禁用时调用；未启动过则为空操作）。 */
+    public void shutdown() {
+        if (resetTask != null) {
+            resetTask.cancel();
+            resetTask = null;
+        }
     }
 
     /**

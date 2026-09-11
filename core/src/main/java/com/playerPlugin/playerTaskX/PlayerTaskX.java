@@ -5,44 +5,23 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
-import cn.yvmou.ylib.scheduler.UniversalScheduler;
-import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
-import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.listener.BlockListener;
 import com.playerPlugin.playerTaskX.core.listener.EntityListener;
 import com.playerPlugin.playerTaskX.core.listener.ItemListener;
 import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
 import com.playerPlugin.playerTaskX.core.listener.TextListener;
-import com.playerPlugin.playerTaskX.core.objective.BreedObjective;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
-import com.playerPlugin.playerTaskX.core.objective.CommandObjective;
-import com.playerPlugin.playerTaskX.core.objective.ConsumeObjective;
-import com.playerPlugin.playerTaskX.core.objective.CraftObjective;
-import com.playerPlugin.playerTaskX.core.objective.EnchantObjective;
-import com.playerPlugin.playerTaskX.core.objective.FishObjective;
-import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
-import com.playerPlugin.playerTaskX.core.objective.KillObjective;
-import com.playerPlugin.playerTaskX.core.objective.PlaceBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ShearObjective;
-import com.playerPlugin.playerTaskX.core.objective.SubmitObjective;
-import com.playerPlugin.playerTaskX.core.objective.TameObjective;
 import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
-import com.playerPlugin.playerTaskX.core.reward.CommandReward;
-import com.playerPlugin.playerTaskX.core.reward.ExpReward;
-import com.playerPlugin.playerTaskX.core.reward.ItemReward;
-import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
-import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
@@ -55,12 +34,16 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
 
 /**
- * 插件入口：只负责装配依赖，不含业务逻辑。
- * <p>
- * 装配顺序即依赖顺序：配置 → 存储 → 注册表 → 引擎 → 监听器 → 展示。
+ * 插件入口，只做三件事：
+ * <ol>
+ *   <li><b>装配</b>：按依赖顺序构造各子系统（看 onEnable 的构造顺序即依赖图）；</li>
+ *   <li><b>启停</b>：按序开启/关闭各子系统，单步失败互不拖垮（{@link #guard}）；</li>
+ *   <li><b>访问点</b>：向命令、GUI、编辑器暴露各子系统。</li>
+ * </ol>
+ * 业务逻辑不住在这里：每日逻辑在 DailyService，任务维护在 QuestAdminService，
+ * 事件翻译在 listener 包，类型清单在 BuiltIns。往本类加方法前先想想它属于哪个子系统。
  */
 public final class PlayerTaskX extends JavaPlugin {
 
@@ -79,13 +62,9 @@ public final class PlayerTaskX extends JavaPlugin {
     private ProgressService progressService;
     private RewardService rewardService;
     private ProgressDisplay progressDisplay;
-    private MoneyReward moneyReward;
-    private PointsReward pointsReward;
     private DailyService dailyService;
     private QuestAdminService questAdmin;
     private EditorServer editorServer;
-    private cn.yvmou.ylib.scheduler.UniversalTask actionBarTask;
-    private cn.yvmou.ylib.scheduler.UniversalTask dailyTask;
 
     public static PlayerTaskX getInstance() {
         return instance;
@@ -160,7 +139,7 @@ public final class PlayerTaskX extends JavaPlugin {
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
         // 让插件以「零任务」状态启动而不是直接崩掉
-        guard("示例任务写入", this::seedIfEmpty);
+        guard("示例任务写入", () -> questAdmin.seedIfEmpty(ExampleQuests.all(config.getDailyRefreshCost())));
         guard("任务载入", questAdmin::reload);
 
         // ---------- 事件、命令与调度 ----------
@@ -168,8 +147,9 @@ public final class PlayerTaskX extends JavaPlugin {
         // 而不是让整个插件（乃至服务端启动）失败
         guard("事件监听器", this::registerListeners);
         guard("命令注册", this::registerCommands);
-        guard("进度展示调度", this::startActionBarTask);
-        guard("每日任务调度", this::startDailyTask);
+        guard("进度展示调度", () -> progressDisplay.startAutoRefresh(ylib.getScheduler()));
+        guard("每日任务调度", () ->
+                dailyService.startResetCheck(ylib.getScheduler(), messages, () -> getServer().getOnlinePlayers()));
         guard("网页编辑器", this::startEditor);
         guard("PlaceholderAPI 变量", () ->
                 com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook.register(this));
@@ -199,14 +179,9 @@ public final class PlayerTaskX extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (actionBarTask != null) {
-            actionBarTask.cancel();
-            actionBarTask = null;
-        }
-        if (dailyTask != null) {
-            dailyTask.cancel();
-            dailyTask = null;
-        }
+        // 先停运行期任务再关底层资源：定时器若在库关闭后触发会报连接错误
+        dailyService.shutdown();
+        progressDisplay.shutdown();
         if (editorServer != null) {
             editorServer.stop();
             editorServer = null;
@@ -222,43 +197,18 @@ public final class PlayerTaskX extends JavaPlugin {
         }
     }
 
-    /**
-     * 注册内置目标类型。
-     * <p>
-     * 这里显式列出而不是扫描包：多几行代码，换来「新增类型必须显式登记」的确定性，
-     * 也避免反射扫描在插件类加载器下的兼容问题。
-     */
+    /** 登记内置目标类型；清单唯一来源是 {@link BuiltIns}，新增类型在那里显式登记。 */
     private void registerBuiltInObjectives() {
-        objectiveTypes.register(new BreakBlockObjective());
-        objectiveTypes.register(new PlaceBlockObjective());
-        objectiveTypes.register(new CraftObjective());
-        objectiveTypes.register(new FishObjective());
-        objectiveTypes.register(new KillObjective());
-        objectiveTypes.register(new ConsumeObjective());
-        objectiveTypes.register(new EnchantObjective());
-        objectiveTypes.register(new ShearObjective());
-        objectiveTypes.register(new BreedObjective());
-        objectiveTypes.register(new TameObjective());
-        objectiveTypes.register(new InteractObjective());
-        objectiveTypes.register(new ChatObjective());
-        objectiveTypes.register(new SubmitObjective());
-        objectiveTypes.register(new CommandObjective());
-
+        BuiltIns.objectives().forEach(objectiveTypes::register);
         var rejected = objectiveTypes.rejected();
         if (!rejected.isEmpty()) {
             log.warn("有目标类型注册失败: {}", rejected);
         }
     }
 
+    /** 登记内置奖励类型。 */
     private void registerBuiltInRewards() {
-        moneyReward = new MoneyReward();
-        pointsReward = new PointsReward();
-        rewardTypes.register(moneyReward);
-        rewardTypes.register(pointsReward);
-        rewardTypes.register(new ExpReward());
-        rewardTypes.register(new ItemReward());
-        rewardTypes.register(new CommandReward());
-
+        BuiltIns.rewards().forEach(rewardTypes::register);
         // 软依赖缺失时明确告知管理员，否则玩家做完任务拿不到奖励却查不出原因
         for (var type : rewardTypes.all()) {
             if (!type.available()) {
@@ -273,71 +223,14 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     private void registerListeners() {
-        // 进度变化后的表现集中在这里：完成时发 title
-        java.util.function.Consumer<com.playerPlugin.playerTaskX.core.engine.ApplyResult> onProgress = result -> {
-            Player owner = result.playerId() == null ? null : getServer().getPlayer(result.playerId());
-            if (owner == null) {
-                return;
-            }
-            for (String questId : result.completedQuests()) {
-                Quest quest = quests.find(questId).orElse(null);
-                if (quest != null) {
-                    progressDisplay.notifyCompletion(owner, quest);
-                }
-            }
-            progressDisplay.update(owner);
-        };
-
-        getServer().getPluginManager().registerEvents(new BlockListener(progressService, onProgress), this);
-        getServer().getPluginManager().registerEvents(new EntityListener(progressService, onProgress), this);
-        getServer().getPluginManager().registerEvents(new ItemListener(progressService, onProgress), this);
-        getServer().getPluginManager().registerEvents(new TextListener(progressService, onProgress), this);
+        getServer().getPluginManager().registerEvents(new BlockListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(new EntityListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(new ItemListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(new TextListener(progressService, progressDisplay::onProgressApplied), this);
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(progressService, progressDisplay, this::onPlayerJoin), this);
+                new PlayerListener(progressService, progressDisplay, dailyService, messages), this);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
-    }
-
-    /**
-     * 玩家登录：先补发每日任务（可能跨天），再刷新进度展示。
-     * <p>
-     * 顺序不能颠倒——先展示后补发会让玩家看到空列表。
-     */
-    private void onPlayerJoin(Player player) {
-        if (dailyService.ensureAssigned(player)) {
-            messages.send(player, "daily.reset");
-        }
-        progressDisplay.update(player);
-    }
-
-    private void startActionBarTask() {
-        if (!config.isActionbarEnabled()) {
-            return;
-        }
-        UniversalScheduler scheduler = ylib.getScheduler();
-        long interval = config.getActionbarInterval();
-        // 用 YLib 调度器而非 BukkitScheduler：同一份代码在 Folia/Canvas 上也能跑
-        actionBarTask = scheduler.runTimer(() -> progressDisplay.updateAll(), interval, interval);
-    }
-
-    /**
-     * 每日任务：登录时发放 + 定时跨天检查。
-     * <p>
-     * 定时任务是必需的：玩家挂着不下线时也必须跨天重置，
-     * 不能只在登录时判断。
-     */
-    private void startDailyTask() {
-        if (!config.isDailyEnabled()) {
-            return;
-        }
-        UniversalScheduler scheduler = ylib.getScheduler();
-        dailyTask = scheduler.runTimer(() -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                if (dailyService.ensureAssigned(player)) {
-                    messages.send(player, "daily.reset");
-                }
-            }
-        }, 100L, 6000L);
     }
 
     /**
@@ -352,24 +245,6 @@ public final class PlayerTaskX extends JavaPlugin {
         }
         editorServer = new EditorServer(this);
         editorServer.start(config.getEditorPort());
-    }
-
-    /**
-     * 空库时写入一批出厂示例任务。
-     * <p>
-     * 存在的理由：全新安装若一个任务都没有，管理员看不到任何效果也无从对照格式。
-     * 任务定义集中在 {@link ExampleQuests}；统一用 {@code example_} 前缀，可随时删除，
-     * 且只在库为空时写入，不会覆盖任何已有数据。
-     */
-    private void seedIfEmpty() {
-        if (questRepository.count() > 0) {
-            return;
-        }
-        List<Quest> examples = ExampleQuests.all(config.getDailyRefreshCost());
-        for (Quest example : examples) {
-            questRepository.save(example);
-        }
-        log.info("数据库为空，已写入 {} 个示例任务（可自由删除或修改）", examples.size());
     }
 
     // ---------- 供命令 / GUI / 编辑器使用的访问点 ----------
