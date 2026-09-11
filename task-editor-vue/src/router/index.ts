@@ -8,6 +8,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import LangView from '../views/LangView.vue'
 import OverviewView from '../views/OverviewView.vue'
 import PlayerProgressView from '../views/PlayerProgressView.vue'
+import PresetView from '../views/PresetView.vue'
 import QuestEditorView from '../views/QuestEditorView.vue'
 import QuestListView from '../views/QuestListView.vue'
 import StatsView from '../views/StatsView.vue'
@@ -21,6 +22,7 @@ const router = createRouter({
     // 新建：id 由用户填写，因此单独一条路由
     { path: '/quests/new', name: 'quest-new', component: QuestEditorView },
     { path: '/quests/:id/edit', name: 'quest-edit', component: QuestEditorView, props: true },
+    { path: '/presets', name: 'presets', component: PresetView },
     { path: '/players', name: 'players', component: PlayerProgressView },
     { path: '/players/:uuid', name: 'player-detail', component: PlayerProgressView, props: true },
     { path: '/langs', name: 'langs', component: LangView },

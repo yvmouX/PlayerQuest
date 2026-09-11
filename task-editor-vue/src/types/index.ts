@@ -20,6 +20,8 @@ export type FieldType =
   | 'BOOLEAN'
   | 'MATERIAL'
   | 'ENTITY'
+  /** 方块或实体类型名皆可（后端 FieldType.TARGET） */
+  | 'TARGET'
   | 'ENUM'
 
 /** properties 里允许的取值：JSON 能表达的基础类型。 */
@@ -135,6 +137,73 @@ export interface Stats {
 export interface ReloadResult {
   ok: boolean
   quests: number
+}
+
+/* ------------------------------------------------------------------ *
+ * 素材目录（图标 / 材质 / 实体选择器）
+ * ------------------------------------------------------------------ */
+
+/**
+ * 目录条目。
+ *
+ * <p>{@code zh} 是后端内置的精选中文名，<b>可能为空串</b>：此时界面必须回退显示
+ * {@code en}，搜索也必须仍然能按 id 或英文名命中——否则会出现「搜到了却看不见」。
+ */
+export interface CatalogEntry {
+  /** Bukkit 枚举名，例如 DIAMOND_ORE */
+  id: string
+  /** 英文显示名，例如 Diamond Ore；永不依赖它为空的兜底 */
+  en: string
+  /** 中文显示名，可能为空串 */
+  zh: string
+  /** 分类（block / item / food）；实体没有这个字段 */
+  category?: string
+}
+
+/** GET /api/catalog 的响应；一次性返回全部条目，由前端本地搜索。 */
+export interface MaterialCatalog {
+  materials: CatalogEntry[]
+  entities: CatalogEntry[]
+  /** 分类展示顺序，界面按它排列分组，不要在前端硬编码 */
+  categories: string[]
+  serverVersion: string
+}
+
+/* ------------------------------------------------------------------ *
+ * 目标 / 奖励预设
+ * ------------------------------------------------------------------ */
+
+/** 预设的两类归属，对应接口路径与请求体分组。 */
+export type PresetKind = 'objectives' | 'rewards'
+
+/** 一个目标/奖励预设：本质就是「类型 + 一组属性值 + 便于识别的名称」。 */
+export interface Preset {
+  /** 省略或为空时由后端生成 8 位随机 id */
+  id: string
+  name: string
+  /** 必填：引用 /api/schema 里的一个类型；不存在时界面标记为无效但不报错 */
+  type: string
+  description: string
+  properties: Properties
+}
+
+/** GET /api/presets 的响应。 */
+export interface PresetMap {
+  objectives: Preset[]
+  rewards: Preset[]
+}
+
+/** POST /api/presets/{kind} 的响应。 */
+export interface SavePresetResult {
+  ok: boolean
+  /** 保存后的预设（含后端补齐的 id 与 name） */
+  preset: Preset
+}
+
+/** DELETE /api/presets/{kind}/{id} 的响应；ok=false 表示没删到。 */
+export interface DeletePresetResult {
+  ok: boolean
+  id: string
 }
 
 /* ------------------------------------------------------------------ *

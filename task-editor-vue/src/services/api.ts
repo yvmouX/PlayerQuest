@@ -10,10 +10,15 @@
 import axios, { AxiosError } from 'axios'
 import type { AxiosRequestConfig } from 'axios'
 import type {
+  DeletePresetResult,
   DeleteQuestResult,
   LangMap,
+  MaterialCatalog,
   PlayerDetail,
   PlayerSummary,
+  Preset,
+  PresetKind,
+  PresetMap,
   Properties,
   Quest,
   QuestExport,
@@ -21,6 +26,7 @@ import type {
   QuestImportResult,
   ReloadResult,
   SaveLangResult,
+  SavePresetResult,
   SaveQuestResult,
   SchemaResponse,
   Stats
@@ -204,6 +210,36 @@ export const QuestApi = {
 /** 目标与奖励类型定义——表单完全由它驱动。 */
 export const SchemaApi = {
   get: () => request<SchemaResponse>({ url: '/schema', method: 'get' })
+}
+
+/**
+ * 图标 / 材质 / 实体清单。
+ *
+ * <p>响应有几百 KB，因此这里只提供「原样取回」，单例缓存由
+ * {@code utils/catalog.ts} 负责——缓存放在工具层，选择器组件才不用关心谁先请求。
+ */
+export const CatalogApi = {
+  get: () => request<MaterialCatalog>({ url: '/catalog', method: 'get' })
+}
+
+/**
+ * 目标 / 奖励预设。
+ *
+ * <p>预设只是编辑器的便利设施，后端不做校验（只要求 type 非空），
+ * 因此引用已删除类型的预设必须由界面自己标记，见 {@code utils/presets.ts}。
+ */
+export const PresetApi = {
+  list: () => request<PresetMap>({ url: '/presets', method: 'get' }),
+  /** 新建或覆盖（id 相同即覆盖）；id 留空时后端生成随机 id。 */
+  save: (kind: PresetKind, preset: Preset) => request<SavePresetResult>({
+    url: `/presets/${kind}`,
+    method: 'post',
+    data: preset
+  }),
+  remove: (kind: PresetKind, id: string) => request<DeletePresetResult>({
+    url: `/presets/${kind}/${encodeURIComponent(id)}`,
+    method: 'delete'
+  })
 }
 
 /** 语言文件读写。 */

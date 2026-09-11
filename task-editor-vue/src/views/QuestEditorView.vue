@@ -49,11 +49,12 @@
 
     <div v-else class="editor-layout">
       <div class="editor-main">
-        <!-- 1. 基础信息 -->
+        <!-- 1. 基本信息 -->
         <section class="card">
-          <h3>基础信息</h3>
-          <div class="form-grid">
-            <label class="field">
+          <h3>基本信息</h3>
+          <!-- 表单行由 .form-rows 统一栅格：标签固定宽度左对齐，控件占满剩余空间 -->
+          <div class="form-rows">
+            <label class="field field-stack">
               <span class="field-label">任务 ID <em class="required">*</em></span>
               <input
                 v-model="form.id"
@@ -67,19 +68,22 @@
               </small>
             </label>
 
-            <label class="field">
+            <label class="field field-stack">
               <span class="field-label">名称</span>
               <input v-model="form.name" type="text" placeholder="例如 <yellow>挖矿日常" />
               <small class="hint">支持颜色标签，按原文填写即可。</small>
             </label>
 
-            <label class="field">
+            <!-- 图标走素材选择器：枚举名（DIAMOND_ORE）不该靠人默写 -->
+            <div class="field field-stack">
               <span class="field-label">图标</span>
-              <input v-model="form.icon" type="text" placeholder="PAPER" />
-              <small class="hint">Bukkit 材质名，例如 STONE_PICKAXE。</small>
-            </label>
+              <div class="field-control">
+                <MaterialPicker v-model="form.icon" placeholder="PAPER" />
+                <small class="hint">点击展开搜索（支持中文名 / 英文名 / 枚举名），也可直接手打材质名。</small>
+              </div>
+            </div>
 
-            <label class="field">
+            <label class="field field-stack">
               <span class="field-label">分类</span>
               <input v-model="form.category" type="text" list="quest-category-options" placeholder="例如 每日" />
               <datalist id="quest-category-options">
@@ -88,7 +92,7 @@
               <small class="hint">已在使用的分类，可留空。</small>
             </label>
 
-            <label class="field">
+            <label class="field field-stack">
               <span class="field-label">类型</span>
               <select v-model="form.type">
                 <option value="NORMAL">普通任务（NORMAL）</option>
@@ -98,22 +102,24 @@
             </label>
 
             <!-- 刷新费用只对每日任务有意义 -->
-            <label v-if="form.type === 'DAILY'" class="field">
+            <label v-if="form.type === 'DAILY'" class="field field-stack">
               <span class="field-label">刷新费用</span>
               <input type="number" step="0.01" min="0" :value="form.refreshCost" @input="onRefreshCostInput" />
               <small class="hint">玩家手动刷新每日任务时扣除的金额，0 表示免费。</small>
             </label>
 
-            <label class="field">
+            <div class="field field-stack">
               <span class="field-label">启用</span>
-              <span class="checkbox-line">
-                <input v-model="form.enabled" type="checkbox" />
-                <span class="checkbox-text">{{ form.enabled ? '已启用' : '已禁用' }}</span>
-              </span>
-              <small class="hint">禁用后玩家看不到该任务。</small>
-            </label>
+              <div class="field-control">
+                <span class="checkbox-line">
+                  <input v-model="form.enabled" type="checkbox" />
+                  <span class="checkbox-text">{{ form.enabled ? '已启用' : '已禁用' }}</span>
+                </span>
+                <small class="hint">禁用后玩家看不到该任务。</small>
+              </div>
+            </div>
 
-            <label class="field field-wide">
+            <label class="field field-stack field-wide">
               <span class="field-label">描述</span>
               <textarea v-model="descriptionText" rows="4" placeholder="每行一条描述"></textarea>
               <small class="hint">一行一条，保存时转成数组。</small>
@@ -125,15 +131,17 @@
         <section class="card">
           <header class="card-head">
             <h3>目标（{{ objectiveRows.length }}）</h3>
-            <button class="btn btn-small" type="button" @click="addObjective">+ 添加目标</button>
+            <button class="btn btn-small btn-primary" type="button" @click="askAdd('objectives')">
+              + 添加目标
+            </button>
           </header>
           <p class="hint instance-note">
             顺序有意义：第 N 个目标对应 <code class="mono">/ptx setobjective &lt;玩家&gt; &lt;任务&gt; N &lt;数量&gt;</code>
-            命令里的序号 N，用 ↑ ↓ 调整。
+            命令里的序号 N，用卡片上的 ↑ ↓ 调整。
           </p>
           <p v-if="noObjectiveTypes" class="warn-line">后端没有注册任何目标类型，请检查插件依赖。</p>
           <p v-else-if="!objectiveRows.length" class="guide-line">
-            还没有目标。点击右上角「添加目标」，从后端注册的类型里挑一个（例如采集、击杀、合成…）。
+            还没有目标。点击右上角「添加目标」：可以直接套用一个预设，也可以从空白新建。
             没有目标的任务在加载时会被跳过。
           </p>
           <div class="instance-list">
@@ -149,6 +157,7 @@
               @update:properties="row.properties = $event"
               @move-up="moveRow(objectiveRows, index, -1)"
               @move-down="moveRow(objectiveRows, index, 1)"
+              @save-as-preset="askSavePreset('objectives', row)"
               @remove="removeObjective(index)"
             />
           </div>
@@ -158,9 +167,11 @@
         <section class="card">
           <header class="card-head">
             <h3>奖励（{{ rewardRows.length }}）</h3>
-            <button class="btn btn-small" type="button" @click="addReward">+ 添加奖励</button>
+            <button class="btn btn-small btn-primary" type="button" @click="askAdd('rewards')">
+              + 添加奖励
+            </button>
           </header>
-          <p class="hint instance-note">奖励按从上到下的顺序发放，用 ↑ ↓ 调整顺序。</p>
+          <p class="hint instance-note">奖励按从上到下的顺序发放，用卡片上的 ↑ ↓ 调整顺序。</p>
           <p v-if="noRewardTypes" class="warn-line">后端没有注册任何奖励类型。</p>
           <p v-else-if="!rewardRows.length" class="guide-line">
             还没有奖励。没有奖励的任务也能正常存在，但玩家完成后拿不到任何东西。
@@ -179,6 +190,7 @@
               @update:properties="row.properties = $event"
               @move-up="moveRow(rewardRows, index, -1)"
               @move-down="moveRow(rewardRows, index, 1)"
+              @save-as-preset="askSavePreset('rewards', row)"
               @remove="removeReward(index)"
             />
           </div>
@@ -228,6 +240,28 @@
       @confirm="saveAsCopy"
       @cancel="copyPending = false"
     />
+
+    <!-- 添加目标 / 奖励：先列预设，再给「从空白新建」的入口 -->
+    <PresetPickerDialog
+      :show="addKind !== null"
+      :kind="addKind ?? 'objectives'"
+      :schemas="addKind === 'rewards' ? rewardSchemas : objectiveSchemas"
+      @pick="addFromPreset"
+      @blank="addBlank"
+      @cancel="addKind = null"
+    />
+
+    <!-- 把当前卡片另存为预设 -->
+    <SavePresetDialog
+      :show="presetTarget !== null"
+      :kind="presetTarget?.kind ?? 'objectives'"
+      :type="presetTarget?.row.type ?? ''"
+      :suggested-summary="presetSuggested.summary"
+      :suggested-name="presetSuggested.name"
+      :busy="presetSaving"
+      @save="savePreset"
+      @cancel="presetTarget = null"
+    />
   </section>
 </template>
 
@@ -235,12 +269,17 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import MaterialPicker from '../components/MaterialPicker.vue'
+import PresetPickerDialog from '../components/PresetPickerDialog.vue'
 import PreviewPane from '../components/PreviewPane.vue'
+import SavePresetDialog from '../components/SavePresetDialog.vue'
 import TypeInstanceEditor from '../components/TypeInstanceEditor.vue'
 import UnauthorizedHint from '../components/UnauthorizedHint.vue'
 import { useToast } from '../composables/useToast'
-import { QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
-import type { Properties, Quest, QuestType, TypeSchema } from '../types'
+import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
+import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
+import { loadCatalog } from '../utils/catalog'
+import { invalidatePresets, loadPresets, presetProperties, suggestPresetName } from '../utils/presets'
 import { defaultProperties, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
 import { clampPercent, stripTags } from '../utils/text'
 
@@ -421,6 +460,9 @@ watch(() => props.id, id => {
 
 onMounted(() => {
   void loadCategories()
+  // 预加载素材目录与预设：打开选择器/弹层时不用等网络，也不会在输入时才卡一下
+  void loadCatalog()
+  void loadPresets()
   window.addEventListener('beforeunload', onBeforeUnload)
 })
 
@@ -543,18 +585,63 @@ function resetToNew(): void {
 
 /* ---------------- 目标 / 奖励编辑 ---------------- */
 
-/** 新增一行：默认选第一个类型，并按 schema 铺好默认值。 */
-function addRow(rows: InstanceRow[], schemas: Record<string, TypeSchema>): void {
+/**
+ * 添加流程：先弹预设列表（点一下直接套用），弹层里再给「从空白新建」。
+ *
+ * <p>addKind 同时决定弹层显示哪一组预设、以及套用时往哪个数组插入。
+ */
+const addKind = ref<PresetKind | null>(null)
+
+function askAdd(kind: PresetKind): void {
+  addKind.value = kind
+}
+
+function rowsOf(kind: PresetKind): InstanceRow[] {
+  return kind === 'objectives' ? objectiveRows.value : rewardRows.value
+}
+
+function schemasOf(kind: PresetKind): Record<string, TypeSchema> {
+  return kind === 'objectives' ? objectiveSchemas.value : rewardSchemas.value
+}
+
+/** 从空白新建：默认选第一个类型，并按 schema 铺好默认值。 */
+function addBlank(): void {
+  const kind = addKind.value
+  addKind.value = null
+  if (!kind) {
+    return
+  }
+  const schemas = schemasOf(kind)
   const first = Object.keys(schemas)[0] ?? ''
-  rows.push({ uid: ++uidSeq, type: first, properties: defaultProperties(schemas[first]) })
+  rowsOf(kind).push({ uid: ++uidSeq, type: first, properties: defaultProperties(schemas[first]) })
 }
 
-function addObjective(): void {
-  addRow(objectiveRows.value, objectiveSchemas.value)
-}
-
-function addReward(): void {
-  addRow(rewardRows.value, rewardSchemas.value)
+/**
+ * 套用预设。
+ *
+ * <p>用 {@link presetProperties} 而不是直接复制 properties：预设可能是旧版本存的，
+ * 缺字段时按 schema 补默认值，套用后立刻就是一条可编辑、可保存的完整配置。
+ *
+ * <p>仍然复查一次类型是否存在：弹层的判断用的是同一次 schema，但 schema 是异步
+ * 加载的，多一道校验可以避免把无效类型塞进表单。
+ */
+function addFromPreset(preset: Preset): void {
+  const kind = addKind.value
+  if (!kind) {
+    return
+  }
+  const schemas = schemasOf(kind)
+  if (!schemas[preset.type]) {
+    toast.error(`预设「${preset.name}」的类型 ${preset.type} 不存在，无法套用`)
+    return
+  }
+  addKind.value = null
+  rowsOf(kind).push({
+    uid: ++uidSeq,
+    type: preset.type,
+    properties: presetProperties(preset, schemas[preset.type])
+  })
+  toast.success(`已套用预设「${preset.name}」`)
 }
 
 function removeObjective(index: number): void {
@@ -563,6 +650,64 @@ function removeObjective(index: number): void {
 
 function removeReward(index: number): void {
   rewardRows.value.splice(index, 1)
+}
+
+/* ---------------- 另存为预设 ---------------- */
+
+const presetSaving = ref(false)
+const presetTarget = ref<{ kind: PresetKind; row: InstanceRow } | null>(null)
+
+/** 弹层里的建议名称：类型显示名 + 关键属性，管理员多半直接回车即可。 */
+const presetSuggested = computed(() => {
+  const target = presetTarget.value
+  if (!target) {
+    return { name: '', summary: '' }
+  }
+  const schema = schemasOf(target.kind)[target.row.type]
+  return {
+    name: suggestPresetName(schema, target.row.type, target.row.properties),
+    summary: summarizeProperties(target.row.properties, schema) || '（使用该类型的默认值）'
+  }
+})
+
+function askSavePreset(kind: PresetKind, row: InstanceRow): void {
+  if (!row.type) {
+    toast.error('请先为该条目选择类型')
+    return
+  }
+  presetTarget.value = { kind, row }
+}
+
+/**
+ * 保存预设。
+ *
+ * <p>刻意不带 id：每次都新建一条预设，避免把已有预设静默覆盖掉
+ * （要改已有预设请去「预设管理」页）。
+ */
+async function savePreset(name: string): Promise<void> {
+  const target = presetTarget.value
+  if (!target || presetSaving.value) {
+    return
+  }
+  presetSaving.value = true
+  try {
+    const preset: Preset = {
+      id: '',
+      name: name.trim(),
+      type: target.row.type,
+      description: '',
+      properties: withDefaults(schemasOf(target.kind)[target.row.type], target.row.properties)
+    }
+    await PresetApi.save(target.kind, preset)
+    // 预设列表变了：让缓存失效，下次打开「添加」弹层才会看到刚存的这条
+    invalidatePresets()
+    toast.success(`已保存预设「${preset.name}」`)
+    presetTarget.value = null
+  } catch (e) {
+    toast.error(`保存预设失败：${errorMessage(e)}`)
+  } finally {
+    presetSaving.value = false
+  }
 }
 
 /** 上下移动一行：顺序决定 setobjective 的目标序号与奖励发放顺序。 */

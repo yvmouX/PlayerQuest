@@ -15,6 +15,7 @@
         <span class="nav-group">管理</span>
         <RouterLink to="/">概览</RouterLink>
         <RouterLink to="/quests">任务列表</RouterLink>
+        <RouterLink to="/presets">预设管理</RouterLink>
         <RouterLink to="/players">玩家进度</RouterLink>
 
         <span class="nav-group">其它</span>
@@ -51,6 +52,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import Toast from './components/Toast.vue'
 import { registerToast, useToast } from './composables/useToast'
 import { getEditorToken, setEditorToken } from './services/api'
+import { loadCatalog } from './utils/catalog'
 
 const toast = useToast()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -58,6 +60,9 @@ const token = ref(getEditorToken())
 
 onMounted(() => {
   registerToast(toastRef.value)
+  // 启动即预加载素材目录（单例缓存）：选择器打开时不再等一次几百 KB 的请求。
+  // 失败也无需提示——选择器仍可手打枚举名，且首次展开时会自动重试。
+  void loadCatalog()
 })
 
 function applyToken(): void {

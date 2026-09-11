@@ -311,6 +311,44 @@ input[type='checkbox'] {
   gap: 0.3rem;
 }
 
+/*
+ * 统一表单行：标签左对齐固定宽度，控件占满剩余空间。
+ *
+ * 2 列栅格（.field-stack 用 grid-column: 1 / -1 跨列）保证一行内所有标签
+ * 左边缘对齐、所有控件左边缘也对齐，比「标签在上、控件在下」的堆叠式好扫读。
+ * 窄屏与 .fields-grid 里的密集字段仍走默认的堆叠布局。
+ */
+.form-rows {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.7rem 0.75rem;
+  align-items: start;
+}
+
+.field-stack {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: start;
+  gap: 0.25rem 0.75rem;
+}
+
+/* 首行与右侧控件对齐；第二行起的 hint 与控件同列，用 .field-stack > * 兜底 */
+.field-stack > .field-label {
+  padding-top: 0.4rem;
+}
+
+.field-stack > :not(.field-label) {
+  grid-column: 2;
+}
+
+.field-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
 .field-label {
   display: flex;
   align-items: center;
@@ -329,10 +367,16 @@ input[type='checkbox'] {
   gap: 0.9rem;
 }
 
+/*
+ * schema 字段网格：单列。
+ *
+ * 每个字段自带「固定宽度标签 + 控件」的两列栅格，若这里再排成两列，
+ * 控件会被压得只剩几十像素、标签也失去对齐。一列一行最清晰。
+ */
 .fields-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
 }
 
 .checkbox-line {
@@ -843,6 +887,23 @@ input[type='checkbox'] {
   .form-grid,
   .fields-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 窄屏放不下固定宽度的标签列，退回「标签在上」的堆叠布局 */
+@media (max-width: 720px) {
+  .form-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field-stack > .field-label,
+  .field-stack > :not(.field-label) {
+    grid-column: 1;
+    padding-top: 0;
   }
 }
 

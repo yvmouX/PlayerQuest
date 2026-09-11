@@ -3,45 +3,68 @@
 
   完全由 FieldSchema 决定渲染什么：这里没有、也不允许有任何
   针对具体目标/奖励类型的硬编码分支。
+
+  <h2>MATERIAL / ENTITY / TARGET 用选择器</h2>
+  枚举名（DEEPSLATE_DIAMOND_ORE 这种）靠人记忆不现实，因此这三类字段渲染
+  MaterialPicker。选择器内部仍然是文本框，逗号分隔的原文照旧可手打，
+  只是多了一个可按中文/英文/枚举名搜索的浮层。
+
+  <h2>布局</h2>
+  标签左对齐固定宽度、控件占满剩余空间、hint 作为次要文字挂在控件下方
+  （与标签同列，避免把行高撑得忽宽忽窄）。
 -->
 <template>
-  <label class="schema-field">
+  <div class="schema-field">
     <span class="field-label">
       {{ field.label || field.key }}
-      <em v-if="field.required" class="required" title="后端标记为必填">*</em>
+      <em v-if="field.required === true" class="required" title="后端标记为必填">*</em>
     </span>
 
-    <!-- ENUM：下拉框，候选项来自 schema.options -->
-    <select v-if="field.type === 'ENUM'" :value="text" @change="onText">
-      <option v-for="option in enumOptions" :key="option" :value="option">{{ option }}</option>
-    </select>
+    <div class="field-control">
+      <!-- ENUM：下拉框，候选项来自 schema.options -->
+      <select v-if="field.type === 'ENUM'" :value="text" @change="onText">
+        <option v-for="option in enumOptions" :key="option" :value="option">{{ option }}</option>
+      </select>
 
-    <!-- BOOLEAN：复选框 -->
-    <span v-else-if="field.type === 'BOOLEAN'" class="checkbox-line">
-      <input type="checkbox" :checked="modelValue === true" @change="onCheck" />
-      <span class="checkbox-text">{{ modelValue === true ? '是' : '否' }}</span>
-    </span>
+      <!-- BOOLEAN：复选框 -->
+      <span v-else-if="field.type === 'BOOLEAN'" class="checkbox-line">
+        <input type="checkbox" :checked="modelValue === true" @change="onCheck" />
+        <span class="checkbox-text">{{ modelValue === true ? '是' : '否' }}</span>
+      </span>
 
-    <!-- INTEGER / DECIMAL：数字输入 -->
-    <input
-      v-else-if="isNumber"
-      type="number"
-      :step="field.type === 'INTEGER' ? '1' : 'any'"
-      :value="text"
-      @input="onNumber"
-    />
+      <!-- INTEGER / DECIMAL：数字输入 -->
+      <input
+        v-else-if="isNumber"
+        type="number"
+        :step="field.type === 'INTEGER' ? '1' : 'any'"
+        :value="text"
+        @input="onNumber"
+      />
 
-    <!-- 其余（STRING / MATERIAL / ENTITY）：文本输入 -->
-    <input v-else type="text" :value="text" @input="onText" />
+      <!-- MATERIAL / ENTITY / TARGET：素材选择器（仍允许手打原文） -->
+      <MaterialPicker
+        v-else-if="pickerScope"
+        :model-value="text"
+        :scope="pickerScope"
+        :multi="field.type === 'MATERIAL'"
+        :empty-hint="allowsEmpty"
+        @update:model-value="onPickerValue"
+      />
 
-    <small v-if="field.hint" class="hint">{{ field.hint }}</small>
-  </label>
+      <!-- 其余（STRING）：文本输入 -->
+      <input v-else type="text" :value="text" @input="onText" />
+
+      <small v-if="field.hint" class="hint">{{ field.hint }}</small>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { FieldSchema, PropertyValue } from '../types'
+import { scopeForFieldType } from '../utils/catalog'
 import { parseNumberInput, toInputText } from '../utils/schema'
+import MaterialPicker from './MaterialPicker.vue'
 
 const props = defineProps<{
   field: FieldSchema
@@ -57,6 +80,28 @@ const text = computed(() => toInputText(props.modelValue))
 const isNumber = computed(
   () => props.field.type === 'INTEGER' || props.field.type === 'DECIMAL'
 )
+
+/** 需要用选择器的字段类型；其余返回空串（模板里当布尔用）。 */
+const pickerScope = computed(() => {
+  switch (props.field.type) {
+    case 'MATERIAL':
+    case 'ENTITY':
+    case 'TARGET':
+      return scopeForFieldType(props.field.type)
+    default:
+      return ''
+  }
+})
+
+/**
+ * 字段是否允许留空。
+ *
+ * <p>直接读 schema 的 {@code required}：后端对「任意鱼」「任意生物」这类字段
+ * 用的是 optionalMaterial / optionalEntity / optionalBlockOrEntity，
+ * 会如实把 required 标成 false。因此这里不需要、也不应该去猜 hint 文案——
+ * 文案随时可以改，猜错了就会给管理员一个与实际行为不符的红色星号。
+ */
+const allowsEmpty = computed(() => props.field.required === false)
 
 /** 下拉候选项：若当前值不在候选中（旧数据、后端改过选项），补进去以免被静默改掉。 */
 const enumOptions = computed<string[]>(() => {
@@ -77,6 +122,11 @@ function onText(event: Event): void {
   emit('update:modelValue', readValue(event))
 }
 
+/** 选择器直接回传字符串（含逗号分隔的多值），无需再读事件目标。 */
+function onPickerValue(value: string): void {
+  emit('update:modelValue', value)
+}
+
 function onNumber(event: Event): void {
   emit('update:modelValue', parseNumberInput(readValue(event), props.field.type === 'INTEGER'))
 }
@@ -88,21 +138,37 @@ function onCheck(event: Event): void {
 </script>
 
 <style scoped>
+/* 与 main.css 的 .form-row 保持同一套栅格，保证各类表单看起来是一套东西 */
 .schema-field {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.4rem 0.75rem;
+}
+
+.schema-field > .field-label {
+  /* 单行标签与右侧控件首行对齐 */
+  padding-top: 0.4rem;
+}
+
+.field-control {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .checkbox-line {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
   height: 2.1rem;
 }
 
-.checkbox-text {
-  color: var(--text-dim);
-  font-size: 0.85rem;
+@media (max-width: 720px) {
+  .schema-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schema-field > .field-label {
+    padding-top: 0;
+  }
 }
 </style>
