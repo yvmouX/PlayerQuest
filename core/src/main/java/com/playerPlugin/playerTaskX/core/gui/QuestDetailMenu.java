@@ -222,10 +222,18 @@ public final class QuestDetailMenu extends Menu {
                 }
             } else if (field.type() == FieldType.ENTITY && entity == null) {
                 entity = objective.string(field.key(), "");
+            } else if (field.type() == FieldType.TARGET && entity == null) {
+                // TARGET 是「方块或实体皆可」：先当材质试（复用上面的优先级），
+                // 试不出来再留给下面的刷怪蛋分支，例如交互目标写 VILLAGER
+                Material material = match(objective.string(field.key(), ""));
+                if (material != null) {
+                    return material;
+                }
+                entity = objective.string(field.key(), "");
             }
         }
         if (entity != null && !entity.isBlank() && !"*".equals(entity.trim())) {
-            // ENTITY 允许逗号分隔多值，取第一个当示意
+            // ENTITY / TARGET 允许逗号分隔多值，取第一个当示意
             Material egg = match(entity.split(",")[0].trim() + "_SPAWN_EGG");
             if (egg != null) {
                 return egg;
@@ -283,6 +291,18 @@ public final class QuestDetailMenu extends Menu {
         if (name == null || name.isBlank() || "*".equals(name.trim())) {
             return null;
         }
-        return Material.matchMaterial(name.trim().toUpperCase(Locale.ROOT));
+        // 材质字段允许逗号分隔多值（如 DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE），
+        // 取第一个能识别的来当图标；整串丢给 matchMaterial 必然匹配不上
+        for (String candidate : name.split(",")) {
+            String trimmed = candidate.trim();
+            if (trimmed.isEmpty() || "*".equals(trimmed)) {
+                continue;
+            }
+            Material material = Material.matchMaterial(trimmed.toUpperCase(Locale.ROOT));
+            if (material != null) {
+                return material;
+            }
+        }
+        return null;
     }
 }
