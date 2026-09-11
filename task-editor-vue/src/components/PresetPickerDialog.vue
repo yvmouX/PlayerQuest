@@ -167,7 +167,9 @@ function close(): void {
 </script>
 
 <style scoped>
-.preset-dialog {
+/* .dialog.preset-dialog 提高优先级：全局 .dialog 也是单类选择器，
+   宽度覆写不能靠打包顺序决定胜负 */
+.dialog.preset-dialog {
   width: min(44rem, 94vw);
   max-height: 86vh;
   display: flex;

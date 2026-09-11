@@ -42,29 +42,8 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
-
-.dialog {
-  width: min(28rem, 92vw);
-  padding: 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-}
-
-.dialog h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-}
-
+/* 遮罩、对话框外框、标题与底部按钮区是三个对话框共用的骨架，定义在 main.css；
+   这里只留确认框自己的文案排版与附加选项区。 */
 .dialog p {
   margin: 0 0 1.25rem;
   color: var(--text-dim);
@@ -83,11 +62,5 @@ const emit = defineEmits<{
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-input);
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
 }
 </style>

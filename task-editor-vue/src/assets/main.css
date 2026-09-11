@@ -475,6 +475,43 @@ input[type='checkbox'] {
   background: #4d5663;
 }
 
+/* ---------- 对话框 ---------- */
+
+/*
+ * 对话框骨架，ConfirmDialog / PresetPickerDialog / SavePresetDialog 三个组件共用。
+ * 必须放全局：scoped 样式只作用于定义它的组件，放在其中一个组件里，
+ * 另两个组件里的同名类拿不到样式——弹层会失去遮罩与居中，按文档流掉到页面末尾。
+ */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.dialog {
+  width: min(28rem, 92vw);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.dialog h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+
 /* ---------- 表格 ---------- */
 
 .table-wrap {
