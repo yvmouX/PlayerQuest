@@ -1,4 +1,8 @@
-package com.playerPlugin.playerTaskX.core.storage;
+package com.playerPlugin.playerTaskX.core.storage.jdbc;
+
+import com.playerPlugin.playerTaskX.core.storage.Dialect;
+import com.playerPlugin.playerTaskX.core.storage.Database;
+import com.playerPlugin.playerTaskX.core.storage.StorageException;
 
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.zaxxer.hikari.HikariConfig;

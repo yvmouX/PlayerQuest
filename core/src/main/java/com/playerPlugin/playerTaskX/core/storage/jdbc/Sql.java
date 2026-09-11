@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.core.storage;
+package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

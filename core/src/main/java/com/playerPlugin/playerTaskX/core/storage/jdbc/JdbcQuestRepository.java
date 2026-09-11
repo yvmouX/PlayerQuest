@@ -1,4 +1,9 @@
-package com.playerPlugin.playerTaskX.core.storage;
+package com.playerPlugin.playerTaskX.core.storage.jdbc;
+
+import com.playerPlugin.playerTaskX.core.storage.Dialect;
+import com.playerPlugin.playerTaskX.core.storage.Database;
+import com.playerPlugin.playerTaskX.core.storage.StorageException;
+import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;

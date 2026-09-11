@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.core.storage;
+package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -8,7 +8,7 @@ import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
-import com.playerPlugin.playerTaskX.core.storage.JdbcPlayerQuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
