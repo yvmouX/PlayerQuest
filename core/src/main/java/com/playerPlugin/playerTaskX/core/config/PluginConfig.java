@@ -55,7 +55,7 @@ public class PluginConfig {
     @ConfigValue(value = "daily.reset-hour", description = "每日重置时间（小时，0-23）")
     private int dailyResetHour = 4;
 
-    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用（金币，经 Vault 扣除；设为 0 表示免费）")
+    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用；按「金币 → 点券 → 经验」自动选择可用货币，设为 0 表示免费")
     private double dailyRefreshCost = 1000.0;
 
     @ConfigValue(value = "daily.refresh-limit", description = "每日最多刷新次数")

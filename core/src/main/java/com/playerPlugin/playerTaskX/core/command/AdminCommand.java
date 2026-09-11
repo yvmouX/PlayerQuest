@@ -512,7 +512,8 @@ public class AdminCommand {
         if (result.success()) {
             messages.send(receiver, "quest.refreshed");
             if (result.cost() > 0) {
-                messages.send(receiver, "quest.refresh-cost", plugin.moneyReward().format(result.cost()));
+                messages.send(receiver, "quest.refresh-cost",
+                        plugin.formatRefreshCost(result.cost(), result));
             }
             return;
         }

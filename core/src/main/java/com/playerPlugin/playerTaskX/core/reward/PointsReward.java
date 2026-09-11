@@ -20,9 +20,6 @@ public final class PointsReward implements RewardType {
 
     public static final String ID = "points";
 
-    private Object cachedApi;
-    private Method giveMethod;
-
     @Override
     public String id() {
         return ID;
@@ -42,34 +39,40 @@ public final class PointsReward implements RewardType {
 
     @Override
     public void grant(Player player, QuestReward reward) {
-        Object api = api();
-        if (api == null || giveMethod == null) {
-            return;
-        }
         int amount = reward.integer("amount", 0);
-        if (amount <= 0) {
-            return;
-        }
-        try {
-            giveMethod.invoke(api, player.getUniqueId(), amount);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("发放点券失败", e);
+        if (amount > 0) {
+            giveTo(player.getUniqueId(), amount);
         }
     }
 
     @Override
     public boolean available() {
-        return api() != null;
+        return isAvailable();
     }
 
     @Override
     public String unavailableReason() {
-        return api() == null ? "未安装 PlayerPoints" : "";
+        return isAvailable() ? "" : "未安装 PlayerPoints";
     }
 
-    /** 查询余额（GUI 展示用）。 */
-    public int balance(UUID playerId) {
-        Object api = api();
+    // ------------------------------------------------------------------
+    // 静态访问：供 CurrencyType 等无实例的调用方使用
+    // ------------------------------------------------------------------
+
+    /** 缓存的 PlayerPoints API；null 表示尚未解析或不可用。 */
+    private static Object staticApi;
+
+    /** 缓存的 give 方法。 */
+    private static Method staticGiveMethod;
+
+    /** PlayerPoints 是否可用。 */
+    public static boolean isAvailable() {
+        return resolveApi() != null;
+    }
+
+    /** 查询余额。 */
+    public static int balanceOf(UUID playerId) {
+        Object api = resolveApi();
         if (api == null) {
             return 0;
         }
@@ -82,9 +85,9 @@ public final class PointsReward implements RewardType {
         }
     }
 
-    /** 扣除点券，返回是否成功（刷新费用用）。 */
-    public boolean take(UUID playerId, int amount) {
-        Object api = api();
+    /** 扣除点券，返回是否成功。 */
+    public static boolean takeFrom(UUID playerId, int amount) {
+        Object api = resolveApi();
         if (api == null || amount <= 0) {
             return false;
         }
@@ -97,14 +100,31 @@ public final class PointsReward implements RewardType {
         }
     }
 
-    private Object api() {
-        if (cachedApi != null) {
-            return cachedApi;
+    /** 发放点券，返回是否成功。 */
+    public static boolean giveTo(UUID playerId, int amount) {
+        Object api = resolveApi();
+        if (api == null || staticGiveMethod == null || amount <= 0) {
+            return false;
+        }
+        try {
+            staticGiveMethod.invoke(api, playerId, amount);
+            return true;
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
+    }
+
+    /** 解析并缓存 PlayerPoints API。 */
+    private static Object resolveApi() {
+        if (staticApi != null) {
+            return staticApi;
         }
         if (Bukkit.getPluginManager().getPlugin("PlayerPoints") == null) {
             return null;
         }
         try {
+            // 反射而不是直接 import：PlayerPoints 是软依赖，直接引用会让缺失该插件的
+            // 服务端在类加载阶段就报 NoClassDefFoundError
             Class<?> mainClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
             Object instance = mainClass.getMethod("getInstance").invoke(null);
             if (instance == null) {
@@ -114,9 +134,9 @@ public final class PointsReward implements RewardType {
             if (api == null) {
                 return null;
             }
-            giveMethod = api.getClass().getMethod("give", UUID.class, int.class);
-            cachedApi = api;
-            return cachedApi;
+            staticGiveMethod = api.getClass().getMethod("give", UUID.class, int.class);
+            staticApi = api;
+            return staticApi;
         } catch (ReflectiveOperationException e) {
             return null;
         }

@@ -331,8 +331,9 @@ public class PlayerCommand {
         if (result.success()) {
             messages.send(receiver, "quest.refreshed");
             if (result.cost() > 0) {
-                // 费用统一是金币，直接用 Vault 的格式化，写法与服务器经济插件一致
-                messages.send(receiver, "quest.refresh-cost", plugin.moneyReward().format(result.cost()));
+                // 费用文案由插件统一渲染：金币走 Vault 的格式，其它货币用其显示名
+                messages.send(receiver, "quest.refresh-cost",
+                        plugin.formatRefreshCost(result.cost(), result));
             }
             return;
         }

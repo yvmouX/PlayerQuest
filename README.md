@@ -16,7 +16,7 @@
 | [命令](docs/commands.md) | 玩家命令 / 管理员命令 |
 | [配置](docs/configuration.md) | `config.yml` 全部选项 |
 | [任务目标](docs/objectives.md) | 14 种目标类型 |
-| [任务奖励](docs/rewards.md) | 4 种奖励类型 |
+| [任务奖励](docs/rewards.md) | 5 种奖励类型 |
 | [网页编辑器](docs/editor.md) | 浏览器管理界面 |
 | [变量](docs/placeholders.md) | PlaceholderAPI 变量 |
 | [常见问题](docs/faq.md) | 排查手册 |

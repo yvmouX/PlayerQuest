@@ -21,8 +21,6 @@ public final class MoneyReward implements RewardType {
 
     public static final String ID = "money";
 
-    private Economy economy;
-
     @Override
     public String id() {
         return ID;
@@ -42,8 +40,7 @@ public final class MoneyReward implements RewardType {
 
     @Override
     public void grant(org.bukkit.entity.Player player, QuestReward reward) {
-        Economy service = economy();
-        if (service == null) {
+        if (!isAvailable()) {
             return;
         }
         double amount = reward.decimal("amount", 0.0);
@@ -51,54 +48,80 @@ public final class MoneyReward implements RewardType {
             return;
         }
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(player.getUniqueId());
-        service.depositPlayer(offlinePlayer, amount);
+        deposit(offlinePlayer, amount);
     }
 
     @Override
     public boolean available() {
-        return economy() != null;
+        return isAvailable();
     }
 
     @Override
     public String unavailableReason() {
-        return economy() == null ? "未安装 Vault 或没有经济插件" : "";
+        return isAvailable() ? "" : "未安装 Vault 或没有经济插件";
     }
 
-    /** 延迟解析 Vault 经济服务：插件启动顺序不保证 Vault 已就绪，因此每次用时探测并缓存。 */
-    private Economy economy() {
-        if (economy != null && economy.isEnabled()) {
-            return economy;
-        }
-        economy = null;
-        if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
-            return null;
-        }
-        RegisteredServiceProvider<Economy> provider = Bukkit.getServicesManager().getRegistration(Economy.class);
-        if (provider != null) {
-            economy = provider.getProvider();
-        }
-        return economy;
+    // ------------------------------------------------------------------
+    // 静态访问：供 CurrencyType 等无实例的调用方使用
+    // ------------------------------------------------------------------
+
+    /** 缓存的 Vault 经济服务；null 表示尚未解析或不可用。 */
+    private static Economy cachedEconomy;
+
+    /** Vault 经济服务是否可用。 */
+    public static boolean isAvailable() {
+        return resolveEconomy() != null;
     }
 
-    /** 供命令与 GUI 展示。 */
-    public String format(double amount) {
-        Economy service = economy();
-        return service == null ? String.valueOf(amount) : service.format(amount);
+    /** 余额。 */
+    public static double balanceOf(OfflinePlayer player) {
+        Economy service = resolveEconomy();
+        return service == null ? 0.0 : service.getBalance(player);
     }
 
-    /** 供刷新费用扣除使用；返回是否扣款成功。 */
-    public boolean withdraw(OfflinePlayer player, double amount) {
-        Economy service = economy();
+    /** 发放；返回是否成功。 */
+    public static boolean deposit(OfflinePlayer player, double amount) {
+        Economy service = resolveEconomy();
+        if (service == null || amount <= 0) {
+            return false;
+        }
+        return service.depositPlayer(player, amount).transactionSuccess();
+    }
+
+    /** 扣款；返回是否成功。 */
+    public static boolean withdraw(OfflinePlayer player, double amount) {
+        Economy service = resolveEconomy();
         if (service == null || amount <= 0) {
             return false;
         }
         return service.withdrawPlayer(player, amount).transactionSuccess();
     }
 
-    /** 供 GUI 展示余额。 */
-    public double balance(OfflinePlayer player) {
-        Economy service = economy();
-        return service == null ? 0.0 : service.getBalance(player);
+    /** 按服务器经济插件的格式渲染金额；不可用时退回纯数字。 */
+    public static String format(double amount) {
+        Economy service = resolveEconomy();
+        return service == null ? String.valueOf(amount) : service.format(amount);
+    }
+
+    /** 解析并缓存 Vault 经济服务。 */
+    private static Economy resolveEconomy() {
+        if (cachedEconomy != null && cachedEconomy.isEnabled()) {
+            return cachedEconomy;
+        }
+        cachedEconomy = null;
+        if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
+            return null;
+        }
+        RegisteredServiceProvider<Economy> provider = Bukkit.getServicesManager().getRegistration(Economy.class);
+        if (provider != null) {
+            cachedEconomy = provider.getProvider();
+        }
+        return cachedEconomy;
+    }
+
+    /** 供命令与 GUI 展示。 */
+    public String describeAmount(double amount) {
+        return format(amount);
     }
 
     /** 统一走 TextRenderer，保证与其它文本一致的格式处理。 */

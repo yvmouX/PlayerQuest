@@ -6,7 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
+import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.storage.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.bukkit.Bukkit;
@@ -42,15 +42,13 @@ public final class DailyService {
     private final QuestRegistry quests;
     private final PlayerQuestRepository repository;
     private final ProgressService progressService;
-    private final MoneyReward moneyReward;
 
     public DailyService(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
-                        ProgressService progressService, MoneyReward moneyReward) {
+                        ProgressService progressService) {
         this.config = config;
         this.quests = quests;
         this.repository = repository;
         this.progressService = progressService;
-        this.moneyReward = moneyReward;
     }
 
     /** 当前周期字符串，形如 {@code 2026-09-10}。 */
@@ -181,12 +179,16 @@ public final class DailyService {
 
         double cost = config.getDailyRefreshCost();
         if (charge && samePeriod && cost > 0) {
-            String failure = chargeMoney(player, cost);
-            if (failure != null) {
-                return RefreshResult.failed(failure);
+            // 按「金币 → 点券 → 经验」挑一个可用货币：装了经济插件扣钱，
+            // 没装的服务器扣经验，刷新功能在任何服务端上都可用
+            CurrencyType currency = CurrencyType.detect();
+            long units = currency.toUnits(cost);
+            if (!currency.charge(player, units)) {
+                return RefreshResult.failed(currency.displayName() + "不足，需要 " + units
+                        + "（当前 " + currency.balance(player) + "）");
             }
             assign(playerId, period, used + 1);
-            return RefreshResult.success(cost);
+            return RefreshResult.success(cost, currency);
         }
 
         if (charge) {
@@ -197,7 +199,7 @@ public final class DailyService {
             assign(playerId, period, used + 1, used);
         }
         // 免费重发与管理员重置都按 0 费用反馈，避免提示里出现根本没扣的钱
-        return RefreshResult.success(0.0);
+        return RefreshResult.success(0.0, null);
     }
 
     /** 玩家在当前周期已刷新的次数。 */
@@ -303,40 +305,22 @@ public final class DailyService {
     }
 
     /**
-     * 扣金币（经 Vault）。
-     * <p>
-     * 刷新费用只用服务器的基础经济：这样管理员在别处看到的余额与这里的扣费是同一份数据，
-     * 不会出现「插件内的一种货币玩家不知道从哪来」的困惑。
+     * 刷新结果。
      *
-     * @return 成功返回 null；失败返回给玩家看的原因
+     * @param currency 实际扣费的货币；免费或管理员重置时为 null
      */
-    private String chargeMoney(Player player, double cost) {
-        if (!moneyReward.available()) {
-            return "未安装经济插件（Vault），无法扣除刷新费用";
-        }
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(player.getUniqueId());
-        if (moneyReward.balance(offlinePlayer) < cost) {
-            return "金币不足，需要 " + moneyReward.describe(cost);
-        }
-        if (!moneyReward.withdraw(offlinePlayer, cost)) {
-            return "扣款失败，请稍后再试";
-        }
-        return null;
-    }
+    public record RefreshResult(boolean success, double cost, CurrencyType currency, String error, int limit) {
 
-    /** 刷新结果。 */
-    public record RefreshResult(boolean success, double cost, String error, int limit) {
-
-        public static RefreshResult success(double cost) {
-            return new RefreshResult(true, cost, "", 0);
+        public static RefreshResult success(double cost, CurrencyType currency) {
+            return new RefreshResult(true, cost, currency, "", 0);
         }
 
         public static RefreshResult failed(String error) {
-            return new RefreshResult(false, 0, error, 0);
+            return new RefreshResult(false, 0, null, error, 0);
         }
 
         public static RefreshResult limitReached(int limit) {
-            return new RefreshResult(false, 0, "今日刷新次数已用完", limit);
+            return new RefreshResult(false, 0, null, "今日刷新次数已用完", limit);
         }
     }
 }

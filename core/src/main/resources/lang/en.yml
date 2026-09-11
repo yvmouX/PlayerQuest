@@ -32,6 +32,7 @@ objective:
 reward:
   money: "Money"
   points: "Points"
+  exp: "Experience"
   item: "Item"
   command: "Custom command"
 

@@ -147,8 +147,7 @@ editor:
 
 | 提示 | 原因 |
 |---|---|
-| `未安装经济插件（Vault），无法扣除刷新费用` | 刷新要收费但服务器没装 Vault + 经济插件；装一个，或把 `daily.refresh-cost` 设为 `0` |
-| `金币不足，需要 xxx` | 金币不够（`daily.refresh-cost`） |
+| `金币不足，需要 xxx` / `点券不足，需要 xxx` / `经验不足，需要 xxx（当前 yyy）` | 对应货币的余额不够（`daily.refresh-cost`）。提示里会写明实际扣的是哪种货币 |
 | `今日刷新次数已用完（上限 N 次）` | `daily.refresh-limit` 限制 |
 
 想让刷新免费：`daily.refresh-cost: 0`。
