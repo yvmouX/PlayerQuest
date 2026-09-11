@@ -103,18 +103,30 @@ public final class MoneyReward implements RewardType {
         return service == null ? String.valueOf(amount) : service.format(amount);
     }
 
-    /** 解析并缓存 Vault 经济服务。 */
+    /**
+     * 解析并缓存 Vault 经济服务。
+     * <p>
+     * 用 {@link #isPluginPresent(String)} 而不是直接调 {@code Bukkit.getPluginManager()}：
+     * 后者在服务端尚未初始化时返回 null（例如单元测试、或插件在引导阶段被触碰），
+     * 直接解引用会抛 NPE。软依赖检测失败只应表示「不可用」，不应让调用方崩掉。
+     */
     private static Economy resolveEconomy() {
         if (cachedEconomy != null && cachedEconomy.isEnabled()) {
             return cachedEconomy;
         }
         cachedEconomy = null;
-        if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
+        if (!isPluginPresent("Vault")) {
             return null;
         }
-        RegisteredServiceProvider<Economy> provider = Bukkit.getServicesManager().getRegistration(Economy.class);
-        if (provider != null) {
-            cachedEconomy = provider.getProvider();
+        try {
+            RegisteredServiceProvider<Economy> provider =
+                    Bukkit.getServicesManager().getRegistration(Economy.class);
+            if (provider != null) {
+                cachedEconomy = provider.getProvider();
+            }
+        } catch (Throwable ignored) {
+            // 服务管理器不可用（非 CraftBukkit 实现等）：视为没有经济服务
+            cachedEconomy = null;
         }
         return cachedEconomy;
     }
@@ -127,5 +139,20 @@ public final class MoneyReward implements RewardType {
     /** 统一走 TextRenderer，保证与其它文本一致的格式处理。 */
     public String describe(double amount) {
         return TextRenderer.strip(format(amount));
+    }
+
+    /**
+     * 探测软依赖插件是否已加载。
+     * <p>
+     * 独立成静态方法是因为 Vault / PlayerPoints / PlaceholderAPI 三处都需要同样的
+     * 「服务端未初始化时不崩」的保护；放在这里避免各处重复写 try/catch。
+     */
+    static boolean isPluginPresent(String name) {
+        try {
+            return Bukkit.getPluginManager() != null
+                    && Bukkit.getPluginManager().getPlugin(name) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 }

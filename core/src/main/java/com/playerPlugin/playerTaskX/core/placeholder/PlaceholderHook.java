@@ -24,12 +24,28 @@ public final class PlaceholderHook {
     }
 
     /**
+     * 探测 PlaceholderAPI 是否已加载。
+     * <p>
+     * 包住 Throwable 而不是直接调用：{@code Bukkit.getPluginManager()} 在服务端尚未初始化时
+     * 返回 null（单元测试、引导阶段），直接解引用会抛 NPE。
+     * 软依赖检测失败只应表示「不可用」，不该让插件启动失败。
+     */
+    private static boolean isPlaceholderApiPresent() {
+        try {
+            return Bukkit.getPluginManager() != null
+                    && Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /**
      * 尝试注册变量扩展。
      *
      * @return 是否注册成功（未安装 PlaceholderAPI 时返回 false，属正常情况）
      */
     public static boolean register(Plugin plugin) {
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {
+        if (!isPlaceholderApiPresent()) {
             return false;
         }
         try {

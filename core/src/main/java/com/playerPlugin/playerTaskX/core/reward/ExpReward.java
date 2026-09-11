@@ -48,6 +48,22 @@ public final class ExpReward implements RewardType {
         }
     }
 
+    @Override
+    public boolean available() {
+        return isAvailable();
+    }
+
+    /**
+     * 经验是否可用。
+     * <p>
+     * 永远为 true：经验是原版资源，不需要任何插件，这正是它能作为兜底货币的原因。
+     * 这个方法刻意独立存在——货币选择只看「该依赖是否存在」，
+     * 而不是去读余额（那需要玩家在线，离屏场景会抛异常）。
+     */
+    public static boolean isAvailable() {
+        return true;
+    }
+
     /** 玩家当前的总经验（跨等级累计）。 */
     public static int totalExperience(Player player) {
         Method method = resolveCalculate();

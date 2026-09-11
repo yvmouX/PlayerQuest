@@ -55,8 +55,29 @@ public class PluginConfig {
     @ConfigValue(value = "daily.reset-hour", description = "每日重置时间（小时，0-23）")
     private int dailyResetHour = 4;
 
-    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用；按「金币 → 点券 → 经验」自动选择可用货币，设为 0 表示免费")
+    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用；0 表示免费。货币由 daily.refresh-currency 决定")
     private double dailyRefreshCost = 1000.0;
+
+    @ConfigValue(value = "daily.refresh-currency",
+            description = "刷新费用使用的货币，按顺序取第一个可用的：MONEY（金币/Vault）、POINTS（点券/PlayerPoints）、EXP（经验/原版）。"
+                    + "想把经验排在金币前面就写成 [EXP, MONEY]；只写 [EXP] 表示完全不碰经济插件")
+    private java.util.List<String> dailyRefreshCurrency = defaultCurrencyOrder();
+
+    private static java.util.List<String> defaultCurrencyOrder() {
+        return java.util.List.of("MONEY", "POINTS", "EXP");
+    }
+
+    /**
+     * 刷新费用使用的货币顺序。
+     * <p>
+     * 列表为空时退回内置顺序，避免用户清空后刷新功能失效。
+     */
+    public java.util.List<String> getDailyRefreshCurrency() {
+        if (dailyRefreshCurrency == null || dailyRefreshCurrency.isEmpty()) {
+            return defaultCurrencyOrder();
+        }
+        return dailyRefreshCurrency;
+    }
 
     @ConfigValue(value = "daily.refresh-limit", description = "每日最多刷新次数")
     private int dailyRefreshLimit = 3;

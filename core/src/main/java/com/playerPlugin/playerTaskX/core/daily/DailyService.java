@@ -179,9 +179,9 @@ public final class DailyService {
 
         double cost = config.getDailyRefreshCost();
         if (charge && samePeriod && cost > 0) {
-            // 按「金币 → 点券 → 经验」挑一个可用货币：装了经济插件扣钱，
+            // 货币顺序由配置决定（默认「金币 → 点券 → 经验」）：装了经济插件扣钱，
             // 没装的服务器扣经验，刷新功能在任何服务端上都可用
-            CurrencyType currency = CurrencyType.detect();
+            CurrencyType currency = CurrencyType.select(config.getDailyRefreshCurrency());
             long units = currency.toUnits(cost);
             if (!currency.charge(player, units)) {
                 return RefreshResult.failed(currency.displayName() + "不足，需要 " + units

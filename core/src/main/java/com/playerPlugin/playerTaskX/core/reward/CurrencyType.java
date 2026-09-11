@@ -1,8 +1,8 @@
 package com.playerPlugin.playerTaskX.core.reward;
 
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
@@ -45,7 +45,7 @@ public enum CurrencyType {
 
     /** 经验（原版，总是可用）。 */
     EXP("exp", "经验",
-            () -> true,
+            ExpReward::isAvailable,
             ExpReward::totalExperience,
             (player, amount) -> CurrencyResult.of(ExpReward.take(player, (int) amount)));
 
@@ -95,6 +95,28 @@ public enum CurrencyType {
      * 经验永远可用，因此这里不会返回 null——刷新功能在任何服务端上都能工作。
      */
     public static CurrencyType detect() {
+        return select(java.util.Collections.<String>emptyList());
+    }
+
+    /**
+     * 按配置的顺序挑选可用货币。
+     * <p>
+     * 配置的是一个**有序列表**，先出现的优先：写 {@code [EXP, MONEY]} 表示优先扣经验、
+     * 经验不够才考虑金币。列表里没有的货币视为禁用（如只写 {@code [EXP]} 就完全不碰经济插件）。
+     *
+     * @param configured 配置的货币 id 顺序；为空或全部不可用时，退回内置顺序
+     */
+    public static CurrencyType select(java.util.List<String> configured) {
+        if (configured != null) {
+            for (String name : configured) {
+                CurrencyType type = parse(name);
+                if (type != null && type.available()) {
+                    return type;
+                }
+            }
+        }
+        // 配置为空、或者配的货币在当前环境下都不可用：退回内置顺序，
+        // 保证刷新功能始终可用（经验总是满足条件）
         for (CurrencyType type : new CurrencyType[]{MONEY, POINTS, EXP}) {
             if (type.available()) {
                 return type;
@@ -103,17 +125,31 @@ public enum CurrencyType {
         return EXP;
     }
 
-    /** 按 id 查找，未知或为空时返回 {@link #detect()} 的结果。 */
-    public static CurrencyType byId(String id) {
-        if (id != null) {
-            String normalized = id.trim().toUpperCase(java.util.Locale.ROOT);
-            for (CurrencyType type : values()) {
-                if (type.name().equals(normalized) || type.id.equalsIgnoreCase(normalized)) {
-                    return type;
-                }
+    /**
+     * 按 id 或枚举名解析，无法识别时返回 null。
+     * <p>
+     * 注意与 {@link #byId(String)} 的区别：那个在识别失败时会退回默认货币，
+     * 用于「单个值」的场景；这里返回 null 是为了让调用方跳过无效项继续往下找，
+     * 而不是因为配置里写错一个词就整体退回默认。
+     */
+    @Nullable
+    private static CurrencyType parse(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = name.trim().toUpperCase(java.util.Locale.ROOT);
+        for (CurrencyType type : values()) {
+            if (type.name().equals(normalized) || type.id.equalsIgnoreCase(normalized)) {
+                return type;
             }
         }
-        return detect();
+        return null;
+    }
+
+    /** 按 id 查找，未知或为空时返回 {@link #detect()} 的结果。 */
+    public static CurrencyType byId(String id) {
+        CurrencyType parsed = parse(id);
+        return parsed == null ? detect() : parsed;
     }
 
     /** 把双精度费用换算成货币的整数单位（所有货币都按「向上取整」收费，不产生零头）。 */

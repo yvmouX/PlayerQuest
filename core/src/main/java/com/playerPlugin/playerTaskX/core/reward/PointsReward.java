@@ -119,7 +119,9 @@ public final class PointsReward implements RewardType {
         if (staticApi != null) {
             return staticApi;
         }
-        if (Bukkit.getPluginManager().getPlugin("PlayerPoints") == null) {
+        // 用 MoneyReward 的同款探测：服务端未初始化时 getPluginManager() 为 null，
+        // 软依赖检测不该因此抛 NPE
+        if (!MoneyReward.isPluginPresent("PlayerPoints")) {
             return null;
         }
         try {
@@ -137,7 +139,7 @@ public final class PointsReward implements RewardType {
             staticGiveMethod = api.getClass().getMethod("give", UUID.class, int.class);
             staticApi = api;
             return staticApi;
-        } catch (ReflectiveOperationException e) {
+        } catch (ReflectiveOperationException | RuntimeException e) {
             return null;
         }
     }

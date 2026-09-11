@@ -445,18 +445,17 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     /**
-     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「50 经验」。
+     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「1000 经验」。
      * <p>
-     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），
-     * 其它货币是整数，直接用其显示名。没有实际扣费结果时（例如按钮文案），
-     * 用兜底链挑出的货币。
+     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），其它货币是整数，直接用其显示名。
+     * 没有实际扣费结果时（例如按钮文案），按配置的货币顺序推断。
      *
-     * @param result 刷新结果；为 null 时按兜底链推断货币
+     * @param result 刷新结果；为 null 时按配置顺序推断货币
      */
     public String formatRefreshCost(double cost, DailyService.RefreshResult result) {
-        CurrencyType currency = result == null ? CurrencyType.detect() : result.currency();
+        CurrencyType currency = result == null ? null : result.currency();
         if (currency == null) {
-            currency = CurrencyType.detect();
+            currency = CurrencyType.select(config.getDailyRefreshCurrency());
         }
         if (currency == CurrencyType.MONEY) {
             return MoneyReward.format(cost);
