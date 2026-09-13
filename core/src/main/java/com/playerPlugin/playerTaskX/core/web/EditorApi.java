@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -38,6 +39,11 @@ import java.util.function.Function;
  * <h2>错误约定</h2>
  * 业务异常统一转成 4xx 而不是让前端只看到 500：{@link IllegalArgumentException} → 400、
  * {@link IllegalStateException} → 409、{@link StorageException} → 500。
+ *
+ * <h2>写接口的请求体</h2>
+ * POST/PUT 一律用 {@link #withBody} 取请求体：解析失败时它在返回前就写好 400，
+ * 处理器体因此无需再判 null——漏判的代价是「坏请求体继续往下跑」，而这类漏判
+ * 只在手写校验时才看得出，交给辅助方法后就不可能漏。
  */
 final class EditorApi {
 
@@ -90,11 +96,7 @@ final class EditorApi {
             ctx.result(json(Map.of("version", 1, "quests", exported)));
         });
 
-        app.post("/api/quests/import", ctx -> {
-            Map<String, Object> body = body(ctx);
-            if (body == null) {
-                return;
-            }
+        app.post("/api/quests/import", ctx -> withBody(ctx, body -> {
             if (!(body.get("quests") instanceof List<?> list)) {
                 badRequest(ctx, "缺少 quests 数组");
                 return;
@@ -122,7 +124,7 @@ final class EditorApi {
             }
             ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
                     "total", plugin.quests().all().size())));
-        });
+        }));
 
         app.get("/api/quests/{id}", ctx -> {
             Quest quest = plugin.quests().find(ctx.pathParam("id")).orElse(null);
@@ -135,11 +137,7 @@ final class EditorApi {
             ctx.result(json(json));
         });
 
-        app.post("/api/quests", ctx -> {
-            Map<String, Object> body = body(ctx);
-            if (body == null) {
-                return;
-            }
+        app.post("/api/quests", ctx -> withBody(ctx, body -> {
             Quest quest = QuestJson.fromJson(body);
             if (quest.id() == null || quest.id().isBlank()) {
                 badRequest(ctx, "任务 id 不能为空");
@@ -148,7 +146,7 @@ final class EditorApi {
             plugin.questAdmin().save(quest);
             ctx.result(json(Map.of("ok", true, "id", quest.id(),
                     "problems", plugin.questAdmin().validate(quest))));
-        });
+        }));
 
         app.delete("/api/quests/{id}", ctx -> {
             String id = ctx.pathParam("id");
@@ -284,11 +282,7 @@ final class EditorApi {
     private void presetRoutes(Javalin app) {
         app.get("/api/presets", ctx -> ctx.result(json(PresetJson.toGrouped(plugin.presets().findAll()))));
 
-        app.post("/api/presets/{kind}", ctx -> {
-            Map<String, Object> body = body(ctx);
-            if (body == null) {
-                return;
-            }
+        app.post("/api/presets/{kind}", ctx -> withBody(ctx, body -> {
             Preset preset = PresetJson.fromJson(ctx.pathParam("kind"), body);
             if (preset == null) {
                 badRequest(ctx, "预设缺少 type");
@@ -296,7 +290,7 @@ final class EditorApi {
             }
             plugin.presets().save(preset);
             ctx.result(json(Map.of("ok", true, "preset", PresetJson.toJson(preset))));
-        });
+        }));
 
         app.delete("/api/presets/{kind}/{id}", ctx -> {
             String id = ctx.pathParam("id");
@@ -317,17 +311,13 @@ final class EditorApi {
             ctx.result(json(result));
         });
 
-        app.put("/api/langs/{code}", ctx -> {
+        app.put("/api/langs/{code}", ctx -> withBody(ctx, body -> {
             String code = ctx.pathParam("code");
-            Map<String, Object> body = body(ctx);
-            if (body == null) {
-                return;
-            }
             Object content = body.get("content");
             writeLang(code, content == null ? "" : String.valueOf(content));
             plugin.messages().reload();
             ctx.result(json(Map.of("ok", true, "code", code)));
-        });
+        }));
     }
 
     private String readLang(String code) {
@@ -402,24 +392,27 @@ final class EditorApi {
     // 请求 / 响应
     // ------------------------------------------------------------------
 
-    /** 读请求体；不是合法 JSON 对象时回 400 并返回 null。 */
-    private static Map<String, Object> body(Context ctx) {
-        Map<String, Object> parsed = parseObject(ctx.body());
+    /**
+     * 取请求体并交给处理器；不是合法 JSON 对象时回 400，处理器不会被调用。
+     * <p>
+     * 用「回调」而不是「返回 Map + 各调用点判 null」：后者每个写接口都要抄一遍
+     * 「为 null 就 return」，漏一处就会拿着 null 往下走。
+     */
+    private static void withBody(Context ctx, Consumer<Map<String, Object>> handler) {
+        Map<String, Object> parsed;
+        try {
+            // 空体也交给 JsonCodec 判（它对 null/空白返回 null），省掉这里的重复判空
+            parsed = JsonCodec.readMapStrict(ctx.body());
+        } catch (Exception e) {
+            parsed = null;
+        }
+        // 只有解析失败才拦在这里；处理器自己抛的异常照旧冒泡给 register() 里注册的
+        // 异常处理器，否则一个存储故障会被误报成「请求体不合法」
         if (parsed == null) {
             badRequest(ctx, "请求体不是合法的 JSON 对象");
+            return;
         }
-        return parsed;
-    }
-
-    private static Map<String, Object> parseObject(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return JsonCodec.readMapStrict(raw);
-        } catch (Exception e) {
-            return null;
-        }
+        handler.accept(parsed);
     }
 
     /** 把任意对象转成 Map，非对象返回 null（导入时跳过非法条目而不是整体失败）。 */

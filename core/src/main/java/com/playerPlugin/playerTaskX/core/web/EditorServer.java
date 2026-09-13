@@ -164,12 +164,17 @@ public final class EditorServer {
         }
         if (!token.equals(ctx.header("X-Editor-Token"))) {
             ctx.status(401).result(EditorApi.errorJson("无效或缺失的访问令牌（请求头 X-Editor-Token）"));
-            // 抛出以中断后续处理器
             throw new TokenRejected();
         }
     }
 
-    /** 用于中断请求的内部控制流异常。 */
+    /**
+     * 用于中断请求的内部控制流异常。
+     * <p>
+     * 401 的状态码与响应体都由 {@link #checkToken} 一次写完，这里只负责让 Javalin
+     * 停止执行后续处理器——异常本身不再是「错误的载体」，避免同一次拒绝的状态码与文案
+     * 被拆到两个类里，改一处忘另一处。
+     */
     private static final class TokenRejected extends RuntimeException {
     }
 
