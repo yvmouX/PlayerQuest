@@ -9,7 +9,6 @@ common:
   yes: "Yes"
   no: "No"
   none: "None"
-  loading: "Loading..."
 
 # ---------- Objective type names ----------
 objective:
@@ -40,14 +39,10 @@ reward:
 quest:
   progress: "Quest progress"
   completed-title: "<green>✔ Quest complete</green>"
-  completed-subtitle: "<white>{0}</white>"
-  completed-message: "<green>Quest completed: </green><white>{0}</white><gray> - claim your reward in the quest menu.</gray>"
   claimed: "<green>Reward claimed: </green><white>{0}</white>"
   not-completed: "<red>This quest is not complete yet.</red>"
   already-claimed: "<red>This reward has already been claimed.</red>"
   unavailable: "<red>This quest is currently unavailable, please contact an administrator.</red>"
-  accepted: "<green>Quest accepted: </green><white>{0}</white>"
-  abandoned: "<yellow>Quest abandoned: </yellow><white>{0}</white>"
   refreshed: "<green>Daily quests refreshed.</green>"
   refresh-failed: "<red>Refresh failed: {0}</red>"
   refresh-limit: "<red>You have used all refreshes for today (limit {0}).</red>"
@@ -62,20 +57,16 @@ daily:
 # ---------- Commands ----------
 command:
   player-only: "<red>This command can only be used by players.</red>"
-  no-permission: "<red>You do not have permission to use this command.</red>"
-  unknown-subcommand: "<red>Unknown subcommand: {0}</red>"
+  player-help: "Player commands"
+  admin-help: "Admin commands"
   reloaded: "<green>Configuration and quests reloaded ({0} quests).</green>"
   reload-failed: "<red>Reload failed: {0}</red>"
 
 # ---------- GUI ----------
 gui:
   daily-title: "Daily Quests"
-  quest-list-title: "Quest List"
   quest-detail-title: "Quest: {0}"
-  reward-title: "Quest Rewards"
   admin-title: "Quest Admin"
-  objective-title: "Edit Objectives"
-  reward-edit-title: "Edit Rewards"
   click-to-view: "<yellow>Click for details</yellow>"
   click-to-claim: "<green>Click to claim reward</green>"
   in-progress: "<gray>In progress</gray>"
@@ -86,11 +77,14 @@ gui:
   next: "<yellow>Next</yellow>"
   close: "<red>Close</red>"
   back: "<yellow>Back</yellow>"
+  refresh: "<yellow>Refresh daily quests</yellow>"
+  refresh-cost: "<yellow>Refresh ({0})</yellow>"
 
 # ---------- Editor ----------
 editor:
   started: "<green>Web editor started at </green><white>http://{0}</white>"
   disabled: "<gray>Web editor is disabled.</gray>"
+  token: "<gray>Access token: <white>{0}</white></gray>"
   token-required: "<red>Access token is missing, please set editor.token in the config.</red>"
 
 # ---------- Errors ----------

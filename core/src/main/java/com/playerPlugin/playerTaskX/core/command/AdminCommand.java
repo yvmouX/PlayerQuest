@@ -7,15 +7,14 @@ import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
 import cn.yvmou.ylib.command.help.CommandHelp;
 import cn.yvmou.ylib.message.MessageService;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
-import com.playerPlugin.playerTaskX.api.reward.RewardType;
-import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
-import cn.yvmou.ylib.text.TextRenderer;
+import com.playerPlugin.playerTaskX.core.text.Texts;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -23,7 +22,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 管理员命令 {@code /playertaskxadmin}（别名 {@code /ptxa}），权限 {@code playertaskx.admin}。
@@ -32,6 +30,7 @@ import java.util.Map;
  * <ul>
  *   <li>{@code ""} / {@code help}：管理员命令清单；</li>
  *   <li>{@code menu}：打开任务管理界面；</li>
+ *   <li>{@code editor}：查看网页编辑器地址与访问令牌；</li>
  *   <li>{@code reload}：重载配置与任务定义；</li>
  *   <li>{@code list}：列出全部任务及校验问题；</li>
  *   <li>{@code info <id>}：单个任务的完整信息；</li>
@@ -40,6 +39,7 @@ import java.util.Map;
  *   <li>{@code grant <玩家> <任务>}：只发奖励不改状态（调试）；</li>
  *   <li>{@code resetdaily <玩家>}：重置某玩家的每日任务（不扣费、不消耗次数）。</li>
  * </ul>
+ * 清单与说明来自注解（帮助由 {@link CommandHelp#ofAnnotations} 生成），不另写一份。
  *
  * <h2>命名约定</h2>
  * 子命令一律用能表达真实动作的词，且与玩家命令刻意区分：
@@ -47,15 +47,10 @@ import java.util.Map;
  * 改进度叫 {@code setobjective} 而不是 {@code progress}（后者看起来像「查看进度」）；
  * 管理员重置每日任务叫 {@code resetdaily}，与玩家的 {@code /ptx refresh} 分开——
  * 两者效果不同（玩家刷新收费且消耗次数，管理员重置都不），同名会让收费与否无从判断。
- * <p>
- * 不保留历史别名：这是开发中的项目，多一个入口就多一处需要维护的文档与校验。
  *
  * <h2>权限为什么只写在类上</h2>
  * {@code @Command(permission=...)} 挂在根节点，而 {@code CommandDispatcher} 每次执行都会先校验根节点，
  * 因此所有子命令天然被同一道门禁覆盖，不需要逐个 {@code @SubCommand} 再写一遍权限。
- * <p>
- * {@code permissionDefault = "op"} 让 YLib 在注册时把该权限节点注册进 Bukkit（默认 op），
- * 免得依赖「未声明的权限默认给 op」这种隐式行为。
  *
  * <h2>无参构造</h2>
  * 装配方只做 {@code register(new AdminCommand())}，服务在执行时通过 {@link PlayerTaskX#getInstance()} 取。
@@ -68,9 +63,6 @@ import java.util.Map;
 @Command(name = "playertaskxadmin", aliases = {"ptxa"}, description = "PlayerTaskX 管理员命令",
         permission = "playertaskx.admin", permissionDefault = "op")
 public class AdminCommand {
-
-    /** 子命令帮助行的前缀记号（结构字符，不属于正文文案）。 */
-    private static final String HELP_PREFIX = "<dark_gray>» <white>";
 
     /** 行内分隔符；标签写法不依赖「{@code &} 后恰好是合法颜色字符」这个前提。 */
     private static final String SEPARATOR = " <gray>| <white>";
@@ -87,58 +79,31 @@ public class AdminCommand {
         showHelp(sender, 1);
     }
 
-    /**
-     * {@code help}：显式帮助，与无参调用等价，满足「命令名可发现」的直觉。
-     * <p>
-     * 页码可省略（缺省第 1 页）；聊天页脚翻页按钮执行的 {@code /ptxa help N} 走的也是这里。
-     */
+    /** {@code help}：显式帮助，与无参调用等价；页码可省略，聊天页脚翻页走的也是这里。 */
     @SubCommand(value = "help", description = "显示管理员命令清单")
     public void helpCommand(CommandSender sender, @Arg(value = "页码") @Optional int page) {
         showHelp(sender, page);
     }
 
-    /**
-     * 帮助正文：按用途分组，每组带小节标题。
-     * <p>
-     * 子命令的一句话说明没有对应的语言键（语言文件不在本类改动范围内），
-     * 因此这里直写中文简述——这是本类唯一硬编码的玩家可见文案，
-     * 与 {@code @SubCommand(description=...)} 里的内容保持一致。
-     */
-    private void showHelp(CommandSender sender, int page) {
+    private static void showHelp(CommandSender sender, int page) {
         MessageService messages = messages();
-        CommandHelp.builder(messages.raw(sender, "gui.admin-title"))
-                .subtitle("&8任务 id 可用 Tab 补全")
-                // 条目是手写清单、没有注解可推断命令名，页脚翻页必须显式给出短名
+        CommandHelp.ofAnnotations("PlayerTaskX", AdminCommand.class)
+                .subtitle("&8" + messages.raw(sender, "command.admin-help"))
                 .commandLabel("ptxa")
                 .page(page)
-                .group("任务管理")
-                .entry("/ptxa list", "列出全部任务与校验问题")
-                .entry("/ptxa info <id>", "查看单个任务的完整信息")
-                .entry("/ptxa enable <id>", "启用任务")
-                .entry("/ptxa disable <id>", "禁用任务")
-                .entry("/ptxa reload", "从存储重载任务定义")
-                .group("界面与编辑")
-                .entry("/ptxa menu", "打开任务管理界面")
-                .entry("/ptxa editor", "查看网页编辑器地址与访问令牌")
-                .group("调试与修复")
-                .entry("/ptxa setobjective <玩家> <任务> <序号> <进度>", "直接设定目标进度")
-                .entry("/ptxa grant <玩家> <任务>", "直接发放奖励（不改状态）")
-                .entry("/ptxa resetdaily <玩家>", "重置每日任务（不扣费、不消耗次数）")
                 .send(sender);
     }
 
     /**
      * {@code editor}：输出网页编辑器地址与令牌。
      * <p>
-     * 管理员常在服务器上而非本机浏览器操作，因此把 URL 直接发到聊天里，
-     * 不必去翻 config.yml。
+     * 管理员常在服务器上而非本机浏览器操作，因此把 URL 直接发到聊天里，不必去翻 config.yml。
+     * 端口被占用会自动 +1，因此必须报<b>实际</b>端口而不是配置值。
      */
     @SubCommand(value = "editor", description = "显示网页编辑器地址")
     public void editor(CommandSender sender) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         MessageService messages = plugin.messages();
-        // 端口被占用会自动 +1，因此必须报实际端口而不是配置值；
-        // 已启用但启动失败（如连续端口都被占）也在这里如实反馈
         EditorServer server = plugin.editorServer();
         if (!plugin.config().isEditorEnabled() || server == null || server.port() <= 0) {
             messages.send(sender, "editor.disabled");
@@ -147,7 +112,7 @@ public class AdminCommand {
         messages.send(sender, "editor.started", "127.0.0.1:" + server.port());
         String token = plugin.config().getEditorToken();
         if (token != null && !token.isBlank()) {
-            messages.sendRaw(sender, render("&7访问令牌: &f" + token));
+            messages.send(sender, "editor.token", token);
         } else {
             messages.send(sender, "editor.token-required");
         }
@@ -170,8 +135,8 @@ public class AdminCommand {
     /**
      * {@code reload}：从存储重载任务定义。
      * <p>
-     * {@code questAdmin.reload()} 会读库并重建注册表，数据库异常必须显式捕获：
-     * 让它冒到框架层的话，管理员只会看到一句「内部错误」，看不到真正原因（比如库被占用）。
+     * 数据库异常必须显式捕获：让它冒到框架层的话，管理员只会看到一句「内部错误」，
+     * 看不到真正原因（比如库被占用）。
      */
     @SubCommand(value = "reload", description = "从存储重载任务定义")
     public void reload(CommandSender sender) {
@@ -183,7 +148,6 @@ public class AdminCommand {
             messages().send(sender, "command.reload-failed", describe(e));
             return;
         }
-        // 语言键是 command.reloaded（带任务数量占位符），不是 command.reload
         messages().send(sender, "command.reloaded", plugin.quests().all().size());
     }
 
@@ -199,12 +163,17 @@ public class AdminCommand {
             messages.send(sender, "daily.none");
             return;
         }
-        messages.sendRaw(sender, render("&8&m-----&r "
+        messages.sendRaw(sender, Texts.render("&8&m-----&r "
                 + messages.raw(sender, "gui.admin-title") + " &7(" + quests.size() + ") &8&m-----"));
         for (Quest quest : quests) {
-            messages.sendRaw(sender, questLine(plugin, sender, quest));
-            for (String problem : problems(plugin, quest)) {
-                messages.sendRaw(sender, render("&8  ! &c" + problem));
+            messages.sendRaw(sender, Texts.render("&8- &f" + TextRenderer.render(quest.name())
+                    + " &8(" + quest.id() + ")" + SEPARATOR
+                    + "&7" + quest.type() + SEPARATOR
+                    + "&7目标 " + quest.objectives().size() + SEPARATOR
+                    + "&7奖励 " + quest.rewards().size() + SEPARATOR
+                    + "&7启用 &f" + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no")));
+            for (String problem : plugin.questAdmin().validate(quest)) {
+                messages.sendRaw(sender, Texts.render("&8  ! &c" + problem));
             }
         }
     }
@@ -213,7 +182,10 @@ public class AdminCommand {
      * {@code info <id>}：单个任务的完整信息。
      * <p>
      * 目标与奖励都按「类型显示名 + 配置 + 数量」展开：管理员排查「任务为什么不涨进度」时，
-     * 需要看到的目标字段就是这些，不必再去翻数据库。
+     * 需要看到的就是这些，不必再去翻数据库或网页编辑器。
+     * <p>
+     * 管理端文案是<b>给管理员看的排错信息</b>而非玩家文案，与 {@code /ptxa list}、
+     * 管理 GUI 用同一套措辞，不走语言键。
      */
     @SubCommand(value = "info", description = "查看单个任务的完整信息")
     public void info(CommandSender sender, @Arg(value = "id", suggestion = "suggestQuestIds") String id) {
@@ -226,49 +198,48 @@ public class AdminCommand {
             return;
         }
 
-        messages.sendRaw(sender, render("&8&m-----&r "
+        messages.sendRaw(sender, Texts.render("&8&m-----&r "
                 + messages.raw(sender, "gui.quest-detail-title", TextRenderer.render(quest.name()))
                 + " &8&m-----"));
-        messages.sendRaw(sender, render("&7ID: &f" + quest.id()));
-        messages.sendRaw(sender, render("&7名称: &f" + TextRenderer.render(quest.name())));
-        messages.sendRaw(sender, render("&7类型: &f" + quest.type() + SEPARATOR
+        messages.sendRaw(sender, Texts.render("&7ID: &f" + quest.id()));
+        messages.sendRaw(sender, Texts.render("&7名称: &f" + TextRenderer.render(quest.name())));
+        messages.sendRaw(sender, Texts.render("&7类型: &f" + quest.type() + SEPARATOR
                 + "&7分类: &f" + (TextRenderer.isBlank(quest.category())
                 ? messages.raw(sender, "common.none") : quest.category())));
-        messages.sendRaw(sender, render("&7图标: &f" + quest.icon()));
-        messages.sendRaw(sender, render("&7刷新费用: &f"
-                + (quest.refreshCost() > 0
-                ? formatNumber(quest.refreshCost())
+        messages.sendRaw(sender, Texts.render("&7图标: &f" + quest.icon()));
+        messages.sendRaw(sender, Texts.render("&7刷新费用: &f" + (quest.refreshCost() > 0
+                ? Texts.number(quest.refreshCost())
                 : messages.raw(sender, "common.none"))));
-        messages.sendRaw(sender, render("&7启用: &f"
+        messages.sendRaw(sender, Texts.render("&7启用: &f"
                 + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no")));
 
-        messages.sendRaw(sender, render("&7目标:"));
+        messages.sendRaw(sender, Texts.render("&7目标:"));
         for (int slot = 0; slot < quest.objectives().size(); slot++) {
             QuestObjective objective = quest.objectives().get(slot);
-            messages.sendRaw(sender, render("&8  " + (slot + 1) + ". &f"
-                    + objectiveName(plugin, sender, objective.type())
+            messages.sendRaw(sender, Texts.render("&8  " + (slot + 1) + ". &f"
+                    + typeName(plugin, sender, "objective", objective.type(),
+                    plugin.objectiveTypes().displayName(objective.type()))
                     + " &7x" + objective.amount()
-                    + " &8" + formatProperties(objective.properties())));
+                    + " &8" + Texts.properties(objective.properties())));
         }
 
-        messages.sendRaw(sender, render("&7奖励:"));
+        messages.sendRaw(sender, Texts.render("&7奖励:"));
         if (quest.rewards().isEmpty()) {
-            messages.sendRaw(sender, render("&8  " + messages.raw(sender, "common.none")));
+            messages.sendRaw(sender, Texts.render("&8  " + messages.raw(sender, "common.none")));
         }
         for (QuestReward reward : quest.rewards()) {
-            messages.sendRaw(sender, render("&8  - &f"
-                    + rewardName(plugin, sender, reward.type())
-                    + " &8" + formatProperties(reward.properties())));
+            messages.sendRaw(sender, Texts.render("&8  - &f"
+                    + typeName(plugin, sender, "reward", reward.type(),
+                    plugin.rewardTypes().displayName(reward.type()))
+                    + " &8" + Texts.properties(reward.properties())));
         }
 
-        List<String> problems = problems(plugin, quest);
-        if (problems.isEmpty()) {
-            messages.sendRaw(sender, render("&7校验: &a" + messages.raw(sender, "common.none")));
-        } else {
-            messages.sendRaw(sender, render("&7校验:"));
-            for (String problem : problems) {
-                messages.sendRaw(sender, render("&8  ! &c" + problem));
-            }
+        List<String> problems = plugin.questAdmin().validate(quest);
+        messages.sendRaw(sender, Texts.render("&7校验: " + (problems.isEmpty()
+                ? "&a" + messages.raw(sender, "common.none")
+                : "")));
+        for (String problem : problems) {
+            messages.sendRaw(sender, Texts.render("&8  ! &c" + problem));
         }
     }
 
@@ -286,15 +257,25 @@ public class AdminCommand {
         setEnabled(sender, id, false);
     }
 
+    /** 切换启用状态；落库、注册表与玩家索引的同步由 {@code QuestAdminService} 一处担保。 */
+    private static void setEnabled(CommandSender sender, String id, boolean enabled) {
+        PlayerTaskX plugin = PlayerTaskX.getInstance();
+        MessageService messages = plugin.messages();
+        if (plugin.questAdmin().setEnabled(id, enabled) == null) {
+            messages.send(sender, "quest.not-found", id);
+            return;
+        }
+        // 「保存 + 同步」就是 command.reloaded 描述的动作，不另造一句同义提示
+        messages.send(sender, "command.reloaded", plugin.quests().all().size());
+    }
+
     // ---------- 调试：进度 / 发奖 / 每日任务 ----------
 
     /**
      * {@code setobjective <玩家> <任务> <目标序号> <进度>}：直接设定某玩家某目标下标上的进度。
      * <p>
-     * 命名沿用「动词 + 宾语」：{@code progress} 看起来像「查看进度」，
-     * 而它实际是写操作，因此改名为 {@code setobjective}。
-     * 参数顺序即声明顺序；目标序号是任务定义里 objectives 的下标（从 0 开始），
-     * 与 {@code PlayerQuest} 存进度的键一致。
+     * 参数顺序即声明顺序；目标序号是任务定义里 {@code objectives} 的下标（从 0 开始），
+     * 与 {@link PlayerQuest} 里存进度的键一致。
      */
     @SubCommand(value = "setobjective", description = "直接设定玩家的目标进度")
     public void setObjective(CommandSender sender,
@@ -307,11 +288,10 @@ public class AdminCommand {
 
         if (!plugin.progressService().setProgress(target.getUniqueId(), id, slot, value)) {
             // setProgress 返回 false 只有三种原因：任务不存在、目标下标越界、该玩家没有这条任务记录
-            if (!plugin.quests().contains(id)) {
-                messages.send(sender, "quest.not-found", id);
-            } else {
-                // 该玩家当前没有这条任务（或序号越界），沿用「没有任务」的既有提示
+            if (plugin.quests().contains(id)) {
                 messages.send(sender, "daily.none");
+            } else {
+                messages.send(sender, "quest.not-found", id);
             }
             return;
         }
@@ -323,15 +303,13 @@ public class AdminCommand {
             return;
         }
         // 回显渲染后的进度行：管理员能立刻确认改动生效，不必再切到玩家的视角看 actionbar
-        messages.sendRaw(sender, render(messages.raw(sender, "quest.progress") + " &8» &f"
+        messages.sendRaw(sender, Texts.render(messages.raw(sender, "quest.progress") + " &8» &f"
                 + plugin.progressDisplay().render(quest, playerQuest)));
     }
 
     /**
      * {@code grant <玩家> <任务>}：直接发放奖励，<b>不改状态</b>（调试用）。
      * <p>
-     * 原名为 {@code give}，但那在插件语境里通常指「给玩家物品」，容易误解；
-     * 这里发放的是任务定义的奖励，因此用 {@code grant}。
      * {@code RewardService.grant} 内部会隔离单个奖励的失败并写日志，故此处没有失败分支。
      */
     @SubCommand(value = "grant", description = "直接发放任务奖励（不改状态）")
@@ -339,32 +317,25 @@ public class AdminCommand {
                       @Arg("player") Player target,
                       @Arg(value = "id", suggestion = "suggestQuestIds") String id) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        MessageService messages = plugin.messages();
-
         Quest quest = plugin.quests().find(id).orElse(null);
         if (quest == null) {
-            messages.send(sender, "quest.not-found", id);
+            plugin.messages().send(sender, "quest.not-found", id);
             return;
         }
         plugin.rewardService().grant(target, quest);
-        messages.send(sender, "quest.claimed", TextRenderer.render(quest.name()));
+        plugin.messages().send(sender, "quest.claimed", TextRenderer.render(quest.name()));
     }
 
     /**
      * {@code resetdaily <玩家>}：重新抽取该玩家的每日任务（管理员工具）。
      * <p>
-     * 命名与玩家的 {@code /ptx refresh} 刻意区分，因为两者效果不同：
-     * <ul>
-     *   <li>{@code refresh}（玩家）：消耗金币与一次刷新次数，换一批任务；</li>
-     *   <li>{@code resetdaily}（管理员）：不扣费、不消耗次数，直接重置——
-     *       它是排障工具（玩家反馈任务做不了、任务配置刚改过），不是消费入口。</li>
-     * </ul>
-     * 用一个名字会让「管理员操作要不要收费」这件事变得无法从命令名判断。
+     * 与玩家的 {@code /ptx refresh} 刻意区分：后者消耗货币与一次刷新次数，
+     * 前者都不消耗（它是排障工具，不是消费入口）。
      */
     @SubCommand(value = "resetdaily", description = "重置玩家的每日任务（不扣费、不消耗次数）")
     public void resetDaily(CommandSender sender, @Arg("player") Player target) {
-        feedback(PlayerTaskX.getInstance(), sender,
-                PlayerTaskX.getInstance().dailyService().resetDaily(target));
+        PlayerTaskX plugin = PlayerTaskX.getInstance();
+        plugin.dailyService().resetDaily(target).report(plugin.messages(), sender);
     }
 
     // ---------- 补全 ----------
@@ -382,71 +353,11 @@ public class AdminCommand {
         }
         List<String> ids = new ArrayList<>();
         for (Quest quest : plugin.quests().all()) {
-            if (startsWith(quest.id(), currentInput)) {
+            if (Texts.startsWith(quest.id(), currentInput)) {
                 ids.add(quest.id());
             }
         }
         return ids;
-    }
-
-    // ---------- 校验 ----------
-
-    /**
-     * 校验任务引用的目标与奖励类型，返回问题清单（空表示没问题）。
-     * <p>
-     * 奖励除了「类型是否存在」还看「是否可用」：Vault 未安装时金币奖励配置完全合法，
-     * 但玩家一分钱也拿不到——这种情况必须在管理员视图里暴露出来。
-     */
-    private static List<String> problems(PlayerTaskX plugin, Quest quest) {
-        List<String> problems = new ArrayList<>();
-        if (quest.objectives().isEmpty()) {
-            problems.add("任务没有配置任何目标");
-        }
-        for (QuestObjective objective : quest.objectives()) {
-            if (!plugin.objectiveTypes().contains(objective.type())) {
-                problems.add("未知目标类型 " + objective.type());
-            }
-        }
-        for (QuestReward reward : quest.rewards()) {
-            RewardType type = plugin.rewardTypes().find(reward.type()).orElse(null);
-            if (type == null) {
-                problems.add("未知奖励类型 " + reward.type());
-            } else if (!type.available()) {
-                problems.add("奖励类型 " + reward.type() + " 不可用（" + type.unavailableReason() + "）");
-            }
-        }
-        return problems;
-    }
-
-    // ---------- 持久化 ----------
-
-    /**
-     * 切换任务的启用状态并落库。
-     * <p>
-     * {@link Quest} 是 record，没有 setter，所以按字段整份复制出一个新对象再保存；
-     * 保存后必须 {@code questAdmin.reload()}：内存注册表里还是旧定义，不重载等于没改。
-     */
-    private static void setEnabled(CommandSender sender, String id, boolean enabled) {
-        PlayerTaskX plugin = PlayerTaskX.getInstance();
-        MessageService messages = plugin.messages();
-
-        Quest quest = plugin.quests().find(id).orElse(null);
-        if (quest == null) {
-            messages.send(sender, "quest.not-found", id);
-            return;
-        }
-        try {
-            Quest updated = new Quest(quest.id(), quest.name(), quest.description(), quest.icon(), quest.category(),
-                    quest.type(), quest.objectives(), quest.rewards(), quest.refreshCost(), enabled);
-            plugin.questRepository().save(updated);
-            plugin.questAdmin().reload();
-        } catch (RuntimeException e) {
-            PlayerTaskX.log().error("保存任务启用状态失败: " + e.getMessage(), e);
-            messages.send(sender, "error.internal");
-            return;
-        }
-        // 保存 + 重载就是这句话描述的动作，避免为 enable/disable 再硬编码一句同义提示
-        messages.send(sender, "command.reloaded", plugin.quests().all().size());
     }
 
     // ---------- 内部工具 ----------
@@ -456,97 +367,17 @@ public class AdminCommand {
         return PlayerTaskX.getInstance().messages();
     }
 
-    /** 列表行：id、类型、目标数、奖励数、启用状态（标签无对应语言键，故直写）。 */
-    private static String questLine(PlayerTaskX plugin, CommandSender sender, Quest quest) {
-        MessageService messages = plugin.messages();
-        return render("&8- &f" + TextRenderer.render(quest.name())
-                + " &8(" + quest.id() + ")" + SEPARATOR
-                + "&7" + quest.type() + SEPARATOR
-                + "&7目标 " + quest.objectives().size() + SEPARATOR
-                + "&7奖励 " + quest.rewards().size() + SEPARATOR
-                + "&7启用 &f" + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no"));
-    }
-
-    /**
-     * 渲染一行拼接文本（MiniMessage 标签与 {@code &} / {@code §} 颜色码可任意混排）。
-     */
-    private static String render(String raw) {
-        return TextRenderer.render(raw);
-    }
-
-    /** 把目标/奖励的配置拼成一行，值可能是字符串、数字、布尔或列表。 */
-    private static String formatProperties(Map<String, Object> properties) {
-        if (properties == null || properties.isEmpty()) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder("(");
-        boolean first = true;
-        for (Map.Entry<String, Object> entry : properties.entrySet()) {
-            if (!first) {
-                builder.append(", ");
-            }
-            builder.append(entry.getKey()).append('=').append(entry.getValue());
-            first = false;
-        }
-        return builder.append(')').toString();
-    }
-
     /**
      * 类型显示名：优先语言键（{@code objective.<id>} / {@code reward.<id>}，用户可自定义措辞），
-     * 缺失时退回类型自带的显示名 —— 与 {@code ProgressDisplay} 的策略保持一致。
+     * 缺失时退回类型自带的显示名 —— 与进度展示、GUI 的策略一致。
      */
-    private static String localizedName(PlayerTaskX plugin, CommandSender sender,
-                                        String group, String type, String fallback) {
-        MessageService messages = plugin.messages();
-        String key = group + "." + type;
-        return messages.has(key) ? TextRenderer.strip(messages.raw(sender, key)) : fallback;
+    private static String typeName(PlayerTaskX plugin, CommandSender sender, String group,
+                                   String type, String fallback) {
+        return Texts.typeName(plugin.messages(), sender, group, type, fallback);
     }
 
-    /** 目标类型显示名。 */
-    private static String objectiveName(PlayerTaskX plugin, CommandSender sender, String type) {
-        return localizedName(plugin, sender, "objective", type, plugin.objectiveTypes().displayName(type));
-    }
-
-    /** 奖励类型显示名。 */
-    private static String rewardName(PlayerTaskX plugin, CommandSender sender, String type) {
-        return localizedName(plugin, sender, "reward", type, plugin.rewardTypes().displayName(type));
-    }
-
-    /**
-     * 按 {@link DailyService.RefreshResult} 反馈刷新结果。
-     * <p>
-     * 与玩家命令里的同名方法逻辑一致，但反馈对象是执行命令的管理员而不是被刷新的玩家，
-     * 所以单独留一份：两个命令类各自独立，不互相调用私有工具。
-     */
-    private static void feedback(PlayerTaskX plugin, CommandSender receiver, DailyService.RefreshResult result) {
-        MessageService messages = plugin.messages();
-        if (result.success()) {
-            messages.send(receiver, "quest.refreshed");
-            if (result.cost() > 0) {
-                messages.send(receiver, "quest.refresh-cost",
-                        plugin.dailyService().formatRefreshCost(result.cost(), result));
-            }
-            return;
-        }
-        if (result.limit() > 0) {
-            messages.send(receiver, "quest.refresh-limit", result.limit());
-            return;
-        }
-        messages.send(receiver, "quest.refresh-failed", result.error());
-    }
-
-    /** 数字文案：去掉整数的小数尾巴（500.0 → 500），小数保持原样。 */
-    private static String formatNumber(double value) {
-        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value);
-    }
-
-    /** 异常文案：兜住 getMessage() 为 null 的异常（NPE 等），否则玩家会看到「失败: null」。 */
+    /** 异常文案：兜住 {@code getMessage()} 为 null 的异常（NPE 等），否则管理员会看到「失败: null」。 */
     private static String describe(RuntimeException e) {
         return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-    }
-
-    /** 补全前缀匹配：空输入表示不过滤；YLib 不会对返回值再过滤一次。 */
-    private static boolean startsWith(String value, String prefix) {
-        return prefix == null || prefix.isEmpty() || value.toLowerCase().startsWith(prefix.toLowerCase());
     }
 }

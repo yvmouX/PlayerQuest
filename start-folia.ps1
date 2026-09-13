@@ -134,6 +134,10 @@ Write-Host "工作目录: $RunDir" -ForegroundColor DarkGray
 
 Push-Location $RunDir
 try {
+    # java 会把环境警告写到 stderr（如「Advanced terminal features are not available」），
+    # 而本脚本开头设了 $ErrorActionPreference = "Stop"，会把这条警告当成致命错误直接中止，
+    # 表现为「服务器刚启动就退出」且日志里什么都没有。这里临时放宽，让 java 正常跑完。
+    $ErrorActionPreference = "Continue"
     if ($Foreground) {
         # 前台运行：可以在本窗口直接敲服务端命令，Ctrl+C 停止
         & java @javaArgs

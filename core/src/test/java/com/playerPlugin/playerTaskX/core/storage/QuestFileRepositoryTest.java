@@ -18,9 +18,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -204,24 +201,6 @@ class QuestFileRepositoryTest {
         repository.findAll();
         assertFalse(Files.exists(folder.resolve("q1.json.tmp")), "残留临时文件应被清理");
         assertEquals(1, repository.count());
-    }
-
-    @Test
-    @DisplayName("内容哈希：保存后能取到，修改后变化，不存在则为 null")
-    void contentHash(@TempDir Path folder) {
-        QuestFileRepository repository = repository(folder, new ArrayList<>());
-        assertNull(repository.contentHash("q1"), "文件不存在时哈希应为 null");
-
-        repository.save(sample("q1", "原名"));
-        String first = repository.contentHash("q1");
-        assertNotNull(first);
-
-        repository.save(sample("q1", "改过的名字"));
-        String second = repository.contentHash("q1");
-        assertNotEquals(first, second, "内容变了哈希就该变");
-
-        repository.findAll();
-        assertEquals(second, repository.contentHash("q1"), "未修改时哈希应稳定");
     }
 
     @Test

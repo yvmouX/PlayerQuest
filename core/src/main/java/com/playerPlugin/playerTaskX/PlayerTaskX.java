@@ -18,10 +18,11 @@ import com.playerPlugin.playerTaskX.core.listener.ItemListener;
 import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
 import com.playerPlugin.playerTaskX.core.listener.TextListener;
 import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
+import com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
-import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
@@ -31,7 +32,6 @@ import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.StorageFactory;
-import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -177,8 +177,7 @@ public final class PlayerTaskX extends JavaPlugin {
         guard("每日任务调度", () ->
                 dailyService.startResetCheck(ylib.getScheduler(), messages, () -> getServer().getOnlinePlayers()));
         guard("网页编辑器", this::startEditor);
-        guard("PlaceholderAPI 变量", () ->
-                com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook.register(this));
+        guard("PlaceholderAPI 变量", () -> PlaceholderHook.register(this));
 
         log.info("PlayerTaskX 已启用（{} 个任务，{} 种目标，{} 种奖励）",
                 quests.all().size(), objectiveTypes.all().size(), rewardTypes.all().size());

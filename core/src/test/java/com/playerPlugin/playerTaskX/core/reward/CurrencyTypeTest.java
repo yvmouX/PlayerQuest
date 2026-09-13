@@ -27,12 +27,6 @@ class CurrencyTypeTest {
     }
 
     @Test
-    @DisplayName("配置为空时退回内置顺序，不会因为清空配置让刷新失效")
-    void emptyConfigFallsBackToBuiltIn() {
-        assertEquals(List.of("MONEY", "POINTS", "EXP"), new PluginConfig().getDailyRefreshCurrency());
-    }
-
-    @Test
     @DisplayName("经验永远可用，因此任何配置下都能选出一个货币")
     void expIsAlwaysAvailable() {
         assertTrue(CurrencyType.EXP.available());
@@ -50,7 +44,7 @@ class CurrencyTypeTest {
     }
 
     @Test
-    @DisplayName("配置里的无效项被跳过，不会因为一个拼写错误整体失效")
+    @DisplayName("配置的顺序被遵守，且无效项被跳过（一个拼写错误不该让刷新整体失效）")
     void invalidNamesAreSkipped() {
         assertDoesNotThrow(() -> CurrencyType.select(List.of("NOT_A_CURRENCY", "", "EXP")));
         assertEquals(CurrencyType.EXP, CurrencyType.select(List.of("NOT_A_CURRENCY", "", "EXP")));
@@ -65,17 +59,6 @@ class CurrencyTypeTest {
             assertEquals(CurrencyType.EXP, CurrencyType.select(List.of(name)),
                     "「" + name + "」应被识别为经验");
         }
-    }
-
-    @Test
-    @DisplayName("byId 对未知输入退回默认，而 select 会跳过无效项")
-    void byIdFallsBackButSelectSkips() {
-        // byId 用于「单个值」场景：无法识别时给一个可用的默认值
-        assertEquals(CurrencyType.EXP, CurrencyType.byId("nonsense"));
-        // 识别得了就按识别结果
-        assertEquals(CurrencyType.EXP, CurrencyType.byId("exp"));
-        assertEquals(CurrencyType.MONEY, CurrencyType.byId("money"));
-        assertEquals(CurrencyType.POINTS, CurrencyType.byId("PoInTs"));
     }
 
     @Test

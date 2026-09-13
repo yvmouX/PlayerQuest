@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.core.reward;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
-import cn.yvmou.ylib.text.TextRenderer;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -131,20 +130,10 @@ public final class MoneyReward implements RewardType {
         return cachedEconomy;
     }
 
-    /** 供命令与 GUI 展示。 */
-    public String describeAmount(double amount) {
-        return format(amount);
-    }
-
-    /** 统一走 TextRenderer，保证与其它文本一致的格式处理。 */
-    public String describe(double amount) {
-        return TextRenderer.strip(format(amount));
-    }
-
     /**
      * 探测软依赖插件是否已加载。
      * <p>
-     * 独立成静态方法是因为 Vault / PlayerPoints / PlaceholderAPI 三处都需要同样的
+     * 独立成静态方法是因为 Vault / PlayerPoints 两处都需要同样的
      * 「服务端未初始化时不崩」的保护；放在这里避免各处重复写 try/catch。
      */
     static boolean isPluginPresent(String name) {

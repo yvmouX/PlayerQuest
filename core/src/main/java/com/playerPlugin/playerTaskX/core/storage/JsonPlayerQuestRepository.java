@@ -101,14 +101,6 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         write(playerQuest.playerId(), records);
     }
 
-    @Override
-    public void saveAll(List<PlayerQuest> playerQuests) {
-        if (playerQuests == null || playerQuests.isEmpty()) {
-            return;
-        }
-        transaction(() -> playerQuests.forEach(this::save));
-    }
-
     /**
      * 批量操作：期间的写入先攒在内存，结束时每个涉及的玩家落盘一次。
      * <p>

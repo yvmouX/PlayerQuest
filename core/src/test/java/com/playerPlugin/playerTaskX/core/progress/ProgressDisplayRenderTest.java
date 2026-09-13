@@ -7,7 +7,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
-import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

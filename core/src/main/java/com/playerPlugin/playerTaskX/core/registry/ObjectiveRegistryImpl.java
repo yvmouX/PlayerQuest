@@ -1,13 +1,15 @@
 package com.playerPlugin.playerTaskX.core.registry;
 
-import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
+import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -30,18 +32,18 @@ public final class ObjectiveRegistryImpl implements ObjectiveRegistry {
         if (type == null || type.id() == null || type.id().isBlank()) {
             return;
         }
-        String id = type.id().toLowerCase(java.util.Locale.ROOT);
+        String id = type.id().toLowerCase(Locale.ROOT);
         if (byId.containsKey(id)) {
             rejected.put(id, "id 重复");
             return;
         }
         byId.put(id, type);
-        byTrigger.computeIfAbsent(type.trigger(), key -> new java.util.ArrayList<>()).add(type);
+        byTrigger.computeIfAbsent(type.trigger(), key -> new ArrayList<>()).add(type);
     }
 
     @Override
     public Optional<ObjectiveType> find(String id) {
-        return id == null ? Optional.empty() : Optional.ofNullable(byId.get(id.toLowerCase(java.util.Locale.ROOT)));
+        return id == null ? Optional.empty() : Optional.ofNullable(byId.get(id.toLowerCase(Locale.ROOT)));
     }
 
     @Override

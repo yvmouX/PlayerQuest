@@ -10,17 +10,9 @@ dependencies {
     implementation("com.zaxxer:HikariCP:4.0.3")
 
 
-    implementation("com.alibaba.fastjson2:fastjson2:2.0.60")
-
+    // 网页编辑器只需要「路由 + 静态资源 + 文本响应」，Javalin 核心足够；
+    // openapi/swagger/redoc 三个插件从未注册过，属于历史遗留的依赖，已删除
     implementation("io.javalin:javalin:6.7.0")
-    val openapi = "6.7.0"
-    annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:$openapi")
-    // for /openapi route with JSON scheme
-    implementation("io.javalin.community.openapi:javalin-openapi-plugin:${openapi}")
-    // for Swagger UI
-    implementation("io.javalin.community.openapi:javalin-swagger-plugin:${openapi}")
-    // for ReDoc UI
-    implementation("io.javalin.community.openapi:javalin-redoc-plugin:${openapi}")
 
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")

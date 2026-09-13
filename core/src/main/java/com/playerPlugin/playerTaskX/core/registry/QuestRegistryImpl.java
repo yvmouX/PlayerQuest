@@ -1,11 +1,9 @@
-package com.playerPlugin.playerTaskX.core.quest;
+package com.playerPlugin.playerTaskX.core.registry;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +12,13 @@ import java.util.Optional;
 /**
  * 内存中的任务注册表。
  * <p>
- * 单一数据源原则：所有任务查询都走这里，磁盘只是它的持久化备份，
- * 因此引擎与 GUI 不需要感知存储实现。
+ * 单一数据源原则：引擎与 GUI 的一切任务查询都走这里，存储只是它的持久化备份，
+ * 因此调用方不需要感知存储实现。与两个类型注册表放在同一个包，是因为它们
+ * 回答的是同一类问题——「当前有哪些任务定义、哪些目标/奖励类型」。
  */
 public final class QuestRegistryImpl implements QuestRegistry {
 
+    /** 保持插入顺序：注册表的遍历顺序会体现在界面列表上，随加载顺序变化会让人以为数据变了。 */
     private final Map<String, Quest> quests = new LinkedHashMap<>();
 
     @Override
@@ -61,9 +61,7 @@ public final class QuestRegistryImpl implements QuestRegistry {
         quests.clear();
         if (replacing != null) {
             for (Quest quest : replacing) {
-                if (quest != null && quest.id() != null && !quest.id().isBlank()) {
-                    quests.put(quest.id(), quest);
-                }
+                upsert(quest);
             }
         }
     }
@@ -80,17 +78,5 @@ public final class QuestRegistryImpl implements QuestRegistry {
     @Override
     public boolean remove(String id) {
         return id != null && quests.remove(id) != null;
-    }
-
-    /** 按分类分组，供 GUI 与编辑器直接使用。 */
-    public Map<String, List<Quest>> groupedByCategory() {
-        Map<String, List<Quest>> grouped = new LinkedHashMap<>();
-        List<Quest> sorted = new ArrayList<>(enabled());
-        sorted.sort(Comparator.comparing(Quest::id));
-        for (Quest quest : sorted) {
-            String category = (quest.category() == null || quest.category().isBlank()) ? "未分类" : quest.category();
-            grouped.computeIfAbsent(category, key -> new ArrayList<>()).add(quest);
-        }
-        return grouped;
     }
 }

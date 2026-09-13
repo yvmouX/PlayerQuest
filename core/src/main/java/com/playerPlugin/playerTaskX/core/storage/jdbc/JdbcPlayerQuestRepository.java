@@ -141,22 +141,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     @Override
-    public void saveAll(List<PlayerQuest> playerQuests) {
-        if (playerQuests == null || playerQuests.isEmpty()) {
-            return;
-        }
-        // 单事务：进度批量落盘必须整体成功，否则会出现「部分任务进度回退」的诡异现象
-        database.transaction(() -> {
-            for (PlayerQuest playerQuest : playerQuests) {
-                if (playerQuest == null) {
-                    continue;
-                }
-                saveInternal(playerQuest);
-            }
-        });
-    }
-
-    @Override
     public void transaction(Runnable work) {
         database.transaction(work);
     }

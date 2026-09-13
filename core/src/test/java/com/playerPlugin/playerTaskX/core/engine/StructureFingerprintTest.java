@@ -9,7 +9,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
-import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

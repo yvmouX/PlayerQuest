@@ -103,14 +103,4 @@ public final class StorageFactory {
                 new PresetFileRepository(base, warn),
                 "JSON: " + folderName + "/");
     }
-
-    /**
-     * 仅需文件后端时的便捷构造（测试常用）。
-     */
-    public static StorageFactory files(Path questFolder, File dataFolder, Consumer<String> warn) {
-        return new StorageFactory(
-                new QuestFileRepository(new JsonFileStore(questFolder), warn),
-                new PresetFileRepository(dataFolder, warn),
-                "JSON: " + questFolder);
-    }
 }

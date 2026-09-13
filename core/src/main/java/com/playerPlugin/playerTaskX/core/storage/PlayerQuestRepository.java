@@ -29,9 +29,6 @@ public interface PlayerQuestRepository {
     /** 新增或覆盖一条玩家任务记录。 */
     void save(PlayerQuest playerQuest);
 
-    /** 在事务内批量保存。 */
-    void saveAll(List<PlayerQuest> playerQuests);
-
     /**
      * 在单个事务内执行一组操作。
      * <p>

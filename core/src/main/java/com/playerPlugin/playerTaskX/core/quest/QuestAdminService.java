@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.quest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import org.bukkit.Bukkit;
@@ -15,7 +16,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
- * 任务定义的维护入口：保存、删除、重载、校验。
+ * 任务定义的维护入口：保存、删除、重载、校验、启停。
  *
  * <h2>为什么它存在</h2>
  * 「改一个任务」要同时动三处——落库、更新内存注册表、重建玩家进度索引——
@@ -23,9 +24,13 @@ import java.util.logging.Level;
  * 管理命令、管理 GUI、网页编辑器后台都走这一个入口，成对不变量由本类担保，
  * 而不是散落在各个调用点靠调用方自觉。
  *
+ * <h2>校验也只有这一处</h2>
+ * 编辑器标红、管理员命令 {@code /ptxa list}、管理界面上的「! 」提示都调用
+ * {@link #validate(Quest)}。三个入口各写一份时，「未知奖励类型」在一处报、
+ * 「奖励不可用」在另一处报，管理员就会看到自相矛盾的结论。
+ *
  * <h2>它不在 PlayerTaskX 里</h2>
- * 入口类承诺「只装配、不含业务逻辑」，这四个操作是货真价实的领域逻辑，
- * 寄居在装配类里会让入口类成为所有东西的依赖黑洞。拆出后本类可以
+ * 入口类承诺「只装配、不含业务逻辑」，这些是货真价实的领域逻辑。拆出后本类可以
  * 脱离服务端单测（在线玩家列表通过 {@link Supplier} 注入）。
  */
 public final class QuestAdminService {
@@ -74,9 +79,17 @@ public final class QuestAdminService {
                 + (skipped > 0 ? "（跳过 " + skipped + " 个）" : ""));
     }
 
-    /** 校验任务引用的目标与奖励类型是否都可用，返回问题清单（空表示无问题）。 */
+    /**
+     * 校验任务定义，返回问题清单（空表示无问题）。
+     * <p>
+     * 奖励除了「类型是否存在」还要看「是否可用」：Vault 未装时金币奖励配置完全合法，
+     * 但玩家一分钱也拿不到——这种情况必须暴露在管理员视图里，否则只能靠翻日志发现。
+     */
     public List<String> validate(Quest quest) {
         List<String> problems = new ArrayList<>();
+        if (quest.objectives().isEmpty()) {
+            problems.add("任务没有配置任何目标");
+        }
         for (var objective : quest.objectives()) {
             if (!objectiveTypes.contains(objective.type())) {
                 problems.add("未知目标类型 " + objective.type());
@@ -87,10 +100,9 @@ public final class QuestAdminService {
     }
 
     /**
-     * 空库时写入一批出厂示例任务（清单见 ExampleQuests）。
+     * 空库时写入一批出厂示例任务（清单见 {@code ExampleQuests}）。
      * <p>
      * 只在库为空时写入，绝不覆盖已有数据；示例统一用 {@code example_} 前缀，可随时删除。
-     * 写入走 {@link #save} 而不是裸写仓储：示例也要同步进注册表与索引。
      */
     public void seedIfEmpty(List<Quest> examples) {
         if (repository.count() > 0 || examples.isEmpty()) {
@@ -125,10 +137,26 @@ public final class QuestAdminService {
     }
 
     /**
-     * 重建所有在线玩家的进度索引。
+     * 切换任务的启用状态并落库。
      * <p>
-     * 只重建在线玩家：离线玩家的索引会在登录时按新定义重建（见 PlayerListener）。
+     * 管理命令与管理界面共用这一处：两边各写一份时，一边走全量 {@code reload()}、
+     * 一边走单条 {@code upsert()}，行为差异没有任何理由，只是重复实现的副产品。
+     * 这里刻意选单条 upsert——连点几次开关就触发多次全量读库，代价与收益不成比例；
+     * 需要全量重载时另有 {@link #reload()}。
+     *
+     * @return 更新后的任务；id 不存在时返回 {@code null}
      */
+    public Quest setEnabled(String id, boolean enabled) {
+        Quest quest = quests.find(id).orElse(null);
+        if (quest == null) {
+            return null;
+        }
+        Quest updated = quest.withEnabled(enabled);
+        save(updated);
+        return updated;
+    }
+
+    /** 重建所有在线玩家的进度索引（离线玩家在登录时按新定义重建）。 */
     private void rebuildIndexes() {
         for (UUID playerId : onlinePlayerIds.get()) {
             progressService.rebuildIndex(playerId);

@@ -31,7 +31,6 @@ import java.util.function.Consumer;
  *
  * <h2>写入</h2>
  * 一律经 {@link JsonFileStore#write}（临时文件 + 原子改名），不原地覆盖。
- * 保存时顺手把内容哈希记下来，供 {@link #contentHash(String)} 用于并发冲突检测。
  */
 public final class QuestFileRepository implements QuestRepository {
 
@@ -99,19 +98,6 @@ public final class QuestFileRepository implements QuestRepository {
     @Override
     public long count() {
         return files.listFiles().size();
-    }
-
-    /**
-     * 文件当前内容的 SHA-256。
-     * <p>
-     * 供编辑器做并发冲突检测：保存前比对「打开时读到的哈希」与「磁盘上的哈希」，
-     * 不一致说明期间被别的会话或手工编辑改过，应拒绝保存而不是整份覆盖。
-     *
-     * @return 哈希；文件不存在返回 null
-     */
-    public String contentHash(String id) {
-        String json = files.read(id);
-        return json == null ? null : Hash.sha256(json);
     }
 
     /** 目录路径，供报错提示与「去哪改文件」的说明使用。 */

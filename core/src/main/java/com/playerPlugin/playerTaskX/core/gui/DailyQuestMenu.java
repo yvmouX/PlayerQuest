@@ -5,10 +5,7 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
-import com.playerPlugin.playerTaskX.api.reward.RewardType;
-import com.playerPlugin.playerTaskX.core.daily.DailyService;
-import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
-import com.playerPlugin.playerTaskX.core.reward.PointsReward;
+import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -38,7 +35,7 @@ import java.util.List;
  */
 public final class DailyQuestMenu extends Menu {
 
-    static final int SIZE = 54;
+    private static final int SIZE = 54;
 
     /** 任务区：前 5 行（0~44），最后一行留给按钮。 */
     private static final int LIST_LIMIT = SIZE - 9;
@@ -136,7 +133,7 @@ public final class DailyQuestMenu extends Menu {
     private void claim(PlayerTaskX plugin, Quest quest) {
         Player player = viewer();
         if (plugin.rewardService().claim(player, quest.id())) {
-            messages().send(player, "quest.claimed", render(quest.name()));
+            messages().send(player, "quest.claimed", Texts.render(quest.name()));
             refresh();
             return;
         }
@@ -165,45 +162,19 @@ public final class DailyQuestMenu extends Menu {
     /**
      * 刷新按钮（仅当还有剩余次数时出现）。
      * <p>
-     * 按钮文案的取舍：语言文件里没有「刷新」这个按钮名，于是按以下顺序取用——
-     * {@code gui.refresh}（管理员补上该键即自动生效）→ {@code quest.refresh-cost}
-     * （把本次费用写在按钮上，点击前就能看到代价，比一个无信息量的按钮有用）→
-     * {@code quest.refreshed}（免费刷新时的兜底）。全程不硬编码文案。
+     * 有费用时把<b>本次费用</b>写在按钮上：点击前就能看到代价，比一个无信息量的按钮有用。
      */
     private MenuItem refreshButton(PlayerTaskX plugin, Player player) {
         double cost = plugin.config().getDailyRefreshCost();
-        String label;
-        if (hasText("gui.refresh")) {
-            label = text("gui.refresh");
-        } else if (cost > 0) {
-            // 把本次费用写在按钮上：点击前就能看到代价，比一个无信息量的按钮有用。
-            // 传 null 让插件按兜底链推断货币（金币 → 点券 → 经验），与实际扣费一致
-            label = text("quest.refresh-cost", plugin.dailyService().formatRefreshCost(cost, null));
-        } else {
-            label = textOr("quest.refreshed", "");
-        }
+        String label = cost > 0
+                ? text("gui.refresh-cost", plugin.dailyService().formatCost(cost))
+                : text("gui.refresh");
         return MenuItem.of(Material.CLOCK, label, List.of(), context -> doRefresh(plugin, player));
     }
 
-    /**
-     * 执行刷新并按结果反馈。
-     * <p>
-     * 三种情况互斥：成功（有消耗时追加一行费用）→ 次数用尽（{@code limit > 0}）→ 其余失败原因；
-     * 与 {@code /ptx refresh} 的反馈完全一致。
-     */
+    /** 执行刷新并按结果反馈；措辞由 {@link com.playerPlugin.playerTaskX.core.daily.DailyService} 一处定义。 */
     private void doRefresh(PlayerTaskX plugin, Player player) {
-        DailyService.RefreshResult result = plugin.dailyService().refresh(player);
-        if (result.success()) {
-            messages().send(player, "quest.refreshed");
-            if (result.cost() > 0) {
-                messages().send(player, "quest.refresh-cost",
-                        plugin.dailyService().formatRefreshCost(result.cost(), result));
-            }
-        } else if (result.limit() > 0) {
-            messages().send(player, "quest.refresh-limit", result.limit());
-        } else {
-            messages().send(player, "quest.refresh-failed", result.error());
-        }
+        plugin.dailyService().refresh(player).report(messages(), player);
         // 不论成败都重建界面：成功换了一批任务，失败也可能是跨天后的免费重发
         refresh();
     }

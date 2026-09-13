@@ -14,11 +14,12 @@ import com.playerPlugin.playerTaskX.core.storage.Hash;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 /**
  * 进度引擎：把一次游戏内动作换算成各任务目标的进度。
@@ -48,10 +49,10 @@ public final class ProgressService {
      * 只保留在线玩家的条目；退出登录时必须调用 {@link #unload(UUID)}，
      * 否则长期运行会随玩家数增长而泄漏。
      */
-    private final Map<UUID, Map<String, Map<Integer, ObjectiveType>>> activeIndex = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, Map<String, Map<Integer, ObjectiveType>>> activeIndex = new ConcurrentHashMap<>();
 
     /** 结构变化导致进度被重置时的告警出口；默认为空（测试环境不需要日志）。 */
-    private java.util.function.BiConsumer<String, String> structureChangeWarner = (questId, playerId) -> {
+    private BiConsumer<String, String> structureChangeWarner = (questId, playerId) -> {
     };
 
     public ProgressService(QuestRegistry quests, ObjectiveRegistry objectiveTypes, PlayerQuestRepository repository) {
@@ -61,7 +62,7 @@ public final class ProgressService {
     }
 
     /** 注入「目标结构变化导致进度重置」的告警出口（参数：任务 id、玩家 id）。 */
-    public void onStructureChanged(java.util.function.BiConsumer<String, String> warner) {
+    public void onStructureChanged(BiConsumer<String, String> warner) {
         if (warner != null) {
             this.structureChangeWarner = warner;
         }
@@ -317,25 +318,6 @@ public final class ProgressService {
         index.keySet().removeIf(questId -> quests.find(questId)
                 .map(quest -> quest.type() == type)
                 .orElse(false));
-    }
-
-    /** 触发类型统计，供调试与性能分析。 */
-    public Map<Trigger, Integer> triggerStatistics() {
-        Map<Trigger, Integer> statistics = new EnumMap<>(Trigger.class);
-        for (Map<Integer, ObjectiveType> perQuest : flatten()) {
-            for (ObjectiveType type : perQuest.values()) {
-                statistics.merge(type.trigger(), 1, Integer::sum);
-            }
-        }
-        return statistics;
-    }
-
-    private List<Map<Integer, ObjectiveType>> flatten() {
-        List<Map<Integer, ObjectiveType>> all = new ArrayList<>();
-        for (Map<String, Map<Integer, ObjectiveType>> perPlayer : activeIndex.values()) {
-            all.addAll(perPlayer.values());
-        }
-        return all;
     }
 
     /** 目标匹配实现抛异常时抛出，便于定位是哪个任务的哪个类型有问题。 */

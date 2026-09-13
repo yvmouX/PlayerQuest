@@ -75,36 +75,39 @@ PlayerQuest              玩家进行中的任务（运行期状态）
 ### 3.1 目标类型 `ObjectiveType`（api 模块）
 
 ```java
-public interface ObjectiveType {
+public interface ConfigurableType {     // 目标与奖励共有的形状
     String id();                        // 如 "break_block"
     String displayName();
     List<ConfigField> schema();         // 该类型的配置字段（供编辑器/GUI 生成表单）
-    ObjectiveMatcher matcher();         // 判定逻辑
 }
 
-public interface ObjectiveMatcher {
-    /** 事件是否命中该目标；返回递增量（0 表示不命中） */
+public interface ObjectiveType extends ConfigurableType {
+    Trigger trigger();                  // 该类型响应的动作
     int match(ProgressContext context, Map<String, Object> properties);
+    default boolean targetMatches(...); // 忽略大小写、逗号多值、空或 * 为任意
 }
 ```
 
+`ConfigurableType` 存在的理由：凡是**展示与编辑**类型的地方（编辑器动态表单、
+GUI 图标推导与字段说明、管理员命令的类型名回显）需要的都只是 `id/displayName/schema`
+这三件事。抽出这一层后，这些地方可以只写一份实现，而不必给目标与奖励各写一份近乎相同的代码。
+
 内置 14 种目标：`craft` 合成、`break_block` 挖掘、`fish` 垂钓、`place_block` 放置、
 `consume` 消耗、`kill` 击杀、`submit` 提交、`enchant` 附魔、`shear` 剪切、
-`breed` 繁殖、`command` 命令、`interact` 交互、`chat` 发言。
+`breed` 繁殖、`tame` 驯服、`command` 命令、`interact` 交互、`chat` 发言。
 
 ### 3.2 奖励类型 `RewardType`
 
 ```java
-public interface RewardType {
-    String id();                        // 如 "money"
-    String displayName();
-    List<ConfigField> schema();
-    void grant(RewardContext context);  // 发放
+public interface RewardType extends ConfigurableType {
+    void grant(Player player, QuestReward reward);
+    default boolean available() { return true; }
+    default String unavailableReason() { return ""; }
 }
 ```
 
-内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`item` 物品、
-`command` 自定义命令。任务币本期不实现。
+内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`exp` 经验、
+`item` 物品、`command` 自定义命令。
 
 ### 3.3 进度事件 `ProgressContext`（core，唯一与 Bukkit 事件耦合处）
 
@@ -348,8 +351,10 @@ GET    /api/stats              统计
 因此返回的天然就是「当前服务端支持的项」，不需要维护任何版本对照数据。
 译名由 `LangFileStore` 提供，分工是刻意的：
 
-- **英文名不下载**，直接读服务端 jar 里的 `assets/minecraft/lang/en_us.json`——
-  版本天然对齐，且零网络依赖（服务端自带的数据不该走网络）；
+- **英文名不下载**，读服务端 jar 里的 `assets/minecraft/lang/en_us.json`——
+  插件类加载器的父级就是服务端，这个查询直接落到服务端的 jar 上，版本天然对齐、零网络依赖。
+  **插件不打包这份文件**：曾经为了让开发期离线可跑而复制进插件资源，结果它永远停在复制那天
+  （实测 26.1.2 的副本与 1.21.11 的服务端文件不同），新方块会显示成推导出来的枚举名。现已删除；
 - **中文名服务端没有**：实测 26.1.2 的服务端 jar 内 lang 文件只有 `en_us.json` 一个，
   中文译名只存在于**客户端**资源里。因此优先读 `plugins/playerTaskX/lang/zh_cn.json`，
   没有则在开启下载时从 Mojang 资源 CDN 取一份并缓存到该路径（管理员也可手动放置，
@@ -358,6 +363,10 @@ GET    /api/stats              统计
   而不是写死某个版本的哈希（换版本后会取到不匹配的文件）。全程有超时、失败只记日志、
   不阻断插件启用、不重试轰炸；可用 `editor.fetch-chinese-names` 关闭。
   首次请求目录时会短暂等待下载完成（上限 3 秒），让管理员第一次打开编辑器就能看到中文名。
+
+**REST 接口与 HTTP 服务分成两个类**：`EditorServer` 管服务本身（端口、启停、静态资源、
+访问令牌），`EditorApi` 管 `/api/*` 的业务处理。混在一起时「端口被占用要 +1 重试」
+这种运维逻辑会和「任务保存后要重建索引」这种业务逻辑挤在一个文件里。
 
 > 早期版本内置过一份手工中文表（约 175 行，材质覆盖率仅约两成），
 > 已随本方案删除。实测替换后材质与实体的中文覆盖率均为 100%。
@@ -432,7 +441,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 18 | 任务定义与预设出库成 JSON 文件 + 从旧库自动迁移 | ✅ 完成 |
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 
-**测试总量：137 项全部通过**（存储 15 + 文件仓储 15 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 19 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 8 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
+**测试总量：134 项全部通过**（存储 15 + 文件仓储 14 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 8 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 7 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项）：
 渲染能力既然上移到了 YLib，它的行为就该在 YLib 钉住，否则每个消费方只能各测各的。
@@ -495,9 +504,17 @@ player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
 
 ### 已落地的关键实现细节
 
-- **目标类型**：13 个类位于 `core/objective/`，全部复用 `ObjectiveType.targetMatches`
+- **一件事只有一个出处**：凡是「多个入口都要做同一件事」的地方都收敛到一处，
+  避免同一个功能两种口径。已收敛的几处：
+  - 任务校验（编辑器标红 / `/ptxa list` / 管理 GUI）→ `QuestAdminService.validate`；
+  - 刷新结果的提示措辞（玩家命令 / 管理员命令 / GUI 按钮）→ `DailyService.RefreshResult`
+    自带回复消息，调用方只调 `report(...)`，不再各自拼 success/cost/limit/error；
+  - 启用状态切换（落库 + 同步注册表 + 重建索引）→ `QuestAdminService.setEnabled`；
+  - 文本装配（渲染 / 数字去小数尾巴 / 配置表摊平 / 类型显示名）→ `core/text/Texts`；
+  - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份。
+- **目标类型**：14 个类位于 `core/objective/`，全部复用 `ObjectiveType.targetMatches`
   （忽略大小写、逗号多值、空或 `*` 为任意）；`chat` 用包含匹配，`interact` 先校验 `mode` 再校验 `target`。
-  注册在 `PlayerTaskX#registerBuiltInObjectives` 显式列出（不扫描包，保证「新增类型必须登记」的确定性）。
+  注册在 `BuiltIns` 显式列出（不扫描包，保证「新增类型必须登记」的确定性）。
 - **进度热路径**：`ProgressService` 只缓存「任务 → 目标下标 → 类型」静态映射，
   运行期进度不常驻内存（避免缓存一致性），未命中目标不产生任何 IO。
 - **可测试性**：`ProgressContext` 允许 `player == null`（以 `playerId` 为准），
@@ -506,4 +523,9 @@ player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
   `PlayerNotifier` 运行时探测 Paper 原生 API，失败退回 `sendTitle("", text, …)` 方案。
 - **软依赖**：Vault / PlayerPoints 均以运行时探测方式使用（缺失时对应奖励类型标记为不可用并在启动日志提示），
   避免 `NoClassDefFoundError` 让插件整体无法加载。
+- **依赖只留用得上的**：`fastjson2`、`javalin-openapi` / swagger / redoc、`jackson-dataformat-yaml`
+  从未被引用过，已从构建脚本删除；JSON 编解码全项目只有 `JsonCodec` 一个 `ObjectMapper`
+  （编辑器曾自带第二个）。
+- **包归位**：三个类型/任务注册表实现同处 `core/registry`（`api.registry` 也是这么分组的），
+  `core/quest` 只留 `QuestAdminService` 这一处「任务定义维护入口」。
 

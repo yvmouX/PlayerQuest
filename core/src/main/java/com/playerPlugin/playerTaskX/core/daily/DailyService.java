@@ -9,19 +9,23 @@ import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
+import cn.yvmou.ylib.message.MessageService;
+import cn.yvmou.ylib.scheduler.UniversalScheduler;
+import cn.yvmou.ylib.scheduler.UniversalTask;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * 每日任务：从全局池按玩家抽取、跨天重置、消耗货币刷新。
@@ -44,7 +48,7 @@ public final class DailyService {
     private final QuestRegistry quests;
     private final PlayerQuestRepository repository;
     private final ProgressService progressService;
-    private cn.yvmou.ylib.scheduler.UniversalTask resetTask;
+    private UniversalTask resetTask;
 
     public DailyService(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
                         ProgressService progressService) {
@@ -67,9 +71,8 @@ public final class DailyService {
      *
      * @param onlinePlayers 在线玩家供应器，延迟求值（装配完成时还没有玩家）
      */
-    public void startResetCheck(cn.yvmou.ylib.scheduler.UniversalScheduler scheduler,
-                                cn.yvmou.ylib.message.MessageService messages,
-                                java.util.function.Supplier<java.util.Collection<? extends Player>> onlinePlayers) {
+    public void startResetCheck(UniversalScheduler scheduler, MessageService messages,
+                                Supplier<Collection<? extends Player>> onlinePlayers) {
         if (!config.isDailyEnabled()) {
             return;
         }
@@ -184,7 +187,7 @@ public final class DailyService {
     /**
      * 玩家自己刷新：扣费、消耗一次刷新次数。
      *
-     * @return 刷新结果，供命令与 GUI 决定提示内容
+     * @return 刷新结果，供命令与 GUI 反馈给玩家
      */
     public RefreshResult refresh(Player player) {
         return doRefresh(player, true);
@@ -197,7 +200,7 @@ public final class DailyService {
      */
     private RefreshResult doRefresh(Player player, boolean charge) {
         if (!config.isDailyEnabled()) {
-            return RefreshResult.failed("每日任务未启用");
+            return RefreshResult.of("quest.refresh-failed", "每日任务未启用");
         }
         UUID playerId = player.getUniqueId();
         String period = currentPeriod();
@@ -208,7 +211,7 @@ public final class DailyService {
         int used = samePeriod ? state.refreshCount() : 0;
 
         if (charge && samePeriod && used >= config.getDailyRefreshLimit()) {
-            return RefreshResult.limitReached(config.getDailyRefreshLimit());
+            return RefreshResult.of("quest.refresh-limit", config.getDailyRefreshLimit());
         }
 
         double cost = config.getDailyRefreshCost();
@@ -218,11 +221,13 @@ public final class DailyService {
             CurrencyType currency = CurrencyType.select(config.getDailyRefreshCurrency());
             long units = currency.toUnits(cost);
             if (!currency.charge(player, units)) {
-                return RefreshResult.failed(currency.displayName() + "不足，需要 " + units
+                return RefreshResult.of("quest.refresh-failed", currency.displayName() + "不足，需要 " + units
                         + "（当前 " + currency.balance(player) + "）");
             }
             assign(playerId, period, used + 1);
-            return RefreshResult.success(cost, currency);
+            return new RefreshResult(List.of(
+                    new RefreshResult.Reply("quest.refreshed"),
+                    new RefreshResult.Reply("quest.refresh-cost", formatCost(cost))));
         }
 
         if (charge) {
@@ -232,8 +237,8 @@ public final class DailyService {
             // 但写回时保持原次数不变，避免占用玩家的刷新额度
             assign(playerId, period, used + 1, used);
         }
-        // 免费重发与管理员重置都按 0 费用反馈，避免提示里出现根本没扣的钱
-        return RefreshResult.success(0.0, null);
+        // 免费重发与管理员重置都不提费用，避免提示里出现根本没扣的钱
+        return RefreshResult.of("quest.refreshed");
     }
 
     /** 玩家在当前周期已刷新的次数。 */
@@ -261,14 +266,9 @@ public final class DailyService {
      * 金币交给 Vault 的格式化（与服务器经济插件显示一致），其它货币是整数，直接用其显示名。
      * 放在 DailyService 而不是各个调用点：费用文案与实际扣费必须用同一套货币推断，
      * 分开写迟早会不一致。
-     *
-     * @param result 实际扣费结果；为 null 时（如刷新按钮文案）按配置的货币顺序推断
      */
-    public String formatRefreshCost(double cost, RefreshResult result) {
-        CurrencyType currency = result == null ? null : result.currency();
-        if (currency == null) {
-            currency = CurrencyType.select(config.getDailyRefreshCurrency());
-        }
+    public String formatCost(double cost) {
+        CurrencyType currency = CurrencyType.select(config.getDailyRefreshCurrency());
         if (currency == CurrencyType.MONEY) {
             return MoneyReward.format(cost);
         }
@@ -313,8 +313,7 @@ public final class DailyService {
             for (Quest quest : drawn) {
                 PlayerQuest assigned = PlayerQuest.assign(playerId, quest, now, expiresAt);
                 // 记下接手时的目标结构：日后定义变过就能检测出进度下标错位并重置
-                assigned.structureHash(com.playerPlugin.playerTaskX.core.engine.ProgressService
-                        .structureHash(quest));
+                assigned.structureHash(ProgressService.structureHash(quest));
                 repository.save(assigned);
             }
             saveState(playerId, period, storedRefreshCount);
@@ -365,22 +364,28 @@ public final class DailyService {
     }
 
     /**
-     * 刷新结果。
-     *
-     * @param currency 实际扣费的货币；免费或管理员重置时为 null
+     * 刷新结果：要发给玩家的提示序列（成功与失败都在里面）。
+     * <p>
+     * 直接带上回复而不是让调用方拿 {@code success/cost/limit/error} 自己拼：
+     * 玩家命令、管理员命令、GUI 三个入口各拼一次，措辞迟早会不一致，
+     * 而玩家会把「同一个功能两种说法」当成 bug。
      */
-    public record RefreshResult(boolean success, double cost, CurrencyType currency, String error, int limit) {
+    public record RefreshResult(List<Reply> replies) {
 
-        public static RefreshResult success(double cost, CurrencyType currency) {
-            return new RefreshResult(true, cost, currency, "", 0);
+        /** 一条提示：语言键 + 占位符参数。 */
+        public record Reply(String key, Object... args) {
         }
 
-        public static RefreshResult failed(String error) {
-            return new RefreshResult(false, 0, null, error, 0);
+        /** 单条提示的便捷构造。 */
+        static RefreshResult of(String key, Object... args) {
+            return new RefreshResult(List.of(new Reply(key, args)));
         }
 
-        public static RefreshResult limitReached(int limit) {
-            return new RefreshResult(false, 0, null, "今日刷新次数已用完", limit);
+        /** 按顺序发给接收者。措辞只在这里定义一次。 */
+        public void report(MessageService messages, CommandSender receiver) {
+            for (Reply reply : replies) {
+                messages.send(receiver, reply.key(), reply.args());
+            }
         }
     }
 }

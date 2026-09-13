@@ -1,9 +1,6 @@
 package com.playerPlugin.playerTaskX.api.objective;
 
-import com.playerPlugin.playerTaskX.api.model.QuestObjective;
-import com.playerPlugin.playerTaskX.api.schema.ConfigField;
-
-import java.util.List;
+import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
 
 /**
  * 任务目标类型——扩展点之一。
@@ -11,24 +8,15 @@ import java.util.List;
  * 新增一种目标只需实现本接口并注册，引擎、GUI、网页编辑器都不需要改动：
  * 界面由 {@link #schema()} 自动生成表单，判定由 {@link #match} 完成。
  */
-public interface ObjectiveType {
-
-    /** 唯一 id，配置里 {@code type} 字段写的就是它，如 {@code break_block}。 */
-    String id();
-
-    /** 显示名，用于 GUI 与编辑器。 */
-    String displayName();
+public interface ObjectiveType extends ConfigurableType {
 
     /** 该类型响应的动作；引擎据此把动作只派发给相关类型。 */
     Trigger trigger();
 
-    /** 配置字段描述，用于自动生成表单。 */
-    List<ConfigField> schema();
-
     /**
      * 判定本次动作带来多少进度。
      * <p>
-     * 实现要求：**纯函数、不产生副作用**（不要在这里发奖励或发消息，那是引擎的职责），
+     * 实现要求：<b>纯函数、不产生副作用</b>（不要在这里发奖励或发消息，那是引擎的职责），
      * 也不要访问 Bukkit 之外的全局状态。
      *
      * @param context    动作上下文

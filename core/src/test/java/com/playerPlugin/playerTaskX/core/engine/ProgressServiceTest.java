@@ -11,7 +11,7 @@ import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
-import com.playerPlugin.playerTaskX.core.quest.QuestRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.junit.jupiter.api.BeforeEach;

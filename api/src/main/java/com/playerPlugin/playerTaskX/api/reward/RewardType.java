@@ -1,10 +1,8 @@
 package com.playerPlugin.playerTaskX.api.reward;
 
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
-import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
 import org.bukkit.entity.Player;
-
-import java.util.List;
 
 /**
  * 任务奖励类型——扩展点之二。
@@ -12,16 +10,7 @@ import java.util.List;
  * 新增一种奖励同样只需实现本接口：表单由 {@link #schema()} 生成，
  * 发放由 {@link #grant} 完成，界面与引擎无需改动。
  */
-public interface RewardType {
-
-    /** 唯一 id，配置里 {@code type} 字段写的就是它，如 {@code money}。 */
-    String id();
-
-    /** 显示名，用于 GUI 与编辑器。 */
-    String displayName();
-
-    /** 配置字段描述，用于自动生成表单。 */
-    List<ConfigField> schema();
+public interface RewardType extends ConfigurableType {
 
     /**
      * 发放奖励。

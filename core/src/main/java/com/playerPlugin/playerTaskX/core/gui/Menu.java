@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.core.gui;
 
 import cn.yvmou.ylib.message.MessageService;
-import cn.yvmou.ylib.text.TextRenderer;
+import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -185,47 +185,7 @@ public abstract class Menu {
      * 会在聊天里看到一种语言、在界面标题里看到另一种。
      */
     protected final String text(String key, Object... args) {
-        return render(messages.raw(viewer, key, args));
-    }
-
-    /** 语言键存在性判断，供调用方决定是否回退。 */
-    protected final boolean hasText(String key) {
-        return messages.has(key);
-    }
-
-    /** 取语言键文本；键缺失时用 {@code fallback} 原文渲染，而不是把 MessageService 的缺失诊断串显示给玩家。 */
-    protected final String textOr(String key, String fallback, Object... args) {
-        return localized(messages, viewer, key, fallback, args);
-    }
-
-    /**
-     * 静态版的语言键取用：给「需要复用菜单组件、但不是 Menu 子类」的场景使用
-     * （{@code AdminQuestMenu} 内嵌的预览界面就复用了详情界面的物品构造方法）。
-     * <p>
-     * 声明为 {@code protected} 而不是包内可见：后续在别的包里新增的菜单子类
-     * 也能用同一套渲染规则，不必各自再写一遍。
-     */
-    protected static String localized(MessageService messages, Player viewer, String key, String fallback,
-                                      Object... args) {
-        return messages.has(key) ? render(messages.raw(viewer, key, args)) : render(fallback);
-    }
-
-    /**
-     * 把原始文本渲染成 {@code §} 形式，供 {@code ItemMeta#setDisplayName/setLore} 使用。
-     * <p>
-     * YLib 的 {@link TextRenderer#render(String)} 已覆盖「MiniMessage 标签 + 颜色码」混排，
-     * 不需要额外补一次转换。
-     */
-    protected static String render(String raw) {
-        return TextRenderer.render(raw);
-    }
-
-    /**
-     * 数字文案：去掉整数的小数尾巴（500.0 → 500），小数保持原样。
-     * 费用、刷新价这类展示值用它，避免玩家看到「消耗 500.0 金币」。
-     */
-    protected static String formatAmount(double value) {
-        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value);
+        return Texts.render(messages.raw(viewer, key, args));
     }
 
     /**

@@ -46,8 +46,14 @@ public record Quest(
         return id != null && !id.isBlank() && !objectives.isEmpty();
     }
 
-    /** 第一个目标的类型，用于编辑器列表展示。 */
-    public String primaryObjectiveType() {
-        return objectives.isEmpty() ? "" : objectives.get(0).type();
+    /**
+     * 复制一份并改写启用状态。
+     * <p>
+     * record 没有 setter，而「切换启用」是管理命令与管理界面共用的写操作：
+     * 让每个调用点各自 {@code new Quest(…10 个字段…)}，改一次字段就要改所有调用点。
+     */
+    public Quest withEnabled(boolean enabled) {
+        return new Quest(id, name, description, icon, category, type,
+                objectives, rewards, refreshCost, enabled);
     }
 }

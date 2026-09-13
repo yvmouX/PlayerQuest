@@ -4,19 +4,21 @@ import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
+import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.text.PlayerNotifier;
-import cn.yvmou.ylib.text.TextRenderer;
+import com.playerPlugin.playerTaskX.core.text.Texts;
+import cn.yvmou.ylib.message.MessageService;
+import cn.yvmou.ylib.scheduler.UniversalScheduler;
+import cn.yvmou.ylib.scheduler.UniversalTask;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 进度展示：actionbar 推送进度、完成时发 title。
@@ -36,13 +38,12 @@ public final class ProgressDisplay {
     private final PluginConfig config;
     private final QuestRegistry quests;
     private final PlayerQuestRepository repository;
-    private final cn.yvmou.ylib.message.MessageService messages;
-    private final com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry objectiveTypes;
-    private cn.yvmou.ylib.scheduler.UniversalTask refreshTask;
+    private final MessageService messages;
+    private final ObjectiveRegistry objectiveTypes;
+    private UniversalTask refreshTask;
 
     public ProgressDisplay(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
-                           cn.yvmou.ylib.message.MessageService messages,
-                           com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry objectiveTypes) {
+                           MessageService messages, ObjectiveRegistry objectiveTypes) {
         this.config = config;
         this.quests = quests;
         this.repository = repository;
@@ -54,7 +55,7 @@ public final class ProgressDisplay {
      * 启动 actionbar 定时刷新。轮询间隔与开关是展示层的配置，
      * 因此定时器归展示层自己所有，入口类只负责启停时机。
      */
-    public void startAutoRefresh(cn.yvmou.ylib.scheduler.UniversalScheduler scheduler) {
+    public void startAutoRefresh(UniversalScheduler scheduler) {
         if (!config.isActionbarEnabled()) {
             return;
         }
@@ -163,7 +164,7 @@ public final class ProgressDisplay {
         int percent = (int) Math.round(ratio * 100);
         String bar = progressBar(ratio, 20);
 
-        return TextRenderer.render(quest.name() + " &7" + bar + " &f" + percent + "% &8» &7" + detail);
+        return Texts.render(quest.name() + " &7" + bar + " &f" + percent + "% &8» &7" + detail);
     }
 
     /**
@@ -174,15 +175,8 @@ public final class ProgressDisplay {
      * 绝不把 {@code break_block} 这种内部标识直接抛给玩家。
      */
     private String label(String objectiveType) {
-        if (messages != null) {
-            String key = "objective." + objectiveType;
-            if (messages.has(key)) {
-                return TextRenderer.strip(messages.raw(key));
-            }
-        }
-        return objectiveTypes.find(objectiveType)
-                .map(ObjectiveType::displayName)
-                .orElse(objectiveType);
+        return Texts.typeName(messages, null, "objective", objectiveType,
+                objectiveTypes.find(objectiveType).map(ObjectiveType::displayName).orElse(objectiveType));
     }
 
     /** 生成进度条，用 MiniMessage 的颜色标签表达已完成的长度。 */

@@ -86,10 +86,6 @@ public final class PlayerQuest {
         this.status = status;
     }
 
-    public boolean isExpired(long now) {
-        return expiresAt > 0 && now >= expiresAt;
-    }
-
     public boolean isActive() {
         return status == QuestStatus.IN_PROGRESS;
     }

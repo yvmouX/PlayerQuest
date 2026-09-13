@@ -7,13 +7,13 @@ import cn.yvmou.ylib.command.annotation.SubCommand;
 import cn.yvmou.ylib.command.context.CommandContext;
 import cn.yvmou.ylib.command.help.CommandHelp;
 import cn.yvmou.ylib.message.MessageService;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
-import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.gui.DailyQuestMenu;
-import cn.yvmou.ylib.text.TextRenderer;
+import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -31,6 +31,8 @@ import java.util.List;
  *   <li>{@code claim <id>}：领取已完成任务的奖励；</li>
  *   <li>{@code progress}：列出所有进行中任务的进度。</li>
  * </ul>
+ * 这份清单只出现在帮助里（由 {@link CommandHelp#ofAnnotations} 从注解自动生成），
+ * 不在这里手写第二份——手写清单迟早会和代码不一致。
  *
  * <h2>为什么是无参构造</h2>
  * 装配方只需 {@code register(new PlayerCommand())}：命令对象不持有服务引用，
@@ -52,13 +54,7 @@ import java.util.List;
 @Command(name = "playertaskx", aliases = {"ptx"}, description = "PlayerTaskX 玩家命令")
 public class PlayerCommand {
 
-    /**
-     * 行内分隔符。
-     * <p>
-     * 用 MiniMessage 标签而不是 {@code &7 - &f} 颜色码：整行最后会过一次
-     * {@link #render(String)}，标签与颜色码虽然都支持，但标签不依赖「{@code &} 后面
-     * 恰好是合法颜色字符」这个前提，写起来更没有歧义。
-     */
+    /** 行内分隔符；标签写法不依赖「{@code &} 后恰好是合法颜色字符」这个前提。 */
     private static final String SEPARATOR = "<gray> - <white>";
 
     /** 无参构造：装配方只做 {@code register(new PlayerCommand())}，服务在执行时现取。 */
@@ -68,10 +64,10 @@ public class PlayerCommand {
     // ---------- 打开界面 ----------
 
     /**
-     * 主命令：玩家直接打开界面；控制台则显示帮助。
+     * 主命令：玩家直接打开界面；控制台显示帮助。
      * <p>
-     * 控制台没有背包界面，之前会回一句「该命令只能由玩家执行」——对管理员来说
-     * 这既没告诉他能做什么，也找不到帮助入口。改为直接把帮助打出来。
+     * 控制台没有背包界面，回一句「只能由玩家执行」既没告诉他能做什么、也找不到帮助入口，
+     * 因此改为直接把帮助打出来。
      */
     @SubCommand(value = "", description = "打开每日任务界面")
     public void menu(CommandSender sender) {
@@ -79,7 +75,7 @@ public class PlayerCommand {
             showHelp(sender, 1);
             return;
         }
-        open(sender);
+        new DailyQuestMenu((Player) sender, messages()).open();
     }
 
     /** {@code menu}：与主命令等价，显式写出来是为了让玩家在 Tab 补全里看得到入口。 */
@@ -97,7 +93,7 @@ public class PlayerCommand {
     // ---------- 帮助 ----------
 
     /**
-     * {@code help}：玩家命令清单。
+     * {@code help}：玩家命令清单，条目与说明全部来自注解。
      * <p>
      * 页码可省略（缺省第 1 页）；聊天页脚翻页按钮执行的 {@code /ptx help N} 走的也是这里。
      */
@@ -106,16 +102,11 @@ public class PlayerCommand {
         showHelp(sender, page);
     }
 
-    /**
-     * 帮助正文。
-     * <p>
-     * 条目与说明全部来自注解（{@code @Command(description)} / {@code @SubCommand(description)}），
-     * 由 YLib 的 {@link CommandHelp} 统一渲染——不再手写清单，
-     * 因此新增子命令时忘记改帮助的情况不会发生。样式也与其他 YLib 插件一致。
-     */
+    /** 帮助正文；标题固定为插件名（命令帮助不该跟某个语言键的措辞绑在一起）。 */
     private static void showHelp(CommandSender sender, int page) {
-        CommandHelp.ofAnnotations(messages().raw(sender, "quest.progress"), PlayerCommand.class)
-                .subtitle("&8任务 id 可用 Tab 补全")
+        MessageService messages = messages();
+        CommandHelp.ofAnnotations("PlayerTaskX", PlayerCommand.class)
+                .subtitle("&8" + messages.raw(sender, "command.player-help"))
                 // 页脚的提示与翻页按钮用短名 ptx，而不是注解里的全名 playertaskx
                 .commandLabel("ptx")
                 .page(page)
@@ -144,7 +135,7 @@ public class PlayerCommand {
             return;
         }
 
-        messages.sendRaw(player, render(messages.raw(player, "quest.progress")));
+        messages.sendRaw(player, Texts.render(messages.raw(player, "quest.progress")));
         for (PlayerQuest playerQuest : current) {
             Quest quest = plugin.quests().find(playerQuest.questId()).orElse(null);
             if (quest == null) {
@@ -152,13 +143,27 @@ public class PlayerCommand {
                 continue;
             }
             StringBuilder builder = new StringBuilder(TextRenderer.render(quest.name()));
-            builder.append(SEPARATOR).append(percent(playerQuest, quest)).append('%');
+            builder.append(SEPARATOR).append(Math.round(playerQuest.completionRatio(quest) * 100)).append('%');
             String status = statusHint(messages, player, playerQuest.status());
             if (!status.isEmpty()) {
                 builder.append(SEPARATOR).append(status);
             }
-            messages.sendRaw(player, render(builder.toString()));
+            messages.sendRaw(player, Texts.render(builder.toString()));
         }
+    }
+
+    /**
+     * 状态提示：只为「已完成待领取」「已领取」追加。
+     * <p>
+     * 文案复用 GUI 的语言键，避免为聊天再硬编码一份同义句。
+     */
+    private static String statusHint(MessageService messages, Player player, QuestStatus status) {
+        String key = switch (status) {
+            case COMPLETED -> "gui.completed";
+            case CLAIMED -> "gui.claimed";
+            default -> null;
+        };
+        return key == null ? "" : TextRenderer.strip(messages.raw(player, key));
     }
 
     // ---------- 刷新 ----------
@@ -171,7 +176,7 @@ public class PlayerCommand {
             return;
         }
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        feedback(plugin, player, plugin.dailyService().refresh(player));
+        plugin.dailyService().refresh(player).report(plugin.messages(), player);
     }
 
     // ---------- 领取 ----------
@@ -224,11 +229,9 @@ public class PlayerCommand {
             return;
         }
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        MessageService messages = plugin.messages();
-
         List<PlayerQuest> active = plugin.progressService().activeQuests(player.getUniqueId());
         if (active.isEmpty()) {
-            messages.send(player, "daily.none");
+            plugin.messages().send(player, "daily.none");
             return;
         }
         for (PlayerQuest playerQuest : active) {
@@ -236,8 +239,9 @@ public class PlayerCommand {
             if (quest == null) {
                 continue;
             }
-            // render 返回的是「已渲染的任务名 + & 颜色码」混合文本，统一过一遍 render 才不会被当字面量显示
-            messages.sendRaw(player, render(plugin.progressDisplay().render(quest, playerQuest)));
+            // render 返回的是「已渲染的任务名 + & 颜色码」混合文本，统一过一遍渲染才不会被当字面量显示
+            plugin.messages().sendRaw(player,
+                    Texts.render(plugin.progressDisplay().render(quest, playerQuest)));
         }
     }
 
@@ -249,7 +253,7 @@ public class PlayerCommand {
      * 用全部记录而不是 {@code activeQuests}：进行中集合不含「已完成待领取」，
      * 而那恰恰是最需要补全出来让玩家敲的状态。已领取与已放弃的没必要再提示。
      * <p>
-     * 方法必须写在本类中（YLib 用 {@code getDeclaredMethod} 查找），因此两个命令类各有一份实现。
+     * 方法必须写在本类中（YLib 用 {@code getDeclaredMethod} 查找），因此两个命令类各有一份。
      */
     @SuppressWarnings("unused") // 由 YLib 反射调用
     public List<String> suggestQuestIds(CommandSender sender, CommandContext context, String currentInput) {
@@ -265,7 +269,7 @@ public class PlayerCommand {
             if (playerQuest.status() == QuestStatus.CLAIMED || playerQuest.status() == QuestStatus.ABANDONED) {
                 continue;
             }
-            if (startsWith(playerQuest.questId(), currentInput)) {
+            if (Texts.startsWith(playerQuest.questId(), currentInput)) {
                 ids.add(playerQuest.questId());
             }
         }
@@ -295,65 +299,5 @@ public class PlayerCommand {
         }
         messages().send(sender, "command.player-only");
         return null;
-    }
-
-    /**
-     * 渲染一行拼接文本。
-     * <p>
-     * YLib 的 {@link TextRenderer#render(String)} 会先把 {@code &} / {@code §} 颜色码
-     * 归一化成 MiniMessage 标签再解析，因此「任务名（MiniMessage）+ 颜色码」这类混排
-     * 一次即成，不需要再补第二次转换。
-     */
-    private static String render(String raw) {
-        return TextRenderer.render(raw);
-    }
-
-    /** 完成度百分比（0~100，四舍五入）。 */
-    private static long percent(PlayerQuest playerQuest, Quest quest) {
-        return Math.round(playerQuest.completionRatio(quest) * 100);
-    }
-
-    /**
-     * 状态提示：只为「已完成待领取」「已领取」追加。
-     * <p>
-     * 文案复用 GUI 的语言键，避免为聊天再硬编码一份同义句。
-     */
-    private static String statusHint(MessageService messages, Player player, QuestStatus status) {
-        String key = switch (status) {
-            case COMPLETED -> "gui.completed";
-            case CLAIMED -> "gui.claimed";
-            default -> null;
-        };
-        return key == null ? "" : TextRenderer.strip(messages.raw(player, key));
-    }
-
-    /**
-     * 按 {@link DailyService.RefreshResult} 反馈刷新结果。
-     * <p>
-     * 三种情况互斥：成功（有消耗时追加一行费用）→ 次数用尽（{@code limit > 0}）→ 其余失败原因。
-     *
-     * @param receiver 反馈对象（玩家命令里就是玩家本人；管理员命令里是执行命令的管理员）
-     */
-    private static void feedback(PlayerTaskX plugin, CommandSender receiver, DailyService.RefreshResult result) {
-        MessageService messages = plugin.messages();
-        if (result.success()) {
-            messages.send(receiver, "quest.refreshed");
-            if (result.cost() > 0) {
-                // 费用文案由插件统一渲染：金币走 Vault 的格式，其它货币用其显示名
-                messages.send(receiver, "quest.refresh-cost",
-                        plugin.dailyService().formatRefreshCost(result.cost(), result));
-            }
-            return;
-        }
-        if (result.limit() > 0) {
-            messages.send(receiver, "quest.refresh-limit", result.limit());
-            return;
-        }
-        messages.send(receiver, "quest.refresh-failed", result.error());
-    }
-
-    /** 补全前缀匹配：空输入表示不过滤；YLib 不会对返回值再过滤一次。 */
-    private static boolean startsWith(String value, String prefix) {
-        return prefix == null || prefix.isEmpty() || value.toLowerCase().startsWith(prefix.toLowerCase());
     }
 }

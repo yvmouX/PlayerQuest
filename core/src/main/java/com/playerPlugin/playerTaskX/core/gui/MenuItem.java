@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.gui;
 
+import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -112,13 +113,13 @@ public record MenuItem(ItemStack icon, Consumer<ClickContext> action) {
             return stack;
         }
         if (name != null) {
-            meta.setDisplayName(Menu.render(name));
+            meta.setDisplayName(Texts.render(name));
         }
         if (lore != null && !lore.isEmpty()) {
             List<String> lines = new ArrayList<>(lore.size());
             for (String line : lore) {
                 if (line != null) {
-                    lines.add(Menu.render(line));
+                    lines.add(Texts.render(line));
                 }
             }
             meta.setLore(lines);

@@ -20,7 +20,11 @@ import java.util.regex.Pattern;
  * <h2>英文名：不下载，直接读服务端自带的</h2>
  * 服务端 jar 里就有 {@code assets/minecraft/lang/en_us.json}，直接读它有两个好处：
  * 版本天然对齐（服务端是什么版本就给什么名字），且零网络依赖。
- * 曾经把这份文件复制进插件资源当模板，那是为了离线开发方便；读取路径本身指向服务端。
+ * <p>
+ * <b>插件不打包这份文件</b>：曾经为了让开发期离线可跑而复制进插件资源，
+ * 结果是它永远停在复制那天——服务端升到新版本后，新方块会显示成推导出来的枚举名。
+ * 实测 26.1.2 服务端 jar 内的该文件与当时那份副本字节相同、1.21.11 的则不同，
+ * 正是这种漂移。
  *
  * <h2>中文名：服务端没有，需要去取</h2>
  * 中文译名只存在于<b>客户端</b>资源里，服务端 jar 只有 {@code en_us.json}
@@ -128,7 +132,12 @@ public class LangFileStore {
     // 加载
     // ------------------------------------------------------------------
 
-    /** 读服务端 jar 内的 en_us.json；取不到只影响英文名的可读性，返回空表即可。 */
+    /**
+     * 读服务端 jar 内的 {@code assets/minecraft/lang/en_us.json}。
+     * <p>
+     * 插件类加载器的父级就是加载服务端的那一层，因此这个查询会落到服务端的 jar 上。
+     * 取不到只影响英文名的可读性（退回枚举名推导），这里返回空表即可。
+     */
     private Map<String, String> loadServerEnglish() {
         try (InputStream stream = LangFileStore.class
                 .getResourceAsStream("/assets/minecraft/lang/en_us.json")) {

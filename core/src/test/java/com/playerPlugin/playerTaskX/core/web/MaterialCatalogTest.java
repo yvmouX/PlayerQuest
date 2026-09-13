@@ -114,22 +114,6 @@ class MaterialCatalogTest {
     }
 
     @Test
-    @DisplayName("服务端自带的 en_us.json 能被解析，且含常见物品")
-    void bundledServerLanguageParses() throws Exception {
-        // 这份文件是从服务端 jar 提取的同名资源，与运行期读取的是同一个路径与格式；
-        // 它能解析，说明「英文名读服务端语言文件」这条链路成立
-        try (InputStream stream = MaterialCatalogTest.class
-                .getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
-            assertTrue(stream != null, "插件资源里应带有 en_us.json 作为开发期样本");
-            Map<String, String> names = LangFileStore.parse(stream);
-            assertTrue(names.size() > 1000, "应解析出上千条译名，实际 " + names.size());
-            assertEquals("Diamond Ore", names.get("diamond_ore"));
-            assertEquals("Stone", names.get("stone"));
-            assertEquals("Deepslate Diamond Ore", names.get("deepslate_diamond_ore"));
-        }
-    }
-
-    @Test
     @DisplayName("枚举名兜底：下划线断词并首字母大写")
     void prettyFormatsEnumNames() {
         assertEquals("Diamond Ore", MaterialCatalog.pretty("DIAMOND_ORE"));

@@ -154,33 +154,22 @@ public final class JsonCodec {
     }
 
     // ------------------------------------------------------------------
-    // Map<String, String>：会话/编辑器等场景的纯字符串映射
+    // 任意结构：编辑器响应体（List / Map 混排）
     // ------------------------------------------------------------------
 
-    /** 序列化字符串映射；null/空映射写成 {@code "{}"}。 */
-    public static String writeStringMap(Map<String, String> map) {
-        if (map == null || map.isEmpty()) {
-            return "{}";
-        }
+    /**
+     * 序列化任意结构。
+     * <p>
+     * 与 {@link #write(Map)} 的区别：那个把失败降级成 {@code "{}"}（数据库列不能写 NULL），
+     * 而 HTTP 响应体写坏了应当让调用方看见，因此这里失败返回 {@code null}。
+     */
+    public static String writeAny(Object value) {
         try {
-            return MAPPER.writeValueAsString(map);
+            return MAPPER.writeValueAsString(value);
         } catch (Exception e) {
-            warn("字符串映射序列化失败，已写为空对象", e);
-            return "{}";
+            warn("JSON 序列化失败", e);
+            return null;
         }
-    }
-
-    /** 反序列化字符串映射；null/空白/非法 JSON 一律返回空映射（值统一转成字符串）。 */
-    public static Map<String, String> readStringMap(String json) {
-        Map<String, Object> raw = readMap(json);
-        Map<String, String> result = new LinkedHashMap<>(raw.size());
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            if (entry.getKey() == null) {
-                continue;
-            }
-            result.put(entry.getKey(), entry.getValue() == null ? "" : String.valueOf(entry.getValue()));
-        }
-        return result;
     }
 
     // ------------------------------------------------------------------

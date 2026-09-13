@@ -45,8 +45,9 @@ allprojects {
         compileOnly("me.clip:placeholderapi:2.11.6")
 
 
+        // 定义/玩家数据与网页编辑器的 JSON 编解码统一走 JsonCodec 的这一个 ObjectMapper
         implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
+        // Javalin 6 通过 slf4j 输出日志；不提供实现时启动会打印 "No SLF4J providers" 警告
         compileOnly("org.slf4j:slf4j-api:2.0.9")
         implementation("org.slf4j:slf4j-simple:2.0.16") {
             exclude(group = "org.slf4j", module = "slf4j-api")

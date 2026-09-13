@@ -45,11 +45,6 @@ final class FakePlayerQuestRepository implements PlayerQuestRepository {
     }
 
     @Override
-    public void saveAll(List<PlayerQuest> playerQuests) {
-        playerQuests.forEach(this::save);
-    }
-
-    @Override
     public void transaction(Runnable work) {
         work.run();
     }

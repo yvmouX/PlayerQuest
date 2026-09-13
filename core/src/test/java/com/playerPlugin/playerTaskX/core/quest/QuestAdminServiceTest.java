@@ -8,6 +8,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
+import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.ExpReward;
 import com.playerPlugin.playerTaskX.core.reward.ItemReward;
@@ -234,10 +235,6 @@ class QuestAdminServiceTest {
 
         @Override
         public void save(PlayerQuest playerQuest) {
-        }
-
-        @Override
-        public void saveAll(List<PlayerQuest> playerQuests) {
         }
 
         @Override
