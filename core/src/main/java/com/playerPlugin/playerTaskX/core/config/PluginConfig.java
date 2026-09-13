@@ -91,6 +91,11 @@ public class PluginConfig {
     @ConfigValue(value = "editor.token", description = "编辑器访问令牌（留空表示不校验，仅建议本机使用）")
     private String editorToken = "";
 
+    @ConfigValue(value = "editor.fetch-chinese-names",
+            description = "编辑器图标列表是否下载中文译名（Minecraft 服务端不含中文语言文件）；"
+                    + "关闭后仅显示英文名。也可手动把 zh_cn.json 放到 lang/ 目录，插件会优先使用本地文件")
+    private boolean editorFetchChineseNames = true;
+
     private static Map<String, MysqlSettings> defaultMysql() {
         Map<String, MysqlSettings> map = new LinkedHashMap<>();
         MysqlSettings settings = new MysqlSettings();
@@ -170,6 +175,10 @@ public class PluginConfig {
 
     public String getEditorToken() {
         return editorToken;
+    }
+
+    public boolean isEditorFetchChineseNames() {
+        return editorFetchChineseNames;
     }
 
     /**

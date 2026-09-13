@@ -146,13 +146,14 @@ export interface ReloadResult {
 /**
  * 目录条目。
  *
- * <p>{@code zh} 是后端内置的精选中文名，<b>可能为空串</b>：此时界面必须回退显示
- * {@code en}，搜索也必须仍然能按 id 或英文名命中——否则会出现「搜到了却看不见」。
+ * <p>{@code zh} 是中文译名，<b>可能为空串</b>：服务端只带英文语言文件，中文由后端
+ * 另行获取（读本地文件或下载），拿不到时全部为空。此时界面必须回退显示 {@code en}，
+ * 搜索也必须仍然能按 id 或英文名命中——否则会出现「搜到了却看不见」。
  */
 export interface CatalogEntry {
   /** Bukkit 枚举名，例如 DIAMOND_ORE */
   id: string
-  /** 英文显示名，例如 Diamond Ore；永不依赖它为空的兜底 */
+  /** 英文显示名，例如 Diamond Ore；来自服务端自带语言文件，永不依赖它为空的兜底 */
   en: string
   /** 中文显示名，可能为空串 */
   zh: string
@@ -167,6 +168,8 @@ export interface MaterialCatalog {
   /** 分类展示顺序，界面按它排列分组，不要在前端硬编码 */
   categories: string[]
   serverVersion: string
+  /** 后端是否拿到了中文译名；为 false 时可在界面上说明「当前显示英文名」 */
+  hasChinese?: boolean
 }
 
 /* ------------------------------------------------------------------ *

@@ -84,7 +84,11 @@ export function normalizeCatalog(raw: MaterialCatalog | null | undefined): Mater
     materials: materials.filter(isEntry),
     entities: entities.filter(isEntry),
     categories,
-    serverVersion: typeof raw?.serverVersion === 'string' ? raw!.serverVersion : ''
+    serverVersion: typeof raw?.serverVersion === 'string' ? raw!.serverVersion : '',
+    // 后端未声明时按「有条目就算有中文」推断，避免旧后端让界面误报「只有英文」
+    hasChinese: typeof raw?.hasChinese === 'boolean'
+      ? raw!.hasChinese
+      : materials.some(entry => !!(entry as CatalogEntry).zh)
   }
 }
 

@@ -41,6 +41,8 @@ public final class EditorServer {
 
     private final PlayerTaskX plugin;
     private final PresetStore presets;
+    private final MaterialCatalog catalog;
+    private final LangFileStore langFiles;
     private Javalin app;
     private int port = -1;
 
@@ -48,6 +50,24 @@ public final class EditorServer {
         this.plugin = plugin;
         // 预设随编辑器一起构造：它只是编辑器的便利设施，与运行时引擎无关
         this.presets = new PresetStore(plugin.getDataFolder());
+        // 译名来源：英文读服务端自带的语言文件，中文必要时下载（见 LangFileStore）
+        this.langFiles = new LangFileStore(plugin);
+        this.catalog = new MaterialCatalog(langFiles);
+    }
+
+    /**
+     * 尽早准备译名数据（英文同步、中文后台下载）。
+     * <p>
+     * 与 {@link #start(int)} 分开：启动必须在插件启用时立即调用，而准备译名可以更早、
+     * 且不依赖端口是否可用——即使编辑器没启动，下载好的中文语言文件也留在磁盘上。
+     */
+    public void prepareCatalog() {
+        try {
+            langFiles.initialize();
+        } catch (Throwable e) {
+            // 译名只是编辑器的便利功能，任何意外都不该影响插件启用
+            plugin.getLogger().warning("准备素材译名失败（编辑器将显示枚举名）: " + e);
+        }
     }
 
     /** 实际监听的端口；未启动时为 -1。端口被占用自动 +1 后，这里与配置值可能不同。 */
@@ -306,7 +326,7 @@ public final class EditorServer {
 
         // ---- 素材目录：图标选择与材质字段搜索用 ----
         // 内容来自服务端自己的 Material / EntityType 枚举，因此天然只含当前版本支持的项
-        app.get("/api/catalog", ctx -> ctx.result(toJson(MaterialCatalog.build())));
+        app.get("/api/catalog", ctx -> ctx.result(toJson(catalog.build())));
 
         // ---- 目标 / 奖励预设 ----
         app.get("/api/presets", ctx -> ctx.result(toJson(presets.all())));

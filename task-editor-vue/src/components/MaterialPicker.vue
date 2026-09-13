@@ -89,6 +89,9 @@
           目录加载失败，可继续手动输入枚举名。
           <button class="btn btn-small" type="button" @click="reload">重试</button>
         </span>
+        <span v-else-if="catalog && !catalog.hasChinese" class="warn-line">
+          当前只有英文名：Minecraft 服务端不自带中文语言文件。用英文名或枚举名同样能搜到。
+        </span>
         <span v-else class="hint">
           共 {{ pool.length }} 项，可搜中文名 / 英文名 / 枚举名（如 钻石、diamond、DIAMOND_ORE）。
         </span>

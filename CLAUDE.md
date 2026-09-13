@@ -53,6 +53,17 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - 交给 `sendActionBar(String)` / `sendTitle(String)` / `setDisplayName` 的必须是
     `§` 色码：实测 Paper 的 `sendActionBar(String)` 不解析 MiniMessage，会把标签显示给玩家。
 
+- 关于物品译名（编辑器图标列表）
+  - **能离线拿到的数据不要走网络**：英文名直接读服务端 jar 自带的
+    `assets/minecraft/lang/en_us.json`，版本天然对齐。
+  - 中文名服务端**没有**（实测服务端 jar 内 lang 文件只有 en_us.json 一个），
+    只能另行获取：优先读 `plugins/playerTaskX/lang/zh_cn.json`（管理员可手动放，
+    离线服就这么用），没有则按 `editor.fetch-chinese-names` 决定是否从官方 CDN 下载并缓存。
+  - 下载是**尽力而为**的：失败只记日志、不阻断启用、不重试。这一点是刻意的——
+    不少服务器在受限网络里，且管理工具会把「插件外连」视为可疑行为。
+  - 早期有一份内置手工中文表（约 175 行、材质覆盖仅两成），已删除；不要再引入这类表，
+    它必然随版本失效。实测替换后材质与实体中文覆盖均为 100%。
+
 - 协作约定：
   - 全程用**中文**交流；代码注释也用中文，并写「为什么」而不是复述代码在做什么
   - **简洁优先**。尽可能保持代码简洁可读性更好，必要时可以修改YLib源码或者引入外部库。

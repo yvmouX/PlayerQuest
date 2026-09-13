@@ -1,145 +1,142 @@
 package com.playerPlugin.playerTaskX.core.web;
 
-import org.bukkit.Material;
-import org.bukkit.entity.EntityType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 编辑器素材目录的测试。
+ * 语言文件解析与枚举名兜底的测试。
  *
- * <p>这里不调用 {@link MaterialCatalog#build()}——它需要服务端实例，
- * 而测试环境没有 Bukkit。因此改为验证它依赖的纯逻辑，以及最容易写错的
- * <b>中文译名表</b>：那些 key 是手写的枚举名，拼错一个不会编译报错，
- * 只会在编辑器里安静地少一个中文名，属于典型的「上线才发现」问题。</p>
+ * <p>译名从「内置手工表」改成「读服务端语言文件 + 可选下载中文」之后，最容易出错的
+ * 地方就变成了<b>解析</b>：语言文件里含转义、方块与物品同名、实体键不该混进来。
+ * 这些都不会编译报错，只会让编辑器里安静地显示出错的名字，因此逐个钉住。</p>
+ *
+ * <p>这里不触碰 {@link LangFileStore#initialize()}——它需要服务端实例与网络。</p>
  */
 class MaterialCatalogTest {
 
-    /** 中文译名表的 key（通过反射读取私有常量，避免为测试放宽可见性）。 */
-    @SuppressWarnings("unchecked")
-    private static Map<String, String> chineseNames() throws Exception {
-        var field = MaterialCatalog.class.getDeclaredField("CHINESE_NAMES");
-        field.setAccessible(true);
-        return (Map<String, String>) field.get(null);
-    }
-
-    @Test
-    @DisplayName("中文译名表的每个 key 都必须是真实的材质名或实体类型名")
-    void everyChineseNameKeyExists() throws Exception {
-        Set<String> materials = Stream.of(Material.values())
-                .map(Material::name)
-                .collect(Collectors.toSet());
-        Set<String> entities = Stream.of(EntityType.values())
-                .map(EntityType::name)
-                .collect(Collectors.toSet());
-
-        Set<String> unknown = new TreeSet<>();
-        for (String key : chineseNames().keySet()) {
-            if (!materials.contains(key) && !entities.contains(key)) {
-                unknown.add(key);
-            }
-        }
-
-        assertTrue(unknown.isEmpty(),
-                "中文译名表里存在拼错或已移除的枚举名，编辑器里这些项会丢失中文名：" + unknown);
-    }
-
-    @Test
-    @DisplayName("中文译名表没有空值，且译名里不含误留的占位内容")
-    void chineseNamesAreWellFormed() throws Exception {
-        Map<String, String> names = chineseNames();
-        assertFalse(names.isEmpty(), "中文译名表不应为空");
-
-        for (Map.Entry<String, String> entry : names.entrySet()) {
-            String value = entry.getValue();
-            assertFalse(value == null || value.isBlank(),
-                    entry.getKey() + " 的中文译名为空——为空时应直接不收录，让前端回退英文名");
-            // 注意不能断言「译名必须含中文汉字」：TNT 这类物品在中文里就叫 TNT
-            assertFalse(value.contains("TODO") || value.contains("??"),
-                    entry.getKey() + " 的中文译名疑似占位内容：" + value);
+    private static Map<String, String> parse(String json) throws Exception {
+        try (InputStream stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))) {
+            return LangFileStore.parse(stream);
         }
     }
 
     @Test
-    @DisplayName("任务里最高频的目标都有中文名，否则中文搜索等于不可用")
-    void commonTargetsAreTranslated() throws Exception {
-        Map<String, String> names = chineseNames();
-        // 这些是预设与文档里实际会用到的项，缺任何一个都会让中文搜索出现明显空洞
-        String[] common = {
-                "STONE", "COBBLESTONE", "DIAMOND_ORE", "DEEPSLATE_DIAMOND_ORE", "IRON_ORE",
-                "DIAMOND", "IRON_INGOT", "OAK_LOG", "TORCH", "BREAD", "WHEAT",
-                "ZOMBIE", "SKELETON", "CREEPER", "COW", "PIG", "SHEEP", "CHICKEN",
-                "WOLF", "VILLAGER", "ENDERMAN"
-        };
-        Set<String> missing = new TreeSet<>();
-        for (String id : common) {
-            if (!names.containsKey(id)) {
-                missing.add(id);
-            }
-        }
-        assertTrue(missing.isEmpty(), "以下常用项缺少中文译名：" + missing);
+    @DisplayName("方块与物品同名时以物品为准")
+    void itemWinsOverBlock() throws Exception {
+        // 原版语言文件里 stone 同时有 block 与 item 两个键，二者文案可能不同
+        Map<String, String> names = parse("""
+                {
+                  "block.minecraft.stone": "方块石头",
+                  "item.minecraft.stone": "石头"
+                }
+                """);
+        assertEquals(1, names.size(), "同名键应合并为一条");
+        assertEquals("石头", names.get("stone"));
     }
 
     @Test
-    @DisplayName("枚举名转可读形式：下划线断词并首字母大写")
+    @DisplayName("实体键也收录，且枚举名剥掉 MINECRAFT_ 前缀后能对上")
+    void entityKeysAreCollected() throws Exception {
+        Map<String, String> names = parse("""
+                {
+                  "entity.minecraft.zombie": "僵尸",
+                  "entity.minecraft.zombified_piglin": "僵尸猪灵",
+                  "entity.minecraft.tropical_fish.predefined.0": "海葵鱼",
+                  "item.minecraft.diamond": "钻石"
+                }
+                """);
+        assertEquals("僵尸", names.get("zombie"));
+        // 枚举名 MINECRAFT_ZOMBIE → 去前缀 → 小写，正好是这个键
+        assertEquals("僵尸猪灵", names.get("zombified_piglin"));
+        assertFalse(names.containsKey("tropical_fish.predefined.0"),
+                "带点号的子键不是实体本身的名字，不该收录");
+        assertEquals("钻石", names.get("diamond"));
+    }
+
+    @Test
+    @DisplayName("只认 minecraft 命名空间，模组与其它键不混进来")
+    void onlyMinecraftNamespace() throws Exception {
+        Map<String, String> names = parse("""
+                {
+                  "item.minecraft.diamond": "钻石",
+                  "block.minecraft.diamond_block": "钻石块",
+                  "item.mod.magic_wand": "法杖",
+                  "some.other.key": "无关"
+                }
+                """);
+        assertEquals(2, names.size(), "只有 minecraft 命名空间的键应被收录");
+        assertTrue(names.containsKey("diamond"));
+        assertTrue(names.containsKey("diamond_block"));
+        assertFalse(names.containsKey("magic_wand"), "非 minecraft 命名空间不收录");
+    }
+
+    @Test
+    @DisplayName("键统一转小写，便于与枚举名小写化后对齐")
+    void keysAreLowerCase() throws Exception {
+        Map<String, String> names = parse("""
+                { "item.minecraft.diamond_ore": "钻石矿石" }
+                """);
+        assertTrue(names.containsKey("diamond_ore"), "键应为小写: " + names.keySet());
+    }
+
+    @Test
+    @DisplayName("JSON 转义被还原（\\u0020、引号、换行）")
+    void escapesAreDecoded() throws Exception {
+        Map<String, String> names = parse("""
+                {
+                  "item.minecraft.a": "Glow\\u0020Ink Sac",
+                  "item.minecraft.b": "带\\"引号\\"的名字",
+                  "item.minecraft.c": "第一行\\n第二行",
+                  "item.minecraft.d": "反斜杠\\\\本身"
+                }
+                """);
+        assertEquals("Glow Ink Sac", names.get("a"));
+        assertEquals("带\"引号\"的名字", names.get("b"));
+        assertEquals("第一行\n第二行", names.get("c"));
+        assertEquals("反斜杠\\本身", names.get("d"));
+    }
+
+    @Test
+    @DisplayName("空输入与损坏内容不抛异常，只是解析不出东西")
+    void toleratesGarbage() throws Exception {
+        assertTrue(parse("").isEmpty());
+        assertTrue(parse("{ 这不是 JSON").isEmpty());
+        assertTrue(parse("{\"item.minecraft.x\": }").isEmpty());
+    }
+
+    @Test
+    @DisplayName("服务端自带的 en_us.json 能被解析，且含常见物品")
+    void bundledServerLanguageParses() throws Exception {
+        // 这份文件是从服务端 jar 提取的同名资源，与运行期读取的是同一个路径与格式；
+        // 它能解析，说明「英文名读服务端语言文件」这条链路成立
+        try (InputStream stream = MaterialCatalogTest.class
+                .getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
+            assertTrue(stream != null, "插件资源里应带有 en_us.json 作为开发期样本");
+            Map<String, String> names = LangFileStore.parse(stream);
+            assertTrue(names.size() > 1000, "应解析出上千条译名，实际 " + names.size());
+            assertEquals("Diamond Ore", names.get("diamond_ore"));
+            assertEquals("Stone", names.get("stone"));
+            assertEquals("Deepslate Diamond Ore", names.get("deepslate_diamond_ore"));
+        }
+    }
+
+    @Test
+    @DisplayName("枚举名兜底：下划线断词并首字母大写")
     void prettyFormatsEnumNames() {
         assertEquals("Diamond Ore", MaterialCatalog.pretty("DIAMOND_ORE"));
         assertEquals("Stone", MaterialCatalog.pretty("STONE"));
         assertEquals("Oak Log", MaterialCatalog.pretty("OAK_LOG"));
-        // 多段下划线不应产生多余空格
         assertEquals("Deepslate Diamond Ore", MaterialCatalog.pretty("DEEPSLATE_DIAMOND_ORE"));
         assertEquals("", MaterialCatalog.pretty(null));
         assertEquals("", MaterialCatalog.pretty(""));
-    }
-
-    @Test
-    @DisplayName("解析服务端语言文件：item 与 block 同名时以 item 为准")
-    void parseLangFilePrefersItemOverBlock() throws Exception {
-        // 原版语言文件里 STONE 同时有 block.minecraft.stone 与 item.minecraft.stone，
-        // 二者文案可能不同，编辑器希望拿到 item 的名字
-        String json = """
-                {
-                  "block.minecraft.stone": "方块石头",
-                  "item.minecraft.stone": "石头",
-                  "item.minecraft.diamond_ore": "钻石矿石",
-                  "block.minecraft.oak_log": "橡木原木",
-                  "entity.minecraft.zombie": "僵尸",
-                  "item.minecraft.glow_ink_sac": "Glow\\u0020Ink Sac"
-                }
-                """;
-        Map<String, String> parsed = new LinkedHashMap<>();
-        MaterialCatalog.parseLangFile(
-                new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)), parsed);
-
-        assertEquals("石头", parsed.get("stone"), "item 与 block 同名时应取 item 的文案");
-        assertEquals("钻石矿石", parsed.get("diamond_ore"));
-        assertEquals("橡木原木", parsed.get("oak_log"));
-        assertEquals("Glow Ink Sac", parsed.get("glow_ink_sac"),
-                "显示名里的 \\u0020 应还原成空格，否则界面上会出现字面量 \\u0020");
-        assertFalse(parsed.containsKey("zombie"), "实体名不在本解析器的范围内（只认 item/block）");
-    }
-
-    @Test
-    @DisplayName("语言文件损坏时不抛异常，只是解析不出内容")
-    void parseLangFileToleratesGarbage() throws Exception {
-        Map<String, String> parsed = new HashMap<>();
-        // 不是合法 JSON：解析器按正则提取，不该抛异常
-        MaterialCatalog.parseLangFile(
-                new ByteArrayInputStream("{ this is not json at all ".getBytes(StandardCharsets.UTF_8)), parsed);
-        assertTrue(parsed.isEmpty());
     }
 }

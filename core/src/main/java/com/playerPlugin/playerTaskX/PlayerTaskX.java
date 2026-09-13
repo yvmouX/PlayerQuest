@@ -240,10 +240,13 @@ public final class PlayerTaskX extends JavaPlugin {
      * {@code /ptxa editor} 始终报告实际端口。失败只记录日志，不影响插件其它功能。
      */
     private void startEditor() {
+        // 译名准备与「编辑器是否启用」无关：中文语言文件是磁盘上的缓存，
+        // 这次没开编辑器时先取好，下次打开就能直接用。
+        editorServer = new EditorServer(this);
+        editorServer.prepareCatalog();
         if (!config.isEditorEnabled()) {
             return;
         }
-        editorServer = new EditorServer(this);
         editorServer.start(config.getEditorPort());
     }
 
