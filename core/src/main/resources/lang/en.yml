@@ -8,8 +8,10 @@
 
 # ---------- Common ----------
 common:
-  yes: "Yes"
-  no: "No"
+  # yes / no must stay quoted: YAML 1.1 reads a bare yes/no/on/off as a boolean, so the key
+  # would be parsed as common.true and lookups of common.yes would report a missing key.
+  "yes": "Yes"
+  "no": "No"
   none: "None"
 
 # ---------- Objective type names ----------

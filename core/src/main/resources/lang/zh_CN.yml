@@ -8,8 +8,10 @@
 
 # ---------- 通用 ----------
 common:
-  yes: "是"
-  no: "否"
+  # yes / no 必须带引号：YAML 1.1 把裸写的 yes、no、on、off 当布尔值，键名会被解析成
+  # common.true，代码查 common.yes 时只会得到「缺少语言键」。LanguageFileTest 钉住了这一点。
+  "yes": "是"
+  "no": "否"
   none: "无"
 
 # ---------- 目标类型显示名（进度展示与 GUI 使用） ----------

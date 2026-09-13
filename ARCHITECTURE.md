@@ -262,6 +262,12 @@ messages.send(player, "quest.completed", questName);
 
 ⚠️ **不要为多语言再写一套 YAML 加载器**——那是重复实现。
 
+⚠️ **键名撞上 YAML 布尔字面量会被改名**：Bukkit 的 YAML 是 1.1 语义，裸写的 `yes:` / `no:` / `on:` / `off:`
+读进来键名就变成了 `common.true`，代码查 `common.yes` 只会得到一句「缺少语言键」
+（内置文件曾因此同时丢掉 `common.yes` 与 `common.no`，源文件看不出任何异常）。
+内置文件里这类键一律加引号；`LanguageFileTest` 直接对比「源文件声明的键」与
+「`YamlConfiguration` 加载出的键」，把这类静默改名钉死在测试里。
+
 ### 5.2 文本渲染：MiniMessage 优先，兼容 `&` 与 `§`
 
 **渲染在 YLib 里，不在本插件里**（`cn.yvmou.ylib.text.TextRenderer`）：
@@ -461,8 +467,9 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 18 | 删除 JSON 文件后端（定义侧 + 玩家侧三个实现类），只留数据库 | ✅ 完成 |
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
+| 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 
-**测试总量：143 项全部通过**（16 个测试类，全部 failures=0 / errors=0）：
+**测试总量：146 项全部通过**（17 个测试类，全部 failures=0 / errors=0）：
 存储 18（`StorageIntegrationTest`）+ 编辑器接口 16（`EditorApiTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 每日 10（`DailyServiceTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
@@ -470,12 +477,12 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 素材 7（`MaterialCatalogTest`）+
 示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 GUI 图标 6（`QuestDetailMenuTest`）+ 示例预设 5（`ExamplePresetsTest`）+
-进度渲染 5（`ProgressDisplayRenderTest`）。
+进度渲染 5（`ProgressDisplayRenderTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
-`core/build/test-results/test/*.xml` 逐套件累加（16 个 XML），不是靠日志里的汇总行。
+`core/build/test-results/test/*.xml` 逐套件累加（17 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 9633 行
-＝ **10465 行 / 87 个 java 文件**；测试 `core/src/test` **3537 行 / 17 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 9639 行
+＝ **10471 行 / 87 个 java 文件**；测试 `core/src/test` **3705 行 / 18 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **5340 行 `.vue` + 1399 行 `.ts`/`.js` ＝ 6739 行 / 28 个文件**。
 
