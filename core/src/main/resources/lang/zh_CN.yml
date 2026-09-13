@@ -1,8 +1,10 @@
 # PlayerTaskX 语言文件（简体中文）
 # 支持 MiniMessage 标签（<red>、<bold> 等），也兼容传统 & 颜色代码。
 # 占位符为数字形式：{0}、{1} …，按顺序替换。
-
-prefix: "<gray>[</gray><aqua>PlayerTaskX</aqua><gray>]</gray> "
+#
+# 这里刻意没有 prefix 键（构建 MessageSettings 时也不调用 prefixKey），
+# 因为多行输出（如 /ptxa list）走的是 sendRaw，而 sendRaw 会加前缀——
+# 一旦启用，每一行都会被顶上一个 [PlayerTaskX]，把原本的排版彻底打乱。
 
 # ---------- 通用 ----------
 common:
@@ -48,6 +50,9 @@ quest:
   refresh-limit: "<red>今日刷新次数已用完（上限 {0} 次）。</red>"
   refresh-cost: "<gray>本次刷新消耗 {0}。</gray>"
   not-found: "<red>找不到任务：{0}</red>"
+  # 与 gui.in-progress / completed / claimed 同族：占位符里的任务状态文案。
+  # 调用方传 0 个参数并会 strip 掉格式，因此不要写 {0}。
+  abandoned: "<gray>已放弃</gray>"
 
 # ---------- 每日任务 ----------
 daily:

@@ -49,7 +49,10 @@ public final class CommandReward implements RewardType {
         }
         command = command.replace("%player%", player.getName())
                 .replace("{player}", player.getName());
-        boolean asPlayer = reward.properties().get("as-player") instanceof Boolean bool && bool;
+        // 只认 Boolean 是不够的：编辑器的表单与手改的 JSON 很容易把布尔写成字符串 "true"，
+        // 那样会静默退回控制台执行（玩家侧看不出差别，属于「不报错的错误」）。
+        // 全项目只有这一处读布尔型奖励配置，因此不做成 QuestReward.bool 那种通用访问器。
+        boolean asPlayer = Boolean.parseBoolean(reward.string("as-player", "false").trim());
         if (asPlayer) {
             player.performCommand(command);
         } else {

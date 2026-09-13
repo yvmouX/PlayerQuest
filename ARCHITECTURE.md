@@ -262,7 +262,8 @@ MessageService messages = ylib.createMessageService(MessageSettings.builder()
         .filePattern("lang_%s.yml")     // 默认是 lang_%s.yml，即 lang/lang_zh_CN.yml
         .languageFolder("lang")
         .useClientLocale(true)          // 玩家语言优先，控制台用全局默认
-        .prefixKey("prefix")
+        // 刻意不设 prefixKey：多行输出（如 /ptxa list）走 sendRaw，而 sendRaw 会加前缀，
+        // 启用后每一行都会被顶上一个 [PlayerTaskX]；语言文件里也因此没有 prefix 键
         .build());
 messages.send(player, "quest.completed", questName);
 ```

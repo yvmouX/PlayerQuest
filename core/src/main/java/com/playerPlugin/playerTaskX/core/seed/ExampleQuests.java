@@ -17,6 +17,10 @@ import java.util.Map;
  * <p>选型上覆盖了大部分目标类型，并刻意包含「留空 = 任意」（垂钓、附魔、繁殖、驯服）
  * 与「逗号分隔多值」（讨伐亡灵、钻石矿工）两种约定，这些光看配置猜不出来。</p>
  *
+ * <p>刻意不含 {@code submit}（提交物品）的示例：该类型目前没有生产者——没有监听器推
+ * {@code Trigger.SUBMIT}，GUI 也没有提交入口，写进示例只会得到一个永远做不动的任务，
+ * 而示例随出厂数据发给每个新服。类型本身仍然保留，见 {@code docs/objectives.md}。</p>
+ *
  * <p>奖励以经验与物品为主，金币只保留在挖矿日常一处：金币奖励依赖 Vault，
  * 未装经济插件的服务器上每个用金币的示例都会在启动日志里报「不可用」警告，
  * 示例自己不该制造这种噪音。</p>
@@ -97,11 +101,7 @@ public final class ExampleQuests {
                 normal("example_normal_tamer", "<gold>驯兽师", "NAME_TAG",
                         List.of("<gray>驯服 3 只动物（任意种类）", "<gray>完成后可领取 300 经验"),
                         List.of(QuestObjective.of("tame", Map.of("target", "", "amount", 3))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 300)))),
-                normal("example_normal_farmer", "<gold>农产品收购", "WHEAT",
-                        List.of("<gray>提交 64 个小麦", "<gray>完成后可领取 4 颗绿宝石"),
-                        List.of(QuestObjective.of("submit", Map.of("target", "WHEAT", "amount", 64))),
-                        List.of(QuestReward.of("item", Map.of("material", "EMERALD", "amount", 4))))
+                        List.of(QuestReward.of("exp", Map.of("amount", 300))))
         );
     }
 

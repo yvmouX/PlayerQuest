@@ -1,8 +1,10 @@
 # PlayerTaskX language file (English)
 # MiniMessage tags are supported (<red>, <bold>, ...), legacy & color codes also work.
 # Placeholders are numeric: {0}, {1}, ... replaced in order.
-
-prefix: "<gray>[</gray><aqua>PlayerTaskX</aqua><gray>]</gray> "
+#
+# There is deliberately no prefix key (MessageSettings is built without prefixKey):
+# multi-line output such as /ptxa list goes through sendRaw, which does add the
+# prefix - enabling it would put a [PlayerTaskX] in front of every single line.
 
 # ---------- Common ----------
 common:
@@ -48,6 +50,9 @@ quest:
   refresh-limit: "<red>You have used all refreshes for today (limit {0}).</red>"
   refresh-cost: "<gray>This refresh cost {0}.</gray>"
   not-found: "<red>Quest not found: {0}</red>"
+  # Same family as gui.in-progress / completed / claimed: quest status text for
+  # placeholders. The caller passes 0 arguments and strips formatting, so no {0}.
+  abandoned: "<gray>Abandoned</gray>"
 
 # ---------- Daily ----------
 daily:

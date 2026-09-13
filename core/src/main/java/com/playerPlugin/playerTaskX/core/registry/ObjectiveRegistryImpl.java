@@ -1,12 +1,9 @@
 package com.playerPlugin.playerTaskX.core.registry;
 
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
-import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -14,15 +11,14 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 目标类型注册表实现。
+ * 目标类型注册表实现：只维护「id → 类型」的映射。
  * <p>
- * 除按 id 查找外，还维护「动作类型 → 目标类型」的分发索引：
- * 每次游戏动作都要判定，这一步决定了热路径的开销。
+ * 这里刻意不做「动作类型 → 目标类型」的分发索引——分发索引由 {@code ProgressService}
+ * 按玩家自建（注册表是全局的，而热路径要按玩家已接任务过滤，缓存到注册表里反而用不上）。
  */
 public final class ObjectiveRegistryImpl implements ObjectiveRegistry {
 
     private final Map<String, ObjectiveType> byId = new LinkedHashMap<>();
-    private final Map<Trigger, List<ObjectiveType>> byTrigger = new EnumMap<>(Trigger.class);
 
     /** 注册失败的类型 id → 原因，供启动日志汇总。 */
     private final Map<String, String> rejected = new LinkedHashMap<>();
@@ -38,7 +34,6 @@ public final class ObjectiveRegistryImpl implements ObjectiveRegistry {
             return;
         }
         byId.put(id, type);
-        byTrigger.computeIfAbsent(type.trigger(), key -> new ArrayList<>()).add(type);
     }
 
     @Override
@@ -49,11 +44,6 @@ public final class ObjectiveRegistryImpl implements ObjectiveRegistry {
     @Override
     public Collection<ObjectiveType> all() {
         return List.copyOf(byId.values());
-    }
-
-    @Override
-    public List<ObjectiveType> byTrigger(Trigger trigger) {
-        return byTrigger.getOrDefault(trigger, List.of());
     }
 
     /** 注册被拒绝的类型及原因。 */

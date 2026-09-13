@@ -1,14 +1,15 @@
 package com.playerPlugin.playerTaskX.api.registry;
 
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
-import com.playerPlugin.playerTaskX.api.objective.Trigger;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 /**
  * 目标类型注册表。内置类型在插件启动时注册，其它插件也可注册自定义类型。
+ *
+ * <p>只负责「按 id 查类型」；把动作分发到目标类型是引擎自己的事
+ * （见 {@code ProgressService} 的按玩家目标索引）。</p>
  */
 public interface ObjectiveRegistry {
 
@@ -29,7 +30,4 @@ public interface ObjectiveRegistry {
     default String displayName(String id) {
         return find(id).map(ObjectiveType::displayName).orElse(id);
     }
-
-    /** 响应指定动作的类型，引擎的分发入口。 */
-    List<ObjectiveType> byTrigger(Trigger trigger);
 }
