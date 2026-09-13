@@ -2,8 +2,6 @@ package com.playerPlugin.playerTaskX.core.storage;
 
 import com.playerPlugin.playerTaskX.api.model.Preset;
 
-import java.util.List;
-
 /**
  * 预设仓储：目标/奖励预设的存取。
  *
@@ -16,10 +14,4 @@ import java.util.List;
  * 类别（目标/奖励）记录在 {@link Preset#kind()} 上，因此不需要按类别拆成两个仓储。
  */
 public interface PresetRepository extends DefinitionRepository<Preset> {
-
-    /** 按类别过滤；{@code kind} 见 {@link Preset#OBJECTIVES} 与 {@link Preset#REWARDS}。 */
-    default List<Preset> findByKind(String kind) {
-        String wanted = Preset.normalizeKind(kind);
-        return findAll().stream().filter(preset -> wanted.equals(preset.kind())).toList();
-    }
 }

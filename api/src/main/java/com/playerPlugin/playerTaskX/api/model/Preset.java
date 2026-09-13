@@ -39,11 +39,6 @@ public record Preset(String kind, String id, String name, String type,
                 : Collections.unmodifiableMap(new LinkedHashMap<>(properties));
     }
 
-    public static Preset of(String kind, String id, String name, String type,
-                            Map<String, Object> properties, String description) {
-        return new Preset(kind, id, name, type, properties, description);
-    }
-
     /** 类别规范化：只认 objectives / rewards，其它一律归为 objectives 而不是抛异常。 */
     public static String normalizeKind(String kind) {
         return REWARDS.equalsIgnoreCase(kind) ? REWARDS : OBJECTIVES;

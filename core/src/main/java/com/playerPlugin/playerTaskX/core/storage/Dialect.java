@@ -9,18 +9,8 @@ public enum Dialect {
 
     SQLITE {
         @Override
-        public String autoIncrementPrimaryKey(String column) {
-            return "INTEGER PRIMARY KEY AUTOINCREMENT";
-        }
-
-        @Override
         public String textType() {
             return "TEXT";
-        }
-
-        @Override
-        public String blobType() {
-            return "BLOB";
         }
 
         @Override
@@ -40,18 +30,8 @@ public enum Dialect {
 
     MYSQL {
         @Override
-        public String autoIncrementPrimaryKey(String column) {
-            return "BIGINT AUTO_INCREMENT PRIMARY KEY";
-        }
-
-        @Override
         public String textType() {
             return "TEXT";
-        }
-
-        @Override
-        public String blobType() {
-            return "LONGBLOB";
         }
 
         @Override
@@ -66,14 +46,8 @@ public enum Dialect {
         }
     };
 
-    /** 自增主键列定义，如 {@code id INTEGER PRIMARY KEY AUTOINCREMENT}。 */
-    public abstract String autoIncrementPrimaryKey(String column);
-
     /** 长文本列类型。 */
     public abstract String textType();
-
-    /** 二进制列类型。 */
-    public abstract String blobType();
 
     /** 生成 upsert 语句：SQLite 用 {@code ON CONFLICT}，MySQL 用 {@code ON DUPLICATE KEY}。 */
     public abstract String upsert(String table, String keyColumns, String columns);

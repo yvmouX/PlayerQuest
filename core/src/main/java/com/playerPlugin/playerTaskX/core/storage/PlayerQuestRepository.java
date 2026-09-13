@@ -21,11 +21,6 @@ public interface PlayerQuestRepository {
     /** 按玩家与任务取单条记录。 */
     Optional<PlayerQuest> find(UUID playerId, String questId);
 
-    /** 是否存在记录（任意状态）。 */
-    default boolean exists(UUID playerId, String questId) {
-        return find(playerId, questId).isPresent();
-    }
-
     /** 新增或覆盖一条玩家任务记录。 */
     void save(PlayerQuest playerQuest);
 

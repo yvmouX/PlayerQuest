@@ -42,11 +42,6 @@ public final class QuestFileRepository implements QuestRepository {
         this.warn = warn;
     }
 
-    /** 便捷构造：日志落到标准错误（供测试与无插件环境使用）。 */
-    public static QuestFileRepository of(Path folder) {
-        return new QuestFileRepository(new JsonFileStore(folder), System.err::println);
-    }
-
     @Override
     public List<Quest> findAll() {
         files.cleanTempFiles();
@@ -104,7 +99,6 @@ public final class QuestFileRepository implements QuestRepository {
      *
      * @return 解析出的任务；无法解析返回 null（已记日志）
      */
-    @SuppressWarnings("unchecked")
     private Quest parse(Path path, String json) {
         Map<String, Object> node;
         try {

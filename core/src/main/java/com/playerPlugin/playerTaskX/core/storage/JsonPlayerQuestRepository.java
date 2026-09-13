@@ -73,11 +73,6 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         this.warn = warn;
     }
 
-    /** 便捷构造：日志落到标准错误。 */
-    public static JsonPlayerQuestRepository of(Path folder) {
-        return new JsonPlayerQuestRepository(folder, System.err::println);
-    }
-
     @Override
     public List<PlayerQuest> findByPlayer(UUID playerId) {
         if (playerId == null) {
@@ -383,6 +378,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
      */
     private void write(UUID playerId, Map<String, PlayerQuest> records, DailyState dailyState) {
         Map<String, Object> root = new LinkedHashMap<>();
+        // 这个 version 键由 JsonPlayerQuestRepositoryTest#fileShape 钉住（文件形态对外可见），不是冗余字段
         root.put("version", 1);
         List<Map<String, Object>> list = new ArrayList<>();
         for (PlayerQuest record : records.values()) {

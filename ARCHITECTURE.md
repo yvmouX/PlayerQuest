@@ -459,6 +459,13 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 
 ### 真机验证结论（Folia 26.1.2-8）
 
+**编辑器接口的端到端验证（含写路径）**：`GET /api/quests`（13 条，校验问题如实下发）、
+`GET /api/quests/{id}`、`GET /api/schema`（14 目标 / 5 奖励）、`GET /api/catalog`
+（1506 材质 + 157 实体）、`GET /api/presets`、`GET /api/langs`、`POST /api/reload` 全部正常；
+写路径亦已跑通：`POST /api/presets/objectives` → 读回（8→9）→ `DELETE` 恢复；
+`POST /api/quests`（存副本）→ 列表变 14 → `DELETE` → 回到 13。
+软依赖缺失的提示也确实穿到了编辑器的 `problems` 字段。全程控制台无异常。
+
 启动日志实证：
 
 ```

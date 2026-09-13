@@ -9,7 +9,6 @@ import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -173,12 +172,5 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
             return String.valueOf((long) cost);
         }
         return String.valueOf(cost);
-    }
-
-    /** 供调试：列出本扩展全部变量名。 */
-    public List<String> knownVariables() {
-        return List.of("daily_count", "daily_active", "daily_completed", "daily_claimed",
-                "daily_refresh_left", "daily_refresh_cost", "claimable", "active",
-                "quest_name_<id>", "quest_progress_<id>", "quest_percent_<id>", "quest_status_<id>");
     }
 }

@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.core.storage;
 import com.playerPlugin.playerTaskX.api.model.Preset;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +21,6 @@ import java.util.function.Consumer;
  * <h2>文件形态</h2>
  * <pre>
  * {
- *   "version": 1,
  *   "objectives": [ { "id": "mine-stone", "name": "挖 64 个石头", "type": "break_block",
  *                     "properties": { "target": "STONE", "amount": 64 }, "description": "…" } ],
  *   "rewards": [ … ]
@@ -42,7 +40,6 @@ import java.util.function.Consumer;
  */
 public final class PresetFileRepository implements PresetRepository {
 
-    private static final String KEY_VERSION = "version";
     private static final String KEY_OBJECTIVES = Preset.OBJECTIVES;
     private static final String KEY_REWARDS = Preset.REWARDS;
 
@@ -59,11 +56,6 @@ public final class PresetFileRepository implements PresetRepository {
         this.files = new JsonFileStore(folder.toPath());
         this.warn = warn;
         load();
-    }
-
-    /** 便捷构造：日志落到标准错误。 */
-    public static PresetFileRepository of(Path dataFolder) {
-        return new PresetFileRepository(dataFolder.toFile(), System.err::println);
     }
 
     @Override
@@ -110,7 +102,6 @@ public final class PresetFileRepository implements PresetRepository {
     // ------------------------------------------------------------------
 
     /** 读取文件；不存在或损坏时退回内置默认预设并写盘。 */
-    @SuppressWarnings("unchecked")
     private void load() {
         String json = files.readFile(file.toPath());
         if (json != null) {
@@ -169,7 +160,6 @@ public final class PresetFileRepository implements PresetRepository {
     /** 按类别分组写盘。 */
     private void persist() {
         Map<String, Object> root = new LinkedHashMap<>();
-        root.put(KEY_VERSION, 1);
         root.put(KEY_OBJECTIVES, toList(Preset.OBJECTIVES));
         root.put(KEY_REWARDS, toList(Preset.REWARDS));
         files.write("presets", JsonCodec.write(root));

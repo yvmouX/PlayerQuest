@@ -1,6 +1,5 @@
 package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -34,16 +33,6 @@ final class Sql {
                 statement.setString(index, String.valueOf(value));
             }
         }
-    }
-
-    /** 生成 {@code (?, ?, ...)}，用于 upsert 的 VALUES 段。 */
-    static String placeholders(int count) {
-        StringBuilder builder = new StringBuilder("(");
-        for (int i = 0; i < count; i++) {
-            if (i > 0) builder.append(", ");
-            builder.append('?');
-        }
-        return builder.append(')').toString();
     }
 
     /** 校验内联语句：禁止分号，避免多语句注入。 */
