@@ -22,10 +22,10 @@
           {{ loading ? '加载中…' : '刷新' }}
         </button>
         <button class="btn" type="button" :disabled="loading || busy || exporting" @click="exportQuests">
-          {{ exporting ? '导出中…' : '导出 JSON' }}
+          {{ exporting ? '导出中…' : '导出 YAML' }}
         </button>
         <button class="btn" type="button" :disabled="loading || busy || importing" @click="pickImportFile">
-          {{ importing ? '导入中…' : '导入 JSON' }}
+          {{ importing ? '导入中…' : '导入 YAML' }}
         </button>
         <RouterLink class="btn btn-primary" :to="{ name: 'quest-new' }">新建任务</RouterLink>
       </div>
@@ -115,10 +115,10 @@
     <!-- 空状态：区分「一个任务都没有」与「筛选后为空」 -->
     <div v-else-if="!quests.length" class="card empty-state">
       <strong>还没有任何任务</strong>
-      <p class="hint">点击右上角「新建任务」创建第一个，或从已有备份导入 JSON。</p>
+      <p class="hint">点击右上角「新建任务」创建第一个，或从已有备份导入 YAML。</p>
       <div class="view-actions">
         <RouterLink class="btn btn-primary" :to="{ name: 'quest-new' }">新建任务</RouterLink>
-        <button class="btn" type="button" @click="pickImportFile">导入 JSON</button>
+        <button class="btn" type="button" @click="pickImportFile">导入 YAML</button>
       </div>
     </div>
 
@@ -153,6 +153,10 @@
         <template #name="{ row }">
           <div class="cell-name">
             <span class="raw" :title="row.name">{{ row.name }}</span>
+            <!-- 来自 quests/ 的 YAML 定义：只读，不能在这里改 -->
+            <span v-if="row.source === 'file'" class="badge badge-gray" title="来自 quests/ 目录的 YAML 文件，只读">
+              YAML
+            </span>
             <span v-if="plainIfDifferent(row.name)" class="hint">{{ plainIfDifferent(row.name) }}</span>
           </div>
         </template>
@@ -187,8 +191,10 @@
             class="switch"
             :class="{ on: row.enabled }"
             type="button"
-            :disabled="busy"
-            :title="row.enabled ? '点击禁用' : '点击启用'"
+            :disabled="busy || row.source === 'file'"
+            :title="row.source === 'file'
+              ? '该任务由 quests/ 下的 YAML 文件定义，只读：改文件后 /ptxa reload'
+              : (row.enabled ? '点击禁用' : '点击启用')"
             @click="toggleEnabled(row)"
           >
             <span class="switch-dot"></span>
@@ -207,7 +213,13 @@
           <div class="row-actions">
             <RouterLink class="btn btn-small" :to="{ name: 'quest-edit', params: { id: row.id } }">编辑</RouterLink>
             <button class="btn btn-small" type="button" :disabled="busy" @click="duplicate(row)">复制</button>
-            <button class="btn btn-small btn-danger" type="button" :disabled="busy" @click="askDelete(row)">
+            <button
+              class="btn btn-small btn-danger"
+              type="button"
+              :disabled="busy || row.source === 'file'"
+              :title="row.source === 'file' ? 'YAML 文件里的定义不能在编辑器里删除' : ''"
+              @click="askDelete(row)"
+            >
               删除
             </button>
           </div>
@@ -279,12 +291,12 @@
       </template>
     </div>
 
-    <!-- 隐藏的文件选择框：只接受 json -->
+    <!-- 隐藏的文件选择框：只接受 yml -->
     <input
       ref="fileInput"
       class="hidden-file"
       type="file"
-      accept="application/json,.json"
+      accept=".yml,.yaml,application/x-yaml,text/yaml"
       @change="onFilePicked"
     />
   </section>
@@ -299,7 +311,7 @@ import EditCheckbox from '../components/EditCheckbox.vue'
 import PaginationBar from '../components/PaginationBar.vue'
 import UnauthorizedHint from '../components/UnauthorizedHint.vue'
 import { useToast } from '../composables/useToast'
-import { QuestApi, StatsApi, errorMessage, isUnauthorized, normalizeImportedQuest } from '../services/api'
+import { QuestApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
 import type {
   Quest,
   QuestImportResult,
@@ -307,6 +319,7 @@ import type {
   TableColumn
 } from '../types'
 import { plainIfDifferent } from '../utils/text'
+import { previewQuestImport } from '../utils/yaml'
 
 const toast = useToast()
 const router = useRouter()
@@ -516,8 +529,14 @@ function rowClass(quest: Quest): string {
  * 保存后重新拉取列表，让校验结果由后端重算。
  */
 async function bulkToggle(enabled: boolean): Promise<void> {
-  const targets = quests.value.filter(quest => selected.value.has(quest.id))
+  const picked = quests.value.filter(quest => selected.value.has(quest.id))
+  // 文件里的定义是只读的：这里直接跳过并如实报告，而不是让后端逐条回 409
+  const targets = picked.filter(quest => quest.source !== 'file')
+  const skipped = picked.length - targets.length
   if (!targets.length || busy.value) {
+    if (skipped && !busy.value) {
+      toast.info(`${skipped} 个任务来自 YAML 文件（只读），已跳过`)
+    }
     return
   }
   busy.value = true
@@ -540,6 +559,9 @@ async function bulkToggle(enabled: boolean): Promise<void> {
   } else {
     toast.success(`已${enabled ? '启用' : '禁用'} ${ok} 个任务`)
   }
+  if (skipped) {
+    toast.info(`${skipped} 个任务来自 YAML 文件（只读），已跳过`)
+  }
   clearSelection()
 }
 
@@ -549,7 +571,7 @@ const bulkDeleteMessage = computed(() => {
   const ids = [...selected.value]
   const preview = ids.slice(0, 8).map(id => `· ${id}`).join('\n')
   const rest = ids.length > 8 ? `\n… 以及另外 ${ids.length - 8} 个任务` : ''
-  return `确定删除选中的 ${ids.length} 个任务吗？该操作会立即写入任务文件，不可撤销。\n\n${preview}${rest}`
+  return `确定删除选中的 ${ids.length} 个任务吗？该操作会立即写入数据库，不可撤销（YAML 文件里的只读定义不在其中）。\n\n${preview}${rest}`
 })
 
 function askBulkDelete(): void {
@@ -564,11 +586,20 @@ async function confirmBulkDelete(): Promise<void> {
   if (!ids.length || busy.value) {
     return
   }
+  // 只读的（YAML 文件里的）不参与批量删除：跳过并报告，避免一半成功一半 409
+  const readOnly = new Set(quests.value.filter(quest => quest.source === 'file').map(quest => quest.id))
+  const deletable = ids.filter(id => !readOnly.has(id))
+  const skipped = ids.length - deletable.length
+  if (!deletable.length) {
+    clearSelection()
+    toast.info(`${skipped} 个任务来自 YAML 文件（只读），不能在这里删除`)
+    return
+  }
   busy.value = true
   error.value = ''
   let ok = 0
   const failures: string[] = []
-  for (const id of ids) {
+  for (const id of deletable) {
     try {
       await QuestApi.remove(id)
       ok++
@@ -594,7 +625,7 @@ const deleting = ref(false)
 
 const deleteMessage = computed(() =>
   pendingDelete.value
-    ? `确定删除任务「${pendingDelete.value.id}」吗？该操作会立即写入任务文件，不可撤销。`
+    ? `确定删除任务「${pendingDelete.value.id}」吗？该操作会立即写入数据库，不可撤销（YAML 文件里的只读定义不在其中）。`
     : ''
 )
 
@@ -629,6 +660,11 @@ async function confirmDelete(): Promise<void> {
 /** 单行启用/禁用：整条任务回存，避免后端做「部分更新」。 */
 async function toggleEnabled(quest: Quest): Promise<void> {
   if (busy.value) {
+    return
+  }
+  if (quest.source === 'file') {
+    // 按钮已经禁用，这里再挡一次：状态是 YAML 文件里的 enabled，改不了
+    toast.info(`任务 ${quest.id} 由 YAML 文件定义（只读），请改文件后 /ptxa reload`)
     return
   }
   busy.value = true
@@ -690,7 +726,7 @@ async function openEditor(id: string): Promise<void> {
 /* ---------------- 导出 / 导入 ---------------- */
 
 const fileInput = ref<HTMLInputElement | null>(null)
-const pendingImport = ref<{ quests: Quest[]; fileName: string } | null>(null)
+const pendingImport = ref<{ yaml: string; count: number; fileName: string } | null>(null)
 const importResult = ref<QuestImportResult | null>(null)
 /** 导入方式：默认「合并」（保留现有任务），勾选后为「替换」（先清空）。 */
 const replaceMode = ref(false)
@@ -699,11 +735,16 @@ const importMessage = computed(() => {
   if (!pendingImport.value) {
     return ''
   }
-  return `文件「${pendingImport.value.fileName}」中解析出 ${pendingImport.value.quests.length} 个任务，`
+  return `文件「${pendingImport.value.fileName}」中解析出 ${pendingImport.value.count} 条任务定义，`
     + '请确认导入方式。'
 })
 
-/** 导出：直接下载后端返回的原始 JSON（含 version 字段，便于日后兼容）。 */
+/**
+ * 导出：后端直接给 YAML 文本，浏览器存成 .yml。
+ *
+ * <p>不在这里把任务对象转 YAML：字段映射只有后端那一份，前端再实现一次迟早会漂移；
+ * 而且导出的文件要能直接放进 `quests/` 目录当定义用。
+ */
 async function exportQuests(): Promise<void> {
   if (exporting.value) {
     return
@@ -711,18 +752,9 @@ async function exportQuests(): Promise<void> {
   exporting.value = true
   error.value = ''
   try {
-    const data = await QuestApi.exportAll()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'quests.json'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    // 交给浏览器读完再释放，立即 revoke 在部分浏览器上会得到空文件
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast.success(`已导出 ${data.quests.length} 个任务到 quests.json`)
+    const yaml = await QuestApi.exportYaml()
+    download(new Blob([yaml], { type: 'application/x-yaml;charset=utf-8' }), 'playerTaskX-quests.yml')
+    toast.success(`已导出 ${quests.value.length} 个任务到 playerTaskX-quests.yml`)
   } catch (e) {
     const message = `导出失败：${errorMessage(e)}`
     error.value = message
@@ -733,10 +765,28 @@ async function exportQuests(): Promise<void> {
   }
 }
 
+/** 触发浏览器下载；立即 revoke 在部分浏览器上会得到空文件，因此延后释放。 */
+function download(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function pickImportFile(): void {
   fileInput.value?.click()
 }
 
+/**
+ * 选好文件后先本地预检：数出有几条定义、YAML 语法是否成立。
+ *
+ * <p>真正的字段校验与入库都在后端（映射只有一份），这里只为让确认框能说清「要导入几条」
+ * ——「替换」是破坏性操作，值得在动手前把数字摆在眼前，也能立刻发现选错了文件。
+ */
 async function onFilePicked(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement | null
   const file = input?.files?.[0]
@@ -750,45 +800,24 @@ async function onFilePicked(event: Event): Promise<void> {
   error.value = ''
   try {
     const text = await file.text()
-    const parsed: unknown = JSON.parse(text)
-    const rawList = Array.isArray(parsed)
-      ? parsed
-      // 兼容导出文件 {version, quests:[...]} 与裸数组两种形态
-      : (parsed && typeof parsed === 'object' && Array.isArray((parsed as { quests?: unknown }).quests))
-        ? (parsed as { quests: unknown[] }).quests
-        : null
-    if (!rawList) {
-      error.value = '导入失败：文件里没有任务数组（期望 {"version":1,"quests":[...]} 或直接是数组）'
-      toast.error('导入失败：文件格式不正确')
+    const preview = previewQuestImport(text)
+    if (preview.error) {
+      error.value = `导入失败：${preview.error}`
+      toast.error('导入失败：YAML 解析错误')
       return
     }
-    const list: Quest[] = []
-    let dropped = 0
-    rawList.forEach(item => {
-      const quest = normalizeImportedQuest(item, '')
-      if (quest) {
-        list.push(quest)
-      } else {
-        dropped++
-      }
-    })
-    if (!list.length) {
-      error.value = '导入失败：文件里没有可用的任务记录（每条都必须有 id）'
-      toast.error('导入失败：没有可用记录')
+    if (!preview.count) {
+      error.value = '导入失败：文件里没有可用的任务定义（每个任务都要有 id）'
+      toast.error('导入失败：没有可用定义')
       return
     }
     replaceMode.value = false
-    pendingImport.value = { quests: list, fileName: file.name }
-    if (dropped) {
-      toast.info(`已读取 ${list.length} 条记录，另有 ${dropped} 条因缺少 id 被忽略`)
-    }
+    pendingImport.value = { yaml: text, count: preview.count, fileName: file.name }
   } catch (e) {
-    error.value = `导入失败：无法解析 JSON（${e instanceof Error ? e.message : String(e)}）`
-    toast.error('导入失败：JSON 解析错误')
+    error.value = `导入失败：无法读取文件（${e instanceof Error ? e.message : String(e)}）`
+    toast.error('导入失败：读取文件出错')
   }
-}
-
-function cancelImport(): void {
+}function cancelImport(): void {
   pendingImport.value = null
   replaceMode.value = false
 }
@@ -796,8 +825,8 @@ function cancelImport(): void {
 /**
  * 执行导入。
  *
- * <p>replace=true 会先删光现有任务，风险已经在上一步的对话框里用复选框
- * 明确告知，这里不再重复确认。
+ * <p>replace=true 会先删光数据库里的任务，风险已经在上一步的对话框里用复选框
+ * 明确交代，这里不再重复确认。YAML 解析与字段校验都在后端：报错信息原样带回给用户。
  */
 async function confirmImport(): Promise<void> {
   const payload = pendingImport.value
@@ -809,7 +838,7 @@ async function confirmImport(): Promise<void> {
   importing.value = true
   error.value = ''
   try {
-    const result = await QuestApi.importQuests({ quests: payload.quests, replace })
+    const result = await QuestApi.importYaml(payload.yaml, replace)
     importResult.value = result
     await refresh()
     if (result.skipped.length) {

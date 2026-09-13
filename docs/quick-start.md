@@ -18,9 +18,15 @@ plugins/playerTaskX/
 │   └── en.yml
 ├── editor/
 │   └── zh_cn.json      # 编辑器图标列表的中文译名（自动下载；离线服可手动放一份）
+├── quests/             # 手写 YAML 任务定义（只读来源，初始为空）
+├── presets/            # 手写 YAML 目标/奖励预设（同上）
 └── data/
     └── playerTaskX.db  # SQLite 数据库（任务定义、预设与玩家进度都在这里）
 ```
+
+`quests/` 与 `presets/` 一开始是**空**的：任务写在里面就能被插件读到，但那份定义只读
+（库优先），游戏内与编辑器只修改数据库里的定义。详见
+[配置 · 用 YAML 文件写定义](configuration?id=用-yaml-文件写定义)。
 
 启动日志里应能看到：
 
@@ -72,8 +78,10 @@ plugins/playerTaskX/
 
 > 编辑器保存的任务**立即生效**（写库的同时更新内存定义与玩家进度索引），不需要重载。
 
-> 习惯手写配置的话，任务编辑页右上角可以切到 **YAML**：字段名与「导出 JSON」一致，
+> 习惯手写配置的话，任务编辑页右上角可以切到 **YAML**：字段名与「导出 YAML」一致，
 > 边写边生效，保存仍走同一个按钮。详见 [网页编辑器](editor?id=yaml-视图手写任务配置)。
+> 想让任务以文件形态进版本控制，把它们放进 `plugins/playerTaskX/quests/`，
+> 或从编辑器「导出 YAML」再自行拆分（见 [配置](configuration?id=用-yaml-文件写定义)）。
 
 ---
 
@@ -119,6 +127,7 @@ plugins/playerTaskX/
 | 关掉完成标题 | `progress.title-on-complete: false` |
 | 改文案 | 编辑 `lang/zh_CN.yml`，然后 `/ptxa reload` |
 | 换存储为 MySQL | `storage.type: MYSQL` 并填写连接信息（需重启）；任务定义、预设与玩家数据一起换库 |
+| 用文件管理任务定义 | 写进 `quests/` / `presets/`（只读来源），然后 `/ptxa reload`；不读文件就设 `definitions.read-files: false` |
 
 改完配置执行 `/ptxa reload` 即可生效（存储类型与编辑器端口需重启服务器）。
 

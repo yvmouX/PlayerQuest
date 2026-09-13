@@ -39,8 +39,8 @@
       <button
         class="btn"
         type="button"
-        :disabled="loading || saving || savingCopy"
-        title="以当前内容创建一份 id 以 _copy 结尾的新任务"
+        :disabled="loading || saving || savingCopy || readOnly"
+        :title="readOnly ? '该任务由 quests/ 下的 YAML 文件定义，只读' : '以当前内容创建一份 id 以 _copy 结尾的新任务'"
         @click="askSaveCopy"
       >
         {{ savingCopy ? '另存中…' : '另存为副本' }}
@@ -49,15 +49,28 @@
         v-if="persisted"
         class="btn btn-danger"
         type="button"
-        :disabled="loading || saving || deleting"
+        :disabled="loading || saving || deleting || readOnly"
+        :title="readOnly ? 'YAML 文件里的定义不能在编辑器里删除' : ''"
         @click="deletePending = true"
       >
         {{ deleting ? '删除中…' : '删除任务' }}
       </button>
-      <button class="btn btn-primary" type="button" :disabled="loading || saving" @click="save">
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="loading || saving || readOnly"
+        :title="readOnly ? '该任务由 quests/ 下的 YAML 文件定义，只读：改文件后 /ptxa reload' : ''"
+        @click="save"
+      >
         {{ saving ? '保存中…' : '保存' }}
       </button>
     </header>
+
+    <p v-if="readOnly" class="panel warn-panel">
+      该任务定义在 <code class="mono">quests/</code> 下的 YAML 文件里，<b>只读</b>：
+      游戏内与网页编辑器只修改数据库中的定义。要改它请直接改文件并执行 <code class="mono">/ptxa reload</code>，
+      或把它「导出 YAML」后删除原文件、再「导入 YAML」搬进数据库。
+    </p>
 
     <p v-if="error" class="panel error-panel">{{ error }}</p>
     <UnauthorizedHint :show="unauthorized" />
@@ -67,12 +80,13 @@
     <section v-else-if="yaml.mode.value === 'yaml'" class="card">
       <header class="card-head">
         <h3>YAML 编辑</h3>
-        <span class="hint">字段名与导出的 JSON 一致，可直接粘贴互换</span>
+        <span class="hint">字段名与导出/导入的 YAML 一致，可直接粘贴互换</span>
       </header>
       <YamlTextField
         v-model="yaml.text.value"
         label="任务 YAML"
         :rows="24"
+        :readonly="readOnly"
         :error="yaml.error.value"
         :warnings="yaml.warnings.value"
         hint="顶层是任务字段：id / name / description / icon / category / type / refreshCost / enabled / prerequisites / objectives / rewards。"
@@ -302,7 +316,7 @@
     <ConfirmDialog
       :show="deletePending"
       title="删除任务"
-      :message="`确定删除任务「${form.id}」吗？该操作会立即写入任务文件，不可撤销。`"
+      :message="`确定删除任务「${form.id}」吗？该操作会立即写入数据库，不可撤销（YAML 文件里的只读定义不在其中）。`"
       confirm-text="删除"
       danger
       @confirm="confirmDelete"
@@ -419,6 +433,8 @@ const unauthorized = ref(false)
 const editingId = ref<string | null>(null)
 /** 是否已经是服务端存在的任务（决定 id 是否只读、是否显示删除）。 */
 const persisted = computed(() => !!editingId.value)
+/** 该任务是否来自 quests/ 下的 YAML 文件：只读，保存/删除/另存都被禁用。 */
+const readOnly = ref(false)
 
 /** 已从服务端加载过的任务 id；用于避免路由变化时把未保存的改动冲掉。 */
 let loadedId: string | null = null
@@ -688,6 +704,7 @@ function toRows(
 
 function applyQuest(quest: Quest): void {
   editingId.value = quest.id
+  readOnly.value = quest.source === 'file'
   form.id = quest.id
   form.name = quest.name ?? ''
   form.icon = quest.icon || 'PAPER'
@@ -707,6 +724,7 @@ function applyQuest(quest: Quest): void {
 
 /** 清空成新建状态。 */
 function resetToNew(): void {
+  readOnly.value = false
   form.id = ''
   form.name = ''
   form.icon = 'PAPER'
@@ -958,6 +976,11 @@ function removePrerequisite(id: string): void {
 /* ---------------- 保存 / 删除 ---------------- */
 
 async function save(): Promise<void> {
+  if (readOnly.value) {
+    // 按钮已禁用，这里再挡一次：只读定义既不能改也不能在库里造一份同 id
+    toast.error('该任务由 quests/ 下的 YAML 文件定义，只读：请改文件后 /ptxa reload')
+    return
+  }
   if (!String(form.id ?? '').trim()) {
     toast.error('任务 ID 不能为空')
     return
@@ -1019,6 +1042,10 @@ function askSaveCopy(): void {
 
 async function saveAsCopy(): Promise<void> {
   copyPending.value = false
+  if (readOnly.value) {
+    toast.error('只读定义不能另存为副本；先改文件，或把它导入数据库后再改')
+    return
+  }
   const targetId = copyTargetId.value
   if (yaml.mode.value === 'yaml' && !yaml.applyNow()) {
     toast.error('YAML 有语法错误，未另存')
@@ -1055,6 +1082,10 @@ async function confirmDelete(): Promise<void> {
   const id = editingId.value
   deletePending.value = false
   if (!id) {
+    return
+  }
+  if (readOnly.value) {
+    toast.error('该任务由 quests/ 下的 YAML 文件定义，不能在编辑器里删除')
     return
   }
   deleting.value = true

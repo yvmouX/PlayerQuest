@@ -25,6 +25,12 @@
         <button class="btn" type="button" :disabled="loading || busy" @click="refresh">
           {{ loading ? '加载中…' : '刷新' }}
         </button>
+        <button class="btn" type="button" :disabled="loading || busy || exporting" @click="exportPresets">
+          {{ exporting ? '导出中…' : '导出 YAML' }}
+        </button>
+        <button class="btn" type="button" :disabled="loading || busy || importing" @click="pickImportFile">
+          {{ importing ? '导入中…' : '导入 YAML' }}
+        </button>
         <button class="btn btn-primary" type="button" :disabled="busy" @click="createDraft('objectives')">
           + 新建目标预设
         </button>
@@ -33,6 +39,14 @@
         </button>
       </div>
     </header>
+
+    <input
+      ref="fileInput"
+      class="hidden-file-input"
+      type="file"
+      accept=".yml,.yaml,text/yaml,application/x-yaml"
+      @change="onFilePicked"
+    />
 
     <p v-if="error" class="panel error-panel">{{ error }}</p>
     <UnauthorizedHint :show="unauthorized" />
@@ -116,14 +130,26 @@
                 v-if="!draft.isNew"
                 class="btn btn-small btn-danger"
                 type="button"
-                :disabled="busy"
+                :disabled="busy || draftReadOnly"
+                :title="draftReadOnly ? '该预设由 presets/ 下的 YAML 文件定义，只读' : ''"
                 @click="deletePending = true"
               >删除</button>
-              <button class="btn btn-small btn-primary" type="button" :disabled="busy" @click="save">
+              <button
+                class="btn btn-small btn-primary"
+                type="button"
+                :disabled="busy || draftReadOnly"
+                :title="draftReadOnly ? '该预设由 presets/ 下的 YAML 文件定义，只读：改文件后 /ptxa reload' : ''"
+                @click="save"
+              >
                 {{ busy ? '保存中…' : '保存预设' }}
               </button>
             </div>
           </header>
+
+          <p v-if="draftReadOnly" class="panel warn-panel">
+            该预设定义在 <code class="mono">presets/</code> 下的 YAML 文件里，<b>只读</b>：
+            要改它请直接改文件并执行 <code class="mono">/ptxa reload</code>。
+          </p>
 
           <p v-if="draft.isNew" class="hint instance-note">
             新预设的 id 由后端自动生成；保存后即可在任务编辑器里套用。
@@ -135,9 +161,10 @@
             v-model="yaml.text.value"
             label="预设 YAML"
             :rows="14"
+            :readonly="draftReadOnly"
             :error="yaml.error.value"
             :warnings="yaml.warnings.value"
-            hint="顶层是预设字段：name / type / description / properties（id 留空即新建，由后端生成）。"
+            hint="顶层是预设字段：kind / name / type / description / properties（id 留空即新建，由后端生成）。"
             @regenerate="yaml.syncFromSource()"
           />
 
@@ -206,6 +233,29 @@
       @confirm="confirmDelete"
       @cancel="deletePending = false"
     />
+
+    <!-- 导入：选择合并 / 替换 -->
+    <ConfirmDialog
+      :show="pendingImport !== null"
+      title="导入预设"
+      :message="importMessage"
+      :confirm-text="replaceMode ? '替换导入' : '合并导入'"
+      :danger="replaceMode"
+      @confirm="confirmImport"
+      @cancel="cancelImport"
+    >
+      <template #options>
+        <label class="checkbox-line">
+          <input v-model="replaceMode" type="checkbox" />
+          <span class="checkbox-text">替换模式：先清空数据库里的预设再导入</span>
+        </label>
+        <p class="hint">
+          不勾选为「合并」：保留现有预设，id 相同的由文件里的版本覆盖。
+          勾选后会先删除数据库里的 {{ totalCount }} 条预设，不可撤销；
+          <code class="mono">presets/</code> 目录里定义的只读预设不在替换范围内。
+        </p>
+      </template>
+    </ConfirmDialog>
   </section>
 </template>
 
@@ -229,7 +279,7 @@ import {
   upsertPreset
 } from '../utils/presets'
 import { defaultProperties, schemaOptions, withDefaults } from '../utils/schema'
-import { presetFromYaml, presetToYaml } from '../utils/yaml'
+import { presetFromYaml, presetToYaml, previewPresetImport } from '../utils/yaml'
 
 const toast = useToast()
 
@@ -244,6 +294,8 @@ interface Draft {
   /** 列表里对应的原始预设快照，用来算「未保存修改」 */
   baseline: string
   isNew: boolean
+  /** 来自 presets/ 下的 YAML：只读，保存与删除都被禁用 */
+  readOnly: boolean
 }
 
 const presets = ref<PresetMap>({ objectives: [], rewards: [] })
@@ -257,6 +309,8 @@ const error = ref('')
 const unauthorized = ref(false)
 const draft = ref<Draft | null>(null)
 const deletePending = ref(false)
+/** 来自 presets/ 下的 YAML 的草稿只读：保存/删除按钮据此禁用。 */
+const draftReadOnly = computed(() => draft.value?.readOnly === true)
 
 const totalCount = computed(() => presets.value.objectives.length + presets.value.rewards.length)
 
@@ -386,7 +440,8 @@ function toDraft(kind: PresetKind, preset: Preset): Draft {
     description: preset.description,
     properties: { ...preset.properties },
     baseline: '',
-    isNew: false
+    isNew: false,
+    readOnly: preset.source === 'file'
   }
   const schema = schemasOf(kind)[preset.type]
   if (schema) {
@@ -424,7 +479,8 @@ function createDraft(kind: PresetKind): void {
     description: '',
     properties: defaultProperties(schemas[first]),
     baseline: '',
-    isNew: true
+    isNew: true,
+    readOnly: false
   }
   value.baseline = serialize(value)
   draft.value = value
@@ -530,9 +586,134 @@ function showVisual(): void {
   }
 }
 
+/* ---------------- 导出 / 导入 ---------------- */
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const exporting = ref(false)
+const importing = ref(false)
+/** 待确认的导入：文件内容 + 预检出的条数 + 文件名。 */
+const pendingImport = ref<{ text: string; count: number; fileName: string } | null>(null)
+/** 导入方式：默认「合并」（保留现有预设），勾选后为「替换」（先清空数据库里的）。 */
+const replaceMode = ref(false)
+
+const importMessage = computed(() => {
+  if (!pendingImport.value) {
+    return ''
+  }
+  return `文件「${pendingImport.value.fileName}」中解析出 ${pendingImport.value.count} 条预设定义，请确认导入方式。`
+})
+
+/** 导出全部预设（两类一起）：后端给 YAML，浏览器存成 .yml。 */
+async function exportPresets(): Promise<void> {
+  if (exporting.value) {
+    return
+  }
+  exporting.value = true
+  error.value = ''
+  try {
+    const yaml = await PresetApi.exportYaml()
+    const blob = new Blob([yaml], { type: 'application/x-yaml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'playerTaskX-presets.yml'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast.success(`已导出 ${totalCount.value} 条预设到 playerTaskX-presets.yml`)
+  } catch (e) {
+    const message = `导出失败：${errorMessage(e)}`
+    error.value = message
+    unauthorized.value = isUnauthorized(e)
+    toast.error(message)
+  } finally {
+    exporting.value = false
+  }
+}
+
+function pickImportFile(): void {
+  fileInput.value?.click()
+}
+
+/**
+ * 选好文件后本地预检：数出有几条定义、YAML 语法是否成立。
+ *
+ * <p>真正的字段校验与入库都在后端；这里只为让确认框能说清「要导入几条」——
+ * 「替换」是破坏性操作，值得在动手前把数字摆在眼前。
+ */
+async function onFilePicked(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0]
+  if (input) {
+    input.value = ''
+  }
+  if (!file) {
+    return
+  }
+  error.value = ''
+  try {
+    const text = await file.text()
+    const preview = previewPresetImport(text)
+    if (preview.error) {
+      error.value = `导入失败：${preview.error}`
+      toast.error('导入失败：YAML 解析错误')
+      return
+    }
+    if (!preview.count) {
+      error.value = '导入失败：文件里没有可用的预设定义（每项至少要有 type）'
+      toast.error('导入失败：没有可用定义')
+      return
+    }
+    replaceMode.value = false
+    pendingImport.value = { text, count: preview.count, fileName: file.name }
+  } catch (e) {
+    error.value = `导入失败：无法读取文件（${e instanceof Error ? e.message : String(e)}）`
+    toast.error('导入失败：读取文件出错')
+  }
+}
+
+function cancelImport(): void {
+  pendingImport.value = null
+  replaceMode.value = false
+}
+
+async function confirmImport(): Promise<void> {
+  const payload = pendingImport.value
+  if (!payload) {
+    return
+  }
+  const replace = replaceMode.value
+  pendingImport.value = null
+  importing.value = true
+  error.value = ''
+  try {
+    // kind 只在文件里没写 kind 时兜底；导出文件本身每项都带 kind
+    const result = await PresetApi.importYaml(payload.text, 'objectives', replace)
+    await refresh()
+    if (result.skipped.length) {
+      toast.info(`已导入 ${result.imported} 条预设，跳过 ${result.skipped.length} 条`)
+    } else {
+      toast.success(`已${replace ? '替换' : '合并'}导入 ${result.imported} 条预设`)
+    }
+  } catch (e) {
+    const message = `导入失败：${errorMessage(e)}`
+    error.value = message
+    unauthorized.value = isUnauthorized(e)
+    toast.error(message)
+  } finally {
+    importing.value = false
+  }
+}
+
 async function save(): Promise<void> {
   const current = draft.value
   if (!current || busy.value) {
+    return
+  }
+  if (current.readOnly) {
+    // 按钮已禁用，这里再挡一次：只读定义不能在库里覆盖
+    toast.error('该预设由 presets/ 下的 YAML 文件定义，只读：请改文件后 /ptxa reload')
     return
   }
   // YAML 视图下先把文本落地（防抖窗口内的改动可能还没进草稿）；解析失败就拒绝保存

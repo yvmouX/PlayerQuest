@@ -47,10 +47,14 @@
 |---|---|
 | `/ptxa help` | 显示管理员命令清单 |
 | `/ptxa list` | 列出全部任务，并标出配置有问题的地方 |
-| `/ptxa info <任务id>` | 查看单个任务的完整信息（前置、目标、奖励、费用、校验结果） |
+| `/ptxa info <任务id>` | 查看单个任务的完整信息（前置、目标、奖励、费用、校验结果、定义来源） |
 | `/ptxa enable <任务id>` | 启用任务 |
 | `/ptxa disable <任务id>` | 禁用任务（不再被抽取，也不再累计进度） |
-| `/ptxa reload` | 从数据库重新载入任务定义 |
+| `/ptxa reload` | 从数据库与 `quests/`、`presets/` 重新载入定义 |
+
+> 定义来自 `quests/`（YAML 文件）的任务是**只读**的：`enable` / `disable` 会拒绝并说明原因，
+> `/ptxa info` 会标出「来源 YAML 文件（只读）」。要改就去改文件，然后 `/ptxa reload`——
+> 详见 [配置 · 用 YAML 文件写定义](configuration?id=用-yaml-文件写定义)。
 
 ### 界面与编辑
 

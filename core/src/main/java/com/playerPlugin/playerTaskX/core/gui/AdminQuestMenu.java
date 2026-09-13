@@ -5,6 +5,7 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
+import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -125,6 +126,10 @@ public final class AdminQuestMenu extends Menu {
             lore.add("&7前置: &f" + String.join("&7, &f", quest.prerequisites()));
         }
         lore.add("&7启用: &f" + text(quest.enabled() ? "common.yes" : "common.no"));
+        // 只读定义（quests/ 下的 YAML）在管理界面里要一眼看出，否则管理员会反复点开关以为坏了
+        if (plugin.questDefinitions().isReadOnly(quest.id())) {
+            lore.add("&8来源: &7YAML 文件（只读，改文件后 /ptxa reload）");
+        }
         for (String problem : plugin.questAdmin().validate(quest)) {
             lore.add("&c! " + problem);
         }
@@ -179,6 +184,10 @@ public final class AdminQuestMenu extends Menu {
     private void toggle(PlayerTaskX plugin, Quest quest) {
         try {
             plugin.questAdmin().setEnabled(quest.id(), !quest.enabled());
+        } catch (DefinitionReadOnlyException e) {
+            // 该任务定义在 quests/ 的 YAML 文件里：把原因原样告诉管理员，而不是「内部错误」
+            messages().sendRaw(viewer(), Texts.render("&c" + e.getMessage()));
+            return;
         } catch (RuntimeException e) {
             PlayerTaskX.log().error("保存任务启用状态失败: " + quest.id(), e);
             messages().send(viewer(), "error.internal");

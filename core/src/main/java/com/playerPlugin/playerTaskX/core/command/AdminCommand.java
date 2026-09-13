@@ -14,6 +14,7 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
+import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.command.CommandSender;
@@ -216,7 +217,10 @@ public class AdminCommand {
                 ? Texts.number(quest.refreshCost())
                 : messages.raw(sender, "common.none"))));
         messages.sendRaw(sender, Texts.render("&7启用: &f"
-                + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no")));
+                + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no")
+                + (plugin.questDefinitions().isReadOnly(quest.id())
+                        ? SEPARATOR + "&7来源 &fYAML 文件（只读）"
+                        : "")));
 
         messages.sendRaw(sender, Texts.render("&7目标:"));
         for (int slot = 0; slot < quest.objectives().size(); slot++) {
@@ -266,8 +270,14 @@ public class AdminCommand {
     private static void setEnabled(CommandSender sender, String id, boolean enabled) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         MessageService messages = plugin.messages();
-        if (plugin.questAdmin().setEnabled(id, enabled) == null) {
-            messages.send(sender, "quest.not-found", id);
+        try {
+            if (plugin.questAdmin().setEnabled(id, enabled) == null) {
+                messages.send(sender, "quest.not-found", id);
+                return;
+            }
+        } catch (DefinitionReadOnlyException e) {
+            // 该任务定义在 quests/ 的 YAML 文件里：命令不该抛栈，直接把原因说清楚
+            messages.sendRaw(sender, Texts.render("&c" + e.getMessage()));
             return;
         }
         // 「保存 + 同步」就是 command.reloaded 描述的动作，不另造一句同义提示

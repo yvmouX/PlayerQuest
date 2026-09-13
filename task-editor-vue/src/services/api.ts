@@ -21,8 +21,6 @@ import type {
   PresetMap,
   Properties,
   Quest,
-  QuestExport,
-  QuestImportRequest,
   QuestImportResult,
   ReloadResult,
   SaveLangResult,
@@ -208,11 +206,21 @@ export const QuestApi = {
     url: `/quests/${encodeURIComponent(id)}`,
     method: 'delete'
   }),
-  /** 导出全部任务；返回体直接用于下载 JSON 文件。 */
-  exportAll: () => request<QuestExport>({ url: '/quests/export', method: 'get' }),
-  /** 导入任务；replace=true 时后端会先清空现有任务。 */
-  importQuests: (payload: QuestImportRequest) =>
-    request<QuestImportResult>({ url: '/quests/import', method: 'post', data: payload })
+  /** 导出全部任务：后端直接给 YAML 文本，浏览器存成 .yml。 */
+  exportYaml: () => request<string>({ url: '/quests/export', method: 'get', responseType: 'text' }),
+  /**
+   * 导入 YAML。
+   *
+   * <p>解析在后端做（字段映射只有一份），前端只负责把文本送过去；
+   * `replace` 只影响数据库里的定义，`quests/` 下的只读定义不在替换范围内。
+   */
+  importYaml: (yaml: string, replace: boolean) =>
+    request<QuestImportResult>({
+      url: `/quests/import?replace=${replace ? 'true' : 'false'}`,
+      method: 'post',
+      data: yaml,
+      headers: { 'Content-Type': 'application/x-yaml; charset=utf-8' }
+    })
 }
 
 /** 目标与奖励类型定义——表单完全由它驱动。 */
@@ -247,7 +255,17 @@ export const PresetApi = {
   remove: (kind: PresetKind, id: string) => request<DeletePresetResult>({
     url: `/presets/${kind}/${encodeURIComponent(id)}`,
     method: 'delete'
-  })
+  }),
+  /** 导出全部预设（两类一起）：YAML 文本，每项带 kind。 */
+  exportYaml: () => request<string>({ url: '/presets/export', method: 'get', responseType: 'text' }),
+  /** 导入 YAML；`kind` 只在文件里没写 kind 时兜底。 */
+  importYaml: (yaml: string, kind: PresetKind, replace: boolean) =>
+    request<QuestImportResult>({
+      url: `/presets/import?kind=${kind}&replace=${replace ? 'true' : 'false'}`,
+      method: 'post',
+      data: yaml,
+      headers: { 'Content-Type': 'application/x-yaml; charset=utf-8' }
+    })
 }
 
 /** 语言文件读写。 */

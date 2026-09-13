@@ -44,9 +44,16 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     相对 SQLite 只剩劣势。需要 diff 或进版本控制时用编辑器的整份任务导出/导入。
     注意 `JsonCodec` 与 `QuestJson` **要留着**：前者是 `properties` / `progress` 列与
     编辑器 HTTP 传输的编解码，后者是编辑器与库之间的任务 JSON 映射，两者都还在用。
+  - **只读的 `quests/` + `presets/` YAML 目录不是那个后端回来了**（见 ARCHITECTURE 4.7）：
+    它是**只读**来源，插件从不写这两个目录，库优先、冲突告警，玩家数据完全不涉及。
+    改动这一层时守住三条：写入永远只落库（只读判定放合并仓储里，别只靠前端禁用按钮）、
+    同 id 冲突必须告警一次、`count()` 要看合并后的视图（否则会多塞一份示例预设）。
   - **我们自己定格式的地方一律 JSON 不用 YAML**：YAML 1.1 会把 `target: NO`（合法方块材质名）
     解析成布尔 false、把 `1.20` 解析成浮点。干净解法（YAML 1.2 风格 resolver）在 Jackson 2.15.2
-    上挂不上去（`YAMLFactoryBuilder` 不暴露 resolver）。只有用户手写的配置文件与语言文件用 YAML。
+    上挂不上去（`YAMLFactoryBuilder` 不暴露 resolver）。只有用户手写的配置文件、语言文件
+    与上面那两个只读定义目录用 YAML——后者自己带了一套 1.2-core resolver 与构造器
+    （`YamlText`），改它时前端 `src/utils/yaml.ts`（js-yaml `CORE_SCHEMA`）必须同步，
+    `YamlTextTest` 与 `scripts/yaml-check.mjs` 就是钉这件事的。
   - **目标结构指纹不要删**：进度按目标下标记录，调换顺序会让旧进度静默错配到别的目标上，
     语法校验查不出来。检测必须放在 `ProgressService.load()`（覆盖全部记录），
     只放热路径会漏掉已完成记录。行为约定是「重置该任务进度 + 记日志」，不是静默错配。

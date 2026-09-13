@@ -17,7 +17,7 @@
  * 解析后比对顶层键，多出来的键会以警告形式列出：写错一个键名（{@code reward:} 而不是
  * {@code rewards:}）在纯文本编辑里太容易发生，静默丢掉等于让管理员以为配置生效了。
  */
-import { dump, load } from 'js-yaml'
+import { CORE_SCHEMA, dump, load } from 'js-yaml'
 import type { Preset, Properties, Quest } from '../types'
 import { normalizeImportedQuest } from '../services/api'
 
@@ -27,6 +27,17 @@ export interface YamlParseResult<T> {
   error: string
   warnings: string[]
 }
+
+/**
+ * 读取 YAML 时统一用 1.2 core 语义（js-yaml 的 CORE_SCHEMA）。
+ *
+ * <p>刻意不用 js-yaml 的默认 schema：它会按 YAML 1.1 额外解析时间戳，把
+ * {@code 2024-01-01} 这种字符串变成 {@code Date} 对象——任务 id、鱼 id、发言关键词
+ * 都可能是这个形状，一变就不是原来的值了。CORE_SCHEMA 只认 {@code true/false}、数字、
+ * {@code null}，其余一律字符串，与后端 {@code YamlText} 的自定义解析器（同样的 1.2 core
+ * 口径）逐条对齐；{@code scripts/yaml-check.mjs} 把这条一致性钉在构建里。
+ */
+const LOAD_OPTIONS = { schema: CORE_SCHEMA } as const
 
 /**
  * 序列化选项。
@@ -139,6 +150,78 @@ function normalizePreset(raw: Record<string, unknown>): Preset | null {
 }
 
 // ---------------------------------------------------------------------------
+// 导入预检
+// ---------------------------------------------------------------------------
+
+/**
+ * 导入前的预检：数出文件里有几条任务定义，并报告 YAML 语法错误。
+ *
+ * <p>真正的字段校验与入库都在后端（字段映射只有一份），这里只为让确认框能说清
+ * 「要导入几条」——「替换」是破坏性操作，值得在动手前把数字摆在眼前。
+ *
+ * @return {@code count} 为 0 且 {@code error} 为空表示文件能读但没有定义
+ */
+export function previewQuestImport(text: string): { count: number; error: string } {
+  if (!text.trim()) {
+    return { count: 0, error: '文件是空的' }
+  }
+  let loaded: unknown
+  try {
+    loaded = load(text, LOAD_OPTIONS)
+  } catch (e) {
+    return { count: 0, error: e instanceof Error ? e.message : String(e) }
+  }
+  if (Array.isArray(loaded)) {
+    return { count: loaded.filter(entry => entry && typeof entry === 'object').length, error: '' }
+  }
+  if (loaded && typeof loaded === 'object') {
+    const wrapped = (loaded as Record<string, unknown>).quests
+    if (Array.isArray(wrapped)) {
+      return { count: wrapped.filter(entry => entry && typeof entry === 'object').length, error: '' }
+    }
+    // 单个任务：与后端一致，缺 id 的不算数
+    return { count: typeof (loaded as { id?: unknown }).id === 'string' ? 1 : 0, error: '' }
+  }
+  return { count: 0, error: '顶层应当是任务列表，或单个任务的「键: 值」' }
+}
+
+/**
+ * 预设导入前的预检：数出文件里有几条定义（每项至少要有 type），并报告 YAML 语法错误。
+ *
+ * <p>与 {@link previewQuestImport} 同一套理由：真正的字段校验与入库在后端，
+ * 这里只为让确认框说清条数、并立刻发现选错了文件。
+ */
+export function previewPresetImport(text: string): { count: number; error: string } {
+  if (!text.trim()) {
+    return { count: 0, error: '文件是空的' }
+  }
+  let loaded: unknown
+  try {
+    loaded = load(text, LOAD_OPTIONS)
+  } catch (e) {
+    return { count: 0, error: e instanceof Error ? e.message : String(e) }
+  }
+  const usable = (entry: unknown): boolean => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return false
+    }
+    const type = (entry as { type?: unknown }).type
+    return typeof type === 'string' && type.trim() !== ''
+  }
+  if (Array.isArray(loaded)) {
+    return { count: loaded.filter(usable).length, error: '' }
+  }
+  if (loaded && typeof loaded === 'object') {
+    const wrapped = (loaded as Record<string, unknown>).presets
+    if (Array.isArray(wrapped)) {
+      return { count: wrapped.filter(usable).length, error: '' }
+    }
+    return { count: usable(loaded) ? 1 : 0, error: '' }
+  }
+  return { count: 0, error: '顶层应当是预设列表，或单个预设的「键: 值」' }
+}
+
+// ---------------------------------------------------------------------------
 // 公共解析
 // ---------------------------------------------------------------------------
 
@@ -160,7 +243,7 @@ function parseDocument<T>(
   }
   let loaded: unknown
   try {
-    loaded = load(text)
+    loaded = load(text, LOAD_OPTIONS)
   } catch (e) {
     return { value: null, error: e instanceof Error ? e.message : String(e), warnings: [] }
   }

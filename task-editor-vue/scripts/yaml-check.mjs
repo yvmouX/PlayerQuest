@@ -85,7 +85,7 @@ try {
   check('YAML 1.1 的布尔/数字字面量不会把字符串改掉', () => {
     // 这些都是「看起来像别的类型」的合法配置值：发言关键词、材质名、尺寸文本…
     const tricky = ['yes', 'no', 'on', 'off', 'NO', 'YES', 'y', 'n', 'true', 'false',
-      '1.20', '123', '0x10', '*', '~', 'null', 'NULL', '']
+      '1.20', '123', '0x10', '*', '~', 'null', 'NULL', '', '1:30', '2024-01-01', '1_000']
     const quest = {
       id: 'q',
       name: 'tricky',
@@ -106,6 +106,25 @@ try {
     const values = result.value.objectives.map(objective => objective.properties.target)
     assert.deepEqual(values, tricky, `字符串被解析成了别的类型：${JSON.stringify(values)}`)
     values.forEach(value => assert.equal(typeof value, 'string', `「${value}」不再是字符串`))
+  })
+
+  check('日期形状的字符串不会被解析成 Date（CORE_SCHEMA，而非默认的 1.1 时间戳规则）', () => {
+    const result = yaml.questFromYaml('id: q\nobjectives:\n  - type: chat\n    properties: { target: 2024-01-01 }\n', 'q')
+
+    assert.equal(result.error, '')
+    const target = result.value.objectives[0].properties.target
+    assert.equal(typeof target, 'string', `被解析成了 ${target instanceof Date ? 'Date' : typeof target}`)
+    assert.equal(target, '2024-01-01')
+  })
+
+  check('整数与后端一致：012 是十进制 12、0x10 是 16（两边读同一份文件必须得到同样的值）', () => {
+    const result = yaml.questFromYaml(
+      'id: q\nobjectives:\n  - type: chat\n    properties: { a: 012, b: 0x10, c: 64 }\n', 'q')
+    const properties = result.value.objectives[0].properties
+
+    assert.equal(properties.a, 12)
+    assert.equal(properties.b, 16)
+    assert.equal(properties.c, 64)
   })
 
   check('数值与布尔属性保持原类型', () => {

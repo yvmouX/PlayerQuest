@@ -37,6 +37,7 @@ PlayerTaskX/
 | `sqlite-jdbc` / `mysql-connector-java` | 存储 | implementation / compileOnly |
 | `HikariCP` | MySQL 连接池 | implementation |
 | `javalin` | 内置网页编辑器 HTTP 服务 | implementation |
+| `snakeyaml`（服务端自带，随 `spigot-api` 编译期可见） | `quests/` / `presets/` 只读 YAML 定义（4.7）；**不打包**，服务端本来就有 | 服务端提供 |
 | `VaultAPI` / `playerpoints` | 金币 / 点券 | compileOnly（软依赖） |
 | `placeholderapi` | 变量 | compileOnly（软依赖） |
 
@@ -303,6 +304,75 @@ CustomFishing 的 API jar 自包含，直接编译进来更清晰。
 `/api/schema` 对**目标类型**也开始下发 `available` / `unavailableReason`
 （与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
 
+### 4.7 只读 YAML 定义来源（`quests/` 与 `presets/`）
+
+管理员常想把任务定义随插件一起发布、或放进 git 做 diff。为此在数据库之外接了一层
+**只读**的 YAML 定义来源：`definitions.read-files`（默认开启）打开时，扫描数据目录下的
+`quests/`（任务）与 `presets/`（预设），与库里的定义合并成一个视图。代码全在
+`core/storage/yaml/`：
+
+| 类 | 职责 |
+|---|---|
+| `YamlText` | YAML 读写与**类型语义**（下详）；导出时的引号策略也在这里 |
+| `DefinitionFolder` | 一个目录的扫描与解析：递归、只认 `.yml`/`.yaml`、文件名即默认 id、坏文件跳过并告警 |
+| `YamlSources<T>` | 解析结果的缓存视图（`all()` 重新读盘，逐条查询走上层缓存） |
+| `YamlDefinitions` | 模型 ⇄ 文档映射、部分/整份导出与导入 |
+| `MergedSources<T>` | **合并规则**：库优先、冲突告警一次、只读判定 |
+| `MergedQuestRepository` / `MergedPresetRepository` | 把上面的规则包成 `QuestRepository` / `PresetRepository` |
+
+**与已删除的 JSON 文件后端的边界**（4.1 末尾那条禁令依然有效，这里不是把它加回来）：
+
+| | 已删除的 JSON 文件后端 | 现在的 YAML 目录 |
+|---|---|---|
+| 谁能写 | 插件（文件就是权威） | **只有人**；插件从不写这两个目录 |
+| 权威 | 文件 | **数据库**（同 id 冲突时忽略文件那份并告警） |
+| 覆盖范围 | 定义 + 玩家数据 | **只有定义**；玩家数据与进度永远在库里 |
+| 跨服 | 做不到 | 仍然做不到——所以 MySQL 多服时明确警告不要这样用 |
+
+合并规则一处定死，所有调用方（游戏内命令、GUI、编辑器 HTTP）都走它：
+
+| 情况 | 结果 |
+|---|---|
+| id 只在文件里 | 生效，`isReadOnly` = true |
+| id 只在库里 | 正常读写 |
+| 两边都有 | 库里的那条进视图，文件那份被忽略，记一条告警（`warnedConflicts` 去重，`all()` 在启动路径上会被调用多次） |
+
+**只读是行为，不是 UI 提示**：`save` / `delete` 在合并仓储里抛
+`DefinitionReadOnlyException`，`EditorApi` 映射成 `409`，`AdminCommand` 与 `AdminQuestMenu`
+打印原因为什么改不了。判定写在所有写入路径的共同入口上，因此绕过界面直接调接口也无效。
+前端只是把结论显示出来（列表「文件」徽标、禁用开关/删除、编辑页黄色提示条）。
+
+另外两点是刻意的：
+
+- `MergedSources.count()` 返回**合并后**的数量，`PresetRepository.seedIfEmpty` 据此判断
+  ——已经用文件准备了预设就不该再塞 12 条示例进去；
+- 两个目录只在不存在时创建、**不写任何示例文件**：升级后凭空多出几个任务会让人以为插件在乱写数据。
+
+**为什么 YAML 在这里可以破例**：4.2 那条「自己定格式一律 JSON」管的是
+**存储列的编码**与**编辑器 HTTP 传输**（机器之间交换、不该有人手写）；`quests/*.yml`
+是**给人写的配置界面**，与 `config.yml`、语言文件同类，正是 YAML 的适用场景。
+
+代价是 4.2 里那个坑必须自己填：SnakeYAML 是 YAML 1.1，会把 `target: NO` 读成布尔、
+把 `012` 读成八进制 10。`YamlText` 因此自带一套 **1.2-core 语义**：
+
+- `StrictResolver`：布尔只认 `true/false`（`yes/no/on/off` 是字符串）；整数只认十进制、
+  `0x`、`0o` 前缀（`012` → 12，不是 8）；浮点必须带小数点或指数；时间戳不解析，
+  `2024-01-01` 保持字符串；不处理 `<<` 合并键；
+- `CoreSchemaConstructor` 替掉 `Tag.INT` 的构造器，配合上面的 resolver 才真正生效；
+- 前端用 js-yaml 的 `CORE_SCHEMA`，与后端同语义；
+- 导出侧 `QuotingRepresenter` 给「看起来像其它类型」的字符串加单引号，
+  避免我们自己写出的文件再被别的 YAML 1.1 解析器读坏。
+
+这三个方向（后端解析、前端解析、导出引号）由 `YamlTextTest` 与
+`task-editor-vue/scripts/yaml-check.mjs` 三方对齐钉住——这是本功能风险最高的地方，
+`round-trip` 与「`NO` 仍是字符串」都进了构建自检。已知的一处**刻意分歧**：
+`.inf` / `.nan` 在后端保持字符串（前端 js-yaml 会解析成数值），因为它们不会出现在任何字段里。
+
+导入/导出复用同一份文档映射：`/api/quests/export` 给顶层列表的 YAML（按 id 排序，
+`Content-Disposition: playerTaskX-quests.yml`），`/api/quests/import?replace=` 接受
+列表 / `quests:` 包一层 / 单个定义三种形状，逐条报告跳过的原因（缺 id、只读 id）。
+`replace` 只清数据库，**不碰文件**。预设同理（`presets:`、`kind` 兜底）。
+
 ---
 
 ## 5. 多语言与文本
@@ -409,12 +479,15 @@ Javalin 提供 REST + 静态资源（`/` 返回 Vite 构建产物）：
 
 ```
 GET    /api/quests            列表          POST   /api/quests          新建/覆盖
-GET    /api/quests/export     导出全部定义   POST   /api/quests/import   导入（replace=true 先清空）
+GET    /api/quests/export     导出全部定义为 YAML（按 id 排序）
+POST   /api/quests/import     导入 YAML（replace=true 只清数据库，不碰 quests/ 里的文件）
 GET    /api/quests/{id}       详情          DELETE /api/quests/{id}      删除
 GET    /api/players           有记录的玩家   GET    /api/players/{uuid} 该玩家的任务记录与逐目标进度
 GET    /api/schema             目标/奖励类型的字段 schema（驱动前端动态表单）
 GET    /api/catalog            当前版本支持的物品与实体（图标/材质选择器，含中英文名）
 GET    /api/presets            目标与奖励预设（编辑器的便利设施，引擎不认它）
+GET    /api/presets/export     导出两类预设为 YAML
+POST   /api/presets/import     导入 YAML（kind 只作兜底）
 POST   /api/presets/{kind}     保存预设，kind ∈ {objectives, rewards}
 DELETE /api/presets/{kind}/{id} 删除预设
 GET    /api/langs              读取可用的语言文件
@@ -467,6 +540,7 @@ GET    /api/stats              统计          POST   /api/reload         重载
 出厂默认预设（`core/seed/ExamplePresets`，7 个目标 + 4 个奖励）在 `preset` 表为空时写入一次，
 与示例任务同一时机（`PlayerTaskX` 启用流程里的 `guard`）。它原先藏在文件后端的 `load()` 里，
 后端删除后必须显式接上——否则不报任何错，只是编辑器打开时预设列表变成空的。
+判空看的是**合并后**的数量（4.7）：已经用 `presets/` 目录准备了预设时不再塞示例。
 
 ---
 
@@ -537,14 +611,17 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 | 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
 | 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试） |
-| 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（10 项 YAML 往返 + 4 个视图渲染） |
+| 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
+| 25 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.7） |
 
-**测试总量：210 项全部通过**（25 个测试类，全部 failures=0 / errors=0）：
-存储 20（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
-奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 引擎 12（`ProgressServiceTest`）+
-命令帮助 12（`YLibCommandHelpTest`）+ 前置判定 12（`PrerequisiteServiceTest`）+
-任务管理 11（`QuestAdminServiceTest`）+ 每日 10（`DailyServiceTest`）+
-自定义钓鱼 9（`CustomFishObjectiveTest`）+ 素材 9（`MaterialCatalogTest`）+
+**测试总量：249 项全部通过**（29 个测试类，全部 failures=0 / errors=0）：
+存储 20（`StorageIntegrationTest`）+ 编辑器接口 19（`EditorApiTest`）+
+YAML 定义来源 12（`YamlDefinitionSourceTest`）+ YAML 文档映射 11（`YamlDefinitionsTest`）+
+YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 6（`MergedDefinitionRepositoryTest`）+
+引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
+前置判定 12（`PrerequisiteServiceTest`）+ 任务管理 11（`QuestAdminServiceTest`）+
+每日 10（`DailyServiceTest`）+ 素材 9（`MaterialCatalogTest`）+
+奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 自定义钓鱼 9（`CustomFishObjectiveTest`）+
 结构指纹 8（`StructureFingerprintTest`）+ 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+
 奖励领取 7（`RewardServiceTest`）+ 示例任务 7（`ExampleQuestsTest`）+
 监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+
@@ -552,13 +629,13 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
-统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
-`core/build/test-results/test/*.xml` 逐套件累加（25 个 XML），不是靠日志里的汇总行。
+统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
+逐套件累加（29 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 10892 行
-＝ **11815 行 / 96 个 java 文件**；测试 `core/src/test` **5064 行 / 28 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 12162 行
+＝ **13085 行 / 104 个 java 文件**；测试 `core/src/test` **5968 行 / 32 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **5804 行 `.vue` + 1763 行 `.ts`/`.js` ＝ 7567 行 / 31 个文件**
+前端 `task-editor-vue/src` **6048 行 `.vue` + 1864 行 `.ts`/`.js` ＝ 7912 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
@@ -632,6 +709,25 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
 
 随后删除该探针任务，库回到 12 个示例。（装上这两个插件的正向链路只有单测覆盖，见文末已知限制。）
 
+**只读 YAML 定义来源的真机冒烟（同一台测试服）**：在 `run/plugins/playerTaskX/quests/` 放两个文件——
+一个文件名即 id 的 `smoke_yaml_probe.yml`、一个与库里示例任务同 id 的 `example_daily_mine.yml`，
+重启后：
+
+```
+[playerTaskX] YAML 定义: 任务 example_daily_mine 同时定义在数据库与 quests/example_daily_mine.yml，
+              已忽略文件里的那份（库优先）
+```
+
+告警恰好一条（`findAll` 在启动路径上被调用多次，`warnedConflicts` 去重生效）。
+接口侧逐条确认：`GET /api/quests/smoke_yaml_probe` 的 `source` 为 `file`、
+`GET /api/quests/example_daily_mine` 为 `database`（库里那份的名称胜出）；
+对只读 id 的 `POST /api/quests` 与 `DELETE` 都是 **409**，消息点名了要改哪个文件；
+`GET /api/quests/export` 输出干净（`refreshCost: 1000` 是整数，不是 `!!float`）。
+导入侧用**含 `target: NO` 与 `target: yes` 的目标**验证类型语义：`POST /api/quests/import?replace=false`
+返回 `{"total":14,"skipped":[],"ok":true,"imported":1}`，读回后两个值都是**字符串** `"NO"` / `"yes"`——
+这正是 4.7 那套 1.2-core resolver 要解决的核心风险（修好前实测会变成布尔 `false`）。
+探针文件与导入的任务随后已清理。
+
 同时验证了两条重要的健壮性行为：
 
 - **软依赖缺失时优雅降级**：未安装 Vault/PlayerPoints 时，对应奖励类型标记为不可用并写入
@@ -647,8 +743,11 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
 - **玩家实际游玩路径未验证**：需要真人进服（挖掘/合成/击杀等）才能确认进度累加、
   actionbar 推送、GUI 点击等表现层行为；本次只验证到「插件启用 + 命令注册 + HTTP 接口」。
 - **网页编辑器的界面操作未做浏览器端人工确认**：接口层已实测；纯前端的交互
-  （搜索、多选、拖拽/排序、可视化 ⇄ YAML 切换）只做到「构建 + 类型检查 + YAML 往返断言 +
-  SSR 渲染各视图各一遍」，浏览器里的实际手感与排版仍未人工确认。
+  （搜索、多选、拖拽/排序、可视化 ⇄ YAML 切换、**导出/导入 YAML 的弹窗与文件下载**）只做到
+  「构建 + 类型检查 + YAML 往返断言 + SSR 渲染各视图各一遍」，浏览器里的实际手感与排版仍未人工确认。
+- **YAML 定义文件的边界情况只由单测覆盖**：递归子目录、`presets/rewards/` 目录兜底 `kind`、
+  坏文件跳过、只读 id 被批量操作跳过等分支都有测试，但没有在真机上逐个走一遍
+  （真机只验证了「文件名即 id」「库优先告警」「只读写入被拒 409」这几条主路径）。
 - **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
   兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
 - **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有每日任务一条来源
@@ -672,7 +771,10 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
     自带回复消息，调用方只调 `report(...)`，不再各自拼 success/cost/limit/error；
   - 启用状态切换（落库 + 同步注册表 + 重建索引）→ `QuestAdminService.setEnabled`；
   - 文本装配（渲染 / 数字去小数尾巴 / 配置表摊平 / 类型显示名）→ `core/text/Texts`；
-  - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份。
+  - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份；
+  - 定义来源的合并与只读判定（库优先 / 冲突告警去重 / 只读写入抛异常）→
+    `MergedSources` + 两个 `Merged*Repository`：游戏内命令、管理 GUI、编辑器 HTTP
+    拿到的是同一个结论，不需要各自再判断一次「这个 id 能不能改」（见 4.7）。
 - **目标类型**：`core/objective/` 只有三个类——数据形态的 `TargetObjective` 与两个自带判定
   逻辑的 `InteractObjective` / `ChatObjective` / `CustomFishObjective`；15 种内置类型的清单在 `BuiltIns` 里显式列出
   （不扫描包，保证「新增类型必须登记」的确定性）。共用的目标命中判定是
@@ -688,6 +790,10 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
 - **依赖只留用得上的**：`fastjson2`、`javalin-openapi` / swagger / redoc、`jackson-dataformat-yaml`
   从未被引用过，已从构建脚本删除；JSON 编解码全项目只有 `JsonCodec` 一个 `ObjectMapper`
   （编辑器曾自带第二个）。
+- **YAML 定义只有一份字段定义**：`YamlDefinitions` 的文档映射直接复用编辑器 JSON 契约
+  （`QuestJson` / `PresetJson`），因此 `quests/x.yml`、导出的清单、编辑器的 YAML 视图
+  三者可以互相粘贴，新增目标类型时这里一行都不用改。它只决定「写哪些键、按什么顺序、
+  省略哪些空值」（空字符串与空列表不写出去：手写文件里堆一串 `category: ''` 只会让人以为必须填）。
 - **包归位**：三个类型/任务注册表实现同处 `core/registry`（`api.registry` 也是这么分组的），
   `core/quest` 只留 `QuestAdminService` 这一处「任务定义维护入口」。
 - **两个数据库类合成一个**：`JdbcDatabase` 同时是「执行 SQL 的引擎」与「打开 SQLite 文件 /

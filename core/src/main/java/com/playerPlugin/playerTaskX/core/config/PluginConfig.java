@@ -39,6 +39,16 @@ public class PluginConfig {
     @ConfigValue(value = "storage.mysql", description = "MySQL 连接配置（storage.type=MYSQL 时生效）")
     private Map<String, MysqlSettings> mysql = defaultMysql();
 
+    @ConfigValue(value = "definitions.read-files",
+            description = "是否读取插件目录下 quests/ 与 presets/ 里的 YAML 定义（默认开启）。"
+                    + "一个文件一个定义，文件名即 id（文件内容里写了 id 则以内容为准）；"
+                    + "与数据库里同 id 的定义冲突时以数据库为准，文件里的那份会被忽略并记入日志。"
+                    + "注意：文件里的定义不写进数据库，因此游戏内与网页编辑器的修改只对数据库里的定义生效，"
+                    + "文件里的那些在编辑器里是只读的（要改就去改文件，或用导出/导入把它搬进数据库）。"
+                    + "⚠ 用 MySQL 多服共享时，把任务写在 YAML 文件里会导致各服定义不一致——文件不会跨服同步；"
+                    + "只有「有意让不同服务器的任务存在差异」时才这样用，否则请把定义放进数据库。")
+    private boolean definitionsReadFiles = true;
+
     @ConfigValue(value = "progress.actionbar", description = "是否用 actionbar 推送任务进度")
     private boolean actionbarEnabled = true;
 
@@ -132,6 +142,11 @@ public class PluginConfig {
     public MysqlSettings getMysql() {
         MysqlSettings settings = mysql == null ? null : mysql.get("default");
         return settings == null ? new MysqlSettings() : settings;
+    }
+
+    /** 是否读取 quests/ 与 presets/ 里的 YAML 定义（只读来源，库优先）。 */
+    public boolean isDefinitionsReadFiles() {
+        return definitionsReadFiles;
     }
 
     public boolean isActionbarEnabled() {

@@ -19,6 +19,7 @@
       spellcheck="false"
       :rows="rows"
       :value="modelValue"
+      :readonly="readonly"
       :aria-label="label"
       @input="onInput"
     ></textarea>
@@ -61,6 +62,8 @@ defineProps<{
   label: string
   /** 文本域可见行数 */
   rows?: number
+  /** 只读（例如这条定义来自 YAML 文件）：能看不能改 */
+  readonly?: boolean
 }>()
 
 function onInput(event: Event): void {

@@ -47,4 +47,14 @@ public interface DefinitionRepository<T> {
 
     /** 元素总数。 */
     long count();
+
+    /**
+     * 该 id 的定义是否为<b>只读</b>（来自 YAML 文件而不是数据库）。
+     * <p>
+     * 只有「库 + 文件」合并的那层实现会返回 true：文件定义不进数据库，因此游戏内命令与
+     * 网页编辑器都不能改它们。默认 false 让纯数据库实现无需关心这件事。
+     */
+    default boolean isReadOnly(String id) {
+        return false;
+    }
 }

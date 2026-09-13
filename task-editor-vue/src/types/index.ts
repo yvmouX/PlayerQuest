@@ -104,7 +104,17 @@ export interface Quest {
   rewards: QuestReward[]
   /** 后端校验问题；非空表示该任务配置有误 */
   problems: string[]
+  /**
+   * 定义来源：`database` = 存在数据库里（游戏内与编辑器可改）；
+   * `file` = 来自 `quests/` 下的 YAML（只读，要改就去改文件）。
+   *
+   * <p>后端没给这个字段时按 `database` 处理（旧版后端）。
+   */
+  source?: QuestSource
 }
+
+/** 定义来源，见 {@link Quest.source} 与 {@link Preset.source}。 */
+export type QuestSource = 'database' | 'file'
 
 /** POST /api/quests 的响应。 */
 export interface SaveQuestResult {
@@ -195,6 +205,8 @@ export interface Preset {
   type: string
   description: string
   properties: Properties
+  /** 定义来源：`file` = 来自 `presets/` 下的 YAML（只读） */
+  source?: QuestSource
 }
 
 /** GET /api/presets 的响应。 */
@@ -219,18 +231,6 @@ export interface DeletePresetResult {
 /* ------------------------------------------------------------------ *
  * 导入 / 导出
  * ------------------------------------------------------------------ */
-
-/** GET /api/quests/export 的响应（version 目前恒为 1）。 */
-export interface QuestExport {
-  version: number
-  quests: Quest[]
-}
-
-/** POST /api/quests/import 的请求体；replace=true 表示先清空再导入。 */
-export interface QuestImportRequest {
-  quests: Quest[]
-  replace: boolean
-}
 
 /** POST /api/quests/import 的响应；skipped 是未导入的原因列表。 */
 export interface QuestImportResult {

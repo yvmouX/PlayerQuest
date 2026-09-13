@@ -6,6 +6,7 @@ import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
 import java.io.File;
 import java.io.InputStream;
@@ -39,6 +40,14 @@ public interface EditorServices {
 
     /** 任务注册表：列表、按 id 查询、分类与每日任务。 */
     QuestRegistryImpl quests();
+
+    /**
+     * 任务定义仓储（数据库 + 可选的 YAML 只读来源）。
+     * <p>
+     * 编辑器只读它一件事：{@code isReadOnly(id)} —— 文件里定义的任务在界面上必须禁用保存/删除。
+     * 写操作仍走 {@link #questAdmin()}，不从这里写。
+     */
+    QuestRepository questDefinitions();
 
     /**
      * 任务维护入口。

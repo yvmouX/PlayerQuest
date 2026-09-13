@@ -100,7 +100,7 @@
         <h3>使用提示</h3>
         <ul class="tips">
           <li>任务与语言文件的改动会立即写入插件数据目录，建议先用「导出 JSON」做一次备份。</li>
-          <li>编辑完任务后如果游戏内没生效，点击上方「重载任务」让插件重新读取任务文件。</li>
+          <li>编辑完任务后如果游戏内没生效，点击上方「重载任务」让插件重新读取数据库与 quests/ 目录。</li>
           <li>若接口返回 401，请在左下角「访问令牌」填入 <code class="mono">config.yml</code> 里 <code class="mono">editor.token</code> 的值。</li>
           <li>玩家进度页为只读视图，不会修改任何玩家数据，可用于排查「某玩家为什么没进度」。</li>
         </ul>
@@ -166,7 +166,7 @@ async function refresh(): Promise<void> {
   }
 }
 
-/** 重载任务：让插件重新读取任务文件与语言文件。 */
+/** 重载任务：让插件重新读取数据库、quests/ 目录与语言文件。 */
 async function reloadQuests(): Promise<void> {
   reloading.value = true
   reloadMessage.value = ''

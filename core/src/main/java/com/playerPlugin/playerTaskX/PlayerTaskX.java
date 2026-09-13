@@ -34,6 +34,10 @@ import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.yaml.DefinitionFolder;
+import com.playerPlugin.playerTaskX.core.storage.yaml.MergedPresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.yaml.MergedQuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import com.playerPlugin.playerTaskX.core.web.EditorServices;
 import org.bukkit.entity.Player;
@@ -69,6 +73,8 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private PluginConfig config;
     private DatabaseFactory.Handle database;
     private PresetRepository presets;
+    /** 任务定义仓储：数据库 + 可选的 quests/ 只读 YAML（库优先）。 */
+    private QuestRepository questDefinitions;
     private PlayerQuestRepository playerQuestRepository;
     private QuestClaimRepository claimRepository;
     private QuestRegistryImpl quests;
@@ -139,8 +145,12 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         }
         playerQuestRepository = handle.playerQuestRepository();
         claimRepository = handle.claims();
-        QuestRepository questRepository = handle.quests();
         presets = handle.presets();
+        questDefinitions = handle.quests();
+        // 定义来源：数据库（权威、可写）+ 可选的 quests/ 与 presets/ 只读 YAML（库优先）
+        if (config.isDefinitionsReadFiles()) {
+            questDefinitions = withYamlDefinitions(handle);
+        }
         log.info("存储已就绪: {}（任务定义、预设与玩家数据在同一库）", database.description());
 
         // ---------- 注册表 ----------
@@ -162,7 +172,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
                 claimRepository, prerequisites);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
         dailyService = new DailyService(config, quests, playerQuestRepository, progressService, prerequisites);
-        questAdmin = new QuestAdminService(questRepository, quests, objectiveTypes, rewardService,
+        questAdmin = new QuestAdminService(questDefinitions, quests, objectiveTypes, rewardService,
                 progressService, prerequisites,
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
                 () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList());
@@ -194,6 +204,23 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         // 命令清单不便在控制台逐条刷屏，这里给出入口——否则用户很难发现有哪些命令
         log.info("命令：玩家 /ptx（别名 /playertaskx），管理员 /ptxa（别名 /playertaskxadmin）；"
                 + "用 /ptx help 与 /ptxa help 查看子命令清单");
+    }
+
+    /**
+     * 在数据库之外接上 {@code quests/} 与 {@code presets/} 两个只读 YAML 目录。
+     *
+     * <p>与数据库的合并规则（库优先、冲突告警、文件定义只读）由
+     * {@link MergedQuestRepository} / {@link MergedPresetRepository} 承担，这里只做装配：
+     * 建目录、把告警接到插件日志。
+     */
+    private QuestRepository withYamlDefinitions(DatabaseFactory.Handle handle) {
+        java.util.function.Consumer<String> warner = message -> log.warn("YAML 定义: {}", message);
+        DefinitionFolder questFolder = DefinitionFolder.of(getDataFolder(), "quests", warner);
+        DefinitionFolder presetFolder = DefinitionFolder.of(getDataFolder(), "presets", warner);
+        questFolder.ensureExists();
+        presetFolder.ensureExists();
+        presets = new MergedPresetRepository(handle.presets(), YamlDefinitions.presetSources(presetFolder), warner);
+        return new MergedQuestRepository(handle.quests(), YamlDefinitions.questSources(questFolder), warner);
     }
 
     /**
@@ -342,6 +369,17 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     /** 目标/奖励预设仓储；与任务定义、玩家数据同一个库。 */
     public PresetRepository presets() {
         return presets;
+    }
+
+    /**
+     * 任务定义仓储（数据库 + 可选的 YAML 只读来源）。
+     * <p>
+     * 编辑器用它问 {@code isReadOnly(id)}——文件里的定义在界面上是只读的；
+     * 写操作仍然走 {@link #questAdmin()}。
+     */
+    @Override
+    public QuestRepository questDefinitions() {
+        return questDefinitions;
     }
 
     public PlayerQuestRepository playerQuestRepository() {

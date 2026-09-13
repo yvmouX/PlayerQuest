@@ -19,10 +19,12 @@ import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.storage.InMemoryQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
 import io.javalin.Javalin;
 import org.bukkit.Bukkit;
 import org.junit.jupiter.api.AfterEach;
@@ -46,9 +48,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -288,7 +292,7 @@ class EditorApiTest {
     }
 
     @Test
-    @DisplayName("GET /api/quests/export 优先于 /api/quests/{id} 匹配（路由顺序的坑）")
+    @DisplayName("GET /api/quests/export 优先于 /api/quests/{id} 匹配（路由顺序的坑），且导出 YAML")
     void exportRouteWinsOverIdRoute() throws Exception {
         services.seed(quest("q1"));
 
@@ -296,21 +300,23 @@ class EditorApiTest {
 
         assertEquals(200, response.statusCode(),
                 "若 export 被当成「id 为 export 的任务」就会 404，备份导出随之失效");
-        JsonNode exported = json(response);
-        assertEquals(1, exported.get("version").asInt());
-        assertEquals(1, exported.get("quests").size());
-        assertFalse(exported.get("quests").get(0).has("problems"),
-                "导出不含派生信息 problems（导入时会重新算）");
+        String yaml = response.body();
+        assertTrue(yaml.contains("id: q1"), "导出的应当是 YAML，实际: " + yaml);
+        assertFalse(yaml.contains("problems"), "导出不含派生信息 problems（导入时会重新算）");
+        // 能被自己的导入解析回来：导出格式与导入格式必须是一份
+        assertEquals("q1", YamlDefinitions.readQuests(yaml).get(0).id());
     }
 
     @Test
-    @DisplayName("POST /api/quests/import：坏条目跳过并列出原因，其余照常导入")
+    @DisplayName("POST /api/quests/import：坏条目跳过并列出原因，其余照常导入（YAML）")
     void importSkipsEntriesWithoutId() throws Exception {
         String body = """
-                {"quests": [
-                  {"id": "imported", "objectives": [{"type": "break_block", "properties": {"amount": 1}}]},
-                  {"name": "没有 id"}
-                ]}
+                - id: imported
+                  objectives:
+                    - type: break_block
+                      properties:
+                        amount: 1
+                - name: 没有 id
                 """;
 
         JsonNode result = json(send("POST", "/api/quests/import", body));
@@ -321,8 +327,56 @@ class EditorApiTest {
         assertEquals(1, result.get("total").asInt());
         assertTrue(services.quests().find("imported").isPresent());
 
-        HttpResponse<String> missingArray = send("POST", "/api/quests/import", "{\"quests\": 1}");
-        assertEquals(400, missingArray.statusCode());
+        // wrapper 键写了但不是列表：明确 400，而不是当成一条奇怪的任务
+        assertEquals(400, send("POST", "/api/quests/import", "quests: 1").statusCode());
+        // 语法错误的 YAML：400 且说明是 YAML 的问题
+        HttpResponse<String> broken = send("POST", "/api/quests/import", "id: [");
+        assertEquals(400, broken.statusCode());
+        assertTrue(error(broken, 400).contains("YAML"), error(broken, 400));
+        // 空体同样拒绝
+        assertEquals(400, send("POST", "/api/quests/import", "").statusCode());
+    }
+
+    @Test
+    @DisplayName("导入 replace=true 只清数据库里的定义：YAML 文件里的（只读）不受影响")
+    void importReplaceKeepsReadOnlyDefinitions() throws Exception {
+        services.seed(quest("db_quest"), quest("file_quest"));
+        services.markReadOnly("file_quest");
+
+        JsonNode result = json(send("POST", "/api/quests/import?replace=true", """
+                - id: fresh
+                  objectives:
+                    - type: break_block
+                      properties:
+                        amount: 1
+                """));
+
+        assertEquals(1, result.get("imported").asInt());
+        assertFalse(services.quests().find("db_quest").isPresent(), "replace 应清掉数据库里的旧定义");
+        assertTrue(services.quests().find("file_quest").isPresent(),
+                "只读定义（YAML 文件）不在替换范围内");
+        assertTrue(services.quests().find("fresh").isPresent());
+    }
+
+    @Test
+    @DisplayName("来源标记：文件定义的任务是 source=file 且写入被拒（409）")
+    void fileDefinedQuestIsReadOnly() throws Exception {
+        services.seed(quest("from_file"), quest("db_quest"));
+        services.markReadOnly("from_file");
+
+        assertEquals("file", json(send("GET", "/api/quests/from_file", null)).get("source").asText(),
+                "编辑器据此禁用保存/删除");
+        assertEquals("database", json(send("GET", "/api/quests/db_quest", null)).get("source").asText());
+
+        HttpResponse<String> save = send("POST", "/api/quests", """
+                {"id": "from_file", "name": "改名", "type": "NORMAL",
+                 "objectives": [{"type": "break_block", "properties": {"amount": 1}}]}
+                """);
+        assertEquals(409, save.statusCode(), "写到只读 id 必须是 409 而不是静默成功");
+        assertTrue(error(save, 409).contains("from_file"), error(save, 409));
+
+        assertEquals(409, send("DELETE", "/api/quests/from_file", null).statusCode(),
+                "删除只读定义同样要拒绝");
     }
 
     // ------------------------------------------------------------------
@@ -702,6 +756,17 @@ class EditorApiTest {
             return questAdmin;
         }
 
+        /** 编辑器问「这条是不是只读定义」用；测试的假仓储全是可写的数据库侧。 */
+        @Override
+        public QuestRepository questDefinitions() {
+            return stored;
+        }
+
+        /** 把某个任务标成「来自 YAML 文件的只读定义」。 */
+        void markReadOnly(String id) {
+            stored.markReadOnly(id);
+        }
+
         @Override
         public PresetRepository presets() {
             return presets;
@@ -753,6 +818,12 @@ class EditorApiTest {
     private static final class FakeQuestRepository implements QuestRepository {
 
         private final Map<String, Quest> data = new LinkedHashMap<>();
+        /** 模拟「来自 YAML 文件的只读定义」：写入必须被拒（与合并仓储同行为）。 */
+        private final Set<String> readOnly = new LinkedHashSet<>();
+
+        void markReadOnly(String id) {
+            readOnly.add(id);
+        }
 
         @Override
         public List<Quest> findAll() {
@@ -765,12 +836,23 @@ class EditorApiTest {
         }
 
         @Override
+        public boolean isReadOnly(String id) {
+            return readOnly.contains(id);
+        }
+
+        @Override
         public void save(Quest quest) {
+            if (quest != null && readOnly.contains(quest.id())) {
+                throw new DefinitionReadOnlyException("任务 " + quest.id() + " 由 YAML 文件定义，只读");
+            }
             data.put(quest.id(), quest);
         }
 
         @Override
         public boolean delete(String id) {
+            if (readOnly.contains(id)) {
+                throw new DefinitionReadOnlyException("任务 " + id + " 由 YAML 文件定义，只读");
+            }
             return data.remove(id) != null;
         }
 

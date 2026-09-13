@@ -7,9 +7,11 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
+import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 import com.playerPlugin.playerTaskX.core.storage.QuestJson;
 import com.playerPlugin.playerTaskX.core.storage.StorageException;
+import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
 import cn.yvmou.ylib.text.TextRenderer;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -22,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +59,9 @@ import java.util.function.Function;
  */
 final class EditorApi {
 
+    /** 导出/导入用的内容类型：YAML 没有官方 MIME，用最常见的 application/x-yaml。 */
+    private static final String YAML_CONTENT_TYPE = "application/x-yaml; charset=utf-8";
+
     private final EditorServices services;
     private final MaterialCatalog catalog;
 
@@ -88,48 +94,57 @@ final class EditorApi {
         app.get("/api/quests", ctx -> {
             List<Map<String, Object>> list = new ArrayList<>();
             for (Quest quest : services.quests().all()) {
-                Map<String, Object> json = QuestJson.toJson(quest);
-                // 顺带把校验问题给出，编辑器可直接标红
-                json.put("problems", services.questAdmin().validate(quest));
-                list.add(json);
+                list.add(questJson(quest));
             }
             ctx.result(json(list));
         });
 
+        // 导出：整份清单的 YAML。顶层是列表，一个文件就够；要拆成 quests/<id>.yml 逐条粘贴也行
         app.get("/api/quests/export", ctx -> {
-            List<Map<String, Object>> exported = new ArrayList<>();
-            for (Quest quest : services.quests().all()) {
-                // 导出不含 problems（派生信息，导入时会重新计算）
-                exported.add(QuestJson.toJson(quest));
-            }
-            ctx.result(json(Map.of("version", 1, "quests", exported)));
+            List<Quest> sorted = new ArrayList<>(services.quests().all());
+            sorted.sort(Comparator.comparing(Quest::id));
+            ctx.contentType(YAML_CONTENT_TYPE)
+                    .header("Content-Disposition", "attachment; filename=\"playerTaskX-quests.yml\"")
+                    .result(YamlDefinitions.writeQuests(sorted));
         });
 
-        app.post("/api/quests/import", ctx -> withBody(ctx, body -> {
-            if (!(body.get("quests") instanceof List<?> list)) {
-                badRequest(ctx, "缺少 quests 数组");
+        app.post("/api/quests/import", ctx -> withTextBody(ctx, body -> {
+            boolean replace = ctx.queryParam("replace") != null
+                    && Boolean.parseBoolean(ctx.queryParam("replace"));
+            List<Quest> parsed;
+            try {
+                parsed = YamlDefinitions.readQuests(body);
+            } catch (RuntimeException e) {
+                badRequest(ctx, "YAML 解析失败: " + e.getMessage());
                 return;
             }
-            // replace=true 时先清空再导入，用于「用备份覆盖当前数据」
-            if (Boolean.TRUE.equals(body.get("replace"))) {
+            if (parsed.isEmpty()) {
+                badRequest(ctx, "没有解析出任何任务（顶层应当是任务列表，或单个任务的「键: 值」）");
+                return;
+            }
+            if (replace) {
                 for (Quest existing : services.quests().all()) {
-                    services.questAdmin().delete(existing.id());
+                    try {
+                        services.questAdmin().delete(existing.id());
+                    } catch (DefinitionReadOnlyException ignored) {
+                        // 只读定义（YAML 文件里的）不在替换范围内：replace 只清数据库
+                    }
                 }
             }
             int imported = 0;
             List<String> skipped = new ArrayList<>();
-            for (Object item : list) {
-                Map<String, Object> node = asMap(item);
-                if (node == null) {
-                    continue;
-                }
-                Quest quest = QuestJson.fromJson(node);
+            for (Quest quest : parsed) {
                 if (quest.id() == null || quest.id().isBlank()) {
                     skipped.add("(缺少 id)");
                     continue;
                 }
-                services.questAdmin().save(quest);
-                imported++;
+                try {
+                    services.questAdmin().save(quest);
+                    imported++;
+                } catch (DefinitionReadOnlyException e) {
+                    // 导入的文件里含有「由 YAML 定义」的 id：不打断整份导入，逐条报告原因
+                    skipped.add(quest.id() + "（" + e.getMessage() + "）");
+                }
             }
             ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
                     "total", services.quests().all().size())));
@@ -141,9 +156,7 @@ final class EditorApi {
                 notFound(ctx, "任务不存在: " + ctx.pathParam("id"));
                 return;
             }
-            Map<String, Object> json = QuestJson.toJson(quest);
-            json.put("problems", services.questAdmin().validate(quest));
-            ctx.result(json(json));
+            ctx.result(json(questJson(quest)));
         });
 
         app.post("/api/quests", ctx -> withBody(ctx, body -> {
@@ -161,6 +174,19 @@ final class EditorApi {
             String id = ctx.pathParam("id");
             ctx.result(json(Map.of("ok", services.questAdmin().delete(id), "id", id)));
         });
+    }
+
+    /**
+     * 任务 → 编辑器 JSON。
+     * <p>
+     * 除字段与校验问题外还带上 {@code source}：{@code file} 表示这条定义来自
+     * {@code quests/} 下的 YAML（只读，编辑器必须禁用保存与删除）。
+     */
+    private Map<String, Object> questJson(Quest quest) {
+        Map<String, Object> json = QuestJson.toJson(quest);
+        json.put("problems", services.questAdmin().validate(quest));
+        json.put("source", services.questDefinitions().isReadOnly(quest.id()) ? "file" : "database");
+        return json;
     }
 
     // ------------------------------------------------------------------
@@ -298,7 +324,55 @@ final class EditorApi {
     // ------------------------------------------------------------------
 
     private void presetRoutes(Javalin app) {
-        app.get("/api/presets", ctx -> ctx.result(json(PresetJson.toGrouped(services.presets().findAll()))));
+        app.get("/api/presets", ctx -> ctx.result(json(presetGroups())));
+
+        // 导出：整份预设清单的 YAML（每项带 kind，可逐条拆成 presets/<id>.yml）
+        app.get("/api/presets/export", ctx -> {
+            List<Preset> sorted = new ArrayList<>(services.presets().findAll());
+            sorted.sort(Comparator.comparing(Preset::id));
+            ctx.contentType(YAML_CONTENT_TYPE)
+                    .header("Content-Disposition", "attachment; filename=\"playerTaskX-presets.yml\"")
+                    .result(YamlDefinitions.writePresets(sorted));
+        });
+
+        app.post("/api/presets/import", ctx -> withTextBody(ctx, body -> {
+            // kind 只是「文件里没写 kind 时」的兜底，导出文件本身带着 kind
+            String defaultKind = ctx.queryParam("kind") == null ? Preset.OBJECTIVES : ctx.queryParam("kind");
+            boolean replace = ctx.queryParam("replace") != null
+                    && Boolean.parseBoolean(ctx.queryParam("replace"));
+            List<Preset> parsed;
+            try {
+                parsed = YamlDefinitions.readPresets(body, defaultKind);
+            } catch (RuntimeException e) {
+                badRequest(ctx, "YAML 解析失败: " + e.getMessage());
+                return;
+            }
+            if (parsed.isEmpty()) {
+                badRequest(ctx, "没有解析出任何预设（每项至少要有 type）");
+                return;
+            }
+            if (replace) {
+                for (Preset existing : services.presets().findAll()) {
+                    try {
+                        services.presets().delete(existing.id());
+                    } catch (DefinitionReadOnlyException ignored) {
+                        // 只读定义（YAML 文件里的）不在替换范围内
+                    }
+                }
+            }
+            int imported = 0;
+            List<String> skipped = new ArrayList<>();
+            for (Preset preset : parsed) {
+                try {
+                    services.presets().save(preset);
+                    imported++;
+                } catch (DefinitionReadOnlyException e) {
+                    skipped.add(preset.id() + "（" + e.getMessage() + "）");
+                }
+            }
+            ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
+                    "total", services.presets().findAll().size())));
+        }));
 
         app.post("/api/presets/{kind}", ctx -> withBody(ctx, body -> {
             Preset preset = PresetJson.fromJson(ctx.pathParam("kind"), body);
@@ -307,13 +381,37 @@ final class EditorApi {
                 return;
             }
             services.presets().save(preset);
-            ctx.result(json(Map.of("ok", true, "preset", PresetJson.toJson(preset))));
+            Map<String, Object> saved = PresetJson.toJson(preset);
+            saved.put("source", presetSource(preset.id()));
+            ctx.result(json(Map.of("ok", true, "preset", saved)));
         }));
 
         app.delete("/api/presets/{kind}/{id}", ctx -> {
             String id = ctx.pathParam("id");
             ctx.result(json(Map.of("ok", services.presets().delete(id), "id", id)));
         });
+    }
+
+    /** 预设分组，每项带上 {@code source}（{@code file} = 来自 presets/ 的只读 YAML）。 */
+    private Map<String, Object> presetGroups() {
+        Map<String, Object> grouped = PresetJson.toGrouped(services.presets().findAll());
+        for (Object value : grouped.values()) {
+            if (!(value instanceof List<?> items)) {
+                continue;
+            }
+            for (Object item : items) {
+                if (item instanceof Map<?, ?> entry) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) entry;
+                    map.put("source", presetSource(String.valueOf(map.get("id"))));
+                }
+            }
+        }
+        return grouped;
+    }
+
+    private String presetSource(String id) {
+        return services.presets().isReadOnly(id) ? "file" : "database";
     }
 
     // ------------------------------------------------------------------
@@ -431,6 +529,21 @@ final class EditorApi {
             return;
         }
         handler.accept(parsed);
+    }
+
+    /**
+     * 取纯文本请求体（YAML 导入用）并交给处理器；空体回 400。
+     * <p>
+     * 与 {@link #withBody} 分开是刻意的：导入的是 YAML 文本而不是 JSON，
+     * 若复用同一个入口，一段语法错误的 YAML 会被报成「请求体不是合法的 JSON 对象」。
+     */
+    private static void withTextBody(Context ctx, Consumer<String> handler) {
+        String body = ctx.body();
+        if (body == null || body.isBlank()) {
+            badRequest(ctx, "请求体为空");
+            return;
+        }
+        handler.accept(body);
     }
 
     /** 把任意对象转成 Map，非对象返回 null（导入时跳过非法条目而不是整体失败）。 */
