@@ -121,14 +121,7 @@ tasks.shadowJar {
 }
 
 
-// 资源处理任务配置（替换 plugin.yml 中的版本变量）
-tasks.processResources {
-    val props = mapOf("version" to project.version.toString())
-    inputs.properties(props)
-    filteringCharset = "UTF-8"
-
-    // 对 plugin.yml 进行变量替换（例如 ${version} 替换为项目版本）
-    filesMatching("plugin.yml") {
-        expand(props)
-    }
-}
+// 说明：plugin.yml 位于 core 模块，它的变量替换配在 core/build.gradle.kts 的
+// :core:processResources 上。这里（root）曾经也写过一段同样的 filesMatching，
+// 但 root 没有 src 目录，:processResources 恒为 NO-SOURCE，那段配置从未生效——
+// 已删除，避免「看起来在替换、其实没有」的假象。

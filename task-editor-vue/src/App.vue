@@ -20,7 +20,6 @@
 
         <span class="nav-group">其它</span>
         <RouterLink to="/langs">语言文件</RouterLink>
-        <RouterLink to="/stats">运行统计</RouterLink>
       </nav>
 
       <div class="sidebar-foot">

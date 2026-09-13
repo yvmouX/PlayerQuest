@@ -76,7 +76,7 @@ git -C YLib checkout dev && git -C YLib pull
 - **wrapper**：`gradle/wrapper/gradle-wrapper.jar` 原为无效 jar（清单缺少 `Main-Class`），
   已用 `gradle wrapper` 重新生成（wrapper jar 来自本机 Gradle 8.14.4，目标发行版仍为 8.14.3）；
   `gradle-wrapper.properties` 保留腾讯镜像 `mirrors.cloud.tencent.com`。
-  注意仓库根 `.gitignore` 的 `*.bat` 规则会忽略 `gradlew.bat`，需 `git add -f gradlew.bat` 才能纳入版本控制。
+  仓库根 `.gitignore` 的 `*.bat` 规则已用 `!gradlew.bat` 显式豁免，`gradlew.bat` 正常纳入版本控制。
 
 ### 注意事项
 
@@ -91,24 +91,12 @@ git -C YLib checkout dev && git -C YLib pull
 
 ### 储存
 
-- 玩家进度
-  - SQLite (默认)
-  - MySQL
-  - YAML
-  - JSON
-- 任务
-  - 主体
-    - YAML(默认)
-    - JSON
-    - SQLite
-    - MySQL
-  - 奖励
-    - YAML(默认)
-    - JSON
-    - SQLite
-    - MySQL
-  - 目标
-    - YAML(默认)
-    - JSON
-    - SQLite
-    - MySQL
+两类数据**各自独立选后端**（玩家数据看 `storage.type`，任务定义与预设看 `definitions.type`），
+两边的候选项相同，都只有这三种后端：
+
+- 玩家进度：`SQLITE`（默认）、`MYSQL`、`JSON`
+- 任务定义与预设：`JSON`（默认）、`SQLITE`、`MYSQL`
+
+任务是一个整体（目标与奖励是它的一部分），不存在「主体 / 奖励 / 目标」三套独立存储。
+**没有 YAML 后端**：YAML 1.1 会把 `target: NO` 解析成布尔、把 `1.20` 解析成浮点，
+定义侧因此统一用 JSON。

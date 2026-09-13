@@ -56,4 +56,14 @@ val frontendBuild by tasks.registering {
 // 确保在 processResources 之前完成前端构建
 tasks.processResources {
     dependsOn(frontendBuild)
+
+    // plugin.yml 的 version 用 ${version} 占位，打包时替换成项目版本，避免两处各写一份而漂移。
+    // 注意这段必须配在 core 上：plugin.yml 位于 core/src/main/resources，
+    // 配在 root 项目上的话 root 没有 src 目录，:processResources 是 NO-SOURCE，替换根本不会发生。
+    val props = mapOf("version" to project.version.toString())
+    inputs.properties(props)
+    filteringCharset = "UTF-8"
+    filesMatching("plugin.yml") {
+        expand(props)
+    }
 }

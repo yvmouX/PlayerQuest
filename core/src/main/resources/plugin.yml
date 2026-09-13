@@ -1,5 +1,5 @@
 name: playerTaskX
-version: '1.0.0'
+version: '${version}'
 main: com.playerPlugin.playerTaskX.PlayerTaskX
 api-version: '1.21'
 prefix: "playerTaskX"

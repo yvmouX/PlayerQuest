@@ -11,7 +11,6 @@ import PlayerProgressView from '../views/PlayerProgressView.vue'
 import PresetView from '../views/PresetView.vue'
 import QuestEditorView from '../views/QuestEditorView.vue'
 import QuestListView from '../views/QuestListView.vue'
-import StatsView from '../views/StatsView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -26,7 +25,6 @@ const router = createRouter({
     { path: '/players', name: 'players', component: PlayerProgressView },
     { path: '/players/:uuid', name: 'player-detail', component: PlayerProgressView, props: true },
     { path: '/langs', name: 'langs', component: LangView },
-    { path: '/stats', name: 'stats', component: StatsView },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
