@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 玩家数据的 JSON 文件后端：<b>一个玩家一个文件</b>。
@@ -52,7 +53,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
     /**
      * 事务期间的暂存：避免批内多次落盘。
      * <p>
-     * 只按「表非空」判断是否处于事务中是不够的——表恰恰是 {@link #save} 自己填的，
+     * 只按「表非空」判断是否处于事务中是不够的——表恰恰是 {@link #mutate} 自己填的，
      * 因此<b>事务里的第一次写入会看不到事务而直接落盘</b>，
      * 每日刷新「先删旧任务再写新任务」的原子性就断在第一步。
      * 这里用 {@code inTransaction} 显式标记事务范围，批次表只负责装数据。
@@ -65,7 +66,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
      * 装的是「整份文件」而不是只有任务记录：任务记录与每日状态写在同一个文件里，
      * 只攒一半的话，事务结束时那次落盘会把另一半（本次事务没碰的部分）当成空写掉。
      */
-    private final ThreadLocal<Map<UUID, Pending>> pending = ThreadLocal.withInitial(LinkedHashMap::new);
+    private final ThreadLocal<Map<UUID, FileData>> pending = ThreadLocal.withInitial(LinkedHashMap::new);
 
     public JsonPlayerQuestRepository(Path folder, Consumer<String> warn) {
         this.files = new JsonFileStore(folder);
@@ -104,15 +105,10 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
             warn.accept("玩家任务记录的 playerId/questId 为空，已跳过保存");
             return;
         }
-        if (inTransaction.get()) {
-            // 事务进行中：只改内存，由 transaction() 统一落盘
-            liveInTransaction(playerQuest.playerId()).quests().put(playerQuest.questId(), playerQuest);
-            return;
-        }
-        // 整份文件只解析一次：进度与每日状态同源，避免读两遍同一份内容
-        FileData data = readAll(playerQuest.playerId());
-        data.quests().put(playerQuest.questId(), playerQuest);
-        write(playerQuest.playerId(), data.quests(), data.dailyState());
+        mutate(playerQuest.playerId(), data -> {
+            data.quests().put(playerQuest.questId(), playerQuest);
+            return true;
+        });
     }
 
     /**
@@ -128,12 +124,12 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
             work.run();
             return;
         }
-        Map<UUID, Pending> batch = pending.get();
+        Map<UUID, FileData> batch = pending.get();
         inTransaction.set(Boolean.TRUE);
         try {
             work.run();
-            for (Map.Entry<UUID, Pending> entry : batch.entrySet()) {
-                Pending state = entry.getValue();
+            for (Map.Entry<UUID, FileData> entry : batch.entrySet()) {
+                FileData state = entry.getValue();
                 write(entry.getKey(), state.quests(), state.dailyState());
             }
         } finally {
@@ -144,29 +140,12 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
 
     @Override
     public void delete(UUID playerId, String questId) {
-        if (inTransaction.get()) {
-            // 与 save 一样攒进批次：否则「删旧 + 写新」的第一步就立刻落盘了
-            liveInTransaction(playerId).quests().remove(questId);
-            return;
-        }
-        FileData data = readAll(playerId);
-        if (data.quests().remove(questId) == null) {
-            return;
-        }
-        write(playerId, data.quests(), data.dailyState());
+        mutate(playerId, data -> data.quests().remove(questId) != null);
     }
 
     @Override
     public void deleteByPlayerAndType(UUID playerId, QuestType type) {
-        if (inTransaction.get()) {
-            liveInTransaction(playerId).quests().values().removeIf(record -> record.type() == type);
-            return;
-        }
-        FileData data = readAll(playerId);
-        if (!data.quests().values().removeIf(record -> record.type() == type)) {
-            return;
-        }
-        write(playerId, data.quests(), data.dailyState());
+        mutate(playerId, data -> data.quests().values().removeIf(record -> record.type() == type));
     }
 
     @Override
@@ -210,12 +189,10 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
             return;
         }
         DailyState state = new DailyState(period, refreshCount, assignedAt);
-        if (inTransaction.get()) {
-            // 每日状态与任务记录同一份文件，事务里必须一起攒着改
-            liveInTransaction(playerId).dailyState(state);
-            return;
-        }
-        write(playerId, readAll(playerId).quests(), state);
+        mutate(playerId, data -> {
+            data.dailyState(state);
+            return true;
+        });
     }
 
     @Override
@@ -223,11 +200,10 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null) {
             return;
         }
-        if (inTransaction.get()) {
-            liveInTransaction(playerId).dailyState(null);
-            return;
-        }
-        write(playerId, readAll(playerId).quests(), null);
+        mutate(playerId, data -> {
+            data.dailyState(null);
+            return true;
+        });
     }
 
     // ------------------------------------------------------------------
@@ -238,43 +214,19 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
      * 一个玩家文件的全部内容。
      * <p>
      * 任务记录与每日状态存在同一份文件里，分两次解析等于把同一段 JSON 读两遍；
-     * 一次 {@code save} 内部的「读旧值 + 写新值」因此必须共用同一次解析结果。
-     * {@code quests} 有意用可变表：事务里它会被就地修改。
-     */
-    private record FileData(Map<String, PlayerQuest> quests, DailyState dailyState) {
-    }
-
-    /**
-     * 读取路径：事务里要读到本批次尚未落盘的改动，否则「写一条再读回来」会看不到。
+     * 一次保存内部的「读旧值 + 写新值」因此必须共用同一次解析结果。
      * <p>
-     * 只有 {@code pending} 里已存在该玩家时才用批次——批次的装入本身就是从磁盘读的，
-     * 不会凭空变出数据；事务结束后 {@code pending} 清空，读取回到磁盘。
-     *
-     * @param warnOnCorrupt 见 {@link #readAll(UUID, boolean)}
+     * 两个字段都有意可变（因此不是 record）：事务批次里装的就是它本身，改动就地累加，
+     * 批次结束时读到的自然是最新值。
      */
-    private FileData read(UUID playerId, boolean warnOnCorrupt) {
-        Pending batched = pending.get().get(playerId);
-        return batched == null
-                ? readAll(playerId, warnOnCorrupt)
-                : new FileData(batched.quests(), batched.dailyState());
-    }
-
-    /** 默认告警的读取：凡是要把内容写回去的调用点都走这条，损坏必须先被看见。 */
-    private FileData read(UUID playerId) {
-        return read(playerId, true);
-    }
-
-    /**
-     * 事务批次里的一个玩家：改动就地累加，结束时整体写回一次。
-     */
-    private static final class Pending {
+    private static final class FileData {
 
         private final Map<String, PlayerQuest> quests;
         private DailyState dailyState;
 
-        private Pending(FileData data) {
-            this.quests = data.quests();
-            this.dailyState = data.dailyState();
+        private FileData(Map<String, PlayerQuest> quests, DailyState dailyState) {
+            this.quests = quests;
+            this.dailyState = dailyState;
         }
 
         private Map<String, PlayerQuest> quests() {
@@ -291,12 +243,46 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     /**
-     * 取（必要时从磁盘装入）事务批次里该玩家的状态。
+     * 读取路径：事务里要读到本批次尚未落盘的改动，否则「写一条再读回来」会看不到。
      * <p>
-     * 装入只在第一次改动该玩家时发生，且用的是与写回同源的那份解析结果。
+     * 只有 {@code pending} 里已存在该玩家时才用批次——批次的装入本身就是从磁盘读的，
+     * 不会凭空变出数据；事务结束后 {@code pending} 清空，读取回到磁盘。
+     * 命中的批次条目是可变对象，读取方只许读、不许改。
+     *
+     * @param warnOnCorrupt 见 {@link #readAll(UUID, boolean)}
      */
-    private Pending liveInTransaction(UUID playerId) {
-        return pending.get().computeIfAbsent(playerId, key -> new Pending(readAll(key)));
+    private FileData read(UUID playerId, boolean warnOnCorrupt) {
+        FileData batched = pending.get().get(playerId);
+        return batched == null ? readAll(playerId, warnOnCorrupt) : batched;
+    }
+
+    /** 默认告警的读取：凡是要把内容写回去的调用点都走这条，损坏必须先被看见。 */
+    private FileData read(UUID playerId) {
+        return read(playerId, true);
+    }
+
+    /**
+     * 改一个玩家的数据：事务里只改内存，事务外改完立即整体落盘一次。
+     * <p>
+     * 所有会改数据的入口都必须走这里，落盘判断才有唯一出处。不能按「批次非空」判断在不在事务里：
+     * 批次恰恰是本方法自己填的，照那个判断，<b>事务里的第一次改动会看不到事务而直接落盘</b>，
+     * 「删旧 + 写新 + 记状态」的原子性就断在第一步。
+     * <p>
+     * 事务里第一次改到某玩家时才用 {@code computeIfAbsent} 从磁盘装入该文件，
+     * 装入的就是稍后写回的那一份，因此「读到的」与「写出去的」不会各解析一遍。
+     *
+     * @param change 返回「是否真的改了」。什么都没删掉时就不落盘：白写一遍不只是浪费，
+     *               还会把因损坏而读空的文件覆盖掉，让用户失去手工修复的机会
+     */
+    private void mutate(UUID playerId, Function<FileData, Boolean> change) {
+        boolean batched = inTransaction.get();
+        FileData data = batched
+                ? pending.get().computeIfAbsent(playerId, key -> readAll(key))
+                : readAll(playerId);
+        // 事务里落盘统一推迟到批次结束，change 的返回值此时没有意义
+        if (change.apply(data) && !batched) {
+            write(playerId, data.quests(), data.dailyState());
+        }
     }
 
     /**
