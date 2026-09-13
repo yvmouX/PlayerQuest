@@ -1,6 +1,5 @@
 package com.playerPlugin.playerTaskX.core.web;
 
-import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
@@ -44,14 +43,23 @@ import java.util.function.Function;
  * POST/PUT 一律用 {@link #withBody} 取请求体：解析失败时它在返回前就写好 400，
  * 处理器体因此无需再判 null——漏判的代价是「坏请求体继续往下跑」，而这类漏判
  * 只在手写校验时才看得出，交给辅助方法后就不可能漏。
+ *
+ * <h2>它只认识 {@link EditorServices}，不认识插件单例</h2>
+ * 原先本类持有 {@code PlayerTaskX}，于是每条路由都要求「插件已启用 + 服务端在跑」，
+ * 单测无从下手——这一层过去六轮改动全部靠手工起服验证。改为依赖窄接口后，
+ * 测试可以真实启动 Javalin 打 HTTP（见 {@code EditorApiTest}）。
+ * <p>
+ * 唯一的例外是 {@code /api/players}：玩家名与在线状态只能从 Bukkit 运行期取，
+ * 没有可注入的余地，因此那两条路由仍是「单测外」的（{@code /api/catalog} 同理，
+ * 它要枚举服务端的 {@code Material} / {@code EntityType}）。
  */
 final class EditorApi {
 
-    private final PlayerTaskX plugin;
+    private final EditorServices services;
     private final MaterialCatalog catalog;
 
-    EditorApi(PlayerTaskX plugin, MaterialCatalog catalog) {
-        this.plugin = plugin;
+    EditorApi(EditorServices services, MaterialCatalog catalog) {
+        this.services = services;
         this.catalog = catalog;
     }
 
@@ -78,10 +86,10 @@ final class EditorApi {
     private void questRoutes(Javalin app) {
         app.get("/api/quests", ctx -> {
             List<Map<String, Object>> list = new ArrayList<>();
-            for (Quest quest : plugin.quests().all()) {
+            for (Quest quest : services.quests().all()) {
                 Map<String, Object> json = QuestJson.toJson(quest);
                 // 顺带把校验问题给出，编辑器可直接标红
-                json.put("problems", plugin.questAdmin().validate(quest));
+                json.put("problems", services.questAdmin().validate(quest));
                 list.add(json);
             }
             ctx.result(json(list));
@@ -89,7 +97,7 @@ final class EditorApi {
 
         app.get("/api/quests/export", ctx -> {
             List<Map<String, Object>> exported = new ArrayList<>();
-            for (Quest quest : plugin.quests().all()) {
+            for (Quest quest : services.quests().all()) {
                 // 导出不含 problems（派生信息，导入时会重新计算）
                 exported.add(QuestJson.toJson(quest));
             }
@@ -103,8 +111,8 @@ final class EditorApi {
             }
             // replace=true 时先清空再导入，用于「用备份覆盖当前数据」
             if (Boolean.TRUE.equals(body.get("replace"))) {
-                for (Quest existing : plugin.quests().all()) {
-                    plugin.questAdmin().delete(existing.id());
+                for (Quest existing : services.quests().all()) {
+                    services.questAdmin().delete(existing.id());
                 }
             }
             int imported = 0;
@@ -119,21 +127,21 @@ final class EditorApi {
                     skipped.add("(缺少 id)");
                     continue;
                 }
-                plugin.questAdmin().save(quest);
+                services.questAdmin().save(quest);
                 imported++;
             }
             ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
-                    "total", plugin.quests().all().size())));
+                    "total", services.quests().all().size())));
         }));
 
         app.get("/api/quests/{id}", ctx -> {
-            Quest quest = plugin.quests().find(ctx.pathParam("id")).orElse(null);
+            Quest quest = services.quests().find(ctx.pathParam("id")).orElse(null);
             if (quest == null) {
                 notFound(ctx, "任务不存在: " + ctx.pathParam("id"));
                 return;
             }
             Map<String, Object> json = QuestJson.toJson(quest);
-            json.put("problems", plugin.questAdmin().validate(quest));
+            json.put("problems", services.questAdmin().validate(quest));
             ctx.result(json(json));
         });
 
@@ -143,14 +151,14 @@ final class EditorApi {
                 badRequest(ctx, "任务 id 不能为空");
                 return;
             }
-            plugin.questAdmin().save(quest);
+            services.questAdmin().save(quest);
             ctx.result(json(Map.of("ok", true, "id", quest.id(),
-                    "problems", plugin.questAdmin().validate(quest))));
+                    "problems", services.questAdmin().validate(quest))));
         }));
 
         app.delete("/api/quests/{id}", ctx -> {
             String id = ctx.pathParam("id");
-            ctx.result(json(Map.of("ok", plugin.questAdmin().delete(id), "id", id)));
+            ctx.result(json(Map.of("ok", services.questAdmin().delete(id), "id", id)));
         });
     }
 
@@ -162,12 +170,12 @@ final class EditorApi {
         app.get("/api/players", ctx -> {
             // 只列出有任务记录的玩家，避免遍历全服离线玩家
             List<Map<String, Object>> players = new ArrayList<>();
-            for (UUID playerId : plugin.playerQuestRepository().distinctPlayerIds()) {
+            for (UUID playerId : services.playerQuestRepository().distinctPlayerIds()) {
                 Map<String, Object> entry = new LinkedHashMap<>();
                 entry.put("uuid", playerId.toString());
                 entry.put("name", playerName(playerId));
                 entry.put("online", Bukkit.getPlayer(playerId) != null);
-                entry.put("quests", plugin.playerQuestRepository().findByPlayer(playerId).size());
+                entry.put("quests", services.playerQuestRepository().findByPlayer(playerId).size());
                 players.add(entry);
             }
             ctx.result(json(players));
@@ -186,8 +194,8 @@ final class EditorApi {
             result.put("name", playerName(playerId));
 
             List<Map<String, Object>> records = new ArrayList<>();
-            for (var record : plugin.playerQuestRepository().findByPlayer(playerId)) {
-                Quest quest = plugin.quests().find(record.questId()).orElse(null);
+            for (var record : services.playerQuestRepository().findByPlayer(playerId)) {
+                Quest quest = services.quests().find(record.questId()).orElse(null);
                 Map<String, Object> entry = new LinkedHashMap<>();
                 entry.put("questId", record.questId());
                 entry.put("questName", quest == null ? "" : TextRenderer.strip(quest.name()));
@@ -233,8 +241,8 @@ final class EditorApi {
     private void schemaRoutes(Javalin app) {
         app.get("/api/schema", ctx -> {
             Map<String, Object> schema = new LinkedHashMap<>();
-            schema.put("objectives", typeSchemas(plugin.objectiveTypes().all(), type -> Map.of()));
-            schema.put("rewards", typeSchemas(plugin.rewardTypes().all(), EditorApi::rewardExtra));
+            schema.put("objectives", typeSchemas(services.objectiveTypes().all(), type -> Map.of()));
+            schema.put("rewards", typeSchemas(services.rewardTypes().all(), EditorApi::rewardExtra));
             ctx.result(json(schema));
         });
 
@@ -280,7 +288,7 @@ final class EditorApi {
     // ------------------------------------------------------------------
 
     private void presetRoutes(Javalin app) {
-        app.get("/api/presets", ctx -> ctx.result(json(PresetJson.toGrouped(plugin.presets().findAll()))));
+        app.get("/api/presets", ctx -> ctx.result(json(PresetJson.toGrouped(services.presets().findAll()))));
 
         app.post("/api/presets/{kind}", ctx -> withBody(ctx, body -> {
             Preset preset = PresetJson.fromJson(ctx.pathParam("kind"), body);
@@ -288,13 +296,13 @@ final class EditorApi {
                 badRequest(ctx, "预设缺少 type");
                 return;
             }
-            plugin.presets().save(preset);
+            services.presets().save(preset);
             ctx.result(json(Map.of("ok", true, "preset", PresetJson.toJson(preset))));
         }));
 
         app.delete("/api/presets/{kind}/{id}", ctx -> {
             String id = ctx.pathParam("id");
-            ctx.result(json(Map.of("ok", plugin.presets().delete(id), "id", id)));
+            ctx.result(json(Map.of("ok", services.presets().delete(id), "id", id)));
         });
     }
 
@@ -305,7 +313,7 @@ final class EditorApi {
     private void langRoutes(Javalin app) {
         app.get("/api/langs", ctx -> {
             Map<String, Object> result = new LinkedHashMap<>();
-            for (String code : plugin.config().getLanguageAvailable()) {
+            for (String code : services.availableLanguages()) {
                 result.put(code, readLang(code));
             }
             ctx.result(json(result));
@@ -315,7 +323,7 @@ final class EditorApi {
             String code = ctx.pathParam("code");
             Object content = body.get("content");
             writeLang(code, content == null ? "" : String.valueOf(content));
-            plugin.messages().reload();
+            services.reloadMessages();
             ctx.result(json(Map.of("ok", true, "code", code)));
         }));
     }
@@ -329,7 +337,7 @@ final class EditorApi {
                 return "";
             }
         }
-        try (var stream = plugin.getResource("lang/" + code + ".yml")) {
+        try (var stream = services.resource("lang/" + code + ".yml")) {
             return stream == null ? "" : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             return "";
@@ -362,7 +370,7 @@ final class EditorApi {
     }
 
     private File langFile(String code) {
-        return new File(plugin.getDataFolder(), "lang/" + code + ".yml");
+        return new File(services.dataFolder(), "lang/" + code + ".yml");
     }
 
     // ------------------------------------------------------------------
@@ -372,19 +380,19 @@ final class EditorApi {
     private void miscRoutes(Javalin app) {
         app.get("/api/stats", ctx -> {
             Map<String, Object> stats = new LinkedHashMap<>();
-            stats.put("quests", plugin.quests().all().size());
-            stats.put("dailyQuests", plugin.quests().daily().size());
-            stats.put("objectives", plugin.objectiveTypes().all().size());
-            stats.put("rewards", plugin.rewardTypes().all().size());
-            stats.put("players", plugin.playerQuestRepository().countPlayers());
-            stats.put("storage", plugin.describeStorage());
-            stats.put("categories", plugin.quests().categories());
+            stats.put("quests", services.quests().all().size());
+            stats.put("dailyQuests", services.quests().daily().size());
+            stats.put("objectives", services.objectiveTypes().all().size());
+            stats.put("rewards", services.rewardTypes().all().size());
+            stats.put("players", services.playerQuestRepository().countPlayers());
+            stats.put("storage", services.describeStorage());
+            stats.put("categories", services.quests().categories());
             ctx.result(json(stats));
         });
 
         app.post("/api/reload", ctx -> {
-            plugin.questAdmin().reload();
-            ctx.result(json(Map.of("ok", true, "quests", plugin.quests().all().size())));
+            services.questAdmin().reload();
+            ctx.result(json(Map.of("ok", true, "quests", services.quests().all().size())));
         });
     }
 

@@ -31,9 +31,14 @@ import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
+import com.playerPlugin.playerTaskX.core.web.EditorServices;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
+import java.io.InputStream;
+import java.util.List;
 
 
 /**
@@ -45,8 +50,12 @@ import org.bukkit.plugin.java.JavaPlugin;
  * </ol>
  * 业务逻辑不住在这里：每日逻辑在 DailyService，任务维护在 QuestAdminService，
  * 事件翻译在 listener 包，类型清单在 BuiltIns。往本类加方法前先想想它属于哪个子系统。
+ *
+ * <h2>为什么 implements {@link EditorServices}</h2>
+ * 网页编辑器后台只认那个窄接口（这样它能脱离服务端单测），而它需要的子系统恰好都由本类持有，
+ * 因此由本类直接实现：转调一行，比再包一层适配器少一处要同步维护的地方。
  */
-public final class PlayerTaskX extends JavaPlugin {
+public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     private static PlayerTaskX instance;
     private static Logger log;
@@ -326,6 +335,33 @@ public final class PlayerTaskX extends JavaPlugin {
     /** 存储描述，供编辑器与命令展示。 */
     public String describeStorage() {
         return database == null ? "未连接" : database.description();
+    }
+
+    // ---------- EditorServices：只有编辑器会用到的那几个值 ----------
+    // 它们不是「子系统访问点」，而是把子系统里的具体取值抽出来，免得编辑器直接摸 config / jar 资源
+
+    /** 可用语言代码；编辑器据此逐个读取语言文件。 */
+    @Override
+    public List<String> availableLanguages() {
+        return config.getLanguageAvailable();
+    }
+
+    /** 语言文件写完后调用：新内容必须立刻对玩家生效，而不是等下次重启。 */
+    @Override
+    public void reloadMessages() {
+        messages.reload();
+    }
+
+    /** 插件数据目录；编辑器的语言文件读写落在它下面的 lang/。 */
+    @Override
+    public File dataFolder() {
+        return getDataFolder();
+    }
+
+    /** 插件内置资源；数据目录里没有语言文件时用它兜底。 */
+    @Override
+    public InputStream resource(String path) {
+        return getResource(path);
     }
 
     /** 网页编辑器实例；未启用或启动失败时为 null。 */
