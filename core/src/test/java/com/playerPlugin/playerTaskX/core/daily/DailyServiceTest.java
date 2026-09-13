@@ -135,7 +135,7 @@ class DailyServiceTest {
         List<Quest> pool = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             pool.add(new Quest("quest_" + i, "任务 " + i, List.of(), "PAPER", "每日",
-                    QuestType.DAILY,
+                    QuestType.DAILY, List.of(),
                     List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 10))),
                     List.of(), 0.0, true));
         }

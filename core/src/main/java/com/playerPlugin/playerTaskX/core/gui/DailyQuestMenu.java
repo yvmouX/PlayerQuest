@@ -5,7 +5,6 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
-import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -127,25 +126,12 @@ public final class DailyQuestMenu extends Menu {
     /**
      * 领取奖励。
      * <p>
-     * {@code RewardService.claim} 只回一个布尔值，领不到时按玩家记录的<b>最新</b>状态还原原因，
-     * 口径与 {@code /ptx claim} 保持一致——同一个功能两个入口说法不同会让玩家以为遇到了 bug。
+     * 「为什么领不到」由 {@code RewardService.ClaimOutcome} 一处判定并给出措辞，
+     * 这里不再自己读状态拼句子——口径与 {@code /ptx claim} 因此天然一致。
      */
     private void claim(PlayerTaskX plugin, Quest quest) {
         Player player = viewer();
-        if (plugin.rewardService().claim(player, quest.id())) {
-            messages().send(player, "quest.claimed", Texts.render(quest.name()));
-            refresh();
-            return;
-        }
-        PlayerQuest live = plugin.playerQuestRepository().find(player.getUniqueId(), quest.id()).orElse(null);
-        if (live == null) {
-            messages().send(player, "quest.unavailable");
-        } else if (live.status() == QuestStatus.CLAIMED) {
-            // 连点两次：第一次已经领走，第二次看到的还是旧物品
-            messages().send(player, "quest.already-claimed");
-        } else {
-            messages().send(player, "quest.not-completed");
-        }
+        plugin.rewardService().claim(player, quest.id()).report(messages(), player);
         refresh();
     }
 

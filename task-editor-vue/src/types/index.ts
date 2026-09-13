@@ -90,6 +90,13 @@ export interface Quest {
   icon: string
   category: string
   type: QuestType
+  /**
+   * 前置任务 id 列表；全部**已领取奖励**后本任务才会被抽取、才可领奖。
+   *
+   * <p>空数组表示没有前置。判定标准是「已领奖」而不是「已完成」，
+   * 界面文案必须与后端一致，否则玩家会以为做完前置就能解锁。
+   */
+  prerequisites: string[]
   /** DAILY 刷新费用 */
   refreshCost: number
   enabled: boolean

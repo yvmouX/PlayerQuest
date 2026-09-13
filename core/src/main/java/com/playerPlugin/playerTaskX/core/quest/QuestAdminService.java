@@ -40,17 +40,20 @@ public final class QuestAdminService {
     private final ObjectiveRegistryImpl objectiveTypes;
     private final RewardService rewardService;
     private final ProgressService progressService;
+    private final PrerequisiteService prerequisites;
     /** 在线玩家 id 供应器；抽出成 Supplier 是为了让 rebuild 的触发时机可测试。 */
     private final Supplier<Collection<UUID>> onlinePlayerIds;
 
     public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
                              ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
-                             ProgressService progressService, Supplier<Collection<UUID>> onlinePlayerIds) {
+                             ProgressService progressService, PrerequisiteService prerequisites,
+                             Supplier<Collection<UUID>> onlinePlayerIds) {
         this.repository = repository;
         this.quests = quests;
         this.objectiveTypes = objectiveTypes;
         this.rewardService = rewardService;
         this.progressService = progressService;
+        this.prerequisites = prerequisites;
         this.onlinePlayerIds = onlinePlayerIds;
     }
 
@@ -84,6 +87,10 @@ public final class QuestAdminService {
      * <p>
      * 奖励除了「类型是否存在」还要看「是否可用」：Vault 未装时金币奖励配置完全合法，
      * 但玩家一分钱也拿不到——这种情况必须暴露在管理员视图里，否则只能靠翻日志发现。
+     * <p>
+     * 前置关系的问题（不存在、自引用、成环、指向已禁用任务）由
+     * {@link PrerequisiteService#problems(Quest)} 给出：那是任务链的知识，
+     * 判定与校验必须同一处，否则运行时按一种口径、编辑器按另一种口径。
      */
     public List<String> validate(Quest quest) {
         List<String> problems = new ArrayList<>();
@@ -95,6 +102,7 @@ public final class QuestAdminService {
                 problems.add("未知目标类型 " + objective.type());
             }
         }
+        problems.addAll(prerequisites.problems(quest));
         problems.addAll(rewardService.validate(quest));
         return problems;
     }

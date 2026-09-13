@@ -12,12 +12,14 @@ import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import com.playerPlugin.playerTaskX.core.quest.PrerequisiteService;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.storage.InMemoryQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
@@ -202,6 +204,60 @@ class EditorApiTest {
 
         assertTrue(error(response, 400).contains("id"));
         assertEquals(0, services.quests().all().size(), "被拒的请求不能留下半条记录");
+    }
+
+    @Test
+    @DisplayName("前置任务经编辑器往返：多个前置原样读回，成环当场被标为校验问题")
+    void prerequisitesRoundTripAndCycleIsReported() throws Exception {
+        services.seed(quest("p1"), quest("p2"));
+
+        String body = """
+                {
+                  "id": "chained",
+                  "name": "链式任务",
+                  "type": "NORMAL",
+                  "prerequisites": ["p1", "p2"],
+                  "objectives": [{"type": "break_block", "properties": {"target": "STONE", "amount": 1}}],
+                  "rewards": []
+                }
+                """;
+        HttpResponse<String> saved = send("POST", "/api/quests", body);
+        assertEquals(200, saved.statusCode(), "保存应成功，实际: " + saved.body());
+
+        JsonNode readBack = json(send("GET", "/api/quests/chained", null));
+        assertEquals(2, readBack.get("prerequisites").size(), "多前置必须原样往返");
+        assertEquals("p1", readBack.get("prerequisites").get(0).asText());
+        assertEquals("p2", readBack.get("prerequisites").get(1).asText());
+        assertEquals(0, readBack.get("problems").size());
+
+        // 把 p1 改成以 chained 为前置 → chained -> p1 -> chained 成环，必须立刻在 problems 里报出来
+        String cyclic = """
+                {
+                  "id": "p1",
+                  "name": "任务 p1",
+                  "type": "NORMAL",
+                  "prerequisites": ["chained"],
+                  "objectives": [{"type": "break_block", "properties": {"target": "STONE", "amount": 1}}],
+                  "rewards": []
+                }
+                """;
+        JsonNode problems = json(send("POST", "/api/quests", cyclic)).get("problems");
+        assertEquals(1, problems.size(), "成环应恰好报一条，实际: " + problems);
+        assertTrue(problems.get(0).asText().contains("成环"), problems.get(0).asText());
+
+        // 前置不存在同样要报：它会让目标任务永远解锁不了
+        String ghost = """
+                {
+                  "id": "orphan",
+                  "name": "孤儿任务",
+                  "type": "NORMAL",
+                  "prerequisites": ["no_such_quest"],
+                  "objectives": [{"type": "break_block", "properties": {"target": "STONE", "amount": 1}}],
+                  "rewards": []
+                }
+                """;
+        JsonNode ghostProblems = json(send("POST", "/api/quests", ghost)).get("problems");
+        assertTrue(ghostProblems.toString().contains("no_such_quest"), ghostProblems.toString());
     }
 
     @Test
@@ -552,14 +608,14 @@ class EditorApiTest {
     }
 
     private static Quest quest(String id, QuestType type, String category) {
-        return new Quest(id, "任务 " + id, List.of(), "PAPER", category, type,
+        return new Quest(id, "任务 " + id, List.of(), "PAPER", category, type, List.of(),
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 1))),
                 List.of(QuestReward.of("exp", Map.of("amount", 10))), 0.0, true);
     }
 
     /** 引用了不存在的目标与奖励类型：校验必须报出来，编辑器据此标红。 */
     private static Quest brokenQuest(String id) {
-        return new Quest(id, "坏任务", List.of(), "PAPER", "", QuestType.NORMAL,
+        return new Quest(id, "坏任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
                 List.of(QuestObjective.of("no_such_objective", Map.of("amount", 1))),
                 List.of(QuestReward.of("no_such_reward", Map.of("amount", 1))), 0.0, true);
     }
@@ -580,6 +636,7 @@ class EditorApiTest {
         private final FakeQuestRepository stored = new FakeQuestRepository();
         private final FakePresetRepository presets = new FakePresetRepository();
         private final EmptyPlayerQuestRepository playerQuests = new EmptyPlayerQuestRepository();
+        private final InMemoryQuestClaimRepository claims = new InMemoryQuestClaimRepository();
         private final Map<String, String> builtinResources = new LinkedHashMap<>();
         private final List<String> languages = new ArrayList<>(List.of("zh_CN", "en"));
         private final File dataFolder;
@@ -594,8 +651,9 @@ class EditorApiTest {
             // 用真实 QuestAdminService：保存/删除/校验的语义（三处同步、未知类型上报）
             // 不该在测试里再抄一遍——抄出来的假身一旦与实现漂移，测试会一边倒地绿。
             QuestAdminService real = new QuestAdminService(stored, quests, objectiveTypes,
-                    new RewardService(quests, rewardTypes, playerQuests),
-                    mock(ProgressService.class), List::of);
+                    new RewardService(quests, rewardTypes, playerQuests, claims,
+                            new PrerequisiteService(quests, claims)),
+                    mock(ProgressService.class), new PrerequisiteService(quests, claims), List::of);
             // 只替换 reload()：它会经 Bukkit.getLogger() 写日志，而单测里装不了 Server 单例
             // ——Bukkit.setServer 只允许调用一次，已被 QuestAdminServiceTest 占用，
             // 再调一次会直接抛异常并连带把那个测试类弄挂。

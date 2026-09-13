@@ -397,6 +397,38 @@ input[type='checkbox'] {
   gap: 0.75rem;
 }
 
+/*
+ * 前置任务列表：每行「id + 名称 + 移除」。
+ * 用 flex 而不是表格：条目数通常个位数，撑不开表格的复杂度，
+ * 但 id 与名称要能各自对齐，所以 id 固定等宽、名称占满剩余空间。
+ */
+.prerequisite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prerequisite-list > li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+}
+
+.prerequisite-list > li > .hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---------- 徽标 ---------- */
 
 .badge {

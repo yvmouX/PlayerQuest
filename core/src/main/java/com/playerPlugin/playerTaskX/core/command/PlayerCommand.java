@@ -184,8 +184,8 @@ public class PlayerCommand {
     /**
      * {@code claim <id>}：领取指定任务的奖励。
      * <p>
-     * {@code claim} 只返回布尔值，这里按玩家记录把「为什么领不到」还原出来：
-     * 否则玩家无论未完成、已领过还是任务已删除，看到的都是同一句失败提示。
+     * 「为什么领不到」（未接取 / 未完成 / 已领过 / 前置未满足）由
+     * {@code RewardService.ClaimOutcome} 一处给出，命令与 GUI 因此不可能出现两种说法。
      */
     @SubCommand(value = "claim", description = "领取已完成任务的奖励")
     public void claim(CommandSender sender, @Arg(value = "id", suggestion = "suggestQuestIds") String id) {
@@ -201,22 +201,7 @@ public class PlayerCommand {
             messages.send(player, "quest.not-found", id);
             return;
         }
-        if (plugin.rewardService().claim(player, id)) {
-            messages.send(player, "quest.claimed", TextRenderer.render(quest.name()));
-            return;
-        }
-
-        PlayerQuest playerQuest = plugin.playerQuestRepository().find(player.getUniqueId(), id).orElse(null);
-        if (playerQuest == null) {
-            messages.send(player, "quest.unavailable");
-        } else if (playerQuest.status() == QuestStatus.CLAIMED) {
-            messages.send(player, "quest.already-claimed");
-        } else if (playerQuest.status() == QuestStatus.COMPLETED) {
-            // 状态是「已完成待领取」却领取失败，说明发放链路本身出了问题，让玩家去催管理员
-            messages.send(player, "error.internal");
-        } else {
-            messages.send(player, "quest.not-completed");
-        }
+        plugin.rewardService().claim(player, id).report(messages, player);
     }
 
     // ---------- 进度 ----------

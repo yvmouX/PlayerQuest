@@ -18,6 +18,7 @@ import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
 import com.playerPlugin.playerTaskX.core.listener.TextListener;
 import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
 import com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook;
+import com.playerPlugin.playerTaskX.core.quest.PrerequisiteService;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
@@ -29,6 +30,7 @@ import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.QuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import com.playerPlugin.playerTaskX.core.web.EditorServices;
@@ -66,9 +68,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private DatabaseFactory.Handle database;
     private PresetRepository presets;
     private PlayerQuestRepository playerQuestRepository;
+    private QuestClaimRepository claimRepository;
     private QuestRegistryImpl quests;
     private ObjectiveRegistryImpl objectiveTypes;
     private RewardRegistryImpl rewardTypes;
+    private PrerequisiteService prerequisites;
     private ProgressService progressService;
     private RewardService rewardService;
     private ProgressDisplay progressDisplay;
@@ -130,6 +134,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
             return;
         }
         playerQuestRepository = handle.playerQuestRepository();
+        claimRepository = handle.claims();
         QuestRepository questRepository = handle.quests();
         presets = handle.presets();
         log.info("存储已就绪: {}（任务定义、预设与玩家数据在同一库）", database.description());
@@ -147,11 +152,14 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         progressService.onStructureChanged((questId, playerId) -> log.warn(
                 "任务 {} 的目标结构已变化，玩家 {} 的该任务进度已重置（旧进度的下标已错位）",
                 questId, playerId));
-        rewardService = new RewardService(quests, rewardTypes, playerQuestRepository);
+        // 前置判定只依赖「永久领取账本」：每日任务记录会被整批删除，不能拿它当依据
+        prerequisites = new PrerequisiteService(quests, claimRepository);
+        rewardService = new RewardService(quests, rewardTypes, playerQuestRepository,
+                claimRepository, prerequisites);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
-        dailyService = new DailyService(config, quests, playerQuestRepository, progressService);
+        dailyService = new DailyService(config, quests, playerQuestRepository, progressService, prerequisites);
         questAdmin = new QuestAdminService(questRepository, quests, objectiveTypes, rewardService,
-                progressService,
+                progressService, prerequisites,
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
                 () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList());
 
@@ -295,6 +303,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return progressService;
     }
 
+    /** 前置任务判定与校验（任务链）。 */
+    public PrerequisiteService prerequisites() {
+        return prerequisites;
+    }
+
     public RewardService rewardService() {
         return rewardService;
     }
@@ -319,6 +332,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     public PlayerQuestRepository playerQuestRepository() {
         return playerQuestRepository;
+    }
+
+    /** 永久领取账本：前置判定与「做过没有」查询的唯一依据。 */
+    public QuestClaimRepository claimRepository() {
+        return claimRepository;
     }
 
     /** 存储描述，供编辑器与命令展示。 */

@@ -45,6 +45,7 @@ PlayerTaskX/
 Quest                    任务定义（静态，由配置/网页编辑器维护）
 ├── id, name, description, icon, category
 ├── type: DAILY | NORMAL
+├── prerequisites: List<String>   前置任务 id（全部**领奖**后才解锁，空 = 无前置）
 ├── objectives: List<QuestObjective>
 ├── rewards:    List<QuestReward>
 └── refreshCost（刷新费用，仅 DAILY）
@@ -172,11 +173,12 @@ SQLite 还是 MySQL。`JdbcDatabase` 只有「连接从哪来」不同（两个�
 
 ```
 storage.type = SQLITE → JdbcQuestRepository + JdbcPresetRepository
-                      + JdbcPlayerQuestRepository（同一个 JdbcDatabase）
+                      + JdbcPlayerQuestRepository + JdbcQuestClaimRepository
+                      （同一个 JdbcDatabase）
 storage.type = MYSQL  → 同上，Dialect 决定方言
 ```
 
-装配入口是 `DatabaseFactory`（`Handle` 一次给出三份仓储）；未知类型回退 SQLite 并告警，
+装配入口是 `DatabaseFactory`（`Handle` 一次给出四份仓储）；未知类型回退 SQLite 并告警，
 而不是让插件启动失败。**没有从旧格式搬运数据的迁移代码**：项目未发布，
 不存在「数据只在旧存储里」的部署，为它保留一次性代码没有收益。
 
@@ -226,15 +228,39 @@ player_quest(player_id, quest_id, type, assigned_at, expires_at, status,
              structure_hash,             -- 目标列表摘要，见 4.3
              PRIMARY KEY(player_id, quest_id))
 daily_state(player_id PK, period, refresh_count, assigned_at)
+-- 永久账本：只记「领取过」，永不删除（每日任务记录会被整批删掉，前置判定不能依赖它）
+quest_claim(player_id, quest_id, claimed_at, PRIMARY KEY(player_id, quest_id))
 
 -- 任务定义与预设（内容类）
 quest(id PK, name, description, icon, category, type, refresh_cost, enabled)
 quest_objective(quest_id, idx, type, properties TEXT)   -- properties 为 JSON
 quest_reward(quest_id, idx, type, properties TEXT)
+quest_prerequisite(quest_id, prerequisite_id, PRIMARY KEY(quest_id, prerequisite_id))
 preset(kind, id PK, name, type, properties TEXT, description)
 ```
 
 约定：**所有 SQL 收敛在 `storage/` 包**，其它包不得出现 SQL 字符串。
+`quest_prerequisite` 刻意没有 `idx` 列：判定是「全部满足」，顺序没有意义，
+存下来只会暗示它有意义（而 `quest_objective` 必须有，玩家进度按它记录）。
+
+### 4.5 前置任务（任务链）
+
+**判定标准是「已领取奖励」**，不是「已完成」：依据 `quest_claim` 永久账本。
+若不另立账本、直接用 `player_quest` 的状态判断，每日任务跨天/刷新时记录被整批删除，
+任务链第二天就断了——这是本功能唯一必须新增一张表的原因。
+
+三个落点由 `PrerequisiteService` 一处给出结论，调用方不做第二次判断：
+
+| 落点 | 行为 | 为什么在这里 |
+|---|---|---|
+| 每日抽取（`DailyService.availablePool`） | 前置未满足的任务不进候选池 | 抽到再做不了才是真的坑；玩家侧只看得到「没这个任务」 |
+| 领取奖励（`RewardService.claim`） | 前置未满足 → 领不到，并列出还差哪几个 | 已发给玩家的任务会因管理员改定义而变成锁定状态，把关不嫌多 |
+| 界面与诊断（详情 GUI、`/ptxa list`/`info`、编辑器 problems） | 列出前置与达成状态、报出配置问题 | 配置问题必须让管理员看到，不能只表现为「任务一直不出现」 |
+
+配置校验（`PrerequisiteService.problems`）覆盖四类会让任务**永远解锁不了**的写法：
+前置不存在、自己当前置、成环、前置已禁用。成环检测用「起点用待校验任务自己的配置、
+其余节点取注册表」的 DFS——编辑器保存前的任务还没进注册表，而那时恰恰最需要检出新配的环。
+每轮抽取前取一次「已领取 id 快照」再逐个任务判定，避免按任务数打 N 次查询。
 
 ---
 
@@ -468,21 +494,24 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
+| 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
 
-**测试总量：146 项全部通过**（17 个测试类，全部 failures=0 / errors=0）：
-存储 18（`StorageIntegrationTest`）+ 编辑器接口 16（`EditorApiTest`）+
+**测试总量：175 项全部通过**（20 个测试类，全部 failures=0 / errors=0）：
+存储 20（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-每日 10（`DailyServiceTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
-结构指纹 8（`StructureFingerprintTest`）+ 任务管理 8（`QuestAdminServiceTest`）+
+前置判定 12（`PrerequisiteServiceTest`）+ 每日 10（`DailyServiceTest`）+
+奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 奖励领取 7（`RewardServiceTest`）+
+结构指纹 8（`StructureFingerprintTest`）+ 任务管理 9（`QuestAdminServiceTest`）+
 字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 素材 7（`MaterialCatalogTest`）+
-示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 GUI 图标 6（`QuestDetailMenuTest`）+ 示例预设 5（`ExamplePresetsTest`）+
-进度渲染 5（`ProgressDisplayRenderTest`）+ 语言文件 3（`LanguageFileTest`）。
+每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
+语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
-`core/build/test-results/test/*.xml` 逐套件累加（17 个 XML），不是靠日志里的汇总行。
+`core/build/test-results/test/*.xml` 逐套件累加（20 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 9639 行
-＝ **10471 行 / 87 个 java 文件**；测试 `core/src/test` **3705 行 / 18 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 864 行 + `core/src/main` 10199 行
+＝ **11063 行 / 90 个 java 文件**；测试 `core/src/test` **4398 行 / 22 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **5340 行 `.vue` + 1399 行 `.ts`/`.js` ＝ 6739 行 / 28 个文件**。
 
@@ -528,9 +557,18 @@ gzip 已生效（Javalin 对超过 1500 字节的响应自动压缩）：
 /assets/index-*.js        238 KB → 85.7 KB
 ```
 
-**清空数据库后重新初始化**：只建 6 张表（quest / quest_objective / quest_reward /
-player_quest / daily_state / preset），`PRAGMA integrity_check` 为 ok。
-（第 6 张是预设表 `preset`：`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
+**清空数据库后重新初始化**：建表清单为 8 张（quest / quest_objective / quest_reward /
+quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
+早期一次真机验证里 `PRAGMA integrity_check` 为 ok。
+（`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
+
+**前置任务的真机冒烟（Folia 26.1.2-8）**：空库启动 → 写入 12 个示例任务（含任务链
+「添砖加瓦」以「挖矿日常」为前置）→ `GET /api/quests` 读回
+`prerequisites: ["example_daily_mine"]` 且 `problems: []`，即
+「编辑器 JSON → 模型 → SQLite 子表 → 读回 → JSON」整条链路在真机上成立；
+`quest_prerequisite` 与 `quest_claim` 两张新表也确实落在库里（建表无异常，插件正常启用）。
+**未验证**：真人进服后的抽取排除与领取门禁表现——需要玩家在线才能触发，
+本轮只到「定义读写 + 建表 + 编辑器接口」这一层。
 
 同时验证了两条重要的健壮性行为：
 
@@ -550,6 +588,10 @@ player_quest / daily_state / preset），`PRAGMA integrity_check` 为 ok。
   纯前端的交互（搜索、多选、拖拽/排序）只保证构建与类型检查通过。
 - **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
   兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
+- **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有每日任务一条来源
+  （`DailyService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
+  普通任务因此只存在于定义与编辑器里；给它配前置不会报错，但游戏内看不到效果。
+  前置判定本身与任务类型无关（每日任务链已完整生效），缺的是「接取常驻任务」这一步。
 
 
 

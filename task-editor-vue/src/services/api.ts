@@ -128,6 +128,7 @@ export function normalizeQuest(quest: Quest): Quest {
   return {
     ...quest,
     description: quest.description ?? [],
+    prerequisites: quest.prerequisites ?? [],
     objectives: quest.objectives ?? [],
     rewards: quest.rewards ?? [],
     problems: quest.problems ?? []
@@ -174,6 +175,12 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
       : []
   const type = node.type === 'DAILY' ? 'DAILY' : typeof node.type === 'string' && node.type ? node.type : 'NORMAL'
   const refreshCost = Number(node.refreshCost)
+  const prerequisites = Array.isArray(node.prerequisites)
+    ? node.prerequisites
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim())
+        .filter(item => item !== '')
+    : []
   return {
     id,
     name: typeof node.name === 'string' && node.name ? node.name : id,
@@ -183,6 +190,7 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
     type: type === 'DAILY' ? 'DAILY' : 'NORMAL',
     refreshCost: Number.isFinite(refreshCost) && refreshCost >= 0 ? refreshCost : 0,
     enabled: node.enabled !== false,
+    prerequisites,
     objectives: instances(node.objectives),
     rewards: instances(node.rewards),
     problems: []

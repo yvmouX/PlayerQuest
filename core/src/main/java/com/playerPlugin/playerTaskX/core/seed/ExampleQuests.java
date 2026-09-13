@@ -27,6 +27,11 @@ import java.util.Map;
  *
  * <p>MiniMessage 写法注意：不要用闭合标签（如 {@code </yellow>}），
  * 「未开启标签的闭合」会直接抛异常；颜色由下一个标签覆盖，无需闭合。</p>
+ *
+ * <p>示例里包含一条<b>任务链</b>：「添砖加瓦」以「挖矿日常」为前置，
+ * 用来演示「前置任务」这一功能——前置未领取前它不会进每日抽取池，
+ * 领取过「挖矿日常」之后它才会出现在候选里。也顺带说明前置是
+ * 「已领奖」而不是「已完成」：只做完不领奖不会解锁下一个。</p>
  */
 public final class ExampleQuests {
 
@@ -68,8 +73,11 @@ public final class ExampleQuests {
                         List.of(QuestObjective.of("craft", Map.of("target", "TORCH", "amount", 16))),
                         List.of(QuestReward.of("item", Map.of("material", "COAL", "amount", 8))),
                         dailyRefreshCost),
+                // 任务链示例：前置只写「挖矿日常」，领取过它之后本任务才会进抽取池
                 daily("example_daily_build", "<yellow>添砖加瓦", "BRICKS",
-                        List.of("<gray>放置 64 个圆石", "<gray>完成后可领取 300 经验"),
+                        List.of("<gray>放置 64 个圆石", "<gray>前置：领取过「挖矿日常」",
+                                "<gray>完成后可领取 300 经验"),
+                        List.of("example_daily_mine"),
                         List.of(QuestObjective.of("place_block",
                                 Map.of("target", "COBBLESTONE", "amount", 64))),
                         List.of(QuestReward.of("exp", Map.of("amount", 300))),
@@ -109,14 +117,21 @@ public final class ExampleQuests {
     private static Quest daily(String id, String name, String icon, List<String> description,
                                List<QuestObjective> objectives, List<QuestReward> rewards,
                                double refreshCost) {
-        return new Quest(id, name, description, icon, "每日",
-                QuestType.DAILY, objectives, rewards, refreshCost, true);
+        return daily(id, name, icon, description, List.of(), objectives, rewards, refreshCost);
+    }
+
+    /** 带前置的每日示例。 */
+    private static Quest daily(String id, String name, String icon, List<String> description,
+                               List<String> prerequisites, List<QuestObjective> objectives,
+                               List<QuestReward> rewards, double refreshCost) {
+        return new Quest(id, name, description, icon, "每日", QuestType.DAILY, prerequisites,
+                objectives, rewards, refreshCost, true);
     }
 
     /** 常驻示例的公共外壳：刷新费用只对每日任务有意义，固定 0。 */
     private static Quest normal(String id, String name, String icon, List<String> description,
                                 List<QuestObjective> objectives, List<QuestReward> rewards) {
-        return new Quest(id, name, description, icon, "常驻",
-                QuestType.NORMAL, objectives, rewards, 0, true);
+        return new Quest(id, name, description, icon, "常驻", QuestType.NORMAL, List.of(),
+                objectives, rewards, 0, true);
     }
 }

@@ -29,6 +29,7 @@ public final class QuestJson {
         json.put("icon", quest.icon());
         json.put("category", quest.category());
         json.put("type", quest.type().name());
+        json.put("prerequisites", quest.prerequisites());
         json.put("refreshCost", quest.refreshCost());
         json.put("enabled", quest.enabled());
         json.put("objectives", quest.objectives().stream().map(QuestJson::objectiveToJson).toList());
@@ -79,6 +80,21 @@ public final class QuestJson {
             description.addAll(List.of(text.split("\\r?\\n")));
         }
 
+        List<String> prerequisites = new ArrayList<>();
+        Object rawPrerequisites = json.get("prerequisites");
+        if (rawPrerequisites instanceof List<?> list) {
+            // 只收字符串，且非空：编辑器一侧的空行/占位不该变成一条「前置任务不存在」
+            for (Object item : list) {
+                if (item == null) {
+                    continue;
+                }
+                String prerequisiteId = String.valueOf(item).trim();
+                if (!prerequisiteId.isEmpty()) {
+                    prerequisites.add(prerequisiteId);
+                }
+            }
+        }
+
         List<QuestObjective> objectives = new ArrayList<>();
         Object rawObjectives = json.get("objectives");
         if (rawObjectives instanceof List<?> list) {
@@ -97,7 +113,8 @@ public final class QuestJson {
             }
         }
 
-        return new Quest(id, name, description, icon, category, type, objectives, rewards, refreshCost, enabled);
+        return new Quest(id, name, description, icon, category, type, prerequisites,
+                objectives, rewards, refreshCost, enabled);
     }
 
     private static String string(Object value, String fallback) {

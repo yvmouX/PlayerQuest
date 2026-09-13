@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.storage;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 
@@ -12,11 +13,13 @@ import java.io.File;
 import java.sql.SQLException;
 
 /**
- * 按配置打开数据库、建表，并装配三份仓储——存储层唯一的入口。
+ * 按配置打开数据库、建表，并装配四份仓储——存储层唯一的入口。
  * <p>
  * 任务定义、预设与玩家数据<b>共用一个库</b>：SQLite 与 MySQL 只是同一个
  * {@link JdbcDatabase} 门面的两种连接来源，差异全部由 {@link Dialect} 承担，
  * 因此不存在「定义用这个库、玩家数据用那个库」的分叉，装配点也就只需要一个。
+ * 仓储按<b>用途</b>切分而不是按表切分：领取账本与任务记录虽然都是玩家数据，
+ * 但一个是永久事实、一个是可被整批删除的当前状态，合并只会让契约变胖。
  *
  * <h2>关键取舍</h2>
  * <ul>
@@ -108,7 +111,7 @@ public final class DatabaseFactory {
     }
 
     /**
-     * 数据库句柄：把「门面 + 三份仓储 + 描述」绑在一起，调用方只依赖各仓储接口。
+     * 数据库句柄：把「门面 + 四份仓储 + 描述」绑在一起，调用方只依赖各仓储接口。
      * <p>
      * 底层资源由 {@link JdbcDatabase#close()} 负责（它自己知道该关连接还是关池），
      * 因此这里不再单独持有 {@code AutoCloseable} —— 两处都能关是泄漏的温床。
@@ -119,6 +122,7 @@ public final class DatabaseFactory {
         private final QuestRepository quests;
         private final PresetRepository presets;
         private final PlayerQuestRepository playerQuestRepository;
+        private final QuestClaimRepository claimRepository;
         private final String description;
         private boolean closed;
 
@@ -127,6 +131,7 @@ public final class DatabaseFactory {
             this.quests = new JdbcQuestRepository(database);
             this.presets = new JdbcPresetRepository(database);
             this.playerQuestRepository = new JdbcPlayerQuestRepository(database);
+            this.claimRepository = new JdbcQuestClaimRepository(database);
             this.description = description;
         }
 
@@ -143,6 +148,11 @@ public final class DatabaseFactory {
         /** 玩家数据仓储：进度、状态与每日刷新次数。 */
         public PlayerQuestRepository playerQuestRepository() {
             return playerQuestRepository;
+        }
+
+        /** 永久领取账本：前置任务判定的唯一依据（每日记录会被整批删除，不能拿它当依据）。 */
+        public QuestClaimRepository claims() {
+            return claimRepository;
         }
 
         /** 人类可读描述，如 {@code SQLite: data/playerTaskX.db}。 */

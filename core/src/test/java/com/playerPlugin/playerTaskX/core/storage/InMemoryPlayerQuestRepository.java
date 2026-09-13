@@ -1,8 +1,7 @@
-package com.playerPlugin.playerTaskX.core.engine;
+package com.playerPlugin.playerTaskX.core.storage;
 
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
-import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,13 +12,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 玩家任务仓储的内存实现，供引擎侧测试使用。
+ * 玩家任务仓储的内存实现，供引擎侧、奖励侧测试使用。
  *
  * <p>为什么不模拟「中途失败」：那不是它的职责。事务回滚的真实行为由
  * {@code StorageIntegrationTest} 在真实 SQLite 上验证——内存实现里假装回滚
- * 只会给人「已经测过了」的错觉。
+ * 只会给人「已经测过了」的错觉。</p>
+ *
+ * <p>放在 {@code core.storage} 而不是某个测试类里：进度引擎、奖励发放、每日抽取
+ * 三处都要用它，各写一份的下场是其中一份的行为悄悄与另外两份不同。</p>
  */
-final class FakePlayerQuestRepository implements PlayerQuestRepository {
+public final class InMemoryPlayerQuestRepository implements PlayerQuestRepository {
 
     private final Map<UUID, Map<String, PlayerQuest>> data = new HashMap<>();
 
@@ -76,7 +78,7 @@ final class FakePlayerQuestRepository implements PlayerQuestRepository {
     }
 
     @Override
-    public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.DailyState findDailyState(UUID playerId) {
+    public DailyState findDailyState(UUID playerId) {
         return null;
     }
 

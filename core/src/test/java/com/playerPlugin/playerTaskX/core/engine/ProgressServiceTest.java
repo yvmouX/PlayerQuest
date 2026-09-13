@@ -13,6 +13,7 @@ import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
+import com.playerPlugin.playerTaskX.core.storage.InMemoryPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +43,7 @@ class ProgressServiceTest {
 
     private QuestRegistryImpl quests;
     private ObjectiveRegistryImpl objectiveTypes;
-    private FakePlayerQuestRepository repository;
+    private InMemoryPlayerQuestRepository repository;
     private ProgressService service;
 
     @BeforeEach
@@ -52,7 +53,7 @@ class ProgressServiceTest {
         objectiveTypes.register(BuiltIns.objective("break_block"));
         objectiveTypes.register(new ChatObjective());
         objectiveTypes.register(new InteractObjective());
-        repository = new FakePlayerQuestRepository();
+        repository = new InMemoryPlayerQuestRepository();
         service = new ProgressService(quests, objectiveTypes, repository);
     }
 
@@ -137,7 +138,7 @@ class ProgressServiceTest {
         Map<String, Object> chat = new LinkedHashMap<>();
         chat.put("target", "你好");
         chat.put("amount", 1);
-        Quest quest = new Quest("q2", "多目标", List.of(), "PAPER", null, QuestType.NORMAL,
+        Quest quest = new Quest("q2", "多目标", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
                 List.of(QuestObjective.of("break_block", mine), QuestObjective.of("chat", chat)),
                 List.of(QuestReward.of("money", Map.of("amount", 100))), 0.0, true);
         assign(quest);
@@ -227,7 +228,7 @@ class ProgressServiceTest {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("target", material);
         properties.put("amount", amount);
-        return new Quest(id, "挖掘任务", List.of(), "DIAMOND_PICKAXE", null, QuestType.NORMAL,
+        return new Quest(id, "挖掘任务", List.of(), "DIAMOND_PICKAXE", null, QuestType.NORMAL, List.of(),
                 List.of(QuestObjective.of("break_block", properties)),
                 List.of(QuestReward.of("money", Map.of("amount", 500))), 0.0, true);
     }

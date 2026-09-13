@@ -9,6 +9,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
@@ -38,11 +39,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StorageIntegrationTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
+    private static final UUID OTHER = UUID.fromString("22222222-2222-3333-4444-555555555555");
 
     private JdbcDatabase sqlite;
     private Database database;
     private JdbcQuestRepository questRepository;
     private JdbcPlayerQuestRepository playerQuestRepository;
+    private JdbcQuestClaimRepository claimRepository;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -51,6 +54,7 @@ class StorageIntegrationTest {
         Schema.initialize(database);
         questRepository = new JdbcQuestRepository(database);
         playerQuestRepository = new JdbcPlayerQuestRepository(database);
+        claimRepository = new JdbcQuestClaimRepository(database);
     }
 
     @AfterEach
@@ -60,12 +64,18 @@ class StorageIntegrationTest {
 
     private Quest sampleQuest(String id) {
         return new Quest(id, "挖矿日常", List.of("挖 64 个石头", "奖励 500 金币"), "STONE_PICKAXE",
-                "每日", QuestType.DAILY,
+                "每日", QuestType.DAILY, List.of(),
                 List.of(
                         QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 64)),
                         QuestObjective.of("chat", Map.of("target", "你好", "amount", 1))),
                 List.of(QuestReward.of("money", Map.of("amount", 500))),
                 1000.0, true);
+    }
+
+    /** 只关心前置关系的任务：目标/奖励留空，避免无关字段干扰断言。 */
+    private Quest questWithPrerequisites(String id, String... prerequisites) {
+        return new Quest(id, "任务 " + id, List.of(), "PAPER", null, QuestType.NORMAL,
+                List.of(prerequisites), List.of(), List.of(), 0.0, true);
     }
 
     @Test
@@ -106,7 +116,7 @@ class StorageIntegrationTest {
     @DisplayName("重复保存是覆盖而不是新增（验证 upsert 在各方言下都能工作）")
     void saveIsUpsertNotInsert() {
         questRepository.save(sampleQuest("q1"));
-        Quest updated = new Quest("q1", "改名后", List.of(), "PAPER", "普通", QuestType.NORMAL,
+        Quest updated = new Quest("q1", "改名后", List.of(), "PAPER", "普通", QuestType.NORMAL, List.of(),
                 List.of(QuestObjective.of("kill", Map.of("target", "ZOMBIE", "amount", 5))),
                 List.of(), 0.0, false);
         questRepository.save(updated);
@@ -144,6 +154,48 @@ class StorageIntegrationTest {
         long orphanRewards = database.count("SELECT COUNT(*) FROM quest_reward WHERE quest_id = ?", "q1");
         assertEquals(0, orphanObjectives);
         assertEquals(0, orphanRewards);
+    }
+
+    @Test
+    @DisplayName("前置任务完整往返：多个前置、覆盖保存不追加、删除不留孤儿行")
+    void prerequisitesRoundTrip() {
+        questRepository.save(questWithPrerequisites("q1", "p1", "p2"));
+        questRepository.save(questRepository.findById("q1").orElseThrow());   // 目标/奖励为空也要能存
+
+        assertEquals(List.of("p1", "p2"), questRepository.findById("q1").orElseThrow().prerequisites());
+        assertEquals(List.of("p1", "p2"), questRepository.findAll().get(0).prerequisites(),
+                "findAll 的分组结果必须与单条读取一致");
+
+        // 覆盖保存：前置是「整体替换」而不是追加，否则删掉的前置会永远留在库里
+        questRepository.save(questWithPrerequisites("q1", "p2"));
+        assertEquals(List.of("p2"), questRepository.findById("q1").orElseThrow().prerequisites());
+
+        // 删除任务必须连带删掉前置行：否则同名任务重建时会凭空继承旧关系
+        assertTrue(questRepository.delete("q1"));
+        assertEquals(0, database.count("SELECT COUNT(*) FROM quest_prerequisite WHERE quest_id = ?", "q1"));
+    }
+
+    @Test
+    @DisplayName("领取账本：写入、覆盖、按玩家隔离，且不受每日任务清理影响")
+    void claimLedgerRoundTrip() {
+        assertTrue(claimRepository.claimedQuestIds(PLAYER).isEmpty());
+
+        claimRepository.markClaimed(PLAYER, "p1", 1000L);
+        claimRepository.markClaimed(PLAYER, "p2", 2000L);
+        claimRepository.markClaimed(PLAYER, "p1", 3000L);   // 重复领取同一个任务
+        claimRepository.markClaimed(OTHER, "p1", 1000L);
+
+        assertEquals(java.util.Set.of("p1", "p2"), claimRepository.claimedQuestIds(PLAYER));
+        assertEquals(java.util.Set.of("p1"), claimRepository.claimedQuestIds(OTHER), "账本按玩家隔离");
+        assertEquals(1, database.count("SELECT COUNT(*) FROM quest_claim WHERE player_id = ? AND quest_id = ?",
+                PLAYER.toString(), "p1"), "同一玩家同一任务只有一行");
+
+        // 每日刷新会删掉 player_quest 里的记录；账本必须留下来，否则任务链跨天就断
+        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("p1"), 0L, 0L));
+        playerQuestRepository.deleteByPlayerAndType(PLAYER, QuestType.DAILY);
+        assertTrue(playerQuestRepository.findByPlayer(PLAYER).isEmpty(), "每日记录应被清空");
+        assertEquals(java.util.Set.of("p1", "p2"), claimRepository.claimedQuestIds(PLAYER),
+                "账本不能跟着每日记录一起消失");
     }
 
     @Test
@@ -202,7 +254,7 @@ class StorageIntegrationTest {
     void deleteByPlayerAndType() {
         playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q1"), 0L, 0L));
         PlayerQuest normal = PlayerQuest.assign(PLAYER,
-                new Quest("n1", "普通", List.of(), "PAPER", null, QuestType.NORMAL,
+                new Quest("n1", "普通", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
                         List.of(QuestObjective.of("kill", Map.of("target", "ZOMBIE"))), List.of(), 0, true),
                 0L, 0L);
         playerQuestRepository.save(normal);
