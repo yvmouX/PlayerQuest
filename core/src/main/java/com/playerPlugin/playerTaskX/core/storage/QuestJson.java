@@ -56,7 +56,6 @@ public final class QuestJson {
      * 容错优先：编辑器传来的字段可能缺失或类型不符，这里一律降级而不是抛异常——
      * 前端一次误操作不应该让整个保存请求 500。
      */
-    @SuppressWarnings("unchecked")
     public static Quest fromJson(Map<String, Object> json) {
         String id = string(json.get("id"), "");
         String name = string(json.get("name"), id);
@@ -84,10 +83,8 @@ public final class QuestJson {
         Object rawObjectives = json.get("objectives");
         if (rawObjectives instanceof List<?> list) {
             for (Object item : list) {
-                if (item instanceof Map<?, ?> map) {
-                    Map<String, Object> node = (Map<String, Object>) map;
-                    objectives.add(QuestObjective.of(string(node.get("type"), ""), castMap(node.get("properties"))));
-                }
+                Map<String, Object> node = JsonCodec.asMap(item);
+                objectives.add(QuestObjective.of(string(node.get("type"), ""), JsonCodec.asMap(node.get("properties"))));
             }
         }
 
@@ -95,24 +92,12 @@ public final class QuestJson {
         Object rawRewards = json.get("rewards");
         if (rawRewards instanceof List<?> list) {
             for (Object item : list) {
-                if (item instanceof Map<?, ?> map) {
-                    Map<String, Object> node = (Map<String, Object>) map;
-                    rewards.add(QuestReward.of(string(node.get("type"), ""), castMap(node.get("properties"))));
-                }
+                Map<String, Object> node = JsonCodec.asMap(item);
+                rewards.add(QuestReward.of(string(node.get("type"), ""), JsonCodec.asMap(node.get("properties"))));
             }
         }
 
         return new Quest(id, name, description, icon, category, type, objectives, rewards, refreshCost, enabled);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> castMap(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            map.forEach((key, item) -> result.put(String.valueOf(key), item));
-            return result;
-        }
-        return new LinkedHashMap<>();
     }
 
     private static String string(Object value, String fallback) {

@@ -101,9 +101,23 @@ public final class JsonCodec {
      * 无法转换的键值对直接丢弃而不是让整张表读不出来。
      */
     public static Map<Integer, Integer> readIntMap(String json) {
-        Map<String, Object> raw = readMap(json);
-        Map<Integer, Integer> result = new LinkedHashMap<>(raw.size());
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
+        return asIntMap(readMap(json));
+    }
+
+    /**
+     * 把已经解析出来的「下标 → 计数」对象转成进度表。
+     * <p>
+     * 与 {@link #readIntMap(String)} 的区别只是输入：文件后端把整份玩家文件
+     * 一次解析成对象树，进度就是其中一个节点，不该为了读它再把 JSON 序列化回去。
+     * 两者的容错语义完全相同（坏键坏值丢弃，支持 {@code "5.0"}）。
+     */
+    public static Map<Integer, Integer> asIntMap(Object raw) {
+        Map<Integer, Integer> result = new LinkedHashMap<>();
+        if (!(raw instanceof Map<?, ?> map)) {
+            return result;
+        }
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            // 键也用宽松转换：JSON 键只能是字符串，但用户手工编辑时可能写成数字
             Integer key = toInteger(entry.getKey());
             Integer value = toInteger(entry.getValue());
             if (key == null || value == null) {
@@ -111,6 +125,35 @@ public final class JsonCodec {
             }
             result.put(key, value);
         }
+        return result;
+    }
+
+    // ------------------------------------------------------------------
+    // 各仓储共用的取值工具
+    // ------------------------------------------------------------------
+
+    /**
+     * 取一个文本字段：null 与缺省一律给空串，并去掉首尾空白。
+     * <p>
+     * 手工编辑过的文件里 {@code " type ": "DAILY "} 这类写法很常见，
+     * 直接拿去比枚举名会静默落空；统一在这里 trim，各调用点就不必各修一次。
+     */
+    public static String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    /**
+     * 把解析出来的任意对象当作属性表，键统一转成字符串。
+     * <p>
+     * 只接受 Map：不是对象时返回空表而不是抛异常——存储层的一条脏数据
+     * 不该让整个任务或预设读不出来。
+     */
+    public static Map<String, Object> asMap(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return new LinkedHashMap<>();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        map.forEach((key, item) -> result.put(String.valueOf(key), item));
         return result;
     }
 

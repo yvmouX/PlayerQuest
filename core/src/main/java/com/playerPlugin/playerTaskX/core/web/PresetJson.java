@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.api.model.Preset;
+import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -56,32 +57,18 @@ public final class PresetJson {
         if (body == null) {
             return null;
         }
-        String type = text(body.get("type"));
+        String type = JsonCodec.text(body.get("type"));
         if (type.isBlank()) {
             return null;
         }
-        String id = text(body.get("id"));
+        String id = JsonCodec.text(body.get("id"));
         if (id.isBlank()) {
             // 编辑器未指定 id 时生成一个：预设必须可被删除与覆盖
             id = Preset.normalizeKind(kind) + "-" + Long.toHexString(System.nanoTime() & 0xFFFFFFL);
         }
-        String name = text(body.get("name"));
+        String name = JsonCodec.text(body.get("name"));
         return new Preset(Preset.normalizeKind(kind), id,
                 name.isBlank() ? type : name,
-                type, asMap(body.get("properties")), text(body.get("description")));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            map.forEach((key, item) -> result.put(String.valueOf(key), item));
-            return result;
-        }
-        return new LinkedHashMap<>();
-    }
-
-    private static String text(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
+                type, JsonCodec.asMap(body.get("properties")), JsonCodec.text(body.get("description")));
     }
 }

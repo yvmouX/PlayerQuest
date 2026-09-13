@@ -139,30 +139,29 @@ public final class PresetFileRepository implements PresetRepository {
         }
         int index = 0;
         for (Object item : list) {
-            if (!(item instanceof Map<?, ?> map)) {
+            if (!(item instanceof Map<?, ?>)) {
                 index++;
                 continue;
             }
-            Map<String, Object> node = new LinkedHashMap<>();
-            map.forEach((key, value) -> node.put(String.valueOf(key), value));
+            Map<String, Object> node = JsonCodec.asMap(item);
 
-            String type = text(node.get("type"));
+            String type = JsonCodec.text(node.get("type"));
             if (type.isBlank()) {
                 warn.accept("预设文件里第 " + (index + 1) + " 个 " + kind
                         + " 预设缺少 type，已跳过（没有 type 无法套用）");
                 index++;
                 continue;
             }
-            String id = text(node.get("id"));
+            String id = JsonCodec.text(node.get("id"));
             if (id.isBlank()) {
                 // 自动生成而不是丢弃：用户可能只关心 type 与属性，不该因此少一条
                 id = kind + "-" + index;
                 warn.accept("预设文件里第 " + (index + 1) + " 个 " + kind
                         + " 预设缺少 id，已自动命名为 " + id);
             }
-            presets.put(id, new Preset(kind, id,
-                    text(node.get("name")).isBlank() ? type : text(node.get("name")),
-                    type, asMap(node.get("properties")), text(node.get("description"))));
+            String name = JsonCodec.text(node.get("name"));
+            presets.put(id, new Preset(kind, id, name.isBlank() ? type : name,
+                    type, JsonCodec.asMap(node.get("properties")), JsonCodec.text(node.get("description"))));
             index++;
         }
     }
@@ -231,19 +230,6 @@ public final class PresetFileRepository implements PresetRepository {
             map.put(String.valueOf(pairs[i]), pairs[i + 1]);
         }
         return map;
-    }
-
-    private static Map<String, Object> asMap(Object raw) {
-        if (!(raw instanceof Map<?, ?> map)) {
-            return new LinkedHashMap<>();
-        }
-        Map<String, Object> result = new LinkedHashMap<>();
-        map.forEach((key, value) -> result.put(String.valueOf(key), value));
-        return result;
-    }
-
-    private static String text(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
     }
 
     /** 供日志展示。 */

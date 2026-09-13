@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,9 +49,23 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
     private final JsonFileStore files;
     private final Consumer<String> warn;
 
-    /** 事务期间的暂存：避免批内多次落盘。 */
-    private final ThreadLocal<Map<UUID, Map<String, PlayerQuest>>> pending =
-            ThreadLocal.withInitial(LinkedHashMap::new);
+    /**
+     * 事务期间的暂存：避免批内多次落盘。
+     * <p>
+     * 只按「表非空」判断是否处于事务中是不够的——表恰恰是 {@link #save} 自己填的，
+     * 因此<b>事务里的第一次写入会看不到事务而直接落盘</b>，
+     * 每日刷新「先删旧任务再写新任务」的原子性就断在第一步。
+     * 这里用 {@code inTransaction} 显式标记事务范围，批次表只负责装数据。
+     */
+    private final ThreadLocal<Boolean> inTransaction = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /**
+     * 事务期间攒下的数据：玩家 → 该玩家文件的完整内容。
+     * <p>
+     * 装的是「整份文件」而不是只有任务记录：任务记录与每日状态写在同一个文件里，
+     * 只攒一半的话，事务结束时那次落盘会把另一半（本次事务没碰的部分）当成空写掉。
+     */
+    private final ThreadLocal<Map<UUID, Pending>> pending = ThreadLocal.withInitial(LinkedHashMap::new);
 
     public JsonPlayerQuestRepository(Path folder, Consumer<String> warn) {
         this.files = new JsonFileStore(folder);
@@ -67,7 +82,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null) {
             return List.of();
         }
-        return new ArrayList<>(read(playerId).values());
+        return new ArrayList<>(read(playerId).quests().values());
     }
 
     @Override
@@ -80,7 +95,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null || questId == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(read(playerId).get(questId));
+        return Optional.ofNullable(read(playerId).quests().get(questId));
     }
 
     @Override
@@ -89,16 +104,15 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
             warn.accept("玩家任务记录的 playerId/questId 为空，已跳过保存");
             return;
         }
-        Map<UUID, Map<String, PlayerQuest>> batch = pending.get();
-        if (!batch.isEmpty()) {
+        if (inTransaction.get()) {
             // 事务进行中：只改内存，由 transaction() 统一落盘
-            batch.computeIfAbsent(playerQuest.playerId(), key -> read(playerQuest.playerId()))
-                    .put(playerQuest.questId(), playerQuest);
+            liveInTransaction(playerQuest.playerId()).quests().put(playerQuest.questId(), playerQuest);
             return;
         }
-        Map<String, PlayerQuest> records = read(playerQuest.playerId());
-        records.put(playerQuest.questId(), playerQuest);
-        write(playerQuest.playerId(), records);
+        // 整份文件只解析一次：进度与每日状态同源，避免读两遍同一份内容
+        FileData data = readAll(playerQuest.playerId());
+        data.quests().put(playerQuest.questId(), playerQuest);
+        write(playerQuest.playerId(), data.quests(), data.dailyState());
     }
 
     /**
@@ -109,38 +123,50 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
      */
     @Override
     public void transaction(Runnable work) {
-        Map<UUID, Map<String, PlayerQuest>> batch = pending.get();
-        if (!batch.isEmpty()) {
+        if (inTransaction.get()) {
             // 嵌套事务：并入外层批次，避免内层提前落盘破坏原子性
             work.run();
             return;
         }
+        Map<UUID, Pending> batch = pending.get();
+        inTransaction.set(Boolean.TRUE);
         try {
             work.run();
-            for (Map.Entry<UUID, Map<String, PlayerQuest>> entry : batch.entrySet()) {
-                write(entry.getKey(), entry.getValue());
+            for (Map.Entry<UUID, Pending> entry : batch.entrySet()) {
+                Pending state = entry.getValue();
+                write(entry.getKey(), state.quests(), state.dailyState());
             }
         } finally {
+            inTransaction.remove();
             pending.remove();
         }
     }
 
     @Override
     public void delete(UUID playerId, String questId) {
-        Map<String, PlayerQuest> records = read(playerId);
-        if (records.remove(questId) == null) {
+        if (inTransaction.get()) {
+            // 与 save 一样攒进批次：否则「删旧 + 写新」的第一步就立刻落盘了
+            liveInTransaction(playerId).quests().remove(questId);
             return;
         }
-        write(playerId, records);
+        FileData data = readAll(playerId);
+        if (data.quests().remove(questId) == null) {
+            return;
+        }
+        write(playerId, data.quests(), data.dailyState());
     }
 
     @Override
     public void deleteByPlayerAndType(UUID playerId, QuestType type) {
-        Map<String, PlayerQuest> records = read(playerId);
-        boolean changed = records.values().removeIf(record -> record.type() == type);
-        if (changed) {
-            write(playerId, records);
+        if (inTransaction.get()) {
+            liveInTransaction(playerId).quests().values().removeIf(record -> record.type() == type);
+            return;
         }
+        FileData data = readAll(playerId);
+        if (!data.quests().values().removeIf(record -> record.type() == type)) {
+            return;
+        }
+        write(playerId, data.quests(), data.dailyState());
     }
 
     @Override
@@ -169,7 +195,12 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
 
     @Override
     public DailyState findDailyState(UUID playerId) {
-        return readDailyState(playerId);
+        if (playerId == null) {
+            return null;
+        }
+        // 每日状态是任务记录的附属信息：文件坏了就当没有（任务记录那条路径会报出来），
+        // 不必为同一个文件重复告警
+        return read(playerId, false).dailyState();
     }
 
     @Override
@@ -178,7 +209,13 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
             warn.accept("saveDailyState 收到 null playerId，已忽略");
             return;
         }
-        write(playerId, read(playerId), new DailyState(period, refreshCount, assignedAt));
+        DailyState state = new DailyState(period, refreshCount, assignedAt);
+        if (inTransaction.get()) {
+            // 每日状态与任务记录同一份文件，事务里必须一起攒着改
+            liveInTransaction(playerId).dailyState(state);
+            return;
+        }
+        write(playerId, readAll(playerId).quests(), state);
     }
 
     @Override
@@ -186,75 +223,168 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null) {
             return;
         }
-        write(playerId, read(playerId), null);
+        if (inTransaction.get()) {
+            liveInTransaction(playerId).dailyState(null);
+            return;
+        }
+        write(playerId, readAll(playerId).quests(), null);
     }
 
     // ------------------------------------------------------------------
     // 读写
     // ------------------------------------------------------------------
 
-    /** 读一个玩家的记录；文件不存在或损坏返回空表（损坏时记警告，不清空磁盘）。 */
-    @SuppressWarnings("unchecked")
-    private Map<String, PlayerQuest> read(UUID playerId) {
+    /**
+     * 一个玩家文件的全部内容。
+     * <p>
+     * 任务记录与每日状态存在同一份文件里，分两次解析等于把同一段 JSON 读两遍；
+     * 一次 {@code save} 内部的「读旧值 + 写新值」因此必须共用同一次解析结果。
+     * {@code quests} 有意用可变表：事务里它会被就地修改。
+     */
+    private record FileData(Map<String, PlayerQuest> quests, DailyState dailyState) {
+    }
+
+    /**
+     * 读取路径：事务里要读到本批次尚未落盘的改动，否则「写一条再读回来」会看不到。
+     * <p>
+     * 只有 {@code pending} 里已存在该玩家时才用批次——批次的装入本身就是从磁盘读的，
+     * 不会凭空变出数据；事务结束后 {@code pending} 清空，读取回到磁盘。
+     *
+     * @param warnOnCorrupt 见 {@link #readAll(UUID, boolean)}
+     */
+    private FileData read(UUID playerId, boolean warnOnCorrupt) {
+        Pending batched = pending.get().get(playerId);
+        return batched == null
+                ? readAll(playerId, warnOnCorrupt)
+                : new FileData(batched.quests(), batched.dailyState());
+    }
+
+    /** 默认告警的读取：凡是要把内容写回去的调用点都走这条，损坏必须先被看见。 */
+    private FileData read(UUID playerId) {
+        return read(playerId, true);
+    }
+
+    /**
+     * 事务批次里的一个玩家：改动就地累加，结束时整体写回一次。
+     */
+    private static final class Pending {
+
+        private final Map<String, PlayerQuest> quests;
+        private DailyState dailyState;
+
+        private Pending(FileData data) {
+            this.quests = data.quests();
+            this.dailyState = data.dailyState();
+        }
+
+        private Map<String, PlayerQuest> quests() {
+            return quests;
+        }
+
+        private DailyState dailyState() {
+            return dailyState;
+        }
+
+        private void dailyState(DailyState state) {
+            this.dailyState = state;
+        }
+    }
+
+    /**
+     * 取（必要时从磁盘装入）事务批次里该玩家的状态。
+     * <p>
+     * 装入只在第一次改动该玩家时发生，且用的是与写回同源的那份解析结果。
+     */
+    private Pending liveInTransaction(UUID playerId) {
+        return pending.get().computeIfAbsent(playerId, key -> new Pending(readAll(key)));
+    }
+
+    /**
+     * 读一个玩家的整份文件；不存在、损坏或字段类型不对时按缺失处理。
+     * <p>
+     * 损坏时只记警告、不改盘：损坏原因可能是用户手工编辑，
+     * 直接覆盖会让他失去修复的机会。真正写回发生在下一次 {@link #write}。
+     *
+     * @param warnOnCorrupt 是否就该文件损坏记一条警告。整份解析只做一次，
+     *                      两个字段因此共享同一条「损坏」结论；是否值得告警由调用点决定
+     */
+    private FileData readAll(UUID playerId, boolean warnOnCorrupt) {
+        Map<String, PlayerQuest> records = new LinkedHashMap<>();
+        if (playerId == null) {
+            return new FileData(records, null);
+        }
         String json = files.read(playerId.toString());
         if (json == null) {
-            return new LinkedHashMap<>();
+            return new FileData(records, null);
         }
-        Map<String, PlayerQuest> records = new LinkedHashMap<>();
         try {
             Map<String, Object> root = JsonCodec.readMapStrict(json);
             if (root == null) {
-                return records;
+                return new FileData(records, null);
             }
-            Object rawQuests = root.get(QUESTS);
-            if (!(rawQuests instanceof List<?> list)) {
-                return records;
-            }
-            for (Object item : list) {
-                if (!(item instanceof Map<?, ?> map)) {
-                    continue;
-                }
-                PlayerQuest record = toRecord(playerId, map);
-                if (record != null) {
-                    records.put(record.questId(), record);
+            if (root.get(QUESTS) instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item instanceof Map<?, ?> map) {
+                        PlayerQuest record = toRecord(playerId, map);
+                        if (record != null) {
+                            records.put(record.questId(), record);
+                        }
+                    }
                 }
             }
+            return new FileData(records, toDailyState(root));
         } catch (Exception e) {
-            // 解析失败：报告并当作空。不清盘——损坏原因可能是外部编辑，
-            // 直接覆盖会让用户失去手工修复的机会。
-            warn.accept("玩家数据文件损坏，已按空处理（原文件保留未改）: "
-                    + playerId + "（" + e.getMessage() + "）");
+            // 解析失败：报告并当作空
+            if (warnOnCorrupt) {
+                warn.accept("玩家数据文件损坏，已按空处理（原文件保留未改）: "
+                        + playerId + "（" + e.getMessage() + "）");
+            }
+            return new FileData(new LinkedHashMap<>(), null);
         }
-        return records;
     }
 
-    private PlayerQuest toRecord(UUID playerId, Map<?, ?> map) {
-        String questId = text(map.get("questId"));
+    /** 默认告警的读取：凡是要把内容写回去的调用点都走这条，损坏必须先被看见。 */
+    private FileData readAll(UUID playerId) {
+        return readAll(playerId, true);
+    }
+
+    /** 每日状态字段缺失或类型不对时返回 null（表示没有），不编造周期。 */
+    private static DailyState toDailyState(Map<String, Object> root) {
+        if (!(root.get(DAILY_STATE) instanceof Map<?, ?> state)) {
+            return null;
+        }
+        Object period = state.get("period");
+        if (period == null) {
+            return null;
+        }
+        return new DailyState(String.valueOf(period),
+                (int) number(state.get("refreshCount")), number(state.get("assignedAt")));
+    }
+
+    private static PlayerQuest toRecord(UUID playerId, Map<?, ?> map) {
+        String questId = JsonCodec.text(map.get("questId"));
         if (questId.isBlank()) {
             return null;
         }
-        QuestType type;
-        try {
-            type = QuestType.valueOf(text(map.get("type")).toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            type = QuestType.NORMAL;
-        }
-        QuestStatus status;
-        try {
-            status = QuestStatus.valueOf(text(map.get("status")).toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            status = QuestStatus.IN_PROGRESS;
-        }
-        PlayerQuest record = new PlayerQuest(playerId, questId, type,
-                number(map.get("assignedAt")), number(map.get("expiresAt")), status);
-        record.restoreProgress(intMap(map.get("progress")));
-        record.structureHash(text(map.get("structureHash")));
+        PlayerQuest record = new PlayerQuest(playerId, questId,
+                enumOrDefault(QuestType.class, map.get("type"), QuestType.NORMAL),
+                number(map.get("assignedAt")), number(map.get("expiresAt")),
+                enumOrDefault(QuestStatus.class, map.get("status"), QuestStatus.IN_PROGRESS));
+        // progress 可能是「下标 → 计数」的对象；坏键坏值由 JsonCodec 丢弃
+        record.restoreProgress(JsonCodec.asIntMap(map.get("progress")));
+        record.structureHash(JsonCodec.text(map.get("structureHash")));
         return record;
     }
 
-    /** 写一个玩家的整份数据；一次原子改名，故「删旧 + 写新」整体生效或整体不生效。 */
-    private void write(UUID playerId, Map<String, PlayerQuest> records) {
-        write(playerId, records, readDailyState(playerId));
+    /** 枚举名写错时退回默认值：一条脏记录不该让整个玩家的任务都读不出来。 */
+    private static <E extends Enum<E>> E enumOrDefault(Class<E> type, Object raw, E fallback) {
+        String name = JsonCodec.text(raw).toUpperCase(Locale.ROOT);
+        for (E constant : type.getEnumConstants()) {
+            if (constant.name().equals(name)) {
+                return constant;
+            }
+        }
+        return fallback;
     }
 
     /**
@@ -263,7 +393,7 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
      * 每日状态与任务记录放在同一份文件里，是为了让「删旧任务 + 写新任务 + 记状态」
      * 这类批量改动落在一次原子改名内——一个文件即一个事务。
      *
-     * @param dailyState 为 null 表示清除每日状态
+     * @param dailyState 为 null 表示不写每日状态（清除）
      */
     private void write(UUID playerId, Map<String, PlayerQuest> records, DailyState dailyState) {
         Map<String, Object> root = new LinkedHashMap<>();
@@ -291,47 +421,12 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         files.write(playerId.toString(), JsonCodec.write(root));
     }
 
-    /** 读每日状态；文件不存在、损坏或没有该字段时返回 null。 */
-    private DailyState readDailyState(UUID playerId) {
-        if (playerId == null) {
-            return null;
-        }
-        String json = files.read(playerId.toString());
-        if (json == null) {
-            return null;
-        }
-        try {
-            Map<String, Object> root = JsonCodec.readMapStrict(json);
-            if (root == null || !(root.get(DAILY_STATE) instanceof Map<?, ?> state)) {
-                return null;
-            }
-            Object period = state.get("period");
-            if (period == null) {
-                return null;
-            }
-            return new DailyState(String.valueOf(period),
-                    (int) number(state.get("refreshCount")), number(state.get("assignedAt")));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static Map<Integer, Integer> intMap(Object raw) {
-        Map<Integer, Integer> result = new LinkedHashMap<>();
-        if (!(raw instanceof Map<?, ?> map)) {
-            return result;
-        }
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            try {
-                result.put(Integer.valueOf(String.valueOf(entry.getKey()).trim()),
-                        (int) Double.parseDouble(String.valueOf(entry.getValue()).trim()));
-            } catch (NumberFormatException ignored) {
-                // 单个坏键值对丢掉即可，不让整份进度读不出来
-            }
-        }
-        return result;
-    }
-
+    /**
+     * 时间戳：数字原样取整，文本按十进制解析。
+     * <p>
+     * 与 {@link JsonCodec#asIntMap} 的容错不同，这里不接受 {@code "5.0"} 这类浮点文本——
+     * 时间戳写成浮点本就说明数据有问题，宁可当 0（等同于「未知」）也不猜。
+     */
     private static long number(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -341,10 +436,6 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         } catch (NumberFormatException e) {
             return 0L;
         }
-    }
-
-    private static String text(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
     }
 
     /** 每日状态目前只在数据库后端持久化；文件后端下它随玩家记录一起可重建。 */
