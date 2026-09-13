@@ -136,8 +136,8 @@
             </button>
           </header>
           <p class="hint instance-note">
-            顺序有意义：第 N 个目标对应 <code class="mono">/ptx setobjective &lt;玩家&gt; &lt;任务&gt; N &lt;数量&gt;</code>
-            命令里的序号 N，用卡片上的 ↑ ↓ 调整。
+            顺序有意义：第 N 个目标对应 <code class="mono">/ptxa setobjective &lt;玩家&gt; &lt;任务&gt; N-1 &lt;数量&gt;</code>
+            命令里的序号（该命令从 0 开始计数，卡片上的 #N 从 1 开始显示），用卡片上的 ↑ ↓ 调整。
           </p>
           <p v-if="noObjectiveTypes" class="warn-line">后端没有注册任何目标类型，请检查插件依赖。</p>
           <p v-else-if="!objectiveRows.length" class="guide-line">

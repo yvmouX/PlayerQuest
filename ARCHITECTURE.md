@@ -28,12 +28,13 @@ PlayerTaskX/
 | `adventure-text-minimessage` + `serializer-legacy`/`plain` | MiniMessage 文本 | 由 YLib 以 `api` 提供（4.x，Java 8 字节码）；**shadow 时 relocate** 避免与 Paper 原生 Adventure 冲突 |
 | `sqlite-jdbc` / `mysql-connector-java` | 存储 | implementation / compileOnly |
 | `HikariCP` | MySQL 连接池 | implementation |
-| `javalin` (+openapi/swagger/redoc) | 内置网页编辑器 HTTP 服务 | implementation |
+| `javalin` | 内置网页编辑器 HTTP 服务 | implementation |
 | `VaultAPI` / `playerpoints` | 金币 / 点券 | compileOnly（软依赖） |
 | `placeholderapi` | 变量 | compileOnly（软依赖） |
 
-**不再使用 Jackson 作为存储序列化**：任务定义直接入库（关系表 + JSON 列由数据库方言处理），
-消除「一份模型两套序列化」的重复。Javalin 自带 JSON 用于 Web 传输。
+**JSON 编解码统一走 `JsonCodec` 的单个 `ObjectMapper`**（jackson-databind，见
+`build.gradle.kts`）：任务定义与预设落盘、玩家 JSON 后端、编辑器 HTTP 传输都用它，
+不再出现「一份模型两套序列化」。
 
 ---
 
@@ -58,8 +59,9 @@ QuestReward              任务奖励
 PlayerQuest              玩家进行中的任务（运行期状态）
 ├── playerId, questId, assignedAt, expiresAt
 ├── type: DAILY | NORMAL
-├── completed: boolean
-└── progress: Map<Integer, Integer>   目标下标 → 当前计数
+├── status: IN_PROGRESS | COMPLETED | CLAIMED | ABANDONED
+├── progress: Map<Integer, Integer>   目标下标 → 当前计数
+└── structureHash                     接手时的目标结构摘要（见 4.4）
 ```
 
 **为什么 properties 用 Map 而不是为每种类型建子类**：
@@ -112,7 +114,7 @@ public interface RewardType extends ConfigurableType {
 }
 ```
 
-内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`exp` 经验、
+内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`exp` 经验（原版，总是可用）、
 `item` 物品、`command` 自定义命令。
 
 ### 3.3 进度事件 `ProgressContext`（core，唯一与 Bukkit 事件耦合处）
@@ -123,7 +125,7 @@ public final class ProgressContext {   // 由 Bukkit 监听器构造，引擎只
     Trigger trigger;                     // BREAK_BLOCK / CRAFT / FISH / ...
     String target;                       // 方块/实体/物品/命令名等，可为 null
     int amount;
-    String extra;                        // 附加信息（如提交物品的槽位、发言内容）
+    String extra;                        // 附加信息（如交互的具体动作类型：RIGHT_CLICK_BLOCK）
 }
 ```
 
@@ -139,7 +141,7 @@ Bukkit 事件 → GameListener → ProgressContext
                                     ↓  遍历玩家进行中的任务 × 目标 × 类型匹配器
                         命中 → 累加进度 → 存库
                                     ↓
-                     actionbar 推送进度；目标全满 → title 提醒 + 发放奖励 → 标记完成
+                     actionbar 推送进度；目标全满 → title 提醒 + 标记完成（奖励由玩家主动 /ptx claim 领取）
 ```
 
 ---
@@ -319,10 +321,11 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 
 ## 6. 每日任务
 
-- 配置 `daily.pool`（任务 ID 列表）、`daily.amount`（每人每日抽取数量）、`daily.reset-at`（默认 04:00）。
-- 发放规则：**全局池 + 按玩家抽取**，种子 = `hash(playerId, 日期)`，保证同一天重登结果一致。
-- 刷新：`/ptx refresh`，消耗配置的货币（Vault 金币或点券），**只重抽该玩家自己的列表**，
-  消耗与次数记录在 `daily_state`，可配置每日刷新上限与递增费用。
+- 配置 `daily.pool`（任务 ID 列表）、`daily.amount`（每人每日抽取数量）、`daily.reset-hour`（默认 `4`，早于该时刻算前一天）。
+- 发放规则：**全局池 + 按玩家抽取**，种子 = `hash(playerId, 周期, 刷新次数)`，保证同一天重登结果一致、刷新后换一批。
+- 刷新：`/ptx refresh`，按 `daily.refresh-currency` 的顺序消耗第一种可用货币
+  （金币 / 点券 / 经验，经验是永远可用的兜底），**只重抽该玩家自己的列表**，
+  消耗与次数记录在 `daily_state`，可配置每日刷新上限与刷新费用。
 - 跨天检测：登录时与定时任务中检查 `daily_state.assigned_at`，过期则重抽。
 
 ---
@@ -332,12 +335,13 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 ### 7.1 玩家 GUI（`core/gui/`）
 
 通用菜单框架（`Menu` / `MenuItem`，用 `InventoryHolder` 区分归属），
-在此之上实现：每日任务列表、任务详情（多目标进度 + 多奖励预览）、任务分类浏览、领取奖励。
+在此之上实现：每日任务列表、任务详情（多目标进度 + 多奖励预览）、点击领取奖励。
+（任务**分类**目前只作为任务的一个字段用于筛选与展示，没有按分类分页浏览的界面。）
 
 ### 7.2 管理 GUI
 
-任务列表分页浏览、任务详情、目标编辑、奖励编辑、启用/禁用、手动重载。
-编辑能力由 `ConfigField` schema 驱动生成表单，新增目标/奖励类型无需改 GUI 代码。
+任务列表分页浏览、只读预览（复用任务详情菜单）、启用/禁用、手动重载。
+管理 GUI **不提供**目标/奖励编辑——那部分由网页编辑器承担，避免两套表单实现各自漂移。
 
 ### 7.3 网页编辑器
 
@@ -345,14 +349,17 @@ Javalin 提供 REST + 静态资源（`/` 返回 Vite 构建产物）：
 
 ```
 GET    /api/quests            列表          POST   /api/quests          新建/覆盖
+GET    /api/quests/export     导出全部定义   POST   /api/quests/import   导入（replace=true 先清空）
 GET    /api/quests/{id}       详情          DELETE /api/quests/{id}      删除
+GET    /api/players           有记录的玩家   GET    /api/players/{uuid} 该玩家的任务记录与逐目标进度
 GET    /api/schema             目标/奖励类型的字段 schema（驱动前端动态表单）
 GET    /api/catalog            当前版本支持的物品与实体（图标/材质选择器，含中英文名）
 GET    /api/presets            目标与奖励预设（编辑器的便利设施，引擎不认它）
 POST   /api/presets/{kind}     保存预设，kind ∈ {objectives, rewards}
 DELETE /api/presets/{kind}/{id} 删除预设
-GET    /api/langs              语言文件读写
-GET    /api/stats              统计
+GET    /api/langs              读取可用的语言文件
+PUT    /api/langs/{code}       写入某种语言（先校验 YAML 合法性）
+GET    /api/stats              统计          POST   /api/reload         重载任务定义
 ```
 
 前端：任务列表 + 表单式编辑器（由 schema 动态渲染目标与奖励配置），
@@ -383,9 +390,10 @@ GET    /api/stats              统计
 > 早期版本内置过一份手工中文表（约 175 行，材质覆盖率仅约两成），
 > 已随本方案删除。实测替换后材质与实体的中文覆盖率均为 100%。
 
-**预设不在数据库里**：预设只是编辑器的便利设施，运行时引擎完全不认识它，
-因此放在 `plugins/playerTaskX/presets.json`——便于手工编辑、随配置备份，
-也避免为了一个辅助功能去动数据库表结构。
+**预设不是引擎概念**：预设只是编辑器的便利设施，运行时引擎完全不认识它。
+它的存储后端与任务定义一致（`definitions.type`）：默认是
+`plugins/playerTaskX/presets.json`——便于手工编辑、随配置备份；改成 `SQLITE`/`MYSQL`
+时进 `preset` 表，与任务定义同一处。
 
 ---
 

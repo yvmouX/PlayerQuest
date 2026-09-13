@@ -210,41 +210,38 @@ amount: 3
 **「早起的鸟儿」**：发言打招呼 + 钓 5 条鱼
 
 ```yaml
-objectives:
-  - type: chat
-    target: "早上好"
-    amount: 1
-  - type: fish
-    target: ""
-    amount: 5
+- type: chat
+  target: "早上好"
+  amount: 1
+- type: fish
+  target: ""
+  amount: 5
 ```
 
 **「矿工的一天」**：挖两种矿石 + 合成火把
 
 ```yaml
-objectives:
-  - type: break_block
-    target: IRON_ORE,DEEPSLATE_IRON_ORE
-    amount: 32
-  - type: break_block
-    target: COAL_ORE,DEEPSLATE_COAL_ORE
-    amount: 64
-  - type: craft
-    target: TORCH
-    amount: 16
+- type: break_block
+  target: IRON_ORE,DEEPSLATE_IRON_ORE
+  amount: 32
+- type: break_block
+  target: COAL_ORE,DEEPSLATE_COAL_ORE
+  amount: 64
+- type: craft
+  target: TORCH
+  amount: 16
 ```
 
 **「牧场主」**：繁殖 + 驯服 + 剪羊毛
 
 ```yaml
-objectives:
-  - type: breed
-    target: COW
-    amount: 5
-  - type: tame
-    target: WOLF
-    amount: 1
-  - type: shear
-    target: SHEEP
-    amount: 3
+- type: breed
+  target: COW
+  amount: 5
+- type: tame
+  target: WOLF
+  amount: 1
+- type: shear
+  target: SHEEP
+  amount: 3
 ```

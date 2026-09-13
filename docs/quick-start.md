@@ -16,14 +16,16 @@ plugins/playerTaskX/
 ├── lang/               # 语言文件，可直接编辑
 │   ├── zh_CN.yml
 │   └── en.yml
+├── quests/             # 任务定义，一个任务一个 JSON（definitions.type=JSON 时的默认后端）
+├── presets.json        # 目标与奖励预设（编辑器的便利设施）
 └── data/
-    └── playerTaskX.db  # SQLite 数据库
+    └── playerTaskX.db  # SQLite 数据库（玩家进度）
 ```
 
 启动日志里应能看到：
 
 ```
-[playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db
+[playerTaskX] 玩家数据存储已就绪: SQLite: data/playerTaskX.db
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
 [playerTaskX] PlayerTaskX 已启用（12 个任务，14 种目标，5 种奖励）
@@ -63,7 +65,7 @@ plugins/playerTaskX/
 
 若在服务器本机操作，可直接执行 `/ptxa editor` 拿到地址与令牌。
 
-> 编辑器保存的任务**立即写入数据库**，玩家侧执行 `/ptxa reload` 前不会生效。
+> 编辑器保存的任务**立即写入存储**，玩家侧执行 `/ptxa reload` 前不会生效。
 
 ---
 
@@ -108,7 +110,7 @@ plugins/playerTaskX/
 | 关掉动作栏进度 | `progress.actionbar: false` |
 | 关掉完成标题 | `progress.title-on-complete: false` |
 | 改文案 | 编辑 `lang/zh_CN.yml`，然后 `/ptxa reload` |
-| 换存储为 MySQL | `storage.type: MYSQL` 并填写连接信息（需重启） |
+| 换存储为 MySQL | `storage.type: MYSQL` 并填写连接信息（需重启）；任务定义侧另有 `definitions.type` |
 
 改完配置执行 `/ptxa reload` 即可生效（存储类型与编辑器端口需重启服务器）。
 

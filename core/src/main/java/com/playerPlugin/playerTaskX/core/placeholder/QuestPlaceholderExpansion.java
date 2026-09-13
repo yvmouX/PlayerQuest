@@ -26,6 +26,9 @@ import java.util.UUID;
  *   <li>{@code %playertaskx_claimable%} 全部可领取数量</li>
  *   <li>{@code %playertaskx_active%} 进行中任务总数（含普通任务）</li>
  *   <li>{@code %playertaskx_quest_name_<id>%} 任务显示名（去格式）</li>
+ *   <li>{@code %playertaskx_quest_id_<id>%} 任务 id 本身</li>
+ *   <li>{@code %playertaskx_quest_type_<id>%} 任务类型（{@code DAILY} / {@code NORMAL}）</li>
+ *   <li>{@code %playertaskx_quest_category_<id>%} 任务分类（未设置时为空串）</li>
  *   <li>{@code %playertaskx_quest_progress_<id>%} 形如 {@code 3/64}</li>
  *   <li>{@code %playertaskx_quest_percent_<id>%} 完成百分比（整数）</li>
  *   <li>{@code %playertaskx_quest_status_<id>%} 状态文案（取自语言文件）</li>

@@ -37,6 +37,7 @@
 | `%playertaskx_quest_status_<任务id>%` | 状态文案 | `进行中` |
 | `%playertaskx_quest_type_<任务id>%` | 任务类型 | `DAILY` |
 | `%playertaskx_quest_id_<任务id>%` | 任务 id | `daily_mine` |
+| `%playertaskx_quest_category_<任务id>%` | 任务分类（未设置时为空） | `每日` |
 
 > 玩家没有该任务的记录时，进度类变量返回 `0/<总数>` 或 `0`，状态返回空字符串。
 

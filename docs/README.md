@@ -43,8 +43,9 @@
 
 ### 数据存储
 
-任务定义与玩家进度都存数据库，支持 **SQLite**（默认，零配置）与 **MySQL**。
-详见 [配置](configuration)。
+**两类数据各自独立选择后端**：玩家进度默认存 **SQLite**（零配置），
+任务定义与预设默认存 **JSON 文件**（`quests/<任务id>.json`、`presets.json`，便于手改与 diff）。
+三个后端（JSON / SQLite / MySQL）都支持，详见 [配置](configuration)。
 
 ---
 
@@ -68,7 +69,7 @@
 
 | 项目 | 要求 |
 |---|---|
-| 服务端 | Spigot / Paper / Folia / Canvas，1.20 及以上（推荐 1.21+） |
+| 服务端 | Spigot / Paper / Folia / Canvas，1.21 及以上（`plugin.yml` 的 `api-version: '1.21'`） |
 | Java | 21 |
 | 软依赖（可选） | Vault（金币奖励）、PlayerPoints（点券奖励）、PlaceholderAPI（变量） |
 

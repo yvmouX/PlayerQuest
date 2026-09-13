@@ -59,7 +59,7 @@
 |---|---|
 | `money` | Vault + 任一经济插件（EssentialsX / CMI 等） |
 | `points` | PlayerPoints |
-| `item` / `command` | 无依赖 |
+| `exp` / `item` / `command` | 无依赖 |
 
 **2. 任务完成了但领取失败？**
 
@@ -177,7 +177,7 @@ daily:
 
 ## 改了任务但游戏里没变化
 
-任务定义存在数据库里，内存中是缓存。改完后需要重载：
+任务定义存在存储里（默认是 `plugins/playerTaskX/quests/` 下的 JSON 文件），内存中是缓存。改完后需要重载：
 
 ```
 /ptxa reload

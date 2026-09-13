@@ -93,7 +93,7 @@ public final class RewardService {
         return problems;
     }
 
-    /** 玩家可领取的任务数量，用于 GUI 提示与变量。 */
+    /** 玩家可领取的任务数量，用于 {@code %playertaskx_claimable%} 变量。 */
     public long claimableCount(UUID playerId) {
         return repository.findByPlayer(playerId).stream()
                 .filter(playerQuest -> playerQuest.status() == QuestStatus.COMPLETED)
