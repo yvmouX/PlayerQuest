@@ -51,15 +51,6 @@ export function formatTime(value: number | null | undefined, placeholder = '—'
     + `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-/** 金额/余额展示：整数不带小数点，小数最多保留两位。 */
-export function formatAmount(value: number | null | undefined): string {
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) {
-    return '0'
-  }
-  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2)
-}
-
 /** 是否已过期；expiresAt 为 null/0 表示不限期。 */
 export function isExpired(value: number | null | undefined): boolean {
   if (value === null || value === undefined) {

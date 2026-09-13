@@ -14,7 +14,7 @@
  */
 import { PresetApi } from '../services/api'
 import type { Preset, PresetKind, PresetMap, Properties, TypeSchema } from '../types'
-import { defaultProperties, summarizeProperties, withDefaults } from './schema'
+import { summarizeProperties, withDefaults } from './schema'
 
 /** 一份预设的展示状态：有效性与摘要一次算好，模板直接取用。 */
 export interface PresetView {
@@ -123,17 +123,6 @@ function summarizeRaw(properties: Properties): string {
 }
 
 /**
- * 按新的类型重置属性表。
- *
- * <p>刻意<b>不</b>保留同名键：类型切换后同名键的语义多半也变了
- * （例如 break_block.target 是方块，kill.target 是实体），
- * 保留旧值只会制造难以察觉的错误配置。
- */
-export function propertiesForType(schema: TypeSchema | undefined): Properties {
-  return defaultProperties(schema)
-}
-
-/**
  * 预设 → 目标/奖励实例的属性表。
  *
  * <p>用 {@link withDefaults} 而不是直接复制：后端可能给预设新增了字段，
@@ -150,17 +139,6 @@ export function suggestPresetName(schema: TypeSchema | undefined, type: string, 
     return summary
   }
   return schema?.displayName || type || '新预设'
-}
-
-/** 校验新建/另存预设时的表单，返回错误文案（通过校验时为空串）。 */
-export function validatePresetForm(name: string, type: string): string {
-  if (!type.trim()) {
-    return '请先选择类型'
-  }
-  if (!name.trim()) {
-    return '请填写预设名称'
-  }
-  return ''
 }
 
 /* ------------------------------------------------------------------ *

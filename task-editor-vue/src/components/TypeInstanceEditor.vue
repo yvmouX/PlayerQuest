@@ -96,7 +96,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Properties, PropertyValue, TypeSchema } from '../types'
-import { defaultProperties, summarizeProperties, typeLabel } from '../utils/schema'
+import { defaultProperties, schemaOptions, summarizeProperties } from '../utils/schema'
 import SchemaFieldInput from './SchemaFieldInput.vue'
 
 const props = defineProps<{
@@ -148,16 +148,7 @@ const indexTitle = computed(() =>
 )
 
 /** 下拉选项：奖励若 available=false，标注原因并禁止选择。 */
-const options = computed(() =>
-  Object.values(props.schemas).map(item => {
-    const unavailable = props.reward === true && item.available === false
-    return {
-      id: item.id,
-      label: unavailable ? `${typeLabel(item)} — 不可用` : typeLabel(item),
-      disabled: unavailable
-    }
-  })
-)
+const options = computed(() => schemaOptions(props.schemas))
 
 /** 切换类型：属性表必须一起换掉，旧类型的键对新类型没有意义。 */
 function onTypeChange(event: Event): void {

@@ -62,11 +62,6 @@ export function peekCatalog(): MaterialCatalog | null {
   return cached
 }
 
-/** 已加载的条目总数，用于界面提示（未加载时为 0）。 */
-export function catalogSize(catalog: MaterialCatalog | null): number {
-  return catalog ? catalog.materials.length + catalog.entities.length : 0
-}
-
 /**
  * 兜底一份形状正确的目录。
  *

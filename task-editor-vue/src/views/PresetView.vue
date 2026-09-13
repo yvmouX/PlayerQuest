@@ -126,7 +126,7 @@
               <select :value="draft.type" @change="onTypeChange">
                 <option v-if="!draft.type" value="">（请选择类型）</option>
                 <option
-                  v-for="item in schemaOptions(draft.kind)"
+                  v-for="item in options"
                   :key="item.id"
                   :value="item.id"
                   :disabled="item.disabled"
@@ -194,11 +194,10 @@ import {
   loadPresets,
   normalizePresetMap,
   presetView,
-  propertiesForType,
   removePreset,
   upsertPreset
 } from '../utils/presets'
-import { typeLabel, withDefaults } from '../utils/schema'
+import { defaultProperties, schemaOptions, withDefaults } from '../utils/schema'
 
 const toast = useToast()
 
@@ -271,20 +270,16 @@ function schemasOf(kind: PresetKind): Record<string, TypeSchema> {
   return kind === 'objectives' ? objectiveSchemas.value : rewardSchemas.value
 }
 
+/** 当前草稿所属那一组类型；没有草稿时给空表，免得下拉计算出无意义的候选项。 */
+const currentSchemas = computed<Record<string, TypeSchema>>(() =>
+  draft.value ? schemasOf(draft.value.kind) : {}
+)
+
+/** 类型下拉候选项；不可用的奖励类型由 schemaOptions 统一标注原因并禁用。 */
+const options = computed(() => schemaOptions(currentSchemas.value))
+
 function kindLabel(kind: PresetKind): string {
   return kind === 'objectives' ? '目标' : '奖励'
-}
-
-/** 类型下拉候选项：奖励不可用时标注原因并禁用。 */
-function schemaOptions(kind: PresetKind): { id: string; label: string; disabled: boolean }[] {
-  return Object.values(schemasOf(kind)).map(item => {
-    const unavailable = kind === 'rewards' && item.available === false
-    return {
-      id: item.id,
-      label: unavailable ? `${typeLabel(item)} — 不可用` : typeLabel(item),
-      disabled: unavailable
-    }
-  })
 }
 
 /** 序列化用于比较；字段顺序固定的字面量，避免键序变化被误判成修改。 */
@@ -392,7 +387,7 @@ function createDraft(kind: PresetKind): void {
     name: '',
     type: first,
     description: '',
-    properties: propertiesForType(schemas[first]),
+    properties: defaultProperties(schemas[first]),
     baseline: '',
     isNew: true
   }
@@ -429,7 +424,9 @@ function onTypeChange(event: Event): void {
     return
   }
   current.type = next
-  current.properties = propertiesForType(schemasOf(current.kind)[next])
+  // 整体换成新类型的默认值，刻意不保留同名键：类型切换后同名键的语义多半也变了
+  // （例如 break_block.target 是方块，kill.target 是实体），保留旧值只会制造难以察觉的错误配置
+  current.properties = defaultProperties(schemasOf(current.kind)[next])
 }
 
 function setProperty(key: string, value: PropertyValue): void {

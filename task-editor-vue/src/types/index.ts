@@ -279,8 +279,6 @@ export interface PlayerQuestProgress {
 export interface PlayerDetail {
   uuid: string
   name: string
-  /** 任务币余额 */
-  questCoin: number
   progress: PlayerQuestProgress[]
 }
 

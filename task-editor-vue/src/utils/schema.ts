@@ -61,12 +61,49 @@ export function withDefaults(schema: TypeSchema | undefined, properties: Propert
   return merged
 }
 
+/**
+ * 把目标/奖励补成「可直接提交」的形态：按 schema 补上缺失的默认值。
+ *
+ * <p>编辑器在三条路径上都需要它，任何一条漏了都会让后端拿到空配置：提交前
+ * （用户没碰过的字段也要写入）、schema 迟到（任务先到、类型定义后到）以及从
+ * 后端装载时。补而不是删，见 {@link withDefaults}。
+ */
+export function normalizeInstances(
+  instances: { type: string; properties: Properties }[],
+  schemas: Record<string, TypeSchema>
+): { type: string; properties: Properties }[] {
+  return instances.map(instance => ({
+    type: instance.type,
+    properties: withDefaults(schemas[instance.type], instance.properties)
+  }))
+}
+
 /** 类型下拉的显示文案：显示名（类型 id）。 */
 export function typeLabel(schema: TypeSchema): string {
   if (!schema.displayName || schema.displayName === schema.id) {
     return schema.id
   }
   return `${schema.displayName}（${schema.id}）`
+}
+
+/**
+ * 类型下拉的候选项。
+ *
+ * <p>奖励可以「软依赖缺失」：预设在保存前就要拦住这类类型，实例卡片则靠同一条
+ * 判断把不可用项置灰，两处的措辞与禁用规则必须一致，否则会出现「预设里能选、
+ * 编辑器里选不了」这种自相矛盾的界面。因此统一在这里生成。
+ */
+export function schemaOptions(
+  schemas: Record<string, TypeSchema>
+): { id: string; label: string; disabled: boolean }[] {
+  return Object.values(schemas).map(schema => {
+    const unavailable = schema.available === false
+    return {
+      id: schema.id,
+      label: unavailable ? `${typeLabel(schema)} — 不可用` : typeLabel(schema),
+      disabled: unavailable
+    }
+  })
 }
 
 /** 数字输入框的文本 → 属性值；留空按 null 提交，由后端按默认值处理。 */

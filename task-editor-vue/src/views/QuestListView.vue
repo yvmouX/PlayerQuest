@@ -377,7 +377,10 @@ function sortRows(rows: Quest[]): Quest[] {
   return [...rows].sort((left, right) => {
     let result = 0
     if (key === 'name') {
-      result = compareText(plainIfDifferent(left.name) || left.name, plainIfDifferent(right.name) || right.name)
+      // 按管理员实际看到的文案排序：名称带颜色标签时用剥离后的纯文本
+      const leftName = plainIfDifferent(left.name) || left.name
+      const rightName = plainIfDifferent(right.name) || right.name
+      result = compareText(leftName, rightName)
     } else if (key === 'type') {
       result = compareText(left.type, right.type)
     } else if (key === 'objectives') {

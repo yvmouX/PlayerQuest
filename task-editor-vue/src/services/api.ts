@@ -271,6 +271,3 @@ export const PlayerApi = {
 export function isUnauthorized(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 401
 }
-
-/** 401 时统一附加的引导文案。 */
-export const TOKEN_HINT = '请在左下角「访问令牌」中填写 config.yml 里 editor.token 的值后重试。'

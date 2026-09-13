@@ -98,7 +98,7 @@
                 <option value="NORMAL">普通任务（NORMAL）</option>
                 <option value="DAILY">每日任务（DAILY）</option>
               </select>
-              <small class="hint">每日任务按天重置，可被玩家用任务币刷新。</small>
+              <small class="hint">每日任务按天重置，可被玩家消耗货币刷新。</small>
             </label>
 
             <!-- 刷新费用只对每日任务有意义 -->
@@ -280,8 +280,8 @@ import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized 
 import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
 import { loadCatalog } from '../utils/catalog'
 import { invalidatePresets, loadPresets, presetProperties, suggestPresetName } from '../utils/presets'
-import { defaultProperties, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
-import { clampPercent, stripTags } from '../utils/text'
+import { defaultProperties, normalizeInstances, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
+import { stripTags } from '../utils/text'
 
 /** 路由传入的任务 id；新建路由没有这个参数。 */
 const props = defineProps<{ id?: string }>()
@@ -349,17 +349,6 @@ let schemaPromise: Promise<void> | null = null
 
 /* ---------------- 表单组装 ---------------- */
 
-function toInstances(
-  rows: InstanceRow[],
-  schemas: Record<string, TypeSchema>
-): { type: string; properties: Properties }[] {
-  // 提交前再补一次默认值：用户没碰过的字段也要写入，避免后端拿到空配置
-  return rows.map(row => ({
-    type: row.type,
-    properties: withDefaults(schemas[row.type], row.properties)
-  }))
-}
-
 function buildQuest(): Quest {
   // 兜底成字符串：表单状态异常时也不该让整个编辑器崩掉
   const id = String(form.id ?? '').trim()
@@ -375,8 +364,8 @@ function buildQuest(): Quest {
     type: form.type,
     refreshCost: form.refreshCost,
     enabled: form.enabled,
-    objectives: toInstances(objectiveRows.value, objectiveSchemas.value),
-    rewards: toInstances(rewardRows.value, rewardSchemas.value),
+    objectives: normalizeInstances(objectiveRows.value, objectiveSchemas.value),
+    rewards: normalizeInstances(rewardRows.value, rewardSchemas.value),
     // problems 是后端算出来的派生信息，提交时会被忽略
     problems: []
   }
@@ -413,8 +402,8 @@ const preview = computed(() => {
       label: schema ? typeLabel(schema) : row.type || '（未选择类型）',
       count: amountKey ? `0 / ${numberText(row.properties[amountKey])}` : '',
       detail: summarizeProperties(row.properties, schema),
-      // 玩家刚接取时进度为 0，因此这里画的是一条 0% 的进度条
-      percent: amountKey && Number.isFinite(amount) && amount > 0 ? clampPercent(0) : null
+      // 玩家刚接取时进度必然是 0，因此有有效数量时画一条 0% 的进度条，否则不画
+      percent: amountKey && Number.isFinite(amount) && amount > 0 ? 0 : null
     }
   })
 
@@ -505,8 +494,9 @@ async function loadSchemas(): Promise<void> {
     const schema = await SchemaApi.get()
     objectiveSchemas.value = schema.objectives ?? {}
     rewardSchemas.value = schema.rewards ?? {}
-    // 任务数据可能先于 schema 到达，补一次默认值让界面与提交内容都完整
-    const fill = (rows: InstanceRow[], schemas: Record<string, TypeSchema>) =>
+    // 任务数据可能先于 schema 到达，补一次默认值让界面与提交内容都完整；
+    // 这里要连同行上的 uid 一起铺回来，否则 v-for 的 key 会变，正在编辑的卡片会被重建
+    const fill = (rows: InstanceRow[], schemas: Record<string, TypeSchema>): InstanceRow[] =>
       rows.map(row => ({ ...row, properties: withDefaults(schemas[row.type], row.properties) }))
     objectiveRows.value = fill(objectiveRows.value, objectiveSchemas.value)
     rewardRows.value = fill(rewardRows.value, rewardSchemas.value)
@@ -544,11 +534,7 @@ function toRows(
   instances: { type: string; properties: Properties }[],
   schemas: Record<string, TypeSchema>
 ): InstanceRow[] {
-  return instances.map(instance => ({
-    uid: ++uidSeq,
-    type: instance.type,
-    properties: withDefaults(schemas[instance.type], instance.properties)
-  }))
+  return normalizeInstances(instances, schemas).map(instance => ({ uid: ++uidSeq, ...instance }))
 }
 
 function applyQuest(quest: Quest): void {

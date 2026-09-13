@@ -66,7 +66,7 @@
       <div class="player-detail">
         <div v-if="!selectedUuid" class="card empty-state">
           <strong>请选择左侧的一名玩家</strong>
-          <p class="hint">选中后可以查看该玩家的任务币余额与每条任务的完成进度。</p>
+          <p class="hint">选中后可以查看该玩家每条任务的完成进度与各目标明细。</p>
         </div>
 
         <template v-else>
@@ -80,7 +80,6 @@
                   <span class="hint mono">{{ detail.uuid }}</span>
                 </div>
                 <div class="player-stats">
-                  <span class="stat-item">任务币 <b>{{ formatAmount(detail.questCoin) }}</b></span>
                   <span class="stat-item">任务记录 <b>{{ detail.progress.length }}</b></span>
                 </div>
               </div>
@@ -192,7 +191,7 @@ import type {
   TableColumn,
   TypeSchema
 } from '../types'
-import { clampPercent, formatAmount, formatTime, isExpired } from '../utils/text'
+import { clampPercent, formatTime, isExpired } from '../utils/text'
 
 /** 路由 /players/:uuid 传入的玩家；从侧栏进入时没有这个参数。 */
 const props = defineProps<{ uuid?: string }>()
