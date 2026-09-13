@@ -41,7 +41,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
      * 与 {@link Dialect#upsert(String, String, String)} 的占位符顺序严格对应，绑定参数必须同序。
      */
     private static final String PLAYER_QUEST_COLUMNS =
-            "player_id,quest_id,type,assigned_at,expires_at,status,progress";
+            "player_id,quest_id,type,assigned_at,expires_at,status,progress,structure_hash";
 
     /**
      * 复合主键列。
@@ -201,6 +201,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     // ------------------------------------------------------------------
 
     /** 读取玩家的每日状态；无记录返回 null（首次进入当天即「还没有周期」）。 */
+    @Override
     public DailyState findDailyState(UUID playerId) {
         if (playerId == null) {
             return null;
@@ -214,6 +215,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     /** 写入（或覆盖）玩家的每日状态。 */
+    @Override
     public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
         if (playerId == null) {
             warn("saveDailyState 收到 null playerId，已忽略");
@@ -232,6 +234,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
      * <p>
      * 契约里未列出，但保存/读取成对出现时清理入口是必需的，这里一并提供。
      */
+    @Override
     public void deleteDailyState(UUID playerId) {
         if (playerId == null) {
             return;
@@ -261,7 +264,8 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
                 playerQuest.assignedAt(),
                 playerQuest.expiresAt(),
                 status.name(),
-                JsonCodec.writeIntMap(playerQuest.progress()));
+                JsonCodec.writeIntMap(playerQuest.progress()),
+                playerQuest.structureHash());
     }
 
     private PlayerQuest mapPlayerQuest(ResultSet rs) throws SQLException {
@@ -280,6 +284,8 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
                 parseStatus(rs.getString("status")));
         // 进度只能通过 restoreProgress 注入（PlayerQuest 没有公开的批量 setter）
         playerQuest.restoreProgress(JsonCodec.readIntMap(rs.getString("progress")));
+        // 旧版本没有这一列，取不到就是空串（表示未知），此时不做任何重置
+        playerQuest.structureHash(rs.getString("structure_hash"));
         return playerQuest;
     }
 
@@ -341,19 +347,5 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
 
     private static void warn(String message) {
         System.err.println("[PlayerTaskX] " + message);
-    }
-
-    /**
-     * 每日状态快照：所属周期 + 已刷新次数 + 本周期发放时间。
-     * <p>
-     * 作为 {@link JdbcPlayerQuestRepository} 的嵌套类型定义，因为仓储契约只要求
-     * 「同文件内定义」；Java 不允许一个文件里出现两个 public 顶层类型。
-     * 外部引用请写作 {@code JdbcPlayerQuestRepository.DailyState}。
-     *
-     * @param period       周期标识（如 {@code 2025-06-01}），用于判断是否跨天
-     * @param refreshCount 本周期内已刷新次数
-     * @param assignedAt   本周期任务发放时间戳（毫秒）
-     */
-    public record DailyState(String period, int refreshCount, long assignedAt) {
     }
 }

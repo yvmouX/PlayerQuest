@@ -25,7 +25,10 @@ public class PluginConfig {
     @ConfigValue(value = "language.use-client-locale", description = "是否优先使用玩家客户端语言")
     private boolean languageUseClientLocale = true;
 
-    @ConfigValue(value = "storage.type", description = "存储类型：SQLITE 或 MYSQL")
+    @ConfigValue(value = "storage.type",
+            description = "玩家数据存储：SQLITE（默认）、MYSQL（多服共享玩家数据时必须）或 "
+                    + "JSON（一玩家一文件，完全不依赖数据库；单服小规模才建议，"
+                    + "因为每次进度都要重写整份文件且无法跨服共享）")
     private String storageType = "SQLITE";
 
     @ConfigValue(value = "storage.sqlite.file", description = "SQLite 数据库文件名（相对插件数据目录）")
@@ -33,6 +36,14 @@ public class PluginConfig {
 
     @ConfigValue(value = "storage.mysql", description = "MySQL 连接配置（storage.type=MYSQL 时生效）")
     private Map<String, MysqlSettings> mysql = defaultMysql();
+
+    @ConfigValue(value = "definitions.type",
+            description = "任务定义与预设的存储：JSON（默认，一任务一文件，便于手改与 diff）、"
+                    + "SQLITE 或 MYSQL（与玩家数据同一数据库）")
+    private String definitionsType = "JSON";
+
+    @ConfigValue(value = "definitions.folder", description = "任务定义目录（相对插件数据目录，definitions.type=JSON 时生效）")
+    private String definitionsFolder = "quests";
 
     @ConfigValue(value = "progress.actionbar", description = "是否用 actionbar 推送任务进度")
     private boolean actionbarEnabled = true;
@@ -121,6 +132,14 @@ public class PluginConfig {
 
     public String getSqliteFile() {
         return sqliteFile;
+    }
+
+    public String getDefinitionsType() {
+        return definitionsType;
+    }
+
+    public String getDefinitionsFolder() {
+        return definitionsFolder;
     }
 
     /** 取 MySQL 配置，未配置时返回一份默认值，避免 NPE。 */

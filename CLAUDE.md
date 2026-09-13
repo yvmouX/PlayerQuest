@@ -31,6 +31,21 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - 未开 rcon 时：用 `Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 找到 folia 进程后 `Stop-Process`。
   - **不要在服务器运行时用外部工具改它的 SQLite 文件**：外部连接执行的 DDL 会被 SQLite 的 WAL
     回滚，会得出完全错误的结论（踩过）。
+- 关于存储（改之前务必先读这段）
+  - 数据分两类、**各自独立选后端**：任务定义与预设走 `definitions.type`，玩家数据走 `storage.type`。
+    默认是「定义用 JSON 文件 + 玩家数据用 SQLite」，三个后端（JSON / SQLite / MySQL）都支持。
+  - 两类的契约**不要合并**：玩家侧需要 `findActiveByPlayer`（在进度热路径上）、聚合与事务，
+    定义侧都不需要。合并的代价要么是玩家侧丢索引查询与事务，要么是文件后端被迫实现一个
+    键控可查询事务存储（等于用文件重写数据库）。
+  - SQLite 与 MySQL **共用同一套 JDBC 实现**，差异全在 `Dialect`——加后端时别写第三套。
+  - 文件后端有两条硬要求，改它时务必保持：**写入原子**（临时文件 + 原子改名，绝不原地覆盖）、
+    **载入分级容错**（单文件坏了跳过并记文件名，缺 id 跳过，文件名与 id 冲突时以 id 为准）。
+  - **定义侧用 JSON 不用 YAML**：YAML 1.1 会把 `target: NO`（合法方块材质名）解析成布尔 false、
+    把 `1.20` 解析成浮点。干净解法（YAML 1.2 风格 resolver）在 Jackson 2.15.2 上挂不上去
+    （`YAMLFactoryBuilder` 不暴露 resolver）。不要再试图换回 YAML，除非同时解决这一点。
+  - **目标结构指纹不要删**：进度按目标下标记录，调换顺序会让旧进度静默错配到别的目标上，
+    语法校验查不出来。检测必须放在 `ProgressService.load()`（覆盖全部记录），
+    只放热路径会漏掉已完成记录。行为约定是「重置该任务进度 + 记日志」，不是静默错配。
 - 关于前端产物输出：
   - 产物输出到 `core/src/main/resources/web/`（vite outDir），不是`dist/`；该目录已加入 gitignore，属于构建临时文件，不要提交。
   - `task-editor-vue` 的 `npm run build` 会先跑 `vue-tsc` 类型检查，因此类型错误会让整个 Gradle build 失败。

@@ -21,6 +21,19 @@ public final class PlayerQuest {
     private final Map<Integer, Integer> progress = new LinkedHashMap<>();
     private QuestStatus status;
 
+    /**
+     * 接手该任务时，其目标列表的结构摘要。
+     *
+     * <p>进度按<b>目标下标</b>记录，因此目标顺序一变，旧进度的含义就整体错位
+     * （挖了 32 个石头会显示成"发言 32 次"），而语法校验查不出这种问题。
+     * 存下接手时的结构摘要，以后比对即可发现「定义变过」并重置进度，
+     * 而不是静默把进度套到别的目标上。
+     *
+     * <p>空串表示来源数据没有这一列（旧版本记录），此时只补齐不重置——
+     * 不做无依据的重置。
+     */
+    private String structureHash = "";
+
     public PlayerQuest(UUID playerId, String questId, QuestType type,
                        long assignedAt, long expiresAt, QuestStatus status) {
         this.playerId = playerId;
@@ -29,6 +42,16 @@ public final class PlayerQuest {
         this.assignedAt = assignedAt;
         this.expiresAt = expiresAt;
         this.status = status == null ? QuestStatus.IN_PROGRESS : status;
+    }
+
+    /** 目标列表结构摘要；空串表示未知（旧数据）。 */
+    public String structureHash() {
+        return structureHash;
+    }
+
+    /** 设置结构摘要。 */
+    public void structureHash(String hash) {
+        this.structureHash = hash == null ? "" : hash;
     }
 
     public static PlayerQuest assign(UUID playerId, Quest quest, long now, long expiresAt) {

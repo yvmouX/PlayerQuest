@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
@@ -41,7 +42,6 @@ public final class EditorServer {
     private static final int PORT_ATTEMPTS = 10;
 
     private final PlayerTaskX plugin;
-    private final PresetStore presets;
     private final MaterialCatalog catalog;
     private final LangFileStore langFiles;
     private Javalin app;
@@ -49,8 +49,6 @@ public final class EditorServer {
 
     public EditorServer(PlayerTaskX plugin) {
         this.plugin = plugin;
-        // 预设随编辑器一起构造：它只是编辑器的便利设施，与运行时引擎无关
-        this.presets = new PresetStore(plugin.getDataFolder());
         // 译名来源：英文读服务端自带的语言文件，中文必要时下载（见 LangFileStore）
         this.langFiles = new LangFileStore(plugin);
         this.catalog = new MaterialCatalog(langFiles);
@@ -330,7 +328,9 @@ public final class EditorServer {
         app.get("/api/catalog", ctx -> ctx.result(toJson(catalog.build())));
 
         // ---- 目标 / 奖励预设 ----
-        app.get("/api/presets", ctx -> ctx.result(toJson(presets.all())));
+        // 存储后端由 definitions.type 决定（JSON 文件或数据库），编辑器侧接口保持不变
+        app.get("/api/presets", ctx -> ctx.result(toJson(
+                PresetJson.toGrouped(plugin.presets().findAll()))));
 
         app.post("/api/presets/{kind}", ctx -> {
             Map<String, Object> body = fromJson(ctx.body());
@@ -338,16 +338,17 @@ public final class EditorServer {
                 badRequest(ctx, "请求体不是合法的 JSON 对象");
                 return;
             }
-            Map<String, Object> saved = presets.save(ctx.pathParam("kind"), body);
-            if (saved == null) {
-                badRequest(ctx, "预设缺少 type，或 kind 只能是 objectives / rewards");
+            Preset preset = PresetJson.fromJson(ctx.pathParam("kind"), body);
+            if (preset == null) {
+                badRequest(ctx, "预设缺少 type");
                 return;
             }
-            ctx.result(toJson(Map.of("ok", true, "preset", saved)));
+            plugin.presets().save(preset);
+            ctx.result(toJson(Map.of("ok", true, "preset", PresetJson.toJson(preset))));
         });
 
         app.delete("/api/presets/{kind}/{id}", ctx -> {
-            boolean removed = presets.remove(ctx.pathParam("kind"), ctx.pathParam("id"));
+            boolean removed = plugin.presets().delete(ctx.pathParam("id"));
             ctx.result(toJson(Map.of("ok", removed, "id", ctx.pathParam("id"))));
         });
 

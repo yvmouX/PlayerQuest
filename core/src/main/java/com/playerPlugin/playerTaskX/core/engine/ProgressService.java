@@ -10,6 +10,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
+import com.playerPlugin.playerTaskX.core.storage.Hash;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import java.util.ArrayList;
@@ -49,17 +50,90 @@ public final class ProgressService {
      */
     private final Map<UUID, Map<String, Map<Integer, ObjectiveType>>> activeIndex = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** 结构变化导致进度被重置时的告警出口；默认为空（测试环境不需要日志）。 */
+    private java.util.function.BiConsumer<String, String> structureChangeWarner = (questId, playerId) -> {
+    };
+
     public ProgressService(QuestRegistry quests, ObjectiveRegistry objectiveTypes, PlayerQuestRepository repository) {
         this.quests = quests;
         this.objectiveTypes = objectiveTypes;
         this.repository = repository;
     }
 
-    /** 玩家上线/切换世界后载入其任务索引。 */
+    /** 注入「目标结构变化导致进度重置」的告警出口（参数：任务 id、玩家 id）。 */
+    public void onStructureChanged(java.util.function.BiConsumer<String, String> warner) {
+        if (warner != null) {
+            this.structureChangeWarner = warner;
+        }
+    }
+
+    /**
+     * 计算任务目标列表的结构摘要。
+     * <p>
+     * 进度按<b>下标</b>记录，因此只要目标的数量、顺序、类型或关键参数变了，
+     * 旧进度的含义就整体错位。把「顺序敏感」的信息拼成一个字符串再取哈希：
+     * 顺序不同的列表必然得到不同摘要，正是需要区分的。
+     */
+    public static String structureHash(Quest quest) {
+        StringBuilder builder = new StringBuilder();
+        for (QuestObjective objective : quest.objectives()) {
+            builder.append(objective.type()).append('\u0001')
+                    .append(objective.amount()).append('\u0001')
+                    .append(objective.properties()).append('\u0002');
+        }
+        return Hash.fingerprint(builder.toString());
+    }
+
+    /**
+     * 校验玩家记录的结构摘要是否仍与当前定义一致。
+     * <p>
+     * 三种结果：
+     * <ul>
+     *   <li>记录里没有摘要（旧版本数据）→ <b>只补齐，不重置</b>：没有依据就重置等于凭空清进度；</li>
+     *   <li>摘要一致 → 什么都不做；</li>
+     *   <li>摘要不一致 → <b>清空该任务进度并记日志</b>。宁可让这个任务进度归零并告知玩家，
+     *       也不能把进度静默套用到别的目标上——后者会让人以为插件坏了，且极难排查。</li>
+     * </ul>
+     *
+     * @return 是否发生了重置
+     */
+    private boolean reconcileStructure(PlayerQuest playerQuest, Quest quest) {
+        String current = structureHash(quest);
+        String stored = playerQuest.structureHash();
+        if (stored == null || stored.isBlank()) {
+            playerQuest.structureHash(current);
+            return false;
+        }
+        if (stored.equals(current)) {
+            return false;
+        }
+        playerQuest.restoreProgress(Map.of());
+        playerQuest.structureHash(current);
+        if (playerQuest.status() == QuestStatus.COMPLETED) {
+            // 进度清零后不该还能领奖
+            playerQuest.status(QuestStatus.IN_PROGRESS);
+        }
+        structureChangeWarner.accept(quest.id(), String.valueOf(playerQuest.playerId()));
+        return true;
+    }
+
+    /** 玩家上线/切换世界后载入其任务索引，并顺带校正结构变化。 */
     public void load(UUID playerId) {
         Map<String, Map<Integer, ObjectiveType>> index = new LinkedHashMap<>();
-        for (PlayerQuest playerQuest : repository.findActiveByPlayer(playerId)) {
-            quests.find(playerQuest.questId()).ifPresent(quest -> index.put(quest.id(), buildObjectiveIndex(quest)));
+        // 取全部记录而不是只取进行中的：已完成的记录同样会因定义变化而错位，
+        // 而 findActiveByPlayer 会把它们排除掉，那样就永远检测不到——
+        // 结果是玩家可能领到按错误进度判定的奖励。
+        for (PlayerQuest playerQuest : repository.findByPlayer(playerId)) {
+            Quest quest = quests.find(playerQuest.questId()).orElse(null);
+            if (quest == null) {
+                continue;
+            }
+            if (reconcileStructure(playerQuest, quest)) {
+                repository.save(playerQuest);
+            }
+            if (playerQuest.isActive()) {
+                index.put(quest.id(), buildObjectiveIndex(quest));
+            }
         }
         activeIndex.put(playerId, index);
     }
@@ -133,7 +207,7 @@ public final class ProgressService {
      */
     private boolean applyToQuest(PlayerQuest playerQuest, Quest quest,
                                  Map<Integer, ObjectiveType> objectiveIndex, ProgressContext context) {
-        boolean changed = false;
+        boolean changed = reconcileStructure(playerQuest, quest);
 
         for (Map.Entry<Integer, ObjectiveType> entry : objectiveIndex.entrySet()) {
             int objectiveSlot = entry.getKey();

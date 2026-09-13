@@ -26,8 +26,11 @@ import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
+import com.playerPlugin.playerTaskX.core.storage.DefinitionMigrator;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.StorageFactory;
 import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.entity.Player;
@@ -54,7 +57,9 @@ public final class PlayerTaskX extends JavaPlugin {
     private MessageService messages;
     private PluginConfig config;
     private DatabaseFactory.Handle database;
+    private StorageFactory storage;
     private QuestRepository questRepository;
+    private PresetRepository presets;
     private PlayerQuestRepository playerQuestRepository;
     private QuestRegistryImpl quests;
     private ObjectiveRegistryImpl objectiveTypes;
@@ -108,13 +113,30 @@ public final class PlayerTaskX extends JavaPlugin {
                 .build());
 
         // ---------- 存储 ----------
+        DatabaseFactory.Handle handle;
         try {
-            database = DatabaseFactory.open(config, getDataFolder());
-            questRepository = database.questRepository();
-            playerQuestRepository = database.playerQuestRepository();
-            log.info("存储已就绪: {}", database.description());
+            handle = DatabaseFactory.open(config, getDataFolder());
+            database = handle;
         } catch (RuntimeException e) {
             log.error("数据库打开失败，插件将被禁用: {}", e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        playerQuestRepository = handle.playerQuestRepository();
+        log.info("玩家数据存储已就绪: {}", database.description());
+
+        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）。
+        // 迁移必须在装配之前完成——否则新后端读到的是空的，随后会把旧定义当成"不存在"。
+        DefinitionMigrator.migrateIfNeeded(config, getDataFolder(), handle, log::info, log::warn);
+        try {
+            storage = StorageFactory.create(config, getDataFolder(), handle.database(),
+                    log::warn, log::info);
+            questRepository = storage.quests();
+            presets = storage.presets();
+            log.info("任务定义与预设存储已就绪: {}", storage.description());
+        } catch (RuntimeException e) {
+            log.error("任务定义存储初始化失败，插件将被禁用: {}", e.getMessage());
+            database.close();
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -128,6 +150,10 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // ---------- 引擎 ----------
         progressService = new ProgressService(quests, objectiveTypes, playerQuestRepository);
+        // 目标结构变化导致进度重置时明确告知——静默错配比进度归零更难排查
+        progressService.onStructureChanged((questId, playerId) -> log.warn(
+                "任务 {} 的目标结构已变化，玩家 {} 的该任务进度已重置（旧进度的下标已错位）",
+                questId, playerId));
         rewardService = new RewardService(quests, rewardTypes, playerQuestRepository);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
         dailyService = new DailyService(config, quests, playerQuestRepository, progressService);
@@ -295,6 +321,11 @@ public final class PlayerTaskX extends JavaPlugin {
 
     public QuestRepository questRepository() {
         return questRepository;
+    }
+
+    /** 目标/奖励预设仓储；后端与任务定义一致（见 {@code definitions.type}）。 */
+    public PresetRepository presets() {
+        return presets;
     }
 
     public PlayerQuestRepository playerQuestRepository() {

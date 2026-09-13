@@ -262,5 +262,15 @@ class QuestAdminServiceTest {
         public List<UUID> distinctPlayerIds() {
             return List.of();
         }
+
+        @Override
+        public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.DailyState findDailyState(UUID playerId) {
+            return null;
+        }
+
+        @Override
+        public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
+            // 测试替身不持久化每日状态
+        }
     }
 }

@@ -8,7 +8,6 @@ import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -156,7 +155,7 @@ public final class DailyService {
             return false;
         }
         String period = currentPeriod();
-        JdbcPlayerQuestRepository.DailyState state = dailyState(playerId);
+        PlayerQuestRepository.DailyState state = dailyState(playerId);
 
         if (state != null && period.equals(state.period())) {
             return false;
@@ -202,7 +201,7 @@ public final class DailyService {
         }
         UUID playerId = player.getUniqueId();
         String period = currentPeriod();
-        JdbcPlayerQuestRepository.DailyState state = dailyState(playerId);
+        PlayerQuestRepository.DailyState state = dailyState(playerId);
 
         // 跨天时视为免费重发，不消耗玩家的刷新次数与货币
         boolean samePeriod = state != null && period.equals(state.period());
@@ -239,7 +238,7 @@ public final class DailyService {
 
     /** 玩家在当前周期已刷新的次数。 */
     public int refreshCount(UUID playerId) {
-        JdbcPlayerQuestRepository.DailyState state = dailyState(playerId);
+        PlayerQuestRepository.DailyState state = dailyState(playerId);
         if (state == null || !currentPeriod().equals(state.period())) {
             return 0;
         }
@@ -312,7 +311,11 @@ public final class DailyService {
         repository.transaction(() -> {
             repository.deleteByPlayerAndType(playerId, QuestType.DAILY);
             for (Quest quest : drawn) {
-                repository.save(PlayerQuest.assign(playerId, quest, now, expiresAt));
+                PlayerQuest assigned = PlayerQuest.assign(playerId, quest, now, expiresAt);
+                // 记下接手时的目标结构：日后定义变过就能检测出进度下标错位并重置
+                assigned.structureHash(com.playerPlugin.playerTaskX.core.engine.ProgressService
+                        .structureHash(quest));
+                repository.save(assigned);
             }
             saveState(playerId, period, storedRefreshCount);
         });
@@ -346,17 +349,19 @@ public final class DailyService {
         return nextResetMillis(LocalDateTime.now(), config.getDailyResetHour());
     }
 
-    private JdbcPlayerQuestRepository.DailyState dailyState(UUID playerId) {
-        if (repository instanceof JdbcPlayerQuestRepository jdbc) {
-            return jdbc.findDailyState(playerId);
-        }
-        return null;
+    /**
+     * 读取每日状态。
+     * <p>
+     * 走仓储接口而不是判断具体实现：每日状态是玩家数据的一部分，
+     * 所有后端（SQLite / MySQL / JSON）都必须能存，否则换后端会静默丢掉
+     * 刷新次数与周期判定。
+     */
+    private PlayerQuestRepository.DailyState dailyState(UUID playerId) {
+        return repository.findDailyState(playerId);
     }
 
     private void saveState(UUID playerId, String period, int refreshCount) {
-        if (repository instanceof JdbcPlayerQuestRepository jdbc) {
-            jdbc.saveDailyState(playerId, period, refreshCount, System.currentTimeMillis());
-        }
+        repository.saveDailyState(playerId, period, refreshCount, System.currentTimeMillis());
     }
 
     /**

@@ -137,33 +137,100 @@ Bukkit 事件 → GameListener → ProgressContext
 
 ## 4. 存储
 
-### 4.1 抽象
+### 4.1 两种数据、三个后端、一个选择入口
 
-```java
-public interface Database extends AutoCloseable {
-    void execute(String sql, Object... params);
-    <T> List<T> query(String sql, RowMapper<T> mapper, Object... params);
-    long insert(String sql, Object... params);          // 返回自增主键
-    <T> T transaction(SqlFunction<T> work);
-    Dialect dialect();                                   // MYSQL | SQLITE
-}
+数据按性质分成两类，**各自独立选后端**，这是刻意的：
+
+| | 内容类 | 状态类 |
+|---|---|---|
+| 内容 | 任务定义、目标/奖励预设 | 玩家进度、每日刷新状态 |
+| 契约 | `DefinitionRepository<T>`（`QuestRepository` / `PresetRepository`） | `PlayerQuestRepository` |
+| 写入频率 | 极低（管理员改动） | **每个游戏事件** |
+| 需要事务 | 否 | **是**（每日刷新要删旧写新原子完成） |
+| 需要跨服 | 是（同一份定义） | 是（共享玩家数据） |
+| 默认后端 | JSON 文件 | SQLite |
+
+**为什么不是一个接口**：玩家侧需要 `findActiveByPlayer`（在进度热路径上）、
+`countPlayers`、`distinctPlayerIds` 与 `transaction`，这些定义侧都不需要。
+合并的后果是二选一——要么玩家侧丢掉索引查询与事务，要么文件后端被迫实现
+一个「键控 + 可查询 + 事务」的存储，也就是用文件重写一个数据库。
+
+**三个后端，两份实现**：SQLite 与 MySQL 共用同一套 JDBC 实现，差异全部由
+`Dialect` 承担；文件后端（JSON）另有一份。因此「支持三种存储」不需要写三套。
+
+```
+definitions.type = JSON    → QuestFileRepository + PresetFileRepository
+definitions.type = SQLITE  → JdbcQuestRepository + JdbcPresetRepository
+definitions.type = MYSQL   → 同上（Dialect 决定方言）
+storage.type     = SQLITE  → JdbcPlayerQuestRepository
+storage.type     = MYSQL   → 同上
+storage.type     = JSON    → JsonPlayerQuestRepository（一玩家一文件）
 ```
 
-两种实现（`JdbcDatabase` 由方言参数化）：`SqliteDatabase`、`MysqlDatabase`（HikariCP 池）。
-方言负责 `AUTO_INCREMENT` vs `AUTOINCREMENT`、`ON DUPLICATE KEY` vs `ON CONFLICT`、
-自增主键获取等差异。
+选择入口是 `StorageFactory` 与 `DatabaseFactory`；未知类型回退默认值并告警，
+而不是让插件启动失败。
 
-### 4.2 表结构
+### 4.2 文件后端的两条硬要求
+
+**① 写入必须原子**：一律「写临时文件 → 原子改名」，绝不原地覆盖。
+数据库的事务白送这个保证，文件方案必须自己补——原地写崩在中途会留下半截 JSON，
+用户的全部任务因此读不出来。崩溃残留的 `.tmp` 在下次载入时清理。
+
+**② 载入必须分级容错**：单个文件坏了**跳过它**并记警告（含文件名），其余照常载入；
+缺 `id` 跳过且**不用文件名推断 id**；文件名与 `id` 不一致时以 `id` 字段为准。
+整批全坏时保留内存里上一次成功的定义，而不是让任务列表变空。
+
+### 4.3 为什么定义侧用 JSON 而不是 YAML
+
+YAML 1.1 会把 `target: NO`（`NO` 是合法的方块材质名「一氧化氮」）解析成布尔 `false`，
+把 `1.20` 解析成浮点 `1.2`——都是**静默数据损坏**。
+
+干净的解法是 YAML 1.2 风格的解析器（布尔只认 `true/false`）。实测该解法有效，
+但 **Jackson 2.15.2 的 `YAMLFactoryBuilder` 不暴露 resolver**（只有 `stringQuotingChecker`
+与 `yamlVersionToWrite`），Jackson 内部自行构造 `Yaml`，无法替换其解析器。
+剩下两条路都更重：放弃 Jackson 直接用 snakeyaml 手写序列化，
+或额外引入 `snakeyaml-engine` 并处理它与 Jackson 内置 snakeyaml 1.x 的类名冲突。
+
+JSON 没有隐式类型转换，零成本消除整类问题，因此选它。
+
+### 4.4 目标结构指纹（防静默错配）
+
+玩家进度按**目标下标**记录（`{"0": 32}`），因此调换目标顺序后，旧进度会被套到
+别的目标上（挖了 32 个石头显示成「发言 32 次」），而语法校验查不出任何问题。
+
+做法：玩家接手任务时记下目标列表的摘要（`Hash.fingerprint`，对顺序敏感），
+每次载入进度时比对：
+
+- 摘要一致 → 正常使用；
+- 摘要不同 → **清空该任务进度、状态退回进行中，并记明确日志**；
+- 记录里没有摘要（旧版本数据）→ 只补齐，**不重置**（没有依据不能清玩家进度）。
+
+检测放在 `ProgressService.load()` 而不是只放在热度路径上：`findActiveByPlayer`
+只返回进行中的记录，**已完成的记录同样会错位**，若只在热路径检测就永远发现不了，
+玩家可能领到按错误进度判定的奖励。这一点由测试固化。
+
+### 4.5 表结构
 
 ```sql
-quest(id TEXT PK, name, description, icon, category, type, refresh_cost, enabled, sort_order)
-quest_objective(quest_id FK, idx INT, type TEXT, properties TEXT)      -- properties 为 JSON
-quest_reward(quest_id FK, idx INT, type TEXT, properties TEXT)
-player_quest(player_id, quest_id, type, assigned_at, expires_at, completed, progress TEXT,
+-- 玩家数据（默认后端）
+player_quest(player_id, quest_id, type, assigned_at, expires_at, status,
+             progress TEXT,              -- {"0":32,"1":5} 目标下标 → 计数
+             structure_hash,             -- 目标列表摘要，见 4.4
              PRIMARY KEY(player_id, quest_id))
-daily_state(player_id PK, assigned_at)          -- 记录当日是否已发放，用于跨天刷新
-meta(key PK, value)                             -- schema 版本等
+daily_state(player_id PK, period, refresh_count, assigned_at)
+
+-- 仅当 definitions.type 选 SQL 后端时使用
+quest(id PK, name, description, icon, category, type, refresh_cost, enabled)
+quest_objective(quest_id, idx, type, properties TEXT)   -- properties 为 JSON
+quest_reward(quest_id, idx, type, properties TEXT)
+preset(kind, id PK, name, type, properties TEXT, description)
+
+-- 键值杂项
+meta(meta_key PK, meta_value)
 ```
+
+旧版本用来存任务定义的三张表在升级后**保留不读也不删**：迁移是单向的，
+自动删表属于危险的不可逆操作，应由管理员确认后自行清理。
 
 约定：**所有 SQL 收敛在 `storage/` 包**，其它包不得出现 SQL 字符串。
 
@@ -361,10 +428,11 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 14 | 编辑器：图标/材质选择器（`/api/catalog`，中英文搜索） | ✅ 完成 |
 | 15 | 编辑器：目标与奖励预设（`/api/presets`） | ✅ 完成 |
 | 16 | 编辑器：译名改为「读服务端语言文件 + 下载中文」，删除手工译名表 | ✅ 完成（材质/实体中文覆盖 100%） |
+| 17 | 存储后端可插拔：定义与玩家数据各自选 JSON / SQLite / MySQL | ✅ 完成 |
+| 18 | 任务定义与预设出库成 JSON 文件 + 从旧库自动迁移 | ✅ 完成 |
+| 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 
-**测试总量：114 项全部通过**（存储 15 / 引擎 12 / 命令帮助 12 / 每日 10 / 奖励 19 /
-任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 8 / GUI 图标 6 /
-进度渲染 5），`clean build` 全绿。
+**测试总量：137 项全部通过**（存储 15 + 文件仓储 15 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 19 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 8 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项）：
 渲染能力既然上移到了 YLib，它的行为就该在 YLib 钉住，否则每个消费方只能各测各的。
