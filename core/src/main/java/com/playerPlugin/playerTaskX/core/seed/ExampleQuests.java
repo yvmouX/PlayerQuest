@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 出厂自带的示例任务，仅在数据库为空时写入一次（见 PlayerTaskX#seedIfEmpty）。
+ * 出厂自带的示例任务，仅在数据库为空时写入一次（见 {@code QuestAdminService#seedIfEmpty}）。
+ *
+ * <p>同一批任务还会被 {@link ExampleFiles} 铺成 {@code quests/} 下的 YAML 文件，
+ * 那里用的是 {@code example_file_} 前缀（同 id 会撞上「库优先」，见该类注释）。</p>
  *
  * <p>这批任务有双重身份：既是新服「开箱即玩」的起点，也是各种目标/奖励写法的活文档——
  * 管理员在编辑器里对照着改，比读字段说明直观。</p>

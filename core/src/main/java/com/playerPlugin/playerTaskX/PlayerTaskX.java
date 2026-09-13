@@ -27,6 +27,7 @@ import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.seed.ExampleFiles;
 import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
@@ -211,7 +212,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
      *
      * <p>与数据库的合并规则（库优先、冲突告警、文件定义只读）由
      * {@link MergedQuestRepository} / {@link MergedPresetRepository} 承担，这里只做装配：
-     * 建目录、把告警接到插件日志。
+     * 建目录、铺一份示例、把告警接到插件日志。
      */
     private QuestRepository withYamlDefinitions(DatabaseFactory.Handle handle) {
         java.util.function.Consumer<String> warner = message -> log.warn("YAML 定义: {}", message);
@@ -219,8 +220,26 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         DefinitionFolder presetFolder = DefinitionFolder.of(getDataFolder(), "presets", warner);
         questFolder.ensureExists();
         presetFolder.ensureExists();
+        seedExampleFiles(questFolder, presetFolder);
         presets = new MergedPresetRepository(handle.presets(), YamlDefinitions.presetSources(presetFolder), warner);
         return new MergedQuestRepository(handle.quests(), YamlDefinitions.questSources(questFolder), warner);
+    }
+
+    /**
+     * 目录空着时铺一份示例定义（见 {@link ExampleFiles}）。
+     * <p>
+     * 只在目录完全为空时动手：管理员删掉某几个示例、或放了自己的定义之后，
+     * 重启时不该把它们变回来。
+     */
+    private void seedExampleFiles(DefinitionFolder questFolder, DefinitionFolder presetFolder) {
+        int quests = ExampleFiles.writeQuests(questFolder, ExampleQuests.all(config.getDailyRefreshCost()));
+        int presetsWritten = ExampleFiles.writePresets(presetFolder, ExamplePresets.all());
+        if (quests > 0) {
+            log.info("quests/ 是空的，已写入 {} 个示例任务文件（只读来源，可自由删改）", quests);
+        }
+        if (presetsWritten > 0) {
+            log.info("presets/ 是空的，已写入 {} 个示例预设文件（只读来源，可自由删改）", presetsWritten);
+        }
     }
 
     /**

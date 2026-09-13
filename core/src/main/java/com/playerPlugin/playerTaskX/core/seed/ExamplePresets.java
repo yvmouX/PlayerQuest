@@ -8,6 +8,9 @@ import java.util.Map;
 /**
  * 出厂自带的默认预设，仅在 {@code preset} 表为空时写入一次。
  *
+ * <p>同一批预设还会被 {@link ExampleFiles} 铺成 {@code presets/} 下的 YAML 文件，
+ * 那里用的是 {@code example_file_} 前缀（同 id 会撞上「库优先」，见该类注释）。</p>
+ *
  * <p>作用与 {@link ExampleQuests} 相同但面向编辑器：管理员一进预设页面就看得见
  * 「预设长什么样、怎么套用」，不必先自己建一条才有参照。
  *

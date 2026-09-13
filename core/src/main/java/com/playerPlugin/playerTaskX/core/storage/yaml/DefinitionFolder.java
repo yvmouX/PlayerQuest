@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * 一个只读的 YAML 定义文件夹（{@code quests/} 或 {@code presets/}）。
+ * 一个 YAML 定义文件夹（{@code quests/} 或 {@code presets/}）。
  *
  * <h2>目录约定</h2>
  * <ul>
@@ -27,6 +27,10 @@ import java.util.stream.Stream;
  *
  * <p>解析结果的缓存由调用方（{@code Yaml*Repository}）持有：本类每次 {@link #load()} 都重新读盘，
  * 于是「重载」天然能拿到文件的最新内容，而编辑器的逐条查询走上层缓存、不会反复读盘。
+ *
+ * <p><b>写入只有「铺一次示例」这一条路</b>（{@link #isEmpty()} + {@link #writeOnce}）：
+ * 目录空着时插件放一份示例进去，之后再也不动它。定义本身永远不进这里——
+ * 编辑器与游戏内命令的保存都只写数据库。
  */
 public final class DefinitionFolder {
 
@@ -50,8 +54,8 @@ public final class DefinitionFolder {
     /**
      * 目录不存在时创建它。
      * <p>
-     * 刻意<b>不</b>往里写示例定义：升级后凭空多出几个任务会让人以为插件乱写数据。
-     * 想从示例起步就用编辑器的「导出 YAML」，把文件放进这个目录即可。
+     * 里面写什么由调用方决定：插件只在目录<b>空着</b>时铺一份示例（见 {@link #writeOnce}），
+     * 已经有任何定义时一律不动，免得把管理员自己删掉的示例又变回来。
      *
      * @return 是否真的创建了目录（调用方可以据此提示管理员）
      */
@@ -88,6 +92,55 @@ public final class DefinitionFolder {
      * @return 按文件名排序的文档列表；解析失败的文件不在其中（已记告警）
      */
     public List<Document> load() {
+        List<Path> files = yamlFiles();
+        List<Document> documents = new ArrayList<>(files.size());
+        for (Path file : files) {
+            Document document = parse(file);
+            if (document != null) {
+                documents.add(document);
+            }
+        }
+        return documents;
+    }
+
+    /**
+     * 目录里是否一个 YAML 定义文件都没有（目录不存在也算空）。
+     * <p>
+     * 铺设示例文件前用它判断：只要管理员已经放过任何一个定义，就不该再往里塞东西。
+     */
+    public boolean isEmpty() {
+        return yamlFiles().isEmpty();
+    }
+
+    /** 目录下某个定义文件的位置（文件名不带扩展名，固定写 {@code .yml}）。 */
+    public Path pathOf(String fileName) {
+        return directory.resolve(fileName + ".yml");
+    }
+
+    /**
+     * 写一个文件，<b>已存在则什么都不做</b>。
+     * <p>
+     * 这两个目录平时是管理员的领地，插件只有「铺示例」这一次写机会，
+     * 因此这里不提供覆盖语义：想改示例就改文件，想重新拿到示例就先把目录清空。
+     *
+     * @return 是否真的写了（false = 已存在或写失败，后者已记告警）
+     */
+    public boolean writeOnce(Path file, String text) {
+        if (Files.exists(file)) {
+            return false;
+        }
+        try {
+            Files.createDirectories(directory);
+            Files.writeString(file, text, StandardCharsets.UTF_8);
+            return true;
+        } catch (IOException e) {
+            warner.accept("写入 " + relative(file) + " 失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** 目录下所有 YAML 文件，按绝对路径排序。 */
+    private List<Path> yamlFiles() {
         if (!Files.isDirectory(directory)) {
             return List.of();
         }
@@ -100,15 +153,7 @@ public final class DefinitionFolder {
         }
         // 排序保证「同一份文件每次得到同样的加载顺序」，否则注册表顺序会随文件系统变化
         files.sort(Comparator.comparing(path -> path.toAbsolutePath().toString()));
-
-        List<Document> documents = new ArrayList<>(files.size());
-        for (Path file : files) {
-            Document document = parse(file);
-            if (document != null) {
-                documents.add(document);
-            }
-        }
-        return documents;
+        return files;
     }
 
     /** 解析单个文件；失败返回 null 并记告警。 */

@@ -243,4 +243,30 @@ class YamlDefinitionSourceTest {
         assertEquals("quests/mine.yml", sources.location("mine").orElseThrow(),
                 "提示里要能说出是哪个文件");
     }
+
+    @Test
+    @DisplayName("isEmpty 只认 YAML：放 README 或备份不算「已经有定义」")
+    void isEmptyIgnoresNonYamlFiles(@TempDir Path dir) throws IOException {
+        DefinitionFolder folder = new DefinitionFolder(dir, "quests", message -> { });
+
+        assertTrue(folder.isEmpty(), "目录不存在也算空");
+        write(dir.resolve("README.md"), "放点说明");
+        write(dir.resolve("backup.json"), "{}");
+        assertTrue(folder.isEmpty(), "非 YAML 文件不该让插件以为管理员已经有定义了");
+
+        write(dir.resolve("nested/mine.yml"), "name: 挖矿\n");
+        assertFalse(folder.isEmpty());
+    }
+
+    @Test
+    @DisplayName("writeOnce 只创建、绝不覆盖")
+    void writeOnceNeverOverwrites(@TempDir Path dir) throws IOException {
+        DefinitionFolder folder = new DefinitionFolder(dir, "quests", message -> { });
+        Path file = folder.pathOf("mine");
+
+        assertTrue(folder.writeOnce(file, "name: 第一次\n"));
+        assertFalse(folder.writeOnce(file, "name: 第二次\n"), "第二次必须什么都不做");
+        assertEquals("name: 第一次\n", Files.readString(file), "已有文件的内容不能被改写");
+        assertEquals(dir.resolve("mine.yml"), file, "文件名固定带 .yml");
+    }
 }

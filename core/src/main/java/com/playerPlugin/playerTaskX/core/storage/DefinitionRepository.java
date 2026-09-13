@@ -57,4 +57,15 @@ public interface DefinitionRepository<T> {
     default boolean isReadOnly(String id) {
         return false;
     }
+
+    /**
+     * 库里是否一条定义都没有（<b>不算</b> YAML 只读来源里的那些）。
+     * <p>
+     * 出厂示例的播种看的是这个而不是 {@link #count()}：文件里那套示例与库里那套
+     * （id 前缀不同）是并存的两份，若按合并后的数量判断，铺过一次示例文件之后就再也
+     * 不会往库里播种——而库里那套才是编辑器里能改、能禁用的那一套。
+     */
+    default boolean databaseEmpty() {
+        return count() == 0;
+    }
 }

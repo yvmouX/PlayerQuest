@@ -11,9 +11,8 @@ import java.util.function.Consumer;
 /**
  * 预设的对外仓储：<b>数据库（可写） + presets/ 目录（只读，库优先）</b>。
  *
- * <p>与 {@link MergedQuestRepository} 同一套规则，只是多一个
- * {@link #seedIfEmpty(List)}：出厂默认预设写库时也要看「插件实际能用多少预设」，
- * 文件里已经有预设时不再灌入默认值。
+ * <p>与 {@link MergedQuestRepository} 同一套规则，只是多一个 {@link #seedIfEmpty(List)}：
+ * 出厂默认预设要不要写，问的是<b>数据库</b>（见 {@link #databaseEmpty()}）。
  */
 public final class MergedPresetRepository implements PresetRepository {
 
@@ -62,10 +61,14 @@ public final class MergedPresetRepository implements PresetRepository {
     }
 
     @Override
+    public boolean databaseEmpty() {
+        return merged.databaseEmpty();
+    }
+
+    @Override
     public void seedIfEmpty(List<Preset> defaults) {
-        if (count() > 0) {
-            return;
-        }
+        // 只看库：presets/ 里已经有东西（示例文件或管理员自己的预设）时，库里那套示例照样要写。
+        // 两套是并存的（id 前缀不同，见 ExampleFiles），拿合并后的数量判断会让库里那套永远不出现。
         database.seedIfEmpty(defaults);
     }
 }

@@ -89,4 +89,9 @@ public final class MergedSources<T> {
     public long count() {
         return all().size();
     }
+
+    /** 库里是否一条都没有（播种出厂示例时看的是库，不是合并后的视图，理由见 {@code DefinitionRepository}）。 */
+    public boolean databaseEmpty() {
+        return database.count() == 0;
+    }
 }

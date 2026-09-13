@@ -62,8 +62,13 @@ public final class MergedQuestRepository implements QuestRepository {
 
     @Override
     public long count() {
-        // 口径是「插件实际能用多少」，不是「库里有几条」：库为空但文件里有定义时，
-        // 出厂示例任务不再写入（管理员显然已有自己的定义）
+        // 口径是「插件实际能用多少」，不是「库里有几条」：列表、统计与示例预设的播种判断
+        // 关心的都是这个数
         return merged.count();
+    }
+
+    @Override
+    public boolean databaseEmpty() {
+        return merged.databaseEmpty();
     }
 }

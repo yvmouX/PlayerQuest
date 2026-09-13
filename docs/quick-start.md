@@ -18,29 +18,36 @@ plugins/playerTaskX/
 │   └── en.yml
 ├── editor/
 │   └── zh_cn.json      # 编辑器图标列表的中文译名（自动下载；离线服可手动放一份）
-├── quests/             # 手写 YAML 任务定义（只读来源，初始为空）
-├── presets/            # 手写 YAML 目标/奖励预设（同上）
+├── quests/             # YAML 任务定义（只读来源，空着时会铺一份示例）
+├── presets/            # YAML 目标/奖励预设（同上）
 └── data/
     └── playerTaskX.db  # SQLite 数据库（任务定义、预设与玩家进度都在这里）
 ```
 
-`quests/` 与 `presets/` 一开始是**空**的：任务写在里面就能被插件读到，但那份定义只读
-（库优先），游戏内与编辑器只修改数据库里的定义。详见
+任务写在 `quests/` / `presets/` 里就能被插件读到，但那份定义**只读**（库优先），
+游戏内与编辑器只修改数据库里的定义；详见
 [配置 · 用 YAML 文件写定义](configuration?id=用-yaml-文件写定义)。
 
 启动日志里应能看到：
 
 ```
+[playerTaskX] quests/ 是空的，已写入 12 个示例任务文件（只读来源，可自由删改）
+[playerTaskX] presets/ 是空的，已写入 11 个示例预设文件（只读来源，可自由删改）
 [playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db（任务定义、预设与玩家数据在同一库）
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（12 个任务，14 种目标，5 种奖励）
+[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，5 种奖励）
 ```
 
-**数据库为空时会自动写入 12 个示例任务**（6 个每日 + 6 个常驻，统一用 `example_` 前缀），
-覆盖了大部分目标类型的写法，方便你对照格式、立刻看到效果：每日任务默认每次抽 3 个，
-登录 `/ptx` 就能玩；常驻任务在编辑器或 `/ptxa list` 里查看。不需要时逐个删除，
-或用 `/ptxa disable example_daily_mine` 之类的命令关掉。
+示例一共有两套，**都不影响正常使用，可随时清掉**：
+
+- **数据库里 12 个**（6 个每日 + 6 个常驻，`example_` 前缀）：可以在编辑器里随便改，
+  也可以在游戏里用 `/ptxa disable example_daily_mine` 之类的命令关掉；
+- **`quests/` 里 12 个 + `presets/` 里 11 个**（`example_file_` 前缀）：用来对照文件格式，
+  只读、改文件才生效；删掉就不会再补（目录非空即不再铺）。
+
+两套覆盖了大部分目标类型的写法。每日任务默认每次抽 3 个，登录 `/ptx` 就能玩；
+常驻任务在编辑器或 `/ptxa list` 里查看。
 
 其中「添砖加瓦」以「挖矿日常」为**前置**，用来演示任务链：只有**领取**过「挖矿日常」的
 奖励之后，它才会进入抽取池。见 [核心概念 · 前置任务](README?id=前置任务)。
@@ -136,7 +143,7 @@ plugins/playerTaskX/
 ## 7. 下一步
 
 - [命令](commands)：完整的命令清单
-- [任务目标](objectives)：14 种目标类型与配置字段
+- [任务目标](objectives)：15 种目标类型与配置字段
 - [任务奖励](rewards)：5 种奖励类型
 - [网页编辑器](editor)：批量管理与导入导出
 - [变量](placeholders)：在计分板、菜单里展示任务信息
