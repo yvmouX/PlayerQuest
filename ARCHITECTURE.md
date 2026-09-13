@@ -34,7 +34,7 @@ PlayerTaskX/
 | `placeholderapi` | 变量 | compileOnly（软依赖） |
 
 **JSON 编解码统一走 `JsonCodec` 的单个 `ObjectMapper`**（jackson-databind，见
-`build.gradle.kts`）：任务定义与预设落盘、玩家 JSON 后端、编辑器 HTTP 传输都用它，
+`build.gradle.kts`）：`properties` / `progress` 列与编辑器 HTTP 传输都用它，
 不再出现「一份模型两套序列化」。
 
 ---
@@ -148,9 +148,9 @@ Bukkit 事件 → GameListener → ProgressContext
 
 ## 4. 存储
 
-### 4.1 两种数据、三个后端、一个选择入口
+### 4.1 两种数据、一个库、一个选择入口
 
-数据按性质分成两类，**各自独立选后端**，这是刻意的：
+数据按性质分成两类，**契约刻意分开**，但**落在同一个库里**：
 
 | | 内容类 | 状态类 |
 |---|---|---|
@@ -159,52 +159,37 @@ Bukkit 事件 → GameListener → ProgressContext
 | 写入频率 | 极低（管理员改动） | **每个游戏事件** |
 | 需要事务 | 否 | **是**（每日刷新要删旧写新原子完成） |
 | 需要跨服 | 是（同一份定义） | 是（共享玩家数据） |
-| 默认后端 | JSON 文件 | SQLite |
+| 落在哪张表 | `quest` / `quest_objective` / `quest_reward` / `preset` | `player_quest` / `daily_state` |
 
 **为什么不是一个接口**：玩家侧需要 `findActiveByPlayer`（在进度热路径上）、
 `countPlayers`、`distinctPlayerIds` 与 `transaction`，这些定义侧都不需要。
-合并的后果是二选一——要么玩家侧丢掉索引查询与事务，要么文件后端被迫实现
-一个「键控 + 可查询 + 事务」的存储，也就是用文件重写一个数据库。
+合并的后果是二选一——要么玩家侧丢掉索引查询与事务，要么内容侧被迫实现
+一个「键控 + 可查询 + 事务」的存储，也就是拿内容表当数据库用。
 
-**三个后端，两份实现**：SQLite 与 MySQL 共用同一套 JDBC 实现（`JdbcDatabase` 只有
-「连接从哪来」不同，两个工厂表达），差异全部由 `Dialect` 承担；文件后端（JSON）另有一份。
-因此「支持三种存储」不需要写三套。
+**契约分开 ≠ 后端分开**：两类数据存在同一个库里，`storage.type` 一处决定用
+SQLite 还是 MySQL。`JdbcDatabase` 只有「连接从哪来」不同（两个工厂表达），
+差异全部由 `Dialect` 承担，因此「支持两种数据库」不必写两套仓储。
 
 ```
-definitions.type = JSON    → QuestFileRepository + PresetFileRepository
-definitions.type = SQLITE  → JdbcQuestRepository + JdbcPresetRepository
-definitions.type = MYSQL   → 同上（Dialect 决定方言）
-storage.type     = SQLITE  → JdbcPlayerQuestRepository
-storage.type     = MYSQL   → 同上
-storage.type     = JSON    → JsonPlayerQuestRepository（一玩家一文件）
+storage.type = SQLITE → JdbcQuestRepository + JdbcPresetRepository
+                      + JdbcPlayerQuestRepository（同一个 JdbcDatabase）
+storage.type = MYSQL  → 同上，Dialect 决定方言
 ```
 
-选择入口是 `StorageFactory` 与 `DatabaseFactory`；未知类型回退默认值并告警，
-而不是让插件启动失败。**没有从旧数据库自动搬运定义的迁移代码**：项目未发布，
-不存在「定义只存在于旧表里」的部署，为它保留一百多行一次性代码没有收益。
+装配入口是 `DatabaseFactory`（`Handle` 一次给出三份仓储）；未知类型回退 SQLite 并告警，
+而不是让插件启动失败。**没有从旧格式搬运数据的迁移代码**：项目未发布，
+不存在「数据只在旧存储里」的部署，为它保留一次性代码没有收益。
 
-### 4.2 文件后端的两条硬要求
+> **曾经有文件后端**（JSON：一任务一文件、一玩家一文件），已整体删除。
+> 定义进库之后「文件与库哪个是权威」的问题就不存在了；玩家侧的文件方案每次进度变化
+> 都要重写该玩家整份文件、聚合要列目录、且无法跨服共享，相对 SQLite 只剩劣势。
+> 需要 diff 或进版本控制时，用编辑器的整份任务导出/导入。
 
-**① 写入必须原子**：一律「写临时文件 → 原子改名」，绝不原地覆盖。
-数据库的事务白送这个保证，文件方案必须自己补——原地写崩在中途会留下半截 JSON，
-用户的全部任务因此读不出来。崩溃残留的 `.tmp` 在下次载入时清理。
-
-**② 载入必须分级容错**：单个文件坏了**跳过它**并记警告（含文件名），其余照常载入；
-缺 `id` 跳过且**不用文件名推断 id**；文件名与 `id` 不一致时以 `id` 字段为准。
-整批全坏时保留内存里上一次成功的定义，而不是让任务列表变空。
-
-**③ 「一个文件即一个事务」必须显式标记事务范围**：玩家 JSON 后端当初用
-「暂存表非空」来判断自己是否处于事务中，而暂存表恰恰是 `save` 自己填的——
-于是**事务里的第一次写入看不到事务、直接落盘**，`DailyService.assign` 的
-「删旧任务 → 写新任务 → 记状态」在第一步就破了原子性：中途失败会留下
-「旧任务已删、新任务没写」的空列表。现在用显式的 `inTransaction` 标记事务范围，
-且暂存的是**整份文件**（任务记录与每日状态同文件，只攒一半会把另一半写空）。
-三条事务测试（批处理、刷新原子性、异常丢弃）就是它的回归网。
-
-### 4.3 为什么定义侧用 JSON 而不是 YAML
+### 4.2 为什么结构化数据统一用 JSON 而不是 YAML
 
 YAML 1.1 会把 `target: NO`（`NO` 是合法的方块材质名「一氧化氮」）解析成布尔 `false`，
-把 `1.20` 解析成浮点 `1.2`——都是**静默数据损坏**。
+把 `1.20` 解析成浮点 `1.2`——都是**静默数据损坏**。任务的 `properties` 列要原样保存
+用户填的参数，这类值迟早会撞上。
 
 干净的解法是 YAML 1.2 风格的解析器（布尔只认 `true/false`）。实测该解法有效，
 但 **Jackson 2.15.2 的 `YAMLFactoryBuilder` 不暴露 resolver**（只有 `stringQuotingChecker`
@@ -212,9 +197,11 @@ YAML 1.1 会把 `target: NO`（`NO` 是合法的方块材质名「一氧化氮�
 剩下两条路都更重：放弃 Jackson 直接用 snakeyaml 手写序列化，
 或额外引入 `snakeyaml-engine` 并处理它与 Jackson 内置 snakeyaml 1.x 的类名冲突。
 
-JSON 没有隐式类型转换，零成本消除整类问题，因此选它。
+JSON 没有隐式类型转换，零成本消除整类问题。因此**凡是我们自己定格式的地方
+（`properties` 列、进度列、编辑器 HTTP 传输）一律 JSON**；只有用户手写的配置文件与
+语言文件是 YAML——那是给人看的界面，不是数据交换格式，而且由 YLib 负责读写。
 
-### 4.4 目标结构指纹（防静默错配）
+### 4.3 目标结构指纹（防静默错配）
 
 玩家进度按**目标下标**记录（`{"0": 32}`），因此调换目标顺序后，旧进度会被套到
 别的目标上（挖了 32 个石头显示成「发言 32 次」），而语法校验查不出任何问题。
@@ -230,17 +217,17 @@ JSON 没有隐式类型转换，零成本消除整类问题，因此选它。
 只返回进行中的记录，**已完成的记录同样会错位**，若只在热路径检测就永远发现不了，
 玩家可能领到按错误进度判定的奖励。这一点由测试固化。
 
-### 4.5 表结构
+### 4.4 表结构
 
 ```sql
--- 玩家数据（默认后端）
+-- 玩家数据（状态类）
 player_quest(player_id, quest_id, type, assigned_at, expires_at, status,
              progress TEXT,              -- {"0":32,"1":5} 目标下标 → 计数
-             structure_hash,             -- 目标列表摘要，见 4.4
+             structure_hash,             -- 目标列表摘要，见 4.3
              PRIMARY KEY(player_id, quest_id))
 daily_state(player_id PK, period, refresh_count, assigned_at)
 
--- 仅当 definitions.type 选 SQL 后端时使用
+-- 任务定义与预设（内容类）
 quest(id PK, name, description, icon, category, type, refresh_cost, enabled)
 quest_objective(quest_id, idx, type, properties TEXT)   -- properties 为 JSON
 quest_reward(quest_id, idx, type, properties TEXT)
@@ -400,9 +387,11 @@ GET    /api/stats              统计          POST   /api/reload         重载
 > 已随本方案删除。实测替换后材质与实体的中文覆盖率均为 100%。
 
 **预设不是引擎概念**：预设只是编辑器的便利设施，运行时引擎完全不认识它。
-它的存储后端与任务定义一致（`definitions.type`）：默认是
-`plugins/playerTaskX/presets.json`——便于手工编辑、随配置备份；改成 `SQLITE`/`MYSQL`
-时进 `preset` 表，与任务定义同一处。
+预设与任务定义同库（`preset` 表），不存在单独一份预设文件需要备份或同步。
+
+出厂默认预设（`core/seed/ExamplePresets`，7 个目标 + 4 个奖励）在 `preset` 表为空时写入一次，
+与示例任务同一时机（`PlayerTaskX` 启用流程里的 `guard`）。它原先藏在文件后端的 `load()` 里，
+后端删除后必须显式接上——否则不报任何错，只是编辑器打开时预设列表变成空的。
 
 ---
 
@@ -466,25 +455,25 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 14 | 编辑器：图标/材质选择器（`/api/catalog`，中英文搜索） | ✅ 完成 |
 | 15 | 编辑器：目标与奖励预设（`/api/presets`） | ✅ 完成 |
 | 16 | 编辑器：译名改为「读服务端语言文件 + 下载中文」，删除手工译名表 | ✅ 完成（材质/实体中文覆盖 100%） |
-| 17 | 存储后端可插拔：定义与玩家数据各自选 JSON / SQLite / MySQL | ✅ 完成 |
-| 18 | 任务定义与预设出库成 JSON 文件 | ✅ 完成 |
+| 17 | 存储后端：SQLite / MySQL 共用一个库（`storage.type` 一处决定） | ✅ 完成 |
+| 18 | 删除 JSON 文件后端（定义侧 + 玩家侧三个实现类），只留数据库 | ✅ 完成 |
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 
-**测试总量：170 项全部通过**（17 个测试类，全部 failures=0 / errors=0）：
-存储 15（`StorageIntegrationTest`）+ 文件仓储 14（`QuestFileRepositoryTest`）+
-玩家 JSON 后端 21（`JsonPlayerQuestRepositoryTest`）+ 编辑器接口 16（`EditorApiTest`）+
-引擎 12（`ProgressServiceTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
-命令帮助 12（`YLibCommandHelpTest`）+ 每日 10（`DailyServiceTest`）+
-奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 任务管理 8（`QuestAdminServiceTest`）+
-示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+**测试总量：143 项全部通过**（16 个测试类，全部 failures=0 / errors=0）：
+存储 18（`StorageIntegrationTest`）+ 编辑器接口 16（`EditorApiTest`）+
+引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
+每日 10（`DailyServiceTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
+结构指纹 8（`StructureFingerprintTest`）+ 任务管理 8（`QuestAdminServiceTest`）+
 字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 素材 7（`MaterialCatalogTest`）+
-GUI 图标 6（`QuestDetailMenuTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）。
+示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+GUI 图标 6（`QuestDetailMenuTest`）+ 示例预设 5（`ExamplePresetsTest`）+
+进度渲染 5（`ProgressDisplayRenderTest`）。
 统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
-`core/build/test-results/test/*.xml` 逐套件累加（17 个 XML），不是靠日志里的汇总行。
+`core/build/test-results/test/*.xml` 逐套件累加（16 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 10679 行
-＝ **11511 行 / 91 个 java 文件**；测试 `core/src/test` **4020 行 / 18 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 9633 行
+＝ **10465 行 / 87 个 java 文件**；测试 `core/src/test` **3537 行 / 17 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **5340 行 `.vue` + 1399 行 `.ts`/`.js` ＝ 6739 行 / 28 个文件**。
 

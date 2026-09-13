@@ -6,7 +6,9 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
+import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
@@ -272,6 +274,57 @@ class StorageIntegrationTest {
         assertEquals("break_block", loaded.objectives().get(0).type());
         // 配置丢失后按默认值处理，但不应抛异常
         assertEquals(1, loaded.objectives().get(0).amount());
+    }
+
+    @Test
+    @DisplayName("进度列的脏数据逐项丢弃，不牵连整条记录（浮点文本按整数读）")
+    void dirtyProgressDegradesPerEntry() {
+        questRepository.save(sampleQuest("q1"));
+        // 直接写一行，模拟手工改库或旧格式：坏键、坏值、浮点文本、带空白的键混在一起。
+        // 这类错误的特征是「不报错」——解析失败若被忽略，玩家的进度会静默变成 0
+        database.execute("INSERT INTO player_quest "
+                        + "(player_id, quest_id, type, assigned_at, expires_at, status, progress) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                PLAYER.toString(), "q1", "DAILY", 0L, 0L, "IN_PROGRESS",
+                "{\"0\":7,\" 1 \":\"12\",\"2\":\"5.0\",\"oops\":1,\"3\":\"abc\"}");
+
+        PlayerQuest loaded = playerQuestRepository.find(PLAYER, "q1").orElseThrow();
+        assertEquals(7, loaded.progress(0));
+        assertEquals(12, loaded.progress(1), "带空白的键应被容忍");
+        assertEquals(5, loaded.progress(2), "\"5.0\" 这种浮点文本要能读成整数");
+        assertEquals(0, loaded.progress(3), "坏值当 0（等价于丢弃这一项）");
+        assertEquals(3, loaded.progress().size(), "坏键 oops 应被丢弃: " + loaded.progress());
+    }
+
+    @Test
+    @DisplayName("playerId/questId 为空的记录被跳过而不是落库")
+    void saveRejectsIncompleteRecord() {
+        // 两列都是主键的一部分：写进去会得到一行谁也读不到的脏数据，
+        // 而真正的问题是它不报错——所以钉住「不落库」
+        playerQuestRepository.save(new PlayerQuest(null, "q1", QuestType.NORMAL, 1L, 2L,
+                QuestStatus.IN_PROGRESS));
+        playerQuestRepository.save(new PlayerQuest(PLAYER, null, QuestType.NORMAL, 1L, 2L,
+                QuestStatus.IN_PROGRESS));
+
+        assertEquals(0, database.count("SELECT COUNT(*) FROM player_quest"));
+        assertTrue(playerQuestRepository.findByPlayer(PLAYER).isEmpty());
+    }
+
+    @Test
+    @DisplayName("默认预设只在库为空时写入一次，之后再启动不会把管理员删掉的塞回来")
+    void presetSeedOnlyWhenEmpty() {
+        JdbcPresetRepository presets = new JdbcPresetRepository(database);
+        assertEquals(0, presets.count());
+
+        presets.seedIfEmpty(ExamplePresets.all());
+        assertEquals(ExamplePresets.all().size(), presets.count(), "空库应写入全部默认预设");
+        assertTrue(presets.findById("mine-stone").isPresent());
+
+        // 管理员删掉一条后重启插件：库非空，就不该补写——否则删掉的预设会自己回来
+        assertTrue(presets.delete("mine-stone"));
+        presets.seedIfEmpty(ExamplePresets.all());
+        assertFalse(presets.findById("mine-stone").isPresent(), "库非空时不该补写默认预设");
+        assertEquals(ExamplePresets.all().size() - 1, presets.count());
     }
 
     @Test

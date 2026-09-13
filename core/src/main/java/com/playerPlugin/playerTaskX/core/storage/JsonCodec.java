@@ -101,23 +101,9 @@ public final class JsonCodec {
      * 无法转换的键值对直接丢弃而不是让整张表读不出来。
      */
     public static Map<Integer, Integer> readIntMap(String json) {
-        return asIntMap(readMap(json));
-    }
-
-    /**
-     * 把已经解析出来的「下标 → 计数」对象转成进度表。
-     * <p>
-     * 与 {@link #readIntMap(String)} 的区别只是输入：文件后端把整份玩家文件
-     * 一次解析成对象树，进度就是其中一个节点，不该为了读它再把 JSON 序列化回去。
-     * 两者的容错语义完全相同（坏键坏值丢弃，支持 {@code "5.0"}）。
-     */
-    public static Map<Integer, Integer> asIntMap(Object raw) {
         Map<Integer, Integer> result = new LinkedHashMap<>();
-        if (!(raw instanceof Map<?, ?> map)) {
-            return result;
-        }
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            // 键也用宽松转换：JSON 键只能是字符串，但用户手工编辑时可能写成数字
+        for (Map.Entry<String, Object> entry : readMap(json).entrySet()) {
+            // 键也用宽松转换：JSON 键只能是字符串，但手工改库时可能写成数字
             Integer key = toInteger(entry.getKey());
             Integer value = toInteger(entry.getValue());
             if (key == null || value == null) {
@@ -223,9 +209,9 @@ public final class JsonCodec {
      * 解析 JSON 对象，<b>失败时抛出异常</b>而不是降级为空表。
      * <p>
      * {@link #readMap(String)} 是为数据库列设计的：一条脏数据不该让整张表读不出来，
-     * 所以它静默降级。但文件方案需要区分两种情况——「文件内容坏了」必须跳过该文件并报错，
-     * 而「合法但为空的对象」是正常数据。静默降级会把前者伪装成后者，导致用户的文件
-     * 明明写错了却只看到一个空任务。
+     * 所以它静默降级成空表。但解析 HTTP 请求体时需要区分两种情况——「不是合法 JSON」
+     * 必须让调用方回 400，而「合法但为空的对象」是正常请求。静默降级会把前者
+     * 伪装成后者：客户端发错了却只看到一个空操作。
      *
      * @return 解析出的对象；输入为 null/空白时返回 null（表示"没有内容"）
      * @throws Exception 内容不是合法 JSON 对象

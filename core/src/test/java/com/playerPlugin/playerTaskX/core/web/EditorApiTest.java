@@ -742,6 +742,13 @@ class EditorApiTest {
         public long count() {
             return data.size();
         }
+
+        @Override
+        public void seedIfEmpty(List<Preset> defaults) {
+            if (data.isEmpty()) {
+                defaults.forEach(this::save);
+            }
+        }
     }
 
     /**

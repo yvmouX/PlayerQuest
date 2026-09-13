@@ -106,12 +106,15 @@ git -C YLib checkout dev && git -C YLib pull
 
 ### 储存
 
-两类数据**各自独立选后端**（玩家数据看 `storage.type`，任务定义与预设看 `definitions.type`），
-两边的候选项相同，都只有这三种后端：
+任务定义、预设与玩家数据**都存在同一个数据库**里，由 `storage.type` 一处决定，只有两个后端：
 
-- 玩家进度：`SQLITE`（默认）、`MYSQL`、`JSON`
-- 任务定义与预设：`JSON`（默认）、`SQLITE`、`MYSQL`
+- `SQLITE`：**默认**，零配置、单文件，适合单机与小型服务器
+- `MYSQL`：多服共享玩家数据时必须使用
+
+两类数据同库但分表：`quest` / `quest_objective` / `quest_reward` / `preset` 是内容，
+`player_quest` / `daily_state` 是玩家状态。
 
 任务是一个整体（目标与奖励是它的一部分），不存在「主体 / 奖励 / 目标」三套独立存储。
-**没有 YAML 后端**：YAML 1.1 会把 `target: NO` 解析成布尔、把 `1.20` 解析成浮点，
-定义侧因此统一用 JSON。
+**没有 YAML / JSON 文件后端**：YAML 1.1 会把 `target: NO` 解析成布尔、把 `1.20` 解析成浮点；
+文件后端则要面对「文件与库哪个是权威」以及每次进度都重写整份文件的问题。
+需要 diff 或进版本控制时，用编辑器的整份任务导出 / 导入。

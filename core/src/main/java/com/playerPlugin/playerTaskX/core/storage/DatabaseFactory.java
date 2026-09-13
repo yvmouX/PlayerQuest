@@ -2,6 +2,8 @@ package com.playerPlugin.playerTaskX.core.storage;
 
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
@@ -10,9 +12,13 @@ import java.io.File;
 import java.sql.SQLException;
 
 /**
- * 按配置打开数据库并完成建表。
+ * 按配置打开数据库、建表，并装配三份仓储——存储层唯一的入口。
  * <p>
- * 关键取舍：
+ * 任务定义、预设与玩家数据<b>共用一个库</b>：SQLite 与 MySQL 只是同一个
+ * {@link JdbcDatabase} 门面的两种连接来源，差异全部由 {@link Dialect} 承担，
+ * 因此不存在「定义用这个库、玩家数据用那个库」的分叉，装配点也就只需要一个。
+ *
+ * <h2>关键取舍</h2>
  * <ul>
  *   <li><b>未知存储类型回退 SQLite</b>：配置文件里写错一个单词（如 {@code MYSQL5}）时，
  *       能让插件带着本地库正常起来，比直接启动失败更符合使用者的预期，同时打一条告警。</li>
@@ -29,34 +35,20 @@ public final class DatabaseFactory {
     /** MySQL 连接池名，出现在 Hikari 的线程名与日志里，便于定位。 */
     private static final String MYSQL_POOL_NAME = "playerTaskX";
 
-    /** 玩家数据用文件后端时，这个目录存放每个玩家一份 JSON。 */
-    private static final String PLAYER_FOLDER = "players";
-
     private DatabaseFactory() {
     }
 
     /**
-     * 按配置打开存储。
-     * <p>
-     * 支持三种玩家数据后端：{@code SQLITE}（默认）、{@code MYSQL}（多服共享）、
-     * {@code JSON}（单服小规模，完全不依赖数据库）。选 JSON 时不会打开任何数据库连接，
-     * {@link Handle#database()} 返回 {@code null}——调用方必须容忍这一点。
+     * 按配置打开存储并建表。
      *
      * @param config     插件配置，为 null 时按 SQLite + 默认文件名处理
-     * @param dataFolder 插件数据目录，SQLite 文件与玩家目录都相对它解析
+     * @param dataFolder 插件数据目录，SQLite 文件相对它解析
      * @throws StorageException 打开连接或建表失败
      */
     public static Handle open(PluginConfig config, File dataFolder) {
         String type = config == null ? null : config.getStorageType();
         String normalized = type == null ? "" : type.trim().toUpperCase(java.util.Locale.ROOT);
 
-        if ("JSON".equals(normalized)) {
-            File base = dataFolder == null ? new File(".") : dataFolder;
-            return new Handle(null,
-                    new JsonPlayerQuestRepository(new File(base, PLAYER_FOLDER).toPath(),
-                            System.err::println),
-                    "JSON: " + PLAYER_FOLDER + "/");
-        }
         if ("MYSQL".equals(normalized)) {
             return openMysql(config);
         }
@@ -84,7 +76,7 @@ public final class DatabaseFactory {
         }
         initialize(sqlite);
         // 描述里用配置的原始相对路径，比绝对路径更适合直接展示给服主
-        return new Handle(sqlite, new JdbcPlayerQuestRepository(sqlite), "SQLite: " + fileName);
+        return new Handle(sqlite, "SQLite: " + fileName);
     }
 
     /** MySQL：Hikari 连接池，失败时统一包装成 {@link StorageException}。 */
@@ -97,8 +89,7 @@ public final class DatabaseFactory {
             throw new StorageException("连接 MySQL 失败: " + describeMysql(settings), e);
         }
         initialize(mysql);
-        return new Handle(mysql, new JdbcPlayerQuestRepository(mysql),
-                "MySQL: " + describeMysql(settings));
+        return new Handle(mysql, "MySQL: " + describeMysql(settings));
     }
 
     /** 建表；失败时关闭刚打开的资源再抛出，避免句柄/连接池泄漏。 */
@@ -117,34 +108,39 @@ public final class DatabaseFactory {
     }
 
     /**
-     * 数据库句柄：把「门面 + 描述」绑在一起，调用方只依赖 {@link Database}。
+     * 数据库句柄：把「门面 + 三份仓储 + 描述」绑在一起，调用方只依赖各仓储接口。
      * <p>
-     * 底层资源由 {@link Database#close()} 负责（{@code JdbcDatabase} 自己知道该关连接还是关池），
+     * 底层资源由 {@link JdbcDatabase#close()} 负责（它自己知道该关连接还是关池），
      * 因此这里不再单独持有 {@code AutoCloseable} —— 两处都能关是泄漏的温床。
      */
     public static final class Handle implements AutoCloseable {
 
-        private final Database database;
+        private final JdbcDatabase database;
+        private final QuestRepository quests;
+        private final PresetRepository presets;
         private final PlayerQuestRepository playerQuestRepository;
         private final String description;
         private boolean closed;
 
-        private Handle(Database database, PlayerQuestRepository playerQuestRepository, String description) {
+        private Handle(JdbcDatabase database, String description) {
             this.database = database;
-            this.playerQuestRepository = playerQuestRepository;
+            this.quests = new JdbcQuestRepository(database);
+            this.presets = new JdbcPresetRepository(database);
+            this.playerQuestRepository = new JdbcPlayerQuestRepository(database);
             this.description = description;
         }
 
-        /**
-         * 数据库门面；玩家数据用 JSON 文件后端时为 {@code null}。
-         * <p>
-         * 选 SQL 后端来存任务定义时才有值——两条路径都不该假设它一定存在。
-         */
-        public Database database() {
-            return database;
+        /** 任务定义仓储（网页编辑器与游戏内指令的定义读写都走它）。 */
+        public QuestRepository quests() {
+            return quests;
         }
 
-        /** 玩家数据仓储：SQLite / MySQL / JSON 三选一，由配置决定。 */
+        /** 预设仓储；目标/奖励预设与任务定义同库。 */
+        public PresetRepository presets() {
+            return presets;
+        }
+
+        /** 玩家数据仓储：进度、状态与每日刷新次数。 */
         public PlayerQuestRepository playerQuestRepository() {
             return playerQuestRepository;
         }
@@ -161,9 +157,6 @@ public final class DatabaseFactory {
                 return;
             }
             closed = true;
-            if (database == null) {
-                return;
-            }
             try {
                 database.close();
             } catch (Exception e) {

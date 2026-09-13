@@ -13,7 +13,7 @@
  *       以及唯一的装配点 {@link com.playerPlugin.playerTaskX.core.storage.DatabaseFactory}。
  *       包外代码只需要 import 这些。</li>
  *   <li><b>{@code jdbc} 子包 = 实现细节</b>：JDBC 通用逻辑、两种连接策略、建表、
- *       两个仓储实现与编解码工具。包外不得 import 其中的类
+ *       三个仓储实现与编解码工具。包外不得 import 其中的类
  *       （{@code DailyService} 对 DailyState 的读取是唯一例外，见其 javadoc）。</li>
  * </ul>
  *

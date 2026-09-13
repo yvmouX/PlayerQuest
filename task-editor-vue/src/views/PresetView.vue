@@ -18,7 +18,7 @@
         <h2>预设管理</h2>
         <p class="hint">
           预设是目标 / 奖励的常用组合，在任务编辑器点「添加目标 / 奖励」时可直接套用。
-          保存在插件目录的 <code class="mono">presets.json</code>，也可以手工编辑。
+          保存在与任务定义同一个数据库里。
         </p>
       </div>
       <div class="view-actions">
@@ -257,7 +257,7 @@ const deleteMessage = computed(() => {
     return ''
   }
   return `确定删除预设「${current.name || current.id}」吗？\n\n`
-    + '该操作会立即写入 presets.json，已使用过这条预设的任务不受影响，但无法恢复这条预设。'
+    + '该操作会立即写入数据库，已使用过这条预设的任务不受影响，但无法恢复这条预设。'
 })
 
 onMounted(() => {

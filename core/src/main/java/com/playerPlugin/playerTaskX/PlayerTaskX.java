@@ -24,12 +24,12 @@ import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
-import com.playerPlugin.playerTaskX.core.storage.StorageFactory;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import com.playerPlugin.playerTaskX.core.web.EditorServices;
 import org.bukkit.entity.Player;
@@ -118,6 +118,8 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
                 .build());
 
         // ---------- 存储 ----------
+        // 任务定义、预设与玩家数据共用一个库，因此只有这一次装配；
+        // 仓储都只在启用阶段用一次，故留作局部变量，不占实例字段（presets 例外，编辑器要用）
         DatabaseFactory.Handle handle;
         try {
             handle = DatabaseFactory.open(config, getDataFolder());
@@ -128,23 +130,9 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
             return;
         }
         playerQuestRepository = handle.playerQuestRepository();
-        log.info("玩家数据存储已就绪: {}", database.description());
-
-        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）。
-        // 仓储与装配器都只在启用阶段用一次，因此留作局部变量，不占实例字段
-        QuestRepository questRepository;
-        try {
-            StorageFactory storage = StorageFactory.create(config, getDataFolder(), handle.database(),
-                    log::warn, log::info);
-            questRepository = storage.quests();
-            presets = storage.presets();
-            log.info("任务定义与预设存储已就绪: {}", storage.description());
-        } catch (RuntimeException e) {
-            log.error("任务定义存储初始化失败，插件将被禁用: {}", e.getMessage());
-            database.close();
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+        QuestRepository questRepository = handle.quests();
+        presets = handle.presets();
+        log.info("存储已就绪: {}（任务定义、预设与玩家数据在同一库）", database.description());
 
         // ---------- 注册表 ----------
         quests = new QuestRegistryImpl();
@@ -171,6 +159,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
         // 让插件以「零任务」状态启动而不是直接崩掉
         guard("示例任务写入", () -> questAdmin.seedIfEmpty(ExampleQuests.all(config.getDailyRefreshCost())));
+        guard("默认预设写入", () -> presets.seedIfEmpty(ExamplePresets.all()));
         guard("任务载入", questAdmin::reload);
 
         // ---------- 事件、命令与调度 ----------
@@ -323,7 +312,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return questAdmin;
     }
 
-    /** 目标/奖励预设仓储；后端与任务定义一致（见 {@code definitions.type}）。 */
+    /** 目标/奖励预设仓储；与任务定义、玩家数据同一个库。 */
     public PresetRepository presets() {
         return presets;
     }

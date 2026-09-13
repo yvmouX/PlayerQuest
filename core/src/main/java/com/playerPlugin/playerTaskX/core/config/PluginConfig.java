@@ -12,8 +12,11 @@ import java.util.Map;
  * 注意 YLib 配置的约束：字段类型只支持标量 / List / Map&lt;String,V&gt;，
  * 且**顶层不能是自定义 POJO**（会抛 IllegalArgumentException），
  * 因此嵌套结构一律用 {@code Map<String, Pojo>} 或点分路径表达。
+ * <p>
+ * {@code version} 变化会让 YLib 备份旧 config.yml 并按新结构重新生成
+ * （只迁移仍然存在的字段），旧键因此自动清理——删配置项时要一并 bump 它。
  */
-@AutoConfiguration(configFile = "config.yml", version = "2.0.0")
+@AutoConfiguration(configFile = "config.yml", version = "2.1.0")
 public class PluginConfig {
 
     @ConfigValue(value = "language.default", description = "默认语言（语言文件位于 lang/ 目录）")
@@ -26,9 +29,8 @@ public class PluginConfig {
     private boolean languageUseClientLocale = true;
 
     @ConfigValue(value = "storage.type",
-            description = "玩家数据存储：SQLITE（默认）、MYSQL（多服共享玩家数据时必须）或 "
-                    + "JSON（一玩家一文件，完全不依赖数据库；单服小规模才建议，"
-                    + "因为每次进度都要重写整份文件且无法跨服共享）")
+            description = "存储后端：SQLITE（默认，本地文件库、开箱即用）或 MYSQL（多服共享时必须）。"
+                    + "任务定义、预设与玩家数据都存在这一个库里")
     private String storageType = "SQLITE";
 
     @ConfigValue(value = "storage.sqlite.file", description = "SQLite 数据库文件名（相对插件数据目录）")
@@ -36,14 +38,6 @@ public class PluginConfig {
 
     @ConfigValue(value = "storage.mysql", description = "MySQL 连接配置（storage.type=MYSQL 时生效）")
     private Map<String, MysqlSettings> mysql = defaultMysql();
-
-    @ConfigValue(value = "definitions.type",
-            description = "任务定义与预设的存储：JSON（默认，一任务一文件，便于手改与 diff）、"
-                    + "SQLITE 或 MYSQL（与玩家数据同一数据库）")
-    private String definitionsType = "JSON";
-
-    @ConfigValue(value = "definitions.folder", description = "任务定义目录（相对插件数据目录，definitions.type=JSON 时生效）")
-    private String definitionsFolder = "quests";
 
     @ConfigValue(value = "progress.actionbar", description = "是否用 actionbar 推送任务进度")
     private boolean actionbarEnabled = true;
@@ -132,14 +126,6 @@ public class PluginConfig {
 
     public String getSqliteFile() {
         return sqliteFile;
-    }
-
-    public String getDefinitionsType() {
-        return definitionsType;
-    }
-
-    public String getDefinitionsFolder() {
-        return definitionsFolder;
     }
 
     /** 取 MySQL 配置，未配置时返回一份默认值，避免 NPE。 */

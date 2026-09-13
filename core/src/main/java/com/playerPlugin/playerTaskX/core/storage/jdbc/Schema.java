@@ -72,7 +72,7 @@ public final class Schema {
                         + ")" + option,
 
                 // 预设：目标/奖励的模板。kind 区分两类，不做成两张表——字段完全一致，
-                // 拆表只会让读取多一次查询。仅在 definitions.type 选 SQL 后端时使用。
+                // 拆表只会让读取多一次查询。
                 "CREATE TABLE IF NOT EXISTS preset ("
                         + "kind VARCHAR(16) NOT NULL, "
                         + "id VARCHAR(64) PRIMARY KEY, "

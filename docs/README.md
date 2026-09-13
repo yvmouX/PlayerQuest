@@ -43,9 +43,8 @@
 
 ### 数据存储
 
-**两类数据各自独立选择后端**：玩家进度默认存 **SQLite**（零配置），
-任务定义与预设默认存 **JSON 文件**（`quests/<任务id>.json`、`presets.json`，便于手改与 diff）。
-三个后端（JSON / SQLite / MySQL）都支持，详见 [配置](configuration)。
+任务定义、预设与玩家进度**都存在同一个数据库里**：默认 **SQLite**（零配置、单文件，
+开箱即用），多服共享玩家数据时换成 **MySQL**。详见 [配置](configuration)。
 
 ---
 

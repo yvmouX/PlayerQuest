@@ -13,10 +13,8 @@ import java.util.Optional;
 /**
  * {@link PresetRepository} 的 JDBC 实现，SQLite 与 MySQL 共用（差异由 {@link com.playerPlugin.playerTaskX.core.storage.Dialect} 承担）。
  *
- * <p>为什么预设也要有 SQL 实现：既然存储方式可插拔，用户把 {@code definitions.type}
- * 设成 {@code SQLITE} 或 {@code MYSQL} 时，预设必须跟着走同一个后端——
- * 否则会出现「任务定义在库里、预设在文件里」这种自相矛盾的组合，
- * 备份与迁移都要记得两处。
+ * <p>预设与任务定义同库同后端，因此不存在「任务定义在库里、预设在文件里」
+ * 这种自相矛盾的组合——备份与迁移只需要记得一个数据库。
  *
  * <p>表结构见 {@link Schema}：{@code preset} 一张表，{@code properties} 存 JSON 文本。
  * 类别（objectives / rewards）是一列，不是两张表——两者的字段完全一致，
@@ -83,7 +81,7 @@ public final class JdbcPresetRepository implements PresetRepository {
         return database.count("SELECT COUNT(*) FROM preset");
     }
 
-    /** 供首次接入 SQL 后端时写入内置默认预设。 */
+    @Override
     public void seedIfEmpty(List<Preset> defaults) {
         if (count() > 0 || defaults == null || defaults.isEmpty()) {
             return;
