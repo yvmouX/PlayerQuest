@@ -5,7 +5,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
@@ -102,20 +101,6 @@ public final class MenuListener implements Listener {
             return;
         }
         event.setCancelled(true);
-    }
-
-    /**
-     * 关闭通知。
-     * <p>
-     * 用 MONITOR 优先级：只做通知，不改动事件本身，放在最后避免影响其它插件。
-     */
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onClose(InventoryCloseEvent event) {
-        Menu menu = menuOf(event.getView());
-        if (menu == null) {
-            return;
-        }
-        menu.handleClose();
     }
 
     /**

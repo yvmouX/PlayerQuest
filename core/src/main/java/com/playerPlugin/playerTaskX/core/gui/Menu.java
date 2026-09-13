@@ -51,9 +51,6 @@ public abstract class Menu {
 
     private final Inventory inventory;
 
-    /** 是否已经跑过一次 {@link #build()}。 */
-    private boolean built;
-
     /** {@link #refresh()} 的重入保护。 */
     private boolean rebuilding;
 
@@ -85,21 +82,13 @@ public abstract class Menu {
         return messages;
     }
 
-    /** 容器本体，供调用方（如命令补全、调试）直接查看。 */
-    public final Inventory getInventory() {
-        return inventory;
-    }
-
     /** 容器大小（槽位数）。 */
     public final int size() {
         return size;
     }
 
-    /** 打开界面；首次打开前若还没构建过，先构建一次。 */
+    /** 打开界面。内容由子类构造末尾的 {@link #refresh()} 填好。 */
     public final void open() {
-        if (!built) {
-            refresh();
-        }
         viewer.openInventory(inventory);
     }
 
@@ -149,17 +138,9 @@ public abstract class Menu {
             items.clear();
             inventory.clear();
             build();
-            built = true;
         } finally {
             rebuilding = false;
         }
-    }
-
-    /**
-     * 关闭回调（Extension Point）：子类需要感知「玩家关掉了界面」时覆写它。
-     * 框架自身不用它做任何事，保留是为了让后续功能（统计、状态清理）不必改监听器。
-     */
-    protected void onClose() {
     }
 
     // ---------- 供监听器使用（包内可见，不对外暴露） ----------
@@ -167,11 +148,6 @@ public abstract class Menu {
     /** 取槽位上的菜单项，没有则返回 {@code null}。 */
     final MenuItem itemAt(int slot) {
         return items.get(slot);
-    }
-
-    /** 监听器的统一入口：避免它直接触碰受保护的 {@link #onClose()}。 */
-    final void handleClose() {
-        onClose();
     }
 
     // ---------- 文本 ----------

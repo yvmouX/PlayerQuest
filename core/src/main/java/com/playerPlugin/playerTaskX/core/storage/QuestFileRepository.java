@@ -99,12 +99,6 @@ public final class QuestFileRepository implements QuestRepository {
     public long count() {
         return files.listFiles().size();
     }
-
-    /** 目录路径，供报错提示与「去哪改文件」的说明使用。 */
-    public Path folder() {
-        return files.folder();
-    }
-
     /**
      * 解析一个任务文件。
      *

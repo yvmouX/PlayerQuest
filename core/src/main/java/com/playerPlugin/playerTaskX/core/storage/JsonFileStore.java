@@ -26,8 +26,8 @@ import java.util.stream.Stream;
  * 这与既有 {@code QuestAdminService.reload()} 的策略一致。
  *
  * <h2>文件与 id 的关系</h2>
- * {@link #fileFor} 由 id 生成文件名；{@link #idFromFile} 只用于「目录里有哪些文件」这类
- * 批量场景。<b>权威来源始终是文件内的 {@code id} 字段</b>，文件名只作约定——
+ * {@link #fileFor} 由 id 生成文件名；{@link #listFiles} 只负责「目录里有哪些文件」这类批量场景，
+ * 并且<b>只返回路径</b>、不解释 id。<b>权威来源始终是文件内的 {@code id} 字段</b>，文件名只作约定——
  * 用文件名反推 id 会在用户重命名文件时产生幽灵任务。
  */
 public final class JsonFileStore {

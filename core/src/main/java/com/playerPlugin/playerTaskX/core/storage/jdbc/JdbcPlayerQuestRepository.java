@@ -1,9 +1,7 @@
 package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
-import com.playerPlugin.playerTaskX.core.storage.Dialect;
 import com.playerPlugin.playerTaskX.core.storage.Database;
 import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
-import com.playerPlugin.playerTaskX.core.storage.StorageException;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
@@ -12,7 +10,6 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -105,7 +102,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null) {
             return List.of();
         }
-        return filterValid(database.query(sqlSelectByPlayer, this::mapPlayerQuest, playerId.toString()));
+        return valid(database.query(sqlSelectByPlayer, this::mapPlayerQuest, playerId.toString()));
     }
 
     @Override
@@ -113,7 +110,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         if (playerId == null) {
             return List.of();
         }
-        return filterValid(database.query(sqlSelectActiveByPlayer, this::mapPlayerQuest,
+        return valid(database.query(sqlSelectActiveByPlayer, this::mapPlayerQuest,
                 playerId.toString(), QuestStatus.IN_PROGRESS.name()));
     }
 
@@ -168,7 +165,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     @Override
-    public java.util.List<UUID> distinctPlayerIds() {
+    public List<UUID> distinctPlayerIds() {
         // 脏数据（非法 UUID）在映射阶段被过滤掉，与其它读取路径保持一致
         return database.query(sqlSelectDistinctPlayerIds, rs -> {
             String raw = rs.getString("player_id");
@@ -177,7 +174,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
             } catch (IllegalArgumentException e) {
                 return null;
             }
-        }).stream().filter(java.util.Objects::nonNull).toList();
+        }).stream().filter(Objects::nonNull).toList();
     }
 
     // ------------------------------------------------------------------
@@ -273,15 +270,9 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         return playerQuest;
     }
 
-    /** 过滤映射阶段判定为脏的行（映射器无法直接跳过行，只能返回 null 再在这里剔除）。 */
-    private static List<PlayerQuest> filterValid(List<PlayerQuest> rows) {
-        List<PlayerQuest> result = new ArrayList<>(rows.size());
-        for (PlayerQuest row : rows) {
-            if (row != null) {
-                result.add(row);
-            }
-        }
-        return result;
+    /** 剔除映射阶段判定为脏的行（映射器无法跳过行，只能返回 null 再在这里滤掉）。 */
+    private static List<PlayerQuest> valid(List<PlayerQuest> rows) {
+        return rows.stream().filter(Objects::nonNull).toList();
     }
 
     /** 容错解析 UUID：非法值返回 null（跳过该行），不抛异常。 */

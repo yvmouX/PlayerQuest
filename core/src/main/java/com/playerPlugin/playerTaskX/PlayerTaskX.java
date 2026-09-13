@@ -5,7 +5,6 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
-import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
@@ -56,8 +55,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private MessageService messages;
     private PluginConfig config;
     private DatabaseFactory.Handle database;
-    private StorageFactory storage;
-    private QuestRepository questRepository;
     private PresetRepository presets;
     private PlayerQuestRepository playerQuestRepository;
     private QuestRegistryImpl quests;
@@ -124,9 +121,11 @@ public final class PlayerTaskX extends JavaPlugin {
         playerQuestRepository = handle.playerQuestRepository();
         log.info("玩家数据存储已就绪: {}", database.description());
 
-        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）
+        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）。
+        // 仓储与装配器都只在启用阶段用一次，因此留作局部变量，不占实例字段
+        QuestRepository questRepository;
         try {
-            storage = StorageFactory.create(config, getDataFolder(), handle.database(),
+            StorageFactory storage = StorageFactory.create(config, getDataFolder(), handle.database(),
                     log::warn, log::info);
             questRepository = storage.quests();
             presets = storage.presets();
@@ -315,10 +314,6 @@ public final class PlayerTaskX extends JavaPlugin {
         return questAdmin;
     }
 
-    public QuestRepository questRepository() {
-        return questRepository;
-    }
-
     /** 目标/奖励预设仓储；后端与任务定义一致（见 {@code definitions.type}）。 */
     public PresetRepository presets() {
         return presets;
@@ -326,15 +321,6 @@ public final class PlayerTaskX extends JavaPlugin {
 
     public PlayerQuestRepository playerQuestRepository() {
         return playerQuestRepository;
-    }
-
-    public YLib ylib() {
-        return ylib;
-    }
-
-    /** 渲染文本（MiniMessage 优先，兼容 & / § 颜色码）。 */
-    public String text(String raw) {
-        return TextRenderer.render(raw);
     }
 
     /** 存储描述，供编辑器与命令展示。 */

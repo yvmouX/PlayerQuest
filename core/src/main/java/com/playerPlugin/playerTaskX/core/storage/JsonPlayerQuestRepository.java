@@ -163,11 +163,6 @@ public final class JsonPlayerQuestRepository implements PlayerQuestRepository {
         return ids;
     }
 
-    /** 目录，供报错提示与备份说明使用。 */
-    public Path folder() {
-        return files.folder();
-    }
-
     // ------------------------------------------------------------------
     // 每日状态
     // ------------------------------------------------------------------

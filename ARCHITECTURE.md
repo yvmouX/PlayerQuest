@@ -322,7 +322,7 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 
 ### 7.1 玩家 GUI（`core/gui/`）
 
-通用菜单框架（`Menu` / `MenuItem` / `ClickAction`，用 `InventoryHolder` 区分归属），
+通用菜单框架（`Menu` / `MenuItem`，用 `InventoryHolder` 区分归属），
 在此之上实现：每日任务列表、任务详情（多目标进度 + 多奖励预览）、任务分类浏览、领取奖励。
 
 ### 7.2 管理 GUI

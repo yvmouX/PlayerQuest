@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 import org.bukkit.Bukkit;
 
 import java.io.File;
@@ -10,6 +11,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -54,14 +56,6 @@ public class LangFileStore {
     private static final String VERSION_MANIFEST =
             "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
     private static final String RESOURCE_CDN = "https://resources.download.minecraft.net/";
-
-    private static final Pattern VERSION_URL = Pattern.compile(
-            "\"id\"\\s*:\\s*\"%s\"[^}]*?\"url\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern ASSET_INDEX_URL = Pattern.compile(
-            "\"assetIndex\"\\s*:\\s*\\{[^}]*?\"url\"\\s*:\\s*\"([^\"]+)\"");
-    /** 资源清单里形如 {@code "minecraft/lang/zh_cn.json": {"hash":"…","size":…}}。 */
-    private static final Pattern ZH_CN_ENTRY = Pattern.compile(
-            "\"minecraft/lang/zh_cn\\.json\"\\s*:\\s*\\{[^}]*?\"hash\"\\s*:\\s*\"([0-9a-f]{40})\"");
 
     private final PlayerTaskX plugin;
     private final File cacheFile;
@@ -176,64 +170,40 @@ public class LangFileStore {
     /**
      * 解析语言文件为「小写键 → 译名」。
      * <p>
-     * 语言文件是扁平的 JSON 对象，用正则提取足够，不必为一个附属功能引入 JSON 依赖。
-     * 收录 {@code item.} / {@code block.} / {@code entity.} 三类键，键统一去掉命名空间前缀。
+     * 语言文件是扁平的 JSON 对象（翻译值里含大量 {@code \u0020} 之类的转义），
+     * 因此交给 {@link JsonCodec} 解析——手写正则 + 手工反转义曾经在这里躺了 60 行，
+     * 而项目本来就带 Jackson。
+     * <p>
+     * 收录 {@code item.} / {@code block.} / {@code entity.} 三类键，键去掉命名空间前缀。
      * 查表时实体枚举名会先剥掉 {@code MINECRAFT_} 前缀再小写，正好与 {@code entity.minecraft.*}
      * 的键形态一致（实测 157 个实体枚举全部可映射）。
      * <p>
      * 方块与物品可能同名（如 {@code stone}），此时<b>以物品为准</b>——物品译名更贴近
-     * 「拿在手里的东西」。
+     * 「拿在手里的东西」。带点号的子键（{@code entity.minecraft.tropical_fish.predefined.0}）
+     * 不是实体本身的名字，一律跳过。
      */
     static Map<String, String> parse(InputStream stream) throws IOException {
         String text = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         Map<String, String> names = new LinkedHashMap<>();
-        Matcher matcher = Pattern
-                .compile("\"(item|block|entity)\\.minecraft\\.([a-z_0-9]+)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"")
-                .matcher(text);
-        while (matcher.find()) {
-            String key = matcher.group(2);
-            String value = unescape(matcher.group(3));
-            if (!names.containsKey(key) || "item".equals(matcher.group(1))) {
-                names.put(key, value);
+        JsonCodec.readMap(text).forEach((key, value) -> {
+            int namespaceEnd = key.indexOf(".minecraft.");
+            if (namespaceEnd < 0 || value == null) {
+                return;
             }
-        }
+            String group = key.substring(0, namespaceEnd);
+            if (!"item".equals(group) && !"block".equals(group) && !"entity".equals(group)) {
+                return;
+            }
+            String name = key.substring(namespaceEnd + ".minecraft.".length());
+            if (name.isEmpty() || name.indexOf('.') >= 0) {
+                return;
+            }
+            // 物品优先：同名时覆盖掉方块那条
+            if ("item".equals(group) || !names.containsKey(name)) {
+                names.put(name, String.valueOf(value));
+            }
+        });
         return names;
-    }
-
-    /** 还原 JSON 字符串里的转义；语言文件里以 {@code \\u0020} 这类空格转义最常见。 */
-    private static String unescape(String raw) {
-        if (raw.indexOf('\\') < 0) {
-            return raw;
-        }
-        StringBuilder builder = new StringBuilder(raw.length());
-        for (int i = 0; i < raw.length(); i++) {
-            char current = raw.charAt(i);
-            if (current != '\\' || i + 1 >= raw.length()) {
-                builder.append(current);
-                continue;
-            }
-            char next = raw.charAt(++i);
-            switch (next) {
-                case 'u' -> {
-                    if (i + 4 < raw.length()) {
-                        try {
-                            builder.append((char) Integer.parseInt(raw.substring(i + 1, i + 5), 16));
-                            i += 4;
-                        } catch (NumberFormatException e) {
-                            builder.append(next);
-                        }
-                    } else {
-                        builder.append(next);
-                    }
-                }
-                case 'n' -> builder.append('\n');
-                case 't' -> builder.append('\t');
-                case '"' -> builder.append('"');
-                case '\\' -> builder.append('\\');
-                default -> builder.append(next);
-            }
-        }
-        return builder.toString();
     }
 
     // ------------------------------------------------------------------
@@ -315,37 +285,60 @@ public class LangFileStore {
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    /** 版本清单 → 版本元数据 → 资源清单 → zh_cn.json 的下载地址。 */
+    /**
+     * 版本清单 → 版本元数据 → 资源清单 → zh_cn.json 的下载地址。
+     * <p>
+     * 三份清单都是 JSON，因此用 {@link JsonCodec} 逐层取值，而不是拿正则去捞 URL：
+     * 正则版本还得小心「26.1 别匹配到 26.1.2」这类问题，交给 JSON 解析后它自然消失。
+     *
+     * @return 下载地址；任何一步取不到都返回 {@code null}（调用方只记日志，不重试）
+     */
     private String resolveZhCnUrl(String version) {
         String manifest = HttpText.get(VERSION_MANIFEST);
         if (manifest == null) {
             return null;
         }
-        // 精确匹配版本号，避免把 "26.1" 匹配到 "26.1.2"
-        Matcher versionMatcher = Pattern
-                .compile(VERSION_URL.pattern().formatted(Pattern.quote(version)))
-                .matcher(manifest);
-        if (!versionMatcher.find()) {
-            return null;
-        }
-        String meta = HttpText.get(versionMatcher.group(1));
+        String meta = HttpText.get(versionUrl(manifest, version));
         if (meta == null) {
             return null;
         }
-        Matcher indexMatcher = ASSET_INDEX_URL.matcher(meta);
-        if (!indexMatcher.find()) {
+        // 版本元数据：{"assetIndex":{"url":"…"}}
+        Object assetIndex = JsonCodec.readMap(meta).get("assetIndex");
+        if (!(assetIndex instanceof Map<?, ?> index)) {
             return null;
         }
-        String index = HttpText.get(indexMatcher.group(1));
-        if (index == null) {
+        String indexJson = HttpText.get(text(index.get("url")));
+        if (indexJson == null) {
             return null;
         }
-        Matcher hashMatcher = ZH_CN_ENTRY.matcher(index);
-        if (!hashMatcher.find()) {
+        // 资源清单：{"objects":{"minecraft/lang/zh_cn.json":{"hash":"…"}}}
+        Object objects = JsonCodec.readMap(indexJson).get("objects");
+        if (!(objects instanceof Map<?, ?> map)) {
             return null;
         }
-        String hash = hashMatcher.group(1);
-        return RESOURCE_CDN + hash.substring(0, 2) + "/" + hash;
+        if (!(map.get("minecraft/lang/zh_cn.json") instanceof Map<?, ?> file)) {
+            return null;
+        }
+        String hash = text(file.get("hash"));
+        return hash == null || hash.length() < 2 ? null : RESOURCE_CDN + hash.substring(0, 2) + "/" + hash;
+    }
+
+    /** 从版本清单里取该版本元数据的地址；版本号精确匹配（{@code id} 字段）。 */
+    private static String versionUrl(String manifest, String version) {
+        if (!(JsonCodec.readMap(manifest).get("versions") instanceof List<?> versions)) {
+            return null;
+        }
+        for (Object item : versions) {
+            if (item instanceof Map<?, ?> entry && version.equals(text(entry.get("id")))) {
+                return text(entry.get("url"));
+            }
+        }
+        return null;
+    }
+
+    /** 取 JSON 里的字符串值；缺失返回 {@code null}（区别于「空串」）。 */
+    private static String text(Object value) {
+        return value instanceof String string && !string.isBlank() ? string : null;
     }
 
     /** 写入缓存文件；失败只影响下次启动要重新下载，不影响本次使用。 */

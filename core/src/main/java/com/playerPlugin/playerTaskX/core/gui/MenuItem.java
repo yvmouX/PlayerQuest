@@ -54,11 +54,6 @@ public record MenuItem(ItemStack icon, Consumer<ClickContext> action) {
         return new MenuItem(icon(material, name, lore), action);
     }
 
-    /** 无描述行的便捷重载。 */
-    public static MenuItem of(Material material, String name, Consumer<ClickContext> action) {
-        return of(material, name, List.of(), action);
-    }
-
     /** 只展示、不响应点击的物品（头部信息、禁用态的分页按钮）。 */
     public static MenuItem display(Material material, String name, List<String> lore) {
         return of(material, name, lore, null);
