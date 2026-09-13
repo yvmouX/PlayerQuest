@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import com.playerPlugin.playerTaskX.core.storage.Dialect;
 import com.playerPlugin.playerTaskX.core.storage.Database;
+import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 import com.playerPlugin.playerTaskX.core.storage.StorageException;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 

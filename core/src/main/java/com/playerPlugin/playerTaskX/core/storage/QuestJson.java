@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.core.web;
+package com.playerPlugin.playerTaskX.core.storage;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;

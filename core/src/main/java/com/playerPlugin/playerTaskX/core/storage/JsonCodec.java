@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.core.storage.jdbc;
+package com.playerPlugin.playerTaskX.core.storage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -181,6 +181,29 @@ public final class JsonCodec {
             result.put(entry.getKey(), entry.getValue() == null ? "" : String.valueOf(entry.getValue()));
         }
         return result;
+    }
+
+    // ------------------------------------------------------------------
+    // 严格读取：区分「解析失败」与「合法空对象」
+    // ------------------------------------------------------------------
+
+    /**
+     * 解析 JSON 对象，<b>失败时抛出异常</b>而不是降级为空表。
+     * <p>
+     * {@link #readMap(String)} 是为数据库列设计的：一条脏数据不该让整张表读不出来，
+     * 所以它静默降级。但文件方案需要区分两种情况——「文件内容坏了」必须跳过该文件并报错，
+     * 而「合法但为空的对象」是正常数据。静默降级会把前者伪装成后者，导致用户的文件
+     * 明明写错了却只看到一个空任务。
+     *
+     * @return 解析出的对象；输入为 null/空白时返回 null（表示"没有内容"）
+     * @throws Exception 内容不是合法 JSON 对象
+     */
+    public static Map<String, Object> readMapStrict(String json) throws Exception {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        Map<String, Object> parsed = MAPPER.readValue(json, MAP_TYPE);
+        return parsed == null ? null : new LinkedHashMap<>(parsed);
     }
 
     // ------------------------------------------------------------------

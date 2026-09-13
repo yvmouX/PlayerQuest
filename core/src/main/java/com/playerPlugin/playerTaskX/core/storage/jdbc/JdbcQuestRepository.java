@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import com.playerPlugin.playerTaskX.core.storage.Dialect;
 import com.playerPlugin.playerTaskX.core.storage.Database;
+import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 import com.playerPlugin.playerTaskX.core.storage.StorageException;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
@@ -149,22 +150,6 @@ public final class JdbcQuestRepository implements QuestRepository {
     }
 
     @Override
-    public void saveAll(List<Quest> quests) {
-        if (quests == null || quests.isEmpty()) {
-            return;
-        }
-        // 单事务：批量导入要么全部落库，要么整体回滚，避免导入一半失败留下半份配置
-        database.transaction(() -> {
-            for (Quest quest : quests) {
-                if (quest == null) {
-                    continue;
-                }
-                saveInternal(quest);
-            }
-        });
-    }
-
-    @Override
     public boolean delete(String id) {
         if (id == null || id.isBlank()) {
             return false;
@@ -191,7 +176,7 @@ public final class JdbcQuestRepository implements QuestRepository {
     // ------------------------------------------------------------------
 
     /**
-     * 单条任务的写入（不含事务边界），供 {@link #save(Quest)} 与 {@link #saveAll(List)} 复用。
+     * 单条任务的写入（不含事务边界），供 {@link #save(Quest)} 复用。
      */
     private void saveInternal(Quest quest) {
         String id = quest.id();

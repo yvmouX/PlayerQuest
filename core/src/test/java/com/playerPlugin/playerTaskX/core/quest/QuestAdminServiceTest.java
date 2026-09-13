@@ -204,11 +204,6 @@ class QuestAdminServiceTest {
         }
 
         @Override
-        public void saveAll(List<Quest> quests) {
-            quests.forEach(this::save);
-        }
-
-        @Override
         public boolean delete(String id) {
             return data.remove(id) != null;
         }
