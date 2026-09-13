@@ -27,7 +27,6 @@ import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
-import com.playerPlugin.playerTaskX.core.storage.DefinitionMigrator;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
@@ -125,9 +124,7 @@ public final class PlayerTaskX extends JavaPlugin {
         playerQuestRepository = handle.playerQuestRepository();
         log.info("玩家数据存储已就绪: {}", database.description());
 
-        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）。
-        // 迁移必须在装配之前完成——否则新后端读到的是空的，随后会把旧定义当成"不存在"。
-        DefinitionMigrator.migrateIfNeeded(config, getDataFolder(), handle, log::info, log::warn);
+        // 任务定义与预设：按 definitions.type 选择后端（默认 JSON 文件）
         try {
             storage = StorageFactory.create(config, getDataFolder(), handle.database(),
                     log::warn, log::info);

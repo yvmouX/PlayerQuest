@@ -9,7 +9,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.SqliteDatabase;
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,15 +37,15 @@ class StorageIntegrationTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
 
-    private SqliteDatabase sqlite;
+    private JdbcDatabase sqlite;
     private Database database;
     private JdbcQuestRepository questRepository;
     private JdbcPlayerQuestRepository playerQuestRepository;
 
     @BeforeEach
     void setUp() throws SQLException {
-        sqlite = SqliteDatabase.inMemory();
-        database = sqlite.database();
+        sqlite = JdbcDatabase.sqliteInMemory();
+        database = sqlite;
         Schema.initialize(database);
         questRepository = new JdbcQuestRepository(database);
         playerQuestRepository = new JdbcPlayerQuestRepository(database);

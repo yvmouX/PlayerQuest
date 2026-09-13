@@ -6,7 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
@@ -71,7 +71,7 @@ class QuestAdminServiceTest {
         repository = new FakeQuestRepository();
         quests = new QuestRegistryImpl();
         ObjectiveRegistryImpl objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(new BreakBlockObjective());
+        objectiveTypes.register(BuiltIns.objective("break_block"));
         RewardRegistryImpl rewardTypes = new RewardRegistryImpl();
         // 只登记恒可用的类型：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
         rewardTypes.register(new ExpReward());

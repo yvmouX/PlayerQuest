@@ -8,7 +8,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
@@ -49,7 +49,7 @@ class ProgressServiceTest {
     void setUp() {
         quests = new QuestRegistryImpl();
         objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(new BreakBlockObjective());
+        objectiveTypes.register(BuiltIns.objective("break_block"));
         objectiveTypes.register(new ChatObjective());
         objectiveTypes.register(new InteractObjective());
         repository = new FakePlayerQuestRepository();

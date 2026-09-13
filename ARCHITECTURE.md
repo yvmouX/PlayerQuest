@@ -96,6 +96,12 @@ GUI 图标推导与字段说明、管理员命令的类型名回显）需要的�
 `consume` 消耗、`kill` 击杀、`submit` 提交、`enchant` 附魔、`shear` 剪切、
 `breed` 繁殖、`tame` 驯服、`command` 命令、`interact` 交互、`chat` 发言。
 
+其中 12 种的行为完全一致（`target` 命中就加本次数量），它们**不是 12 个类**，
+而是 `BuiltIns` 里的 12 行 `TargetObjective` 数据：类型之间只差 id、响应动作与
+`target` 字段的语义类型（材质 / 实体 / 自由文本）。真正有自己判定逻辑的只有
+`InteractObjective`（`mode` 匹配）与 `ChatObjective`（关键词包含匹配）。
+「类型自描述」没有损失——`schema()` 仍由类型自己给出，编辑器与 GUI 照旧自动生成表单。
+
 ### 3.2 奖励类型 `RewardType`
 
 ```java
@@ -158,8 +164,9 @@ Bukkit 事件 → GameListener → ProgressContext
 合并的后果是二选一——要么玩家侧丢掉索引查询与事务，要么文件后端被迫实现
 一个「键控 + 可查询 + 事务」的存储，也就是用文件重写一个数据库。
 
-**三个后端，两份实现**：SQLite 与 MySQL 共用同一套 JDBC 实现，差异全部由
-`Dialect` 承担；文件后端（JSON）另有一份。因此「支持三种存储」不需要写三套。
+**三个后端，两份实现**：SQLite 与 MySQL 共用同一套 JDBC 实现（`JdbcDatabase` 只有
+「连接从哪来」不同，两个工厂表达），差异全部由 `Dialect` 承担；文件后端（JSON）另有一份。
+因此「支持三种存储」不需要写三套。
 
 ```
 definitions.type = JSON    → QuestFileRepository + PresetFileRepository
@@ -171,7 +178,8 @@ storage.type     = JSON    → JsonPlayerQuestRepository（一玩家一文件）
 ```
 
 选择入口是 `StorageFactory` 与 `DatabaseFactory`；未知类型回退默认值并告警，
-而不是让插件启动失败。
+而不是让插件启动失败。**没有从旧数据库自动搬运定义的迁移代码**：项目未发布，
+不存在「定义只存在于旧表里」的部署，为它保留一百多行一次性代码没有收益。
 
 ### 4.2 文件后端的两条硬要求
 
@@ -227,13 +235,7 @@ quest(id PK, name, description, icon, category, type, refresh_cost, enabled)
 quest_objective(quest_id, idx, type, properties TEXT)   -- properties 为 JSON
 quest_reward(quest_id, idx, type, properties TEXT)
 preset(kind, id PK, name, type, properties TEXT, description)
-
--- 键值杂项
-meta(meta_key PK, meta_value)
 ```
-
-旧版本用来存任务定义的三张表在升级后**保留不读也不删**：迁移是单向的，
-自动删表属于危险的不可逆操作，应由管理员确认后自行清理。
 
 约定：**所有 SQL 收敛在 `storage/` 包**，其它包不得出现 SQL 字符串。
 
@@ -352,7 +354,8 @@ GET    /api/stats              统计
 译名由 `LangFileStore` 提供，分工是刻意的：
 
 - **英文名不下载**，读服务端 jar 里的 `assets/minecraft/lang/en_us.json`——
-  插件类加载器的父级就是服务端，这个查询直接落到服务端的 jar 上，版本天然对齐、零网络依赖。
+  用 **`Bukkit` 的类加载器**查询（插件类加载器不会把资源查询委派到服务端 jar 上，
+  实测会直接落空），版本天然对齐、零网络依赖。
   **插件不打包这份文件**：曾经为了让开发期离线可跑而复制进插件资源，结果它永远停在复制那天
   （实测 26.1.2 的副本与 1.21.11 的服务端文件不同），新方块会显示成推导出来的枚举名。现已删除；
 - **中文名服务端没有**：实测 26.1.2 的服务端 jar 内 lang 文件只有 `en_us.json` 一个，
@@ -438,10 +441,10 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 15 | 编辑器：目标与奖励预设（`/api/presets`） | ✅ 完成 |
 | 16 | 编辑器：译名改为「读服务端语言文件 + 下载中文」，删除手工译名表 | ✅ 完成（材质/实体中文覆盖 100%） |
 | 17 | 存储后端可插拔：定义与玩家数据各自选 JSON / SQLite / MySQL | ✅ 完成 |
-| 18 | 任务定义与预设出库成 JSON 文件 + 从旧库自动迁移 | ✅ 完成 |
+| 18 | 任务定义与预设出库成 JSON 文件 | ✅ 完成 |
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 
-**测试总量：134 项全部通过**（存储 15 + 文件仓储 14 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 8 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 7 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
+**测试总量：133 项全部通过**（存储 15 + 文件仓储 14 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 17 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 7 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项）：
 渲染能力既然上移到了 YLib，它的行为就该在 YLib 钉住，否则每个消费方只能各测各的。
@@ -512,9 +515,10 @@ player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
   - 启用状态切换（落库 + 同步注册表 + 重建索引）→ `QuestAdminService.setEnabled`；
   - 文本装配（渲染 / 数字去小数尾巴 / 配置表摊平 / 类型显示名）→ `core/text/Texts`；
   - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份。
-- **目标类型**：14 个类位于 `core/objective/`，全部复用 `ObjectiveType.targetMatches`
-  （忽略大小写、逗号多值、空或 `*` 为任意）；`chat` 用包含匹配，`interact` 先校验 `mode` 再校验 `target`。
-  注册在 `BuiltIns` 显式列出（不扫描包，保证「新增类型必须登记」的确定性）。
+- **目标类型**：`core/objective/` 只有三个类——数据形态的 `TargetObjective` 与两个自带判定
+  逻辑的 `InteractObjective` / `ChatObjective`；14 种内置类型的清单在 `BuiltIns` 里显式列出
+  （不扫描包，保证「新增类型必须登记」的确定性）。共用的目标命中判定是
+  `ObjectiveType.targetMatches`（忽略大小写、逗号多值、空或 `*` 为任意）。
 - **进度热路径**：`ProgressService` 只缓存「任务 → 目标下标 → 类型」静态映射，
   运行期进度不常驻内存（避免缓存一致性），未命中目标不产生任何 IO。
 - **可测试性**：`ProgressContext` 允许 `player == null`（以 `playerId` 为准），
@@ -528,4 +532,11 @@ player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
   （编辑器曾自带第二个）。
 - **包归位**：三个类型/任务注册表实现同处 `core/registry`（`api.registry` 也是这么分组的），
   `core/quest` 只留 `QuestAdminService` 这一处「任务定义维护入口」。
+- **两个数据库类合成一个**：`JdbcDatabase` 同时是「执行 SQL 的引擎」与「打开 SQLite 文件 /
+  MySQL 连接池」的工厂。原先 `SqliteDatabase` / `MysqlDatabase` / `JdbcDatabase` 三个类
+  靠一个 `ConnectionProvider` 接口串起来，而通用执行逻辑只有一个实现——策略差异其实只有
+  「借出/归还」与「怎么关」三件事。
+- **删除一次性迁移代码**：`DefinitionMigrator`（130 行）把「旧版本存在数据库里的任务定义」
+  导出到 JSON。项目未发布，不存在这样的部署；连同 `Schema` 里的 `meta` 表、
+  容错 `ALTER`、以及从未被写入过的 `quest.sort_order` 列一并删除。
 

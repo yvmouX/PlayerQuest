@@ -1,9 +1,8 @@
 package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
-import com.playerPlugin.playerTaskX.core.storage.Dialect;
 import com.playerPlugin.playerTaskX.core.storage.Database;
+import com.playerPlugin.playerTaskX.core.storage.Dialect;
 import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
-import com.playerPlugin.playerTaskX.core.storage.StorageException;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
@@ -40,35 +39,29 @@ public final class JdbcQuestRepository implements QuestRepository {
     /**
      * quest 主表列清单。
      * <p>
-     * 读写共用同一份常量并保持顺序一致：{@link Dialect#upsert(String, String, String)} 生成的
-     * 占位符个数与顺序完全由这串列名决定，绑定参数必须严格同序，共用常量可以杜绝两处漂移。
+     * 与 {@link Dialect#upsert(String, String, String)} 的占位符顺序严格对应，绑定参数必须同序。
      */
-    private static final String QUEST_COLUMNS =
-            "id,name,description,icon,category,type,refresh_cost,enabled,sort_order";
+    private static final String COLUMNS = "id,name,description,icon,category,type,refresh_cost,enabled";
 
     /** quest 的主键列（upsert 的冲突判定依据）。 */
-    private static final String QUEST_KEY_COLUMNS = "id";
+    private static final String KEY_COLUMNS = "id";
 
     private final Database database;
 
     /** 转义后的 {@code idx} 列名（{@code `idx`}），供子表语句复用。 */
     private final String idx;
 
-    private final String sqlSelectAllQuests;
-    private final String sqlSelectQuest;
-    private final String sqlUpsertQuest;
-    private final String sqlSelectSortOrder;
-    private final String sqlCountQuests;
-    private final String sqlCountQuestById;
-    private final String sqlDeleteQuest;
-
-    private final String sqlSelectAllObjectives;
+    private final String sqlSelectAll;
+    private final String sqlSelectOne;
+    private final String sqlUpsert;
+    private final String sqlCount;
+    private final String sqlDelete;
     private final String sqlSelectObjectives;
+    private final String sqlSelectObjectivesOne;
     private final String sqlDeleteObjectives;
     private final String sqlInsertObjective;
-
-    private final String sqlSelectAllRewards;
     private final String sqlSelectRewards;
+    private final String sqlSelectRewardsOne;
     private final String sqlDeleteRewards;
     private final String sqlInsertReward;
 
@@ -76,26 +69,24 @@ public final class JdbcQuestRepository implements QuestRepository {
         this.database = Objects.requireNonNull(database, "database 不能为空");
         this.idx = database.dialect().quote("idx");
 
-        this.sqlSelectAllQuests = "SELECT " + QUEST_COLUMNS + " FROM quest ORDER BY sort_order, id";
-        this.sqlSelectQuest = "SELECT " + QUEST_COLUMNS + " FROM quest WHERE id = ?";
+        this.sqlSelectAll = "SELECT " + COLUMNS + " FROM quest ORDER BY id";
+        this.sqlSelectOne = "SELECT " + COLUMNS + " FROM quest WHERE id = ?";
         // 参数顺序：主键列 → 全部列；Dialect 内部会自动把主键从 UPDATE 段排除
-        this.sqlUpsertQuest = database.dialect().upsert("quest", QUEST_KEY_COLUMNS, QUEST_COLUMNS);
-        this.sqlSelectSortOrder = "SELECT sort_order FROM quest WHERE id = ?";
-        this.sqlCountQuests = "SELECT COUNT(*) FROM quest";
-        this.sqlCountQuestById = "SELECT COUNT(*) FROM quest WHERE id = ?";
-        this.sqlDeleteQuest = "DELETE FROM quest WHERE id = ?";
+        this.sqlUpsert = database.dialect().upsert("quest", KEY_COLUMNS, COLUMNS);
+        this.sqlCount = "SELECT COUNT(*) FROM quest";
+        this.sqlDelete = "DELETE FROM quest WHERE id = ?";
 
-        this.sqlSelectAllObjectives = "SELECT quest_id, type, properties FROM quest_objective"
+        this.sqlSelectObjectives = "SELECT quest_id, type, properties FROM quest_objective"
                 + " ORDER BY quest_id, " + idx;
-        this.sqlSelectObjectives = "SELECT type, properties FROM quest_objective"
+        this.sqlSelectObjectivesOne = "SELECT quest_id, type, properties FROM quest_objective"
                 + " WHERE quest_id = ? ORDER BY " + idx;
         this.sqlDeleteObjectives = "DELETE FROM quest_objective WHERE quest_id = ?";
         this.sqlInsertObjective = "INSERT INTO quest_objective (quest_id, " + idx + ", type, properties)"
                 + " VALUES (?, ?, ?, ?)";
 
-        this.sqlSelectAllRewards = "SELECT quest_id, type, properties FROM quest_reward"
+        this.sqlSelectRewards = "SELECT quest_id, type, properties FROM quest_reward"
                 + " ORDER BY quest_id, " + idx;
-        this.sqlSelectRewards = "SELECT type, properties FROM quest_reward"
+        this.sqlSelectRewardsOne = "SELECT quest_id, type, properties FROM quest_reward"
                 + " WHERE quest_id = ? ORDER BY " + idx;
         this.sqlDeleteRewards = "DELETE FROM quest_reward WHERE quest_id = ?";
         this.sqlInsertReward = "INSERT INTO quest_reward (quest_id, " + idx + ", type, properties)"
@@ -108,13 +99,16 @@ public final class JdbcQuestRepository implements QuestRepository {
 
     @Override
     public List<Quest> findAll() {
-        List<QuestRow> rows = queryQuestRows(sqlSelectAllQuests);
+        List<QuestRow> rows = database.query(sqlSelectAll, this::mapRow);
         if (rows.isEmpty()) {
             // 空库时连子表都不查，避免启动路径上白跑两条查询
             return List.of();
         }
-        Map<String, List<QuestObjective>> objectives = loadAllObjectives();
-        Map<String, List<QuestReward>> rewards = loadAllRewards();
+        Map<String, List<QuestObjective>> objectives = group(
+                database.query(sqlSelectObjectives, rs -> row(rs, JdbcQuestRepository::readObjective)));
+        Map<String, List<QuestReward>> rewards = group(
+                database.query(sqlSelectRewards, rs -> row(rs, JdbcQuestRepository::readReward)));
+
         List<Quest> quests = new ArrayList<>(rows.size());
         for (QuestRow row : rows) {
             quests.add(toQuest(row,
@@ -129,11 +123,14 @@ public final class JdbcQuestRepository implements QuestRepository {
         if (id == null || id.isBlank()) {
             return Optional.empty();
         }
-        QuestRow row = database.queryOne(sqlSelectQuest, this::mapQuestRow, id);
+        QuestRow row = database.queryOne(sqlSelectOne, this::mapRow, id);
         if (row == null) {
             return Optional.empty();
         }
-        return Optional.of(toQuest(row, loadObjectives(id), loadRewards(id)));
+        // 单条任务不需要分组，直接映射成列表
+        return Optional.of(toQuest(row,
+                database.query(sqlSelectObjectivesOne, JdbcQuestRepository::readObjective, id),
+                database.query(sqlSelectRewardsOne, JdbcQuestRepository::readReward, id)));
     }
 
     // ------------------------------------------------------------------
@@ -157,27 +154,24 @@ public final class JdbcQuestRepository implements QuestRepository {
         // 事务内的 Runnable 没有返回值，用一个单元素数组把「删除前是否存在」带出来
         boolean[] deleted = new boolean[1];
         database.transaction(() -> {
-            deleted[0] = database.count(sqlCountQuestById, id) > 0;
+            deleted[0] = database.count(sqlCount + " WHERE id = ?", id) > 0;
             // 先删子表再删主表，顺序固定，MySQL 上即使将来补外键也不会被挡
             database.execute(sqlDeleteObjectives, id);
             database.execute(sqlDeleteRewards, id);
-            database.execute(sqlDeleteQuest, id);
+            database.execute(sqlDelete, id);
         });
         return deleted[0];
     }
 
     @Override
     public long count() {
-        return database.count(sqlCountQuests);
+        return database.count(sqlCount);
     }
 
     // ------------------------------------------------------------------
     // 内部实现
     // ------------------------------------------------------------------
 
-    /**
-     * 单条任务的写入（不含事务边界），供 {@link #save(Quest)} 复用。
-     */
     private void saveInternal(Quest quest) {
         String id = quest.id();
         if (id == null || id.isBlank()) {
@@ -185,122 +179,66 @@ public final class JdbcQuestRepository implements QuestRepository {
             warn("任务 id 为空，已跳过保存");
             return;
         }
-        QuestType type = quest.type() == null ? QuestType.NORMAL : quest.type();
-        List<QuestObjective> objectives = quest.objectives();
-        List<QuestReward> rewards = quest.rewards();
-
-        database.execute(sqlUpsertQuest,
+        database.execute(sqlUpsert,
                 id,
                 // name 列是 NOT NULL，脏配置宁可写成空串也不要让整次保存抛异常
                 quest.name() == null ? "" : quest.name(),
                 JsonCodec.writeStringList(quest.description()),
                 quest.icon(),
                 quest.category(),
-                type.name(),
+                (quest.type() == null ? QuestType.NORMAL : quest.type()).name(),
                 quest.refreshCost(),
                 // 布尔→SMALLINT：两种数据库都没有真正的 boolean 列
-                quest.enabled() ? 1 : 0,
-                existingSortOrder(id));
+                quest.enabled() ? 1 : 0);
 
-        // 子树整体重建：先清空，再按下标 0..n-1 插入
+        // 子树整体重建：先清空，再按下标 0..n-1 插入。
+        // type 列 NOT NULL：写成空串而不是跳过，保证 idx 与内存列表下标严格对齐
+        // （玩家进度就是按目标下标存的，错位会让进度张冠李戴）
         database.execute(sqlDeleteObjectives, id);
+        List<QuestObjective> objectives = quest.objectives();
         for (int i = 0; i < objectives.size(); i++) {
             QuestObjective objective = objectives.get(i);
-            database.execute(sqlInsertObjective,
-                    id,
-                    i,
-                    // type 列 NOT NULL；写成空串而不是跳过，保证 idx 与内存列表下标严格对齐
-                    // （玩家进度就是按目标下标存的，错位会让进度张冠李戴）
+            database.execute(sqlInsertObjective, id, i,
                     objective.type() == null ? "" : objective.type(),
                     JsonCodec.write(objective.properties()));
         }
 
         database.execute(sqlDeleteRewards, id);
+        List<QuestReward> rewards = quest.rewards();
         for (int i = 0; i < rewards.size(); i++) {
             QuestReward reward = rewards.get(i);
-            database.execute(sqlInsertReward,
-                    id,
-                    i,
+            database.execute(sqlInsertReward, id, i,
                     reward.type() == null ? "" : reward.type(),
                     JsonCodec.write(reward.properties()));
         }
     }
 
-    /**
-     * 取已存在的排序值，新任务返回 0。
-     * <p>
-     * {@link Quest} 模型没有 sortOrder 字段（api 已冻结），若每行都写 0，
-     * 会把网页编辑器/手工维护的展示顺序直接抹平；因此已存在的行沿用旧值，只对新行写 0。
-     * 代价是每次保存多一次主键点查，相对子树重建可忽略。
-     */
-    private int existingSortOrder(String id) {
-        Integer current = database.queryOne(sqlSelectSortOrder, rs -> rs.getInt("sort_order"), id);
-        return current == null ? 0 : current;
-    }
-
-    /** 查询主表并把「主键为空」的脏行过滤掉。 */
-    private List<QuestRow> queryQuestRows(String sql, Object... params) {
-        List<QuestRow> rows = database.query(sql, this::mapQuestRow, params);
-        List<QuestRow> result = new ArrayList<>(rows.size());
-        for (QuestRow row : rows) {
+    /** 子表整表取出后按 quest_id 分组；脏行（quest_id 为空）已被映射阶段过滤掉。 */
+    private static <T> Map<String, List<T>> group(List<Map.Entry<String, T>> rows) {
+        Map<String, List<T>> grouped = new LinkedHashMap<>();
+        for (Map.Entry<String, T> row : rows) {
             if (row != null) {
-                result.add(row);
+                grouped.computeIfAbsent(row.getKey(), key -> new ArrayList<>()).add(row.getValue());
             }
-        }
-        return result;
-    }
-
-    private Map<String, List<QuestObjective>> loadAllObjectives() {
-        List<ObjectiveRow> rows = database.query(sqlSelectAllObjectives, this::mapObjectiveRow);
-        Map<String, List<QuestObjective>> grouped = new LinkedHashMap<>();
-        for (ObjectiveRow row : rows) {
-            if (row == null || row.questId() == null || row.objective() == null) {
-                continue;
-            }
-            grouped.computeIfAbsent(row.questId(), key -> new ArrayList<>()).add(row.objective());
         }
         return grouped;
     }
 
-    private Map<String, List<QuestReward>> loadAllRewards() {
-        List<RewardRow> rows = database.query(sqlSelectAllRewards, this::mapRewardRow);
-        Map<String, List<QuestReward>> grouped = new LinkedHashMap<>();
-        for (RewardRow row : rows) {
-            if (row == null || row.questId() == null || row.reward() == null) {
-                continue;
-            }
-            grouped.computeIfAbsent(row.questId(), key -> new ArrayList<>()).add(row.reward());
-        }
-        return grouped;
+    /**
+     * 子表行 → {@code quest_id → 元素}。
+     * <p>
+     * 返回 {@code Map.Entry} 而不是自定义的包装 record：唯一的目的是「带上父键以便分组」，
+     * 为此各建一个 record 只会让三个文件角色重复。
+     */
+    private static <T> Map.Entry<String, T> row(ResultSet rs, RowReader<T> reader) throws SQLException {
+        String questId = rs.getString("quest_id");
+        return questId == null ? null : Map.entry(questId, reader.read(rs));
     }
 
-    private List<QuestObjective> loadObjectives(String questId) {
-        List<QuestObjective> result = new ArrayList<>();
-        for (QuestObjective objective : database.query(sqlSelectObjectives, this::mapObjective, questId)) {
-            if (objective != null) {
-                result.add(objective);
-            }
-        }
-        return result;
-    }
-
-    private List<QuestReward> loadRewards(String questId) {
-        List<QuestReward> result = new ArrayList<>();
-        for (QuestReward reward : database.query(sqlSelectRewards, this::mapReward, questId)) {
-            if (reward != null) {
-                result.add(reward);
-            }
-        }
-        return result;
-    }
-
-    // ------------------------------------------------------------------
-    // 结果集映射（全部容错：脏行返回 null，由调用方过滤）
-    // ------------------------------------------------------------------
-
-    private QuestRow mapQuestRow(ResultSet rs) throws SQLException {
+    private QuestRow mapRow(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
         if (id == null || id.isBlank()) {
+            // 主键残缺的脏行：返回 null，由调用方过滤；不抛异常
             return null;
         }
         return new QuestRow(
@@ -314,55 +252,23 @@ public final class JdbcQuestRepository implements QuestRepository {
                 rs.getInt("enabled") != 0);
     }
 
-    private ObjectiveRow mapObjectiveRow(ResultSet rs) throws SQLException {
-        String questId = rs.getString("quest_id");
-        QuestObjective objective = readObjective(rs);
-        return questId == null || objective == null ? null : new ObjectiveRow(questId, objective);
-    }
-
-    private RewardRow mapRewardRow(ResultSet rs) throws SQLException {
-        String questId = rs.getString("quest_id");
-        QuestReward reward = readReward(rs);
-        return questId == null || reward == null ? null : new RewardRow(questId, reward);
-    }
-
-    private QuestObjective mapObjective(ResultSet rs) throws SQLException {
-        return readObjective(rs);
-    }
-
-    private QuestReward mapReward(ResultSet rs) throws SQLException {
-        return readReward(rs);
-    }
-
     private static QuestObjective readObjective(ResultSet rs) throws SQLException {
+        // type 是 NOT NULL 列，能读到 null 说明数据被外部改坏了；保留行但标记为空类型
         String type = rs.getString("type");
-        if (type == null) {
-            // type 是 NOT NULL 列，能读到 null 说明数据被外部改坏了；保留行但标记为空类型
-            type = "";
-        }
-        return new QuestObjective(type, JsonCodec.readMap(rs.getString("properties")));
+        return new QuestObjective(type == null ? "" : type,
+                JsonCodec.readMap(rs.getString("properties")));
     }
 
     private static QuestReward readReward(ResultSet rs) throws SQLException {
         String type = rs.getString("type");
-        if (type == null) {
-            type = "";
-        }
-        return new QuestReward(type, JsonCodec.readMap(rs.getString("properties")));
+        return new QuestReward(type == null ? "" : type,
+                JsonCodec.readMap(rs.getString("properties")));
     }
 
     private static Quest toQuest(QuestRow row, List<QuestObjective> objectives, List<QuestReward> rewards) {
-        return new Quest(
-                row.id(),
-                row.name(),
-                JsonCodec.readStringList(row.description()),
-                row.icon(),
-                row.category(),
-                row.type(),
-                objectives,
-                rewards,
-                row.refreshCost(),
-                row.enabled());
+        return new Quest(row.id(), row.name(), JsonCodec.readStringList(row.description()),
+                row.icon(), row.category(), row.type(), objectives, rewards,
+                row.refreshCost(), row.enabled());
     }
 
     /** 容错解析任务类型：非法/缺失一律按 {@link QuestType#NORMAL} 处理，一条脏数据不该拖垮整个任务列表。 */
@@ -382,19 +288,17 @@ public final class JdbcQuestRepository implements QuestRepository {
         System.err.println("[PlayerTaskX] " + message);
     }
 
+    /** 从结果集读出一个子表元素；两种子表共用同一套分组逻辑。 */
+    @FunctionalInterface
+    private interface RowReader<T> {
+        T read(ResultSet rs) throws SQLException;
+    }
+
     /**
      * 主表行的中间形态：{@link Quest} 是不可变 record，目标/奖励必须在构造时传齐，
      * 因此先用它承接主表字段，等子表分组完成后再组装。
      */
     private record QuestRow(String id, String name, String description, String icon, String category,
                             QuestType type, double refreshCost, boolean enabled) {
-    }
-
-    /** 子表行的中间形态：带 quest_id 以便整表取出后分组。 */
-    private record ObjectiveRow(String questId, QuestObjective objective) {
-    }
-
-    /** 子表行的中间形态：带 quest_id 以便整表取出后分组。 */
-    private record RewardRow(String questId, QuestReward reward) {
     }
 }

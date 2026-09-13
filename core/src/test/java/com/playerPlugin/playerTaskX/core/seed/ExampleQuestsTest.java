@@ -5,20 +5,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
-import com.playerPlugin.playerTaskX.core.objective.BreedObjective;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
-import com.playerPlugin.playerTaskX.core.objective.CommandObjective;
-import com.playerPlugin.playerTaskX.core.objective.ConsumeObjective;
-import com.playerPlugin.playerTaskX.core.objective.CraftObjective;
-import com.playerPlugin.playerTaskX.core.objective.EnchantObjective;
-import com.playerPlugin.playerTaskX.core.objective.FishObjective;
-import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
-import com.playerPlugin.playerTaskX.core.objective.KillObjective;
-import com.playerPlugin.playerTaskX.core.objective.PlaceBlockObjective;
-import com.playerPlugin.playerTaskX.core.objective.ShearObjective;
-import com.playerPlugin.playerTaskX.core.objective.SubmitObjective;
-import com.playerPlugin.playerTaskX.core.objective.TameObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
@@ -57,12 +44,8 @@ class ExampleQuestsTest {
     @BeforeAll
     static void setUpRegistries() {
         objectiveTypes = new ObjectiveRegistryImpl();
-        for (ObjectiveType type : List.of(
-                new BreakBlockObjective(), new PlaceBlockObjective(), new CraftObjective(),
-                new FishObjective(), new KillObjective(), new ConsumeObjective(),
-                new EnchantObjective(), new ShearObjective(), new BreedObjective(),
-                new TameObjective(), new InteractObjective(), new ChatObjective(),
-                new SubmitObjective(), new CommandObjective())) {
+        // 与生产共用同一份清单：示例里写的类型 id 一旦被改名，这里立刻失败
+        for (ObjectiveType type : BuiltIns.objectives()) {
             objectiveTypes.register(type);
         }
         // 只登记 id 供比对；available() 会探测 Bukkit 插件，单测环境没有服务端，不能调

@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import org.bukkit.Bukkit;
 
 import java.io.File;
 import java.io.IOException;
@@ -134,13 +135,18 @@ public class LangFileStore {
 
     /**
      * 读服务端 jar 内的 {@code assets/minecraft/lang/en_us.json}。
+     *
+     * <h2>为什么用 {@link Bukkit} 的类加载器，而不是本类的</h2>
+     * 插件类加载器<b>不会</b>把资源查询委派到服务端 jar 上（实测：从插件类发出查询会
+     * 直接落空，而 {@code Bukkit} 与其同源的类加载器能查到）。因此必须借服务端自己的
+     * 类加载器来查这个资源——{@code org.bukkit.Bukkit} 与 CraftBukkit 实现由同一个
+     * 加载器加载，它认得服务端 jar 里的条目。
      * <p>
-     * 插件类加载器的父级就是加载服务端的那一层，因此这个查询会落到服务端的 jar 上。
-     * 取不到只影响英文名的可读性（退回枚举名推导），这里返回空表即可。
+     * 取不到只影响英文名的可读性（退回枚举名推导），返回空表即可。
      */
     private Map<String, String> loadServerEnglish() {
-        try (InputStream stream = LangFileStore.class
-                .getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
+        try (InputStream stream = Bukkit.class.getClassLoader()
+                .getResourceAsStream("assets/minecraft/lang/en_us.json")) {
             if (stream == null) {
                 plugin.getLogger().warning("服务端未提供 en_us.json，编辑器图标列表将退回枚举名");
                 return Map.of();

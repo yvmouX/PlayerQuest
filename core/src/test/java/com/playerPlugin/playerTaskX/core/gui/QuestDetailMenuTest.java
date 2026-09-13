@@ -3,9 +3,8 @@ package com.playerPlugin.playerTaskX.core.gui;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
-import com.playerPlugin.playerTaskX.core.objective.KillObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import org.bukkit.Material;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +29,8 @@ class QuestDetailMenuTest {
     @BeforeEach
     void setUp() {
         objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(new BreakBlockObjective());
-        objectiveTypes.register(new KillObjective());
+        objectiveTypes.register(BuiltIns.objective("break_block"));
+        objectiveTypes.register(BuiltIns.objective("kill"));
         objectiveTypes.register(new InteractObjective());
     }
 

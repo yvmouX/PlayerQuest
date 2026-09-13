@@ -14,8 +14,7 @@ import java.util.Optional;
  * </ul>
  * 合并的后果是二选一：要么玩家侧丢掉索引查询与事务（性能退化），
  * 要么文件后端被迫实现一个完整的键控可查询存储（等于用文件重写数据库）。
- * 因此拆成两个接口，但<b>共用同一套后端选择机制</b>——见
- * {@link StorageBackend} 与 {@code StorageFactory}。
+ * 因此拆成两个接口，但<b>共用同一套后端选择机制</b>——见 {@code StorageFactory}。
  *
  * <h2>id 是唯一身份</h2>
  * 实现不得用文件名、行号等外部信息推断 id：{@code id} 字段是权威来源。

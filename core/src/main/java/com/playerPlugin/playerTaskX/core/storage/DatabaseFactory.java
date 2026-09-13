@@ -1,9 +1,8 @@
 package com.playerPlugin.playerTaskX.core.storage;
 
+import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.MysqlDatabase;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.SqliteDatabase;
 
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 
@@ -53,7 +52,7 @@ public final class DatabaseFactory {
 
         if ("JSON".equals(normalized)) {
             File base = dataFolder == null ? new File(".") : dataFolder;
-            return new Handle(null, null,
+            return new Handle(null,
                     new JsonPlayerQuestRepository(new File(base, PLAYER_FOLDER).toPath(),
                             System.err::println),
                     "JSON: " + PLAYER_FOLDER + "/");
@@ -67,7 +66,7 @@ public final class DatabaseFactory {
         return openSqlite(config, dataFolder);
     }
 
-    /** SQLite：单连接长驻，连接与建表都由这里负责收尾。 */
+    /** SQLite：单连接长驻，建表失败时把连接关掉再抛出。 */
     private static Handle openSqlite(PluginConfig config, File dataFolder) {
         String fileName = config == null ? null : config.getSqliteFile();
         if (fileName == null || fileName.isBlank()) {
@@ -76,43 +75,40 @@ public final class DatabaseFactory {
         File folder = dataFolder == null ? new File(".") : dataFolder;
         File file = new File(folder, fileName);
 
-        SqliteDatabase sqlite;
+        JdbcDatabase sqlite;
         try {
-            // 父目录由 SqliteDatabase.open 负责创建
-            sqlite = SqliteDatabase.open(file);
+            // 父目录由 JdbcDatabase.sqlite 负责创建
+            sqlite = JdbcDatabase.sqlite(file);
         } catch (SQLException e) {
             throw new StorageException("打开 SQLite 数据库失败: " + file.getAbsolutePath(), e);
         }
-        Database database = sqlite.database();
-        try {
-            Schema.initialize(database);
-        } catch (RuntimeException e) {
-            sqlite.close();
-            throw e;
-        }
+        initialize(sqlite);
         // 描述里用配置的原始相对路径，比绝对路径更适合直接展示给服主
-        return new Handle(sqlite, database, new JdbcPlayerQuestRepository(database),
-                "SQLite: " + fileName);
+        return new Handle(sqlite, new JdbcPlayerQuestRepository(sqlite), "SQLite: " + fileName);
     }
 
     /** MySQL：Hikari 连接池，失败时统一包装成 {@link StorageException}。 */
     private static Handle openMysql(PluginConfig config) {
         PluginConfig.MysqlSettings settings = config.getMysql();
-        MysqlDatabase mysql;
+        JdbcDatabase mysql;
         try {
-            mysql = MysqlDatabase.open(settings, MYSQL_POOL_NAME);
+            mysql = JdbcDatabase.mysql(settings, MYSQL_POOL_NAME);
         } catch (RuntimeException e) {
             throw new StorageException("连接 MySQL 失败: " + describeMysql(settings), e);
         }
-        Database database = mysql.database();
+        initialize(mysql);
+        return new Handle(mysql, new JdbcPlayerQuestRepository(mysql),
+                "MySQL: " + describeMysql(settings));
+    }
+
+    /** 建表；失败时关闭刚打开的资源再抛出，避免句柄/连接池泄漏。 */
+    private static void initialize(JdbcDatabase database) {
         try {
             Schema.initialize(database);
         } catch (RuntimeException e) {
-            mysql.close();
+            database.close();
             throw e;
         }
-        return new Handle(mysql, database, new JdbcPlayerQuestRepository(database),
-                "MySQL: " + describeMysql(settings));
     }
 
     /** {@code host:port/database} 形式的可读描述。 */
@@ -121,20 +117,19 @@ public final class DatabaseFactory {
     }
 
     /**
-     * 数据库句柄：把「门面 + 底层资源 + 描述」绑在一起，调用方只依赖 {@link Database}，
-     * 关闭时由这里统一兜底，避免 SQLite 连接与 Hikari 池被漏关。
+     * 数据库句柄：把「门面 + 描述」绑在一起，调用方只依赖 {@link Database}。
+     * <p>
+     * 底层资源由 {@link Database#close()} 负责（{@code JdbcDatabase} 自己知道该关连接还是关池），
+     * 因此这里不再单独持有 {@code AutoCloseable} —— 两处都能关是泄漏的温床。
      */
     public static final class Handle implements AutoCloseable {
 
-        private final AutoCloseable resources;
         private final Database database;
         private final PlayerQuestRepository playerQuestRepository;
         private final String description;
         private boolean closed;
 
-        private Handle(AutoCloseable resources, Database database,
-                       PlayerQuestRepository playerQuestRepository, String description) {
-            this.resources = resources;
+        private Handle(Database database, PlayerQuestRepository playerQuestRepository, String description) {
             this.database = database;
             this.playerQuestRepository = playerQuestRepository;
             this.description = description;
@@ -166,11 +161,11 @@ public final class DatabaseFactory {
                 return;
             }
             closed = true;
-            if (resources == null) {
+            if (database == null) {
                 return;
             }
             try {
-                resources.close();
+                database.close();
             } catch (Exception e) {
                 // 关闭失败不该阻断插件卸载流程，只记录
                 System.err.println("[PlayerTaskX] 关闭数据库资源失败: " + description + " (" + e + ")");

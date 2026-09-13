@@ -6,7 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
-import com.playerPlugin.playerTaskX.core.objective.BreakBlockObjective;
+import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class ProgressDisplayRenderTest {
 
     private ProgressDisplay display() {
         ObjectiveRegistryImpl objectives = new ObjectiveRegistryImpl();
-        objectives.register(new BreakBlockObjective());
+        objectives.register(BuiltIns.objective("break_block"));
         // 消息服务与仓储不参与 render()，这里允许为 null
         return new ProgressDisplay(new PluginConfig(), new QuestRegistryImpl(), null, null, objectives);
     }

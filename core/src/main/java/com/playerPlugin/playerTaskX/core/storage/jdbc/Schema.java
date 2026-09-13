@@ -30,8 +30,7 @@ public final class Schema {
                         + "category VARCHAR(64), "
                         + "type VARCHAR(16) NOT NULL, "
                         + "refresh_cost DOUBLE NOT NULL DEFAULT 0, "
-                        + "enabled SMALLINT NOT NULL DEFAULT 1, "
-                        + "sort_order INT NOT NULL DEFAULT 0"
+                        + "enabled SMALLINT NOT NULL DEFAULT 1"
                         + ")" + option,
 
                 // idx 在 MySQL 8 中是保留字，统一用方言转义
@@ -72,11 +71,6 @@ public final class Schema {
                         + "assigned_at BIGINT NOT NULL DEFAULT 0"
                         + ")" + option,
 
-                "CREATE TABLE IF NOT EXISTS meta ("
-                        + "meta_key VARCHAR(64) PRIMARY KEY, "
-                        + "meta_value " + text
-                        + ")" + option,
-
                 // 预设：目标/奖励的模板。kind 区分两类，不做成两张表——字段完全一致，
                 // 拆表只会让读取多一次查询。仅在 definitions.type 选 SQL 后端时使用。
                 "CREATE TABLE IF NOT EXISTS preset ("
@@ -103,30 +97,10 @@ public final class Schema {
         );
     }
 
-    /**
-     * 后加的列。
-     * <p>
-     * {@code CREATE TABLE IF NOT EXISTS} 对已存在的表<b>不会补列</b>，
-     * 因此升级场景必须单独 ALTER。语句允许失败（列已存在时两种数据库都会报错），
-     * 由 {@link #initialize} 容错跳过。
-     */
-    public static List<String> alterStatements() {
-        return List.of(
-                "ALTER TABLE player_quest ADD COLUMN structure_hash VARCHAR(32)"
-        );
-    }
-
-    /** 建表、补列并建索引；已存在的对象会被忽略。 */
+    /** 建表并建索引；已存在的对象会被忽略。 */
     public static void initialize(Database database) {
         for (String statement : createStatements(database.dialect())) {
             database.executeInline(statement);
-        }
-        for (String statement : alterStatements()) {
-            try {
-                database.executeInline(statement);
-            } catch (StorageException ignored) {
-                // 列已存在：升级到当前版本后每次启动都会走到这里，属于正常情况
-            }
         }
         for (String statement : indexStatements()) {
             try {

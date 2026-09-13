@@ -45,24 +45,6 @@ public record QuestObjective(String type, Map<String, Object> properties) {
         return fallback;
     }
 
-    /** 取布尔配置，缺失返回默认值。 */
-    public boolean bool(String key, boolean fallback) {
-        Object value = properties.get(key);
-        if (value instanceof Boolean bool) return bool;
-        if (value instanceof String text) return Boolean.parseBoolean(text.trim());
-        return fallback;
-    }
-
-    /** 取列表配置，缺失返回空列表。 */
-    @SuppressWarnings("unchecked")
-    public java.util.List<String> stringList(String key) {
-        Object value = properties.get(key);
-        if (value instanceof java.util.List<?> list) {
-            return list.stream().map(String::valueOf).toList();
-        }
-        return java.util.List.of();
-    }
-
     /** 目标所需数量，统一约定 {@code amount} 键，默认 1。 */
     public int amount() {
         return Math.max(1, integer("amount", 1));
