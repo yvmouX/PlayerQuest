@@ -3,6 +3,9 @@ version: '${version}'
 main: com.playerPlugin.playerTaskX.PlayerTaskX
 api-version: '1.21'
 prefix: "playerTaskX"
+# 与 README 首段的项目自述一致；authors 刻意不声明——仓库里没有可照抄的署名
+# （LICENSE 是未填版权人的 GPL-3.0 模板，README/build.gradle.kts 都没有作者字段）
+description: "面向 Spigot / Paper / Folia / Canvas 的每日任务与自定义任务插件：任务 = 多个目标 + 多个奖励，支持网页编辑器、游戏内 GUI、多语言与 PlaceholderAPI 变量。"
 folia-supported: true
 softdepend:
   - Vault

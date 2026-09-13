@@ -31,25 +31,21 @@ tasks.test {
 val frontendBuild by tasks.registering {
     description = "Build frontend assets"
     group = "build"
-    
+
     doLast {
         val frontendDir = rootProject.projectDir.resolve("task-editor-vue")
-        val webDir = projectDir.resolve("src/main/resources/web")
-        
+
         // 运行 npm build (Windows 需要 npm.cmd)
         val npmCmd = if (System.getProperty("os.name").contains("Windows")) "npm.cmd" else "npm"
         project.rootProject.exec {
             workingDir(frontendDir)
             commandLine(npmCmd, "run", "build")
         }
-        
-        // 复制构建产物到 web 目录
-        val distDir = frontendDir.resolve("dist")
-        if (distDir.exists()) {
-            webDir.deleteRecursively()
-            distDir.copyRecursively(webDir)
-            println("Frontend build copied to $webDir")
-        }
+
+        // 这里曾经还有一段「若 task-editor-vue/dist 存在就覆盖 src/main/resources/web」。
+        // 但 vite 的 outDir 早已直接指向 web（见 task-editor-vue/vite.config.ts），dist 不会再出现，
+        // 那段是死代码；更糟的是一旦 dist 因任何原因重新出现，它就会用旧产物覆盖掉刚构建好的 web。
+        // 已删除——产物的归属只有一个地方：vite 自己。
     }
 }
 

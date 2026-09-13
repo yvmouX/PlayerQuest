@@ -49,9 +49,15 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
 - 关于前端产物输出：
   - 产物输出到 `core/src/main/resources/web/`（vite outDir），不是`dist/`；该目录已加入 gitignore，属于构建临时文件，不要提交。
   - `task-editor-vue` 的 `npm run build` 会先跑 `vue-tsc` 类型检查，因此类型错误会让整个 Gradle build 失败。
-- 关于源码级别：
-  - `api/` 必须是 Java 8 源码级，因为YLib 的 api 模块是 Java 8，不能使用 record、
-    `var`、`List.of()` 之类的新语法。`core/` 才可以用 Java 21
+- 关于源码级别（**本项目与 YLib 恰好相反，别搞混**）：
+  - **本项目的 `api/`、`core/` 都是 Java 21**：根 `build.gradle.kts` 的 `allprojects` 里
+    `val targetJavaVersion = 21`，`api/build.gradle.kts` 是空的、不覆盖它，因此 record、
+    `var`、`List.of()` 都可以用——`api/.../model/Quest.java`、`QuestObjective`、`Preset`、
+    `ConfigField`、`ProgressContext` 本身就是 record。
+  - **YLib 的 `api` / `core` 才是 Java 8**（`YLib/build.gradle.kts` 按模块给级别：
+    `:platform:canvas|folia|paper` 是 17、根项目是 21、**其余默认 `VERSION_1_8`**）。
+    改 YLib 源码时要守它的级别——record / `var` / `List.of()` 不能出现在 YLib 的
+    `api`、`core` 里（`cn.yvmou.ylib.command.help.CommandHelp.Entry` 写成普通类就是这个原因）。
   - 这条约束比看上去宽松：Adventure **4.x 全线是 Java 8 字节码**（5.x 才要 Java 21），
     所以 YLib 能在保持 Java 8 的同时使用 MiniMessage。想引入新依赖前先确认它要求的字节码版本。
 

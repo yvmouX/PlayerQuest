@@ -50,7 +50,7 @@
           class="list-item"
           :class="{ active: item.uuid === selectedUuid }"
           type="button"
-          @click="selectPlayer(item.uuid)"
+          @click="openPlayer(item.uuid)"
         >
           <span class="item-head">
             <span class="dot" :class="item.online ? 'dot-online' : 'dot-offline'" :title="item.online ? '在线' : '离线'"></span>
@@ -181,6 +181,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from '../components/DataTable.vue'
 import UnauthorizedHint from '../components/UnauthorizedHint.vue'
 import { PlayerApi, SchemaApi, errorMessage, isUnauthorized } from '../services/api'
@@ -195,6 +196,8 @@ import { clampPercent, formatTime, isExpired } from '../utils/text'
 
 /** 路由 /players/:uuid 传入的玩家；从侧栏进入时没有这个参数。 */
 const props = defineProps<{ uuid?: string }>()
+
+const router = useRouter()
 
 const players = ref<PlayerSummary[]>([])
 const detail = ref<PlayerDetail | null>(null)
@@ -280,6 +283,21 @@ async function loadPlayers(): Promise<void> {
   }
 }
 
+/**
+ * 点击列表里的玩家：把 uuid 写进路由，切换动作交给上面的 watch 统一做。
+ *
+ * 这里是 /players/:uuid 唯一的产生处——不 push 的话 URL 永远停在 #/players，
+ * 「某个玩家的详情」就没有可分享、可收藏、可直达的地址，那条深链与 props/watch
+ * 等于白写。自动选中第一名玩家不走这里：那是本页的默认视图，不该污染 URL 与历史。
+ */
+function openPlayer(uuid: string): void {
+  if (!uuid) {
+    return
+  }
+  void router.push({ name: 'player-detail', params: { uuid } })
+}
+
+/** 切换选中玩家并加载详情；由路由 watch 与「默认选中第一名」共同调用。 */
 async function selectPlayer(uuid: string): Promise<void> {
   if (!uuid) {
     return

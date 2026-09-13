@@ -56,13 +56,28 @@ includeBuild("YLib")
 ### 更新 YLib
 
 ```bash
-# 跟踪子模块配置的分支（当前为 dev）
+# ⚠️ .gitmodules 里没有 branch 键，--remote 跟的是远端默认分支（HEAD），不是 dev
 git submodule update --remote YLib
-# 或进入子模块手动切换分支
+# 想拿 dev 分支的更新，就进子模块手动切
 git -C YLib checkout dev && git -C YLib pull
 ```
 
-当前 YLib 子模块跟踪 `dev` 分支（`1.0.0-beta10`）。
+当前 YLib 子模块的**工作区停在 `dev` 分支**（`gradle.properties` 版本 `1.0.0-beta10`），
+但这一步是手动切出来的：`.gitmodules` 只写了 `path` 与 `url`、**没有 `branch` 键**，
+所以 `git submodule update --remote YLib` 跟的是 YLib 远端的默认分支，**不保证落在 `dev` 上**。
+
+若希望 `--remote` 直接跟随 `dev`，在 `.gitmodules` 里给该子模块补一行 `branch`：
+
+```ini
+[submodule "YLib"]
+	path = YLib
+	url = https://github.com/yvmouX/YLib.git
+	branch = dev
+```
+
+（改 `.gitmodules` 会改变所有协作者执行 `git submodule update --remote` 的目标分支，
+属于 git 工作流层面的决定，因此这里只说明做法，不代改。）
+
 子模块内含一处本地构建修正（见下方「构建接线」），切换分支或 `git pull` 后需确认它仍在，
 否则 `:shadowJar` 会因取不到 YLib 聚合产物而失败。
 

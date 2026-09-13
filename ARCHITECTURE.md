@@ -16,8 +16,9 @@ PlayerTaskX/
 └── YLib/         子模块：调度器 / 日志 / 配置 / 命令 / 消息 基础设施
 ```
 
-`api` 不含实现，`core` 依赖 `api`。网页编辑器的静态资源由 `core:processResources`
-从 `task-editor-vue/dist` 拷贝进 jar。
+`api` 不含实现，`core` 依赖 `api`。网页编辑器的静态资源由 vite 直接构建到
+`core/src/main/resources/web`（`core:frontendBuild`，即 `npm run build`，先跑 `vue-tsc` 类型检查），
+再由 `core:processResources` 一并打进 jar（`dist/` 已不再产生）。
 
 ### 依赖策略
 
@@ -117,15 +118,14 @@ public interface RewardType extends ConfigurableType {
 内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`exp` 经验（原版，总是可用）、
 `item` 物品、`command` 自定义命令。
 
-### 3.3 进度事件 `ProgressContext`（core，唯一与 Bukkit 事件耦合处）
+### 3.3 进度事件 `ProgressContext`（api，唯一与 Bukkit 事件耦合处）
 
 ```java
-public final class ProgressContext {   // 由 Bukkit 监听器构造，引擎只认它
-    UUID playerId; Player player;
-    Trigger trigger;                     // BREAK_BLOCK / CRAFT / FISH / ...
-    String target;                       // 方块/实体/物品/命令名等，可为 null
-    int amount;
-    String extra;                        // 附加信息（如交互的具体动作类型：RIGHT_CLICK_BLOCK）
+public record ProgressContext(UUID playerId, Player player, Trigger trigger,
+                              String target, int amount, String extra) {
+    // 由 Bukkit 监听器构造，引擎只认它
+    // trigger: BREAK_BLOCK / CRAFT / FISH / ...；target: 方块/实体/物品/命令名等，可为 null
+    // amount: 本次动作数量（<=0 会被归一成 1）；extra: 附加信息（如交互的具体动作类型）
 }
 ```
 
@@ -453,14 +453,14 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 1 | `api` 模型与三个扩展点接口 | ✅ 完成 |
 | 2 | 构建配置：依赖、shadow 重定位、`-parameters` | ✅ 完成 |
 | 3 | `core` 存储层（SQLite/MySQL + 方言 + 仓储） | ✅ 完成（15 项 SQLite 集成测试） |
-| 4 | 引擎：`ProgressService` + 14 种目标类型 + 4 个监听器 | ✅ 完成（12 项引擎单元测试） |
+| 4 | 引擎：`ProgressService` + 14 种目标类型 + 5 个监听器 | ✅ 完成（12 项引擎单元测试） |
 | 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
 | 6 | 多语言（YLib 消息服务，文本渲染内置于 YLib） | ✅ 完成 |
 | 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
 | 9 | 网页编辑器前端（schema 驱动表单） | ✅ 完成（构建通过、类型检查 0 诊断） |
 | 10 | 玩家 GUI + 管理 GUI | ✅ 完成 |
-| 11 | 命令层（玩家 7 个 / 管理员 10 个子命令 + 补全） | ✅ 完成 |
+| 11 | 命令层（玩家 7 个 / 管理员 11 个子命令 + 补全） | ✅ 完成 |
 | 12 | PlaceholderAPI 变量扩展（反射接入） | ✅ 完成 |
 | 13 | 真机冒烟验证（`start-folia.ps1` + Folia 26.1.2-8） | ✅ 完成（插件成功启用） |
 | 14 | 编辑器：图标/材质选择器（`/api/catalog`，中英文搜索） | ✅ 完成 |
@@ -471,9 +471,25 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 
-**测试总量：170 项全部通过**（存储 15 + 文件仓储 14 + 玩家 JSON 后端 21 / 引擎 12 + 结构指纹 8 / 命令帮助 12 / 每日 10 / 奖励 17 / 任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 7 + 编辑器 REST 16 / GUI 图标 6 / 进度渲染 5），`clean build` 全绿。
+**测试总量：170 项全部通过**（17 个测试类，全部 failures=0 / errors=0）：
+存储 15（`StorageIntegrationTest`）+ 文件仓储 14（`QuestFileRepositoryTest`）+
+玩家 JSON 后端 21（`JsonPlayerQuestRepositoryTest`）+ 编辑器接口 16（`EditorApiTest`）+
+引擎 12（`ProgressServiceTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
+命令帮助 12（`YLibCommandHelpTest`）+ 每日 10（`DailyServiceTest`）+
+奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 任务管理 8（`QuestAdminServiceTest`）+
+示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 素材 7（`MaterialCatalogTest`）+
+GUI 图标 6（`QuestDetailMenuTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）。
+统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
+`core/build/test-results/test/*.xml` 逐套件累加（17 个 XML），不是靠日志里的汇总行。
 
-文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项）：
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 832 行 + `core/src/main` 10679 行
+＝ **11511 行 / 91 个 java 文件**；测试 `core/src/test` **4020 行 / 18 个文件**
+（`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
+前端 `task-editor-vue/src` **5340 行 `.vue` + 1399 行 `.ts`/`.js` ＝ 6739 行 / 28 个文件**。
+
+文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
+`TextRendererTest` 11 + `RealWorldMessageTest` 4）：
 渲染能力既然上移到了 YLib，它的行为就该在 YLib 钉住，否则每个消费方只能各测各的。
 
 ### 真机验证结论（Folia 26.1.2-8）
@@ -515,7 +531,8 @@ gzip 已生效（Javalin 对超过 1500 字节的响应自动压缩）：
 ```
 
 **清空数据库后重新初始化**：只建 6 张表（quest / quest_objective / quest_reward /
-player_quest / daily_state / meta），`PRAGMA integrity_check` 为 ok。
+player_quest / daily_state / preset），`PRAGMA integrity_check` 为 ok。
+（第 6 张是预设表 `preset`：`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
 
 同时验证了两条重要的健壮性行为：
 
