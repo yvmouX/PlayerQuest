@@ -429,6 +429,65 @@ input[type='checkbox'] {
   white-space: nowrap;
 }
 
+/* ---------- 视图开关与 YAML 文本视图 ---------- */
+
+/*
+ * 可视化 / YAML 开关：两个按钮组成一组，当前视图用主色填充。
+ * 用按钮而不是下拉：只有两个选项，切换是高频动作，少一次展开。
+ */
+.mode-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.yaml-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* 等宽 + 不换行折行以外的花哨样式：缩进是 YAML 的语法，必须让列对齐看得清 */
+.yaml-text {
+  width: 100%;
+  min-height: 18rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  tab-size: 2;
+  resize: vertical;
+}
+
+.yaml-text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.yaml-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--warn);
+  font-size: 0.82rem;
+}
+
+.yaml-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 /* ---------- 徽标 ---------- */
 
 .badge {

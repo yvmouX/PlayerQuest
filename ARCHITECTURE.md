@@ -20,6 +20,13 @@ PlayerTaskX/
 `core/src/main/resources/web`（`core:frontendBuild`，即 `npm run build`，先跑 `vue-tsc` 类型检查），
 再由 `core:processResources` 一并打进 jar（`dist/` 已不再产生）。
 
+**前端的两道构建期自检**（都挂在 `npm run build` 上，类型检查之外再多一层）：
+
+| 脚本 | 抓什么 |
+|---|---|
+| `scripts/yaml-check.mjs` | YAML 文本 ⇄ 任务/预设的往返：字符串不被解析成布尔/数字、未知字段不静默丢弃、非法 YAML 明确报错。用 vite 把 `src/utils/yaml.ts` 现打成临时 ESM 再断言，测的就是真正跑在浏览器里的那份代码 |
+| `scripts/ssr-smoke.mjs` | 视图能否「装起来」：SSR 渲染一遍各视图，把 setup() 完整执行一次。`vue-tsc` 不执行 setup，因此「setup 期读了未初始化变量」（如 immediate 的 watch 撞上 const 死区）这类只有打开页面才会炸的错误，靠它变成构建失败 |
+
 ### 依赖策略
 
 | 依赖 | 用途 | 作用域 |
@@ -530,6 +537,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 | 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
 | 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试） |
+| 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（10 项 YAML 往返 + 4 个视图渲染） |
 
 **测试总量：210 项全部通过**（25 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
@@ -550,7 +558,8 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 **代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 10892 行
 ＝ **11815 行 / 96 个 java 文件**；测试 `core/src/test` **5064 行 / 28 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **5526 行 `.vue` + 1420 行 `.ts`/`.js` ＝ 6946 行 / 28 个文件**。
+前端 `task-editor-vue/src` **5804 行 `.vue` + 1763 行 `.ts`/`.js` ＝ 7567 行 / 31 个文件**
+（另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：
@@ -637,8 +646,9 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
   只在代码与 SQLite 测试层面覆盖，没有连过真实 MySQL 实例。
 - **玩家实际游玩路径未验证**：需要真人进服（挖掘/合成/击杀等）才能确认进度累加、
   actionbar 推送、GUI 点击等表现层行为；本次只验证到「插件启用 + 命令注册 + HTTP 接口」。
-- **网页编辑器的界面操作未做浏览器端人工确认**：接口层已实测，但选择器、预设这类
-  纯前端的交互（搜索、多选、拖拽/排序）只保证构建与类型检查通过。
+- **网页编辑器的界面操作未做浏览器端人工确认**：接口层已实测；纯前端的交互
+  （搜索、多选、拖拽/排序、可视化 ⇄ YAML 切换）只做到「构建 + 类型检查 + YAML 往返断言 +
+  SSR 渲染各视图各一遍」，浏览器里的实际手感与排版仍未人工确认。
 - **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
   兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
 - **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有每日任务一条来源

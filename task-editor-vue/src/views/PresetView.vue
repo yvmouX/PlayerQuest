@@ -96,6 +96,21 @@
             <div class="view-actions">
               <span v-if="dirty" class="dirty-flag" title="内容与上次保存的不一致">● 未保存修改</span>
               <span v-else class="clean-flag">已同步</span>
+              <!-- 视图开关：可视化表单 / YAML 文本，两边编辑的是同一条预设 -->
+              <div class="mode-switch" role="group" aria-label="编辑视图">
+                <button
+                  class="btn btn-small"
+                  :class="{ 'btn-primary': yaml.mode.value === 'visual' }"
+                  type="button"
+                  @click="showVisual"
+                >可视化</button>
+                <button
+                  class="btn btn-small"
+                  :class="{ 'btn-primary': yaml.mode.value === 'yaml' }"
+                  type="button"
+                  @click="showYaml"
+                >YAML</button>
+              </div>
               <button class="btn btn-small" type="button" :disabled="busy" @click="closeDraft">关闭</button>
               <button
                 v-if="!draft.isNew"
@@ -114,6 +129,19 @@
             新预设的 id 由后端自动生成；保存后即可在任务编辑器里套用。
           </p>
 
+          <!-- YAML 视图：适合从文档/聊天里粘一段配置，或批量改属性 -->
+          <YamlTextField
+            v-if="yaml.mode.value === 'yaml'"
+            v-model="yaml.text.value"
+            label="预设 YAML"
+            :rows="14"
+            :error="yaml.error.value"
+            :warnings="yaml.warnings.value"
+            hint="顶层是预设字段：name / type / description / properties（id 留空即新建，由后端生成）。"
+            @regenerate="yaml.syncFromSource()"
+          />
+
+          <template v-else>
           <div class="form-rows">
             <label class="field field-stack">
               <span class="field-label">名称 <em class="required">*</em></span>
@@ -164,6 +192,7 @@
           <p class="hint preset-id-line">
             id：<code class="mono">{{ draft.id || '（保存后由后端生成）' }}</code>
           </p>
+          </template>
         </section>
       </div>
     </div>
@@ -185,7 +214,9 @@ import { computed, onMounted, ref } from 'vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import SchemaFieldInput from '../components/SchemaFieldInput.vue'
 import UnauthorizedHint from '../components/UnauthorizedHint.vue'
+import YamlTextField from '../components/YamlTextField.vue'
 import { useToast } from '../composables/useToast'
+import { useYamlMode } from '../composables/useYamlMode'
 import { PresetApi, SchemaApi, errorMessage, isUnauthorized } from '../services/api'
 import type { Preset, PresetKind, PresetMap, Properties, PropertyValue, TypeSchema } from '../types'
 import { loadCatalog } from '../utils/catalog'
@@ -198,6 +229,7 @@ import {
   upsertPreset
 } from '../utils/presets'
 import { defaultProperties, schemaOptions, withDefaults } from '../utils/schema'
+import { presetFromYaml, presetToYaml } from '../utils/yaml'
 
 const toast = useToast()
 
@@ -336,6 +368,7 @@ function syncDraftWithServer(): void {
     return
   }
   draft.value = next
+  yaml.syncFromSource()
 }
 
 function findPreset(kind: PresetKind, id: string): Preset | undefined {
@@ -373,6 +406,8 @@ function select(kind: PresetKind, view: { preset: Preset; valid: boolean }): voi
     return
   }
   draft.value = toDraft(kind, view.preset)
+  yaml.mode.value = 'visual'
+  yaml.syncFromSource()
 }
 
 function createDraft(kind: PresetKind): void {
@@ -393,6 +428,8 @@ function createDraft(kind: PresetKind): void {
   }
   value.baseline = serialize(value)
   draft.value = value
+  yaml.mode.value = 'visual'
+  yaml.syncFromSource()
 }
 
 function closeDraft(): void {
@@ -437,9 +474,70 @@ function setProperty(key: string, value: PropertyValue): void {
   current.properties = { ...current.properties, [key]: value }
 }
 
+/* ---------------- 可视化 / YAML 双视图 ---------------- */
+
+/**
+ * YAML 视图：解析成功后写回同一条草稿，保存、脏标记、schema 校验都还是原来那一套。
+ *
+ * <p>草稿的 id 是后端生成的：已存在的预设不允许在 YAML 里改 id（只警告），
+ * 新建草稿本来就是空 id，写进去也会被保存逻辑忽略。
+ */
+const yaml = useYamlMode<Preset>({
+  render: () => presetToYaml(draftToPreset(draft.value)),
+  parse: presetFromYaml,
+  apply: applyYamlPreset,
+  extraWarnings: preset => preset.id && preset.id !== (draft.value?.id ?? '')
+    ? [`预设 id 由后端生成，YAML 里的「${preset.id}」已忽略`]
+    : []
+})
+
+/** 当前草稿 → 预设对象（YAML 渲染与保存用的同一形状）。 */
+function draftToPreset(value: Draft | null): Preset {
+  return {
+    id: value?.id ?? '',
+    name: value?.name ?? '',
+    type: value?.type ?? '',
+    description: value?.description ?? '',
+    properties: { ...(value?.properties ?? {}) }
+  }
+}
+
+/**
+ * YAML 解析结果 → 草稿。
+ *
+ * <p>刻意不整体替换草稿对象：{@code baseline} 与 {@code isNew} 是「这条草稿对应服务端哪条记录」
+ * 的状态，YAML 只描述内容，不该动它们。
+ */
+function applyYamlPreset(preset: Preset): void {
+  const current = draft.value
+  if (!current) {
+    return
+  }
+  current.name = preset.name
+  current.type = preset.type
+  current.description = preset.description
+  // 属性按 schema 补齐缺省：YAML 里漏写的字段缺省值要与可视化视图一致
+  current.properties = withDefaults(schemasOf(current.kind)[preset.type], preset.properties)
+}
+
+function showYaml(): void {
+  yaml.toYaml()
+}
+
+function showVisual(): void {
+  if (!yaml.toVisual()) {
+    toast.error('YAML 还有语法错误，先修好再切回可视化')
+  }
+}
+
 async function save(): Promise<void> {
   const current = draft.value
   if (!current || busy.value) {
+    return
+  }
+  // YAML 视图下先把文本落地（防抖窗口内的改动可能还没进草稿）；解析失败就拒绝保存
+  if (yaml.mode.value === 'yaml' && !yaml.applyNow()) {
+    toast.error('YAML 有语法错误，未保存')
     return
   }
   if (!current.name.trim()) {
@@ -466,6 +564,7 @@ async function save(): Promise<void> {
     const saved = result.preset
     presets.value = upsertPreset(presets.value, current.kind, saved)
     draft.value = toDraft(current.kind, saved)
+    yaml.syncFromSource()
     toast.success(`预设「${saved.name}」已保存`)
   } catch (e) {
     error.value = `保存预设失败：${errorMessage(e)}`

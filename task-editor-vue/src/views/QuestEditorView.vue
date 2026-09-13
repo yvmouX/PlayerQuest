@@ -17,6 +17,22 @@
       <span v-if="dirty" class="dirty-flag" title="表单内容与上次保存的不一致">● 未保存修改</span>
       <span v-else class="clean-flag">已同步</span>
 
+      <!-- 视图开关：可视化表单 / YAML 文本，两边编辑的是同一个任务 -->
+      <div class="mode-switch" role="group" aria-label="编辑视图">
+        <button
+          class="btn btn-small"
+          :class="{ 'btn-primary': yaml.mode.value === 'visual' }"
+          type="button"
+          @click="showVisual"
+        >可视化</button>
+        <button
+          class="btn btn-small"
+          :class="{ 'btn-primary': yaml.mode.value === 'yaml' }"
+          type="button"
+          @click="showYaml"
+        >YAML</button>
+      </div>
+
       <div class="spacer"></div>
 
       <button class="btn" type="button" :disabled="saving" @click="back">返回列表</button>
@@ -46,6 +62,23 @@
     <p v-if="error" class="panel error-panel">{{ error }}</p>
     <UnauthorizedHint :show="unauthorized" />
     <p v-if="loading" class="panel">正在加载任务…</p>
+
+    <!-- YAML 视图：与可视化表单编辑同一个任务，只是换了一种输入方式 -->
+    <section v-else-if="yaml.mode.value === 'yaml'" class="card">
+      <header class="card-head">
+        <h3>YAML 编辑</h3>
+        <span class="hint">字段名与导出的 JSON 一致，可直接粘贴互换</span>
+      </header>
+      <YamlTextField
+        v-model="yaml.text.value"
+        label="任务 YAML"
+        :rows="24"
+        :error="yaml.error.value"
+        :warnings="yaml.warnings.value"
+        hint="顶层是任务字段：id / name / description / icon / category / type / refreshCost / enabled / prerequisites / objectives / rewards。"
+        @regenerate="yaml.syncFromSource()"
+      />
+    </section>
 
     <div v-else class="editor-layout">
       <div class="editor-main">
@@ -320,13 +353,16 @@ import PreviewPane from '../components/PreviewPane.vue'
 import SavePresetDialog from '../components/SavePresetDialog.vue'
 import TypeInstanceEditor from '../components/TypeInstanceEditor.vue'
 import UnauthorizedHint from '../components/UnauthorizedHint.vue'
+import YamlTextField from '../components/YamlTextField.vue'
 import { useToast } from '../composables/useToast'
+import { useYamlMode } from '../composables/useYamlMode'
 import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
 import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
 import { loadCatalog } from '../utils/catalog'
 import { invalidatePresets, loadPresets, presetProperties, suggestPresetName } from '../utils/presets'
 import { defaultProperties, normalizeInstances, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
 import { stripTags } from '../utils/text'
+import { questFromYaml, questToYaml } from '../utils/yaml'
 
 /** 路由传入的任务 id；新建路由没有这个参数。 */
 const props = defineProps<{ id?: string }>()
@@ -424,6 +460,66 @@ function buildQuest(): Quest {
 /** 当前表单的序列化结果；与 baseline 比较即可判断是否有未保存修改。 */
 const serialized = computed(() => JSON.stringify(buildQuest()))
 const dirty = computed(() => baseline.value !== '' && serialized.value !== baseline.value)
+
+/* ---------------- 可视化 / YAML 双视图 ---------------- */
+
+/**
+ * YAML 视图。
+ *
+ * <p>它不是第二个数据源：文本解析成功后写回同一份表单状态，因此保存、校验、预览、
+ * 脏标记全都还是原来那一套。id 的处理是唯一例外——已存在的任务 id 保存后不可改，
+ * 因此 YAML 里写了别的 id 只会得到一条警告（见 {@link applyYamlQuest}）。
+ *
+ * <p>这段必须声明在下面那个 {@code immediate: true} 的 watch 之前：它在注册时会同步跑一次
+ * {@code open()}，而新建路由会走到 {@code resetToNew()} → {@code yaml.syncFromSource()}。
+ */
+const yaml = useYamlMode<Quest>({
+  render: () => questToYaml(buildQuest()),
+  parse: text => questFromYaml(text, String(form.id ?? '').trim() || 'new_quest'),
+  apply: applyYamlQuest,
+  extraWarnings: quest => {
+    const current = String(form.id ?? '').trim()
+    const messages: string[] = []
+    if (persisted.value && quest.id && quest.id !== current) {
+      messages.push(`已存在任务的 id 保存后不可修改，YAML 里的「${quest.id}」已忽略`)
+    }
+    if (!quest.objectives?.length) {
+      // 可视化视图里这行提示挂在「目标」卡片上，YAML 视图看不到，得在这里补一次：
+      // 没有目标的任务在插件载入时会被跳过，玩家永远看不到它
+      messages.push('这个任务没有任何目标：插件载入时会跳过它（编辑器里也会被标成校验问题）')
+    }
+    return messages
+  }
+})
+
+/** YAML 解析结果 → 表单；与 {@link applyQuest} 的区别是不动编辑中的 id、不覆盖后端校验问题。 */
+function applyYamlQuest(quest: Quest): void {
+  form.name = quest.name ?? ''
+  form.icon = quest.icon || 'PAPER'
+  form.category = quest.category ?? ''
+  form.type = quest.type === 'DAILY' ? 'DAILY' : 'NORMAL'
+  form.refreshCost = Number(quest.refreshCost) || 0
+  form.enabled = quest.enabled !== false
+  form.prerequisites = [...(quest.prerequisites ?? [])]
+  if (!persisted.value && quest.id) {
+    form.id = quest.id
+  }
+  descriptionText.value = (quest.description ?? []).join('\n')
+  objectiveRows.value = toRows(quest.objectives, objectiveSchemas.value)
+  rewardRows.value = toRows(quest.rewards, rewardSchemas.value)
+}
+
+/** 切到 YAML：用当前表单重新生成一份文本（注释与排版由表单内容决定，不保留历史文本）。 */
+function showYaml(): void {
+  yaml.toYaml()
+}
+
+/** 切回可视化：文本解析不过去就留在 YAML 视图，否则表单会显示与文本不一致的旧内容。 */
+function showVisual(): void {
+  if (!yaml.toVisual()) {
+    toast.error('YAML 还有语法错误，先修好再切回可视化')
+  }
+}
 
 /* ---------------- 实时预览（全部基于 schema） ---------------- */
 
@@ -605,6 +701,8 @@ function applyQuest(quest: Quest): void {
   rewardRows.value = toRows(quest.rewards, rewardSchemas.value)
   problems.value = [...(quest.problems ?? [])]
   baseline.value = JSON.stringify(buildQuest())
+  // 切换任务时同步刷新 YAML 文本：否则切到 YAML 视图会看到上一个任务的内容
+  yaml.syncFromSource()
 }
 
 /** 清空成新建状态。 */
@@ -622,6 +720,7 @@ function resetToNew(): void {
   rewardRows.value = []
   problems.value = []
   baseline.value = JSON.stringify(buildQuest())
+  yaml.syncFromSource()
 }
 
 /* ---------------- 目标 / 奖励编辑 ---------------- */
@@ -863,6 +962,12 @@ async function save(): Promise<void> {
     toast.error('任务 ID 不能为空')
     return
   }
+  // YAML 视图下先把文本框里的内容落地：防抖窗口还没到点时，表单里可能还是旧值。
+  // 解析失败就明确拒绝保存，而不是悄悄存下表单里的旧内容
+  if (yaml.mode.value === 'yaml' && !yaml.applyNow()) {
+    toast.error('YAML 有语法错误，未保存')
+    return
+  }
   saving.value = true
   error.value = ''
   try {
@@ -915,6 +1020,10 @@ function askSaveCopy(): void {
 async function saveAsCopy(): Promise<void> {
   copyPending.value = false
   const targetId = copyTargetId.value
+  if (yaml.mode.value === 'yaml' && !yaml.applyNow()) {
+    toast.error('YAML 有语法错误，未另存')
+    return
+  }
   savingCopy.value = true
   error.value = ''
   try {
