@@ -356,6 +356,14 @@ class EditorApiTest {
         assertFalse(money.get("available").asBoolean(),
                 "单测环境没有 Vault，金币奖励必须如实报「不可用」而不是假装可用");
         assertTrue(money.get("unavailableReason").asText().contains("Vault"));
+
+        // 目标类型同样要报可用性：没装 CustomFishing 时「自定义钓鱼」配了也不会涨进度
+        JsonNode customFish = schema.get("objectives").get("custom_fish");
+        assertNotNull(customFish, "内置目标类型必须出现在 schema 里");
+        assertFalse(customFish.get("available").asBoolean());
+        assertTrue(customFish.get("unavailableReason").asText().contains("CustomFishing"));
+        JsonNode kill = schema.get("objectives").get("kill");
+        assertTrue(kill.get("available").asBoolean(), "击杀目标不依赖任何插件，恒可用");
     }
 
     @Test

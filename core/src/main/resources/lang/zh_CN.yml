@@ -20,6 +20,7 @@ objective:
   place_block: "放置"
   craft: "合成"
   fish: "垂钓"
+  custom_fish: "自定义钓鱼"
   kill: "击杀"
   consume: "消耗"
   enchant: "附魔"

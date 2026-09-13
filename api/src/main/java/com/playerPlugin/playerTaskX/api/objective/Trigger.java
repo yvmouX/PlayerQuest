@@ -15,6 +15,8 @@ public enum Trigger {
     CRAFT,
     /** 钓鱼 */
     FISH,
+    /** 钓到 CustomFishing 的自定义鱼（原版垂钓事件看不到这些掉落，因此单独一个动作） */
+    CUSTOM_FISH,
     /** 击杀生物/玩家 */
     KILL,
     /** 消耗物品 */

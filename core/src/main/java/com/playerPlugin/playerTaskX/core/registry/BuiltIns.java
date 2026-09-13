@@ -5,6 +5,7 @@ import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
+import com.playerPlugin.playerTaskX.core.objective.CustomFishObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.objective.TargetObjective;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
@@ -45,6 +46,8 @@ public final class BuiltIns {
                         ConfigField.material("target", "目标物品", "DIAMOND"), 1),
                 new TargetObjective("fish", "垂钓", Trigger.FISH,
                         ConfigField.optionalMaterial("target", "钓获物", ""), 1),
+                // CustomFishing 的自定义鱼：单独一个动作，因为原版垂钓事件看不到那些掉落
+                new CustomFishObjective(),
                 new TargetObjective("kill", "击杀生物", Trigger.KILL,
                         ConfigField.optionalEntity("target", "生物类型", "ZOMBIE"), 1),
                 new TargetObjective("consume", "消耗物品", Trigger.CONSUME,

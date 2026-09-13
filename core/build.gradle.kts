@@ -5,6 +5,17 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
 
+    // 软依赖（游戏内容插件）的接入 API：只在安装了对应插件的服务端上被加载。
+    // CustomFishing 的 API 是自包含的，因此直接 compileOnly；
+    // MythicMobs 的 API 类继承自另一个 Lumine 构件，编译期引用它要多挂一个仓库与快照依赖，
+    // 而我们只用到三个方法——那边改用反射接入，见 core/integration/MythicMobs5Hook。
+    // isTransitive = false：这类插件 jar 自带一大堆第三方依赖（adventure、joml、物品库…），
+    // 编译期只需要 API 类型本身，拉一串传递依赖既慢又可能解析失败。
+    compileOnly("net.momirealms:custom-fishing:2.3.24") { isTransitive = false }
+    // 测试也要它：监听器把钓获事件翻译成动作的那几行（id/尺寸/数量、id 为空时不推）必须被钉住，
+    // 而 compileOnly 不会进入测试类路径
+    testImplementation("net.momirealms:custom-fishing:2.3.24") { isTransitive = false }
+
     implementation("org.xerial:sqlite-jdbc:3.42.0.0")
     compileOnly("mysql:mysql-connector-java:8.0.33")
     implementation("com.zaxxer:HikariCP:4.0.3")

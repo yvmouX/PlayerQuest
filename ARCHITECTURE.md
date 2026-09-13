@@ -96,14 +96,15 @@ public interface ObjectiveType extends ConfigurableType {
 GUI 图标推导与字段说明、管理员命令的类型名回显）需要的都只是 `id/displayName/schema`
 这三件事。抽出这一层后，这些地方可以只写一份实现，而不必给目标与奖励各写一份近乎相同的代码。
 
-内置 14 种目标：`craft` 合成、`break_block` 挖掘、`fish` 垂钓、`place_block` 放置、
-`consume` 消耗、`kill` 击杀、`submit` 提交、`enchant` 附魔、`shear` 剪切、
+内置 15 种目标：`craft` 合成、`break_block` 挖掘、`fish` 垂钓、`custom_fish` 自定义钓鱼、
+`place_block` 放置、`consume` 消耗、`kill` 击杀、`submit` 提交、`enchant` 附魔、`shear` 剪切、
 `breed` 繁殖、`tame` 驯服、`command` 命令、`interact` 交互、`chat` 发言。
 
 其中 12 种的行为完全一致（`target` 命中就加本次数量），它们**不是 12 个类**，
 而是 `BuiltIns` 里的 12 行 `TargetObjective` 数据：类型之间只差 id、响应动作与
 `target` 字段的语义类型（材质 / 实体 / 自由文本）。真正有自己判定逻辑的只有
-`InteractObjective`（`mode` 匹配）与 `ChatObjective`（关键词包含匹配）。
+`InteractObjective`（`mode` 匹配）、`ChatObjective`（关键词包含匹配）与
+`CustomFishObjective`（鱼 id + 最小尺寸，且依赖 CustomFishing，见 4.6）。
 「类型自描述」没有损失——`schema()` 仍由类型自己给出，编辑器与 GUI 照旧自动生成表单。
 
 ### 3.2 奖励类型 `RewardType`
@@ -261,6 +262,39 @@ preset(kind, id PK, name, type, properties TEXT, description)
 前置不存在、自己当前置、成环、前置已禁用。成环检测用「起点用待校验任务自己的配置、
 其余节点取注册表」的 DFS——编辑器保存前的任务还没进注册表，而那时恰恰最需要检出新配的环。
 每轮抽取前取一次「已领取 id 快照」再逐个任务判定，避免按任务数打 N 次查询。
+
+### 4.6 游戏内容插件联动（MythicMobs / CustomFishing）
+
+`core/integration/` 是**软依赖接入点**：这些类只在装了对应插件时才被创建/加载，
+没装的服务器上完全不参与运行。接入方式与三条不变量：
+
+| 插件 | 接法 | 目标语法 / 目标类型 |
+|---|---|---|
+| MythicMobs 5.x | 反射调用 `MythicBukkit#inst → getMobManager → getMythicMobInstance → getMobType` | `kill` 的 `target` 写 `mythic:<内部名>`（不需要新类型） |
+| CustomFishing | `compileOnly` API + 反射创建监听器，监听 `FishingLootSpawnEvent` | 新的目标类型 `custom_fish`（原版垂钓事件看不到它的战利品） |
+
+**为什么一个用反射、一个用依赖**：MythicMobs 的 API 类继承自另一个 Lumine 构件，
+编译期引用它会连带要求 `LumineUtils` 之类的依赖（实测报错 `无法访问 LuminePlugin`），
+而我们只用三个方法——反射的代价更小，还能容忍 5.x 内部改名；
+CustomFishing 的 API jar 自包含，直接编译进来更清晰。
+两者都不是「碰运气」：检测不到插件就完全跳过，接入失败只记一条 warn。
+
+三条不变量：
+
+1. **没装插件时行为与从前完全一致**。`MythicMobsHook.create()` 返回 `null`、
+   CustomFishing 的监听器根本不注册；`custom_fish` 目标类型照常存在，但
+   `available()` 为 false，编辑器会标为不可用。
+2. **同一个对象只能计一次**。一只自定义怪同时是 `ZOMBIE` 与 `mythic:SkeletalKnight`；
+   若为两个名字各推一次动作，「击杀任意生物」会被计成两次。因此
+   `ProgressContext` 带上 `aliases`：一个动作、多个等价标识，判定时任一命中即可。
+3. **配置问题必须露面**。`mythic:` 目标在没装 MythicMobs 的服务端上永远命中不了，
+   由 `MythicMobsHook.targetProblems(quest)` 报进 `QuestAdminService.validate`——
+   编辑器标红、`/ptxa list`/`info` 与启动日志同时给出，而不是等玩家来问「杀了不涨」。
+
+编辑器侧：MythicMobs 的怪物会被追加进 `/api/catalog` 的实体列表（id 形如
+`mythic:SkeletalKnight`，也就是要写进 `target` 的值本身），因此选择器直接可用；
+`/api/schema` 对**目标类型**也开始下发 `available` / `unavailableReason`
+（与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
 
 ---
 
@@ -495,25 +529,28 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 | 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
+| 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试） |
 
-**测试总量：175 项全部通过**（20 个测试类，全部 failures=0 / errors=0）：
+**测试总量：209 项全部通过**（25 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
-引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-前置判定 12（`PrerequisiteServiceTest`）+ 每日 10（`DailyServiceTest`）+
-奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 奖励领取 7（`RewardServiceTest`）+
-结构指纹 8（`StructureFingerprintTest`）+ 任务管理 9（`QuestAdminServiceTest`）+
-字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 素材 7（`MaterialCatalogTest`）+
-示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
-GUI 图标 6（`QuestDetailMenuTest`）+ 示例预设 5（`ExamplePresetsTest`）+
+奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 引擎 12（`ProgressServiceTest`）+
+命令帮助 12（`YLibCommandHelpTest`）+ 前置判定 12（`PrerequisiteServiceTest`）+
+任务管理 11（`QuestAdminServiceTest`）+ 每日 10（`DailyServiceTest`）+
+自定义钓鱼 9（`CustomFishObjectiveTest`）+ 素材 9（`MaterialCatalogTest`）+
+结构指纹 8（`StructureFingerprintTest`）+ 奖励领取 7（`RewardServiceTest`）+
+字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 示例任务 7（`ExampleQuestsTest`）+
+监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+
+别名匹配 6（`TargetMatchAliasTest`）+ 示例预设 5（`ExamplePresetsTest`）+
 每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
-语言文件 3（`LanguageFileTest`）。
+CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
+击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
-`core/build/test-results/test/*.xml` 逐套件累加（20 个 XML），不是靠日志里的汇总行。
+`core/build/test-results/test/*.xml` 逐套件累加（25 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 864 行 + `core/src/main` 10199 行
-＝ **11063 行 / 90 个 java 文件**；测试 `core/src/test` **4398 行 / 22 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 913 行 + `core/src/main` 10890 行
+＝ **11803 行 / 96 个 java 文件**；测试 `core/src/test` **5051 行 / 28 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **5340 行 `.vue` + 1399 行 `.ts`/`.js` ＝ 6739 行 / 28 个文件**。
+前端 `task-editor-vue/src` **5517 行 `.vue` + 1414 行 `.ts`/`.js` ＝ 6931 行 / 28 个文件**。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：
@@ -570,6 +607,22 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
 **未验证**：真人进服后的抽取排除与领取门禁表现——需要玩家在线才能触发，
 本轮只到「定义读写 + 建表 + 编辑器接口」这一层。
 
+**插件联动的真机冒烟（同一台测试服，未安装 MythicMobs / CustomFishing）**：
+启动日志为「已启用（12 个任务，**15 种目标**，5 种奖励）」，没有任何异常，
+也没有出现接入失败日志——即两个软依赖缺失时行为与从前完全一致；
+`GET /api/schema` 的 `objectives.custom_fish` 如实下发 `available: false` /
+`unavailableReason: 未安装 CustomFishing`，`kill` 为可用；
+`GET /api/catalog` 正常返回 1506 材质 + 157 实体、且没有 `mythic:` 条目（没装就一条都不加）；
+再用编辑器接口存一条同时含 `target: mythic:Boss` 与 `custom_fish` 目标的任务，
+`problems` 恰好给出这两条：
+
+```
+目标类型 custom_fish 不可用（未安装 CustomFishing）
+目标 mythic:Boss 需要 MythicMobs 5.x（当前未安装）
+```
+
+随后删除该探针任务，库回到 12 个示例。（装上这两个插件的正向链路只有单测覆盖，见文末已知限制。）
+
 同时验证了两条重要的健壮性行为：
 
 - **软依赖缺失时优雅降级**：未安装 Vault/PlayerPoints 时，对应奖励类型标记为不可用并写入
@@ -592,6 +645,10 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
   （`DailyService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
   普通任务因此只存在于定义与编辑器里；给它配前置不会报错，但游戏内看不到效果。
   前置判定本身与任务类型无关（每日任务链已完整生效），缺的是「接取常驻任务」这一步。
+- **MythicMobs / CustomFishing 只做了「未安装」这一支的真机验证**：本机测试服没有这两个插件，
+  验证到的是「插件照常启用、目标类型标为不可用、`mythic:` 目标被校验拦下」；
+  装上插件后的实际击杀/钓获计数只有替身事件与反射入口的单测覆盖，
+  真实插件版本（MythicMobs 5.x 的具体小版本、CustomFishing 2.3.x）未在真机上跑过。
 
 
 
@@ -607,7 +664,7 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
   - 文本装配（渲染 / 数字去小数尾巴 / 配置表摊平 / 类型显示名）→ `core/text/Texts`；
   - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份。
 - **目标类型**：`core/objective/` 只有三个类——数据形态的 `TargetObjective` 与两个自带判定
-  逻辑的 `InteractObjective` / `ChatObjective`；14 种内置类型的清单在 `BuiltIns` 里显式列出
+  逻辑的 `InteractObjective` / `ChatObjective` / `CustomFishObjective`；15 种内置类型的清单在 `BuiltIns` 里显式列出
   （不扫描包，保证「新增类型必须登记」的确定性）。共用的目标命中判定是
   `ObjectiveType.targetMatches`（忽略大小写、逗号多值、空或 `*` 为任意）。
 - **进度热路径**：`ProgressService` 只缓存「任务 → 目标下标 → 类型」静态映射，

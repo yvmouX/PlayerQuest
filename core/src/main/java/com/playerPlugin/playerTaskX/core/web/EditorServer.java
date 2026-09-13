@@ -151,7 +151,8 @@ public final class EditorServer {
         app.get("/favicon.ico", ctx -> ctx.status(204));
 
         // ---- 业务接口 ----
-        new EditorApi(plugin, new MaterialCatalog(langFiles)).register(app);
+        // 素材目录带上 MythicMobs 接入点：装了它就能在实体选择器里直接选自定义怪
+        new EditorApi(plugin, new MaterialCatalog(langFiles, plugin.mythicMobs())).register(app);
 
         // 令牌被拒时 checkToken 已写好响应体，这里只需保持 401
         app.exception(TokenRejected.class, (e, ctx) -> ctx.status(401));

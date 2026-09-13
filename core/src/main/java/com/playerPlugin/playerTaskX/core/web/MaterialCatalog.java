@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -35,8 +36,16 @@ public class MaterialCatalog {
 
     private final LangFileStore langFiles;
 
+    /** MythicMobs 接入点；null 表示服务端没有（或不支持）MythicMobs。 */
+    private final MythicMobsHook mythicMobs;
+
     public MaterialCatalog(LangFileStore langFiles) {
+        this(langFiles, null);
+    }
+
+    public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs) {
         this.langFiles = langFiles;
+        this.mythicMobs = mythicMobs;
     }
 
     /**
@@ -66,6 +75,10 @@ public class MaterialCatalog {
             }
             entities.add(entry(type.name(), english, chinese, null));
         }
+        // MythicMobs 的怪物不是 EntityType，编辑器原本无从选起（只能手打 mythic:<id>）。
+        // 直接混进实体列表、id 带 mythic: 前缀：写入 target 的值天然就是我们要的语法，
+        // 前端也不用新增一种选择器
+        entities.addAll(mythicMobEntries(mythicMobs));
         entities.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -76,6 +89,33 @@ public class MaterialCatalog {
         result.put("serverVersion", version == null ? "" : version);
         result.put("hasChinese", langFiles.hasChinese());
         return result;
+    }
+
+    /**
+     * MythicMobs 怪物条目，形如 {@code id = mythic:SkeletalKnight}。
+     * <p>
+     * 显示名带上 {@code MythicMobs} 前缀，好让搜索「mythic」或「MythicMobs」时能一次筛出全部自定义怪，
+     * 也让人一眼看出它不是原版实体。中文名留空（原版语言文件里当然没有它），
+     * 前端会退回英文名，搜索照样命中 id。
+     * <p>
+     * 静态、且不碰译名数据与 Bukkit：这样它可以被单独测试（见 {@code MaterialCatalogTest}）。
+     */
+    static List<Map<String, Object>> mythicMobEntries(MythicMobsHook mythicMobs) {
+        if (mythicMobs == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> entries = new ArrayList<>();
+        for (String mobId : mythicMobs.mobIds()) {
+            if (mobId == null || mobId.isBlank()) {
+                continue;
+            }
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", MythicMobsHook.PREFIX + mobId);
+            entry.put("en", "MythicMobs: " + mobId);
+            entry.put("zh", "");
+            entries.add(entry);
+        }
+        return entries;
     }
 
     private static Map<String, Object> entry(String id, Map<String, String> english,

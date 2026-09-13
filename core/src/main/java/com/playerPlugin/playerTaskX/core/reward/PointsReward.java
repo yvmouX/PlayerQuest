@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.reward;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.core.integration.SoftDependency;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -119,9 +120,9 @@ public final class PointsReward implements RewardType {
         if (staticApi != null) {
             return staticApi;
         }
-        // 用 MoneyReward 的同款探测：服务端未初始化时 getPluginManager() 为 null，
+        // 用统一的软依赖探测：服务端未初始化时 getPluginManager() 为 null，
         // 软依赖检测不该因此抛 NPE
-        if (!MoneyReward.isPluginPresent("PlayerPoints")) {
+        if (!SoftDependency.isPresent("PlayerPoints")) {
             return null;
         }
         try {

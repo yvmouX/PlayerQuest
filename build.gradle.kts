@@ -23,6 +23,13 @@ allprojects {
             url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/")
             content { includeGroup("me.clip") }
         }
+        // 软依赖插件自己的仓库。同样按 group 过滤：这个仓库只提供它自己的插件 API，
+        // 不限制的话 Gradle 每次解析都要多问它一遍，仓库挂掉时还可能拖慢构建。
+        // （MythicMobs 没有出现在这里：它的 API 用反射接入，构建不需要它的仓库。）
+        maven {
+            url = uri("https://repo.momirealms.net/releases/")
+            content { includeGroup("net.momirealms") }
+        }
     }
 
     dependencies {

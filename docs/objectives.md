@@ -17,7 +17,8 @@
 | `craft` | 合成 | 合成物品 | `target` 产物材质 |
 | `consume` | 消耗 | 食用/饮用药水 | `target` 物品材质 |
 | `fish` | 垂钓 | 钓上东西 | `target` 物品材质（可空） |
-| `kill` | 击杀 | 击杀生物或玩家 | `target` 实体类型 |
+| `custom_fish` | 自定义钓鱼 | 钓到 CustomFishing 的自定义鱼 | `target` 鱼 id（可空）+ `min-size` |
+| `kill` | 击杀 | 击杀生物或玩家 | `target` 实体类型（支持 `mythic:` 前缀） |
 | `enchant` | 附魔 | 在附魔台附魔 | `target` 附魔名（可空） |
 | `shear` | 剪切 | 剪羊毛 | `target` 实体类型（可空） |
 | `breed` | 繁殖 | 喂养繁殖动物 | `target` 实体类型（可空） |
@@ -49,6 +50,7 @@
 | 合成 | 按**产物数量**计（合成 4 个火把 = +4） |
 | 消耗 | 每次 1 个 |
 | 击杀 / 垂钓 / 附魔 / 剪切 / 繁殖 / 驯服 | 每次 1 次 |
+| 自定义钓鱼 | 按**钓获物堆大小**计 |
 
 ---
 
@@ -99,6 +101,30 @@ target: ""               # 留空 = 钓到任何东西都算；也可写 COD / S
 amount: 10
 ```
 
+> 装 CustomFishing 时，「钓到它配置的自定义鱼」请用下面的 `custom_fish`：
+> 那种钓获由 CustomFishing 自己的战利品表产出，本类型（原版垂钓事件）看不到它。
+
+### `custom_fish` 自定义钓鱼
+
+**需要服务端安装 [CustomFishing](https://www.spigotmc.org/resources/100088/)。**
+没装时该类型在编辑器里会标为「不可用」，配了也不会涨进度。
+
+```yaml
+type: custom_fish
+target: my_custom_fish    # CustomFishing 战利品表里的 id；留空或 * = 任意自定义鱼
+min-size: 30              # 只统计 ≥30 的钓获；0 或缺省 = 不限尺寸
+amount: 3
+```
+
+- `target` 就是你在 CustomFishing 配置里给那条鱼起的 id（大小写不敏感）
+- `min-size` 对应它的钓获尺寸；**没有尺寸信息的钓获不算达标**，
+  因此只有确实需要「大物」时才填它
+- 数量按钓获物堆大小计（钓上一组就记一组）
+
+> 本类型与原版 `fish` 是两条独立的链路：前者监听 CustomFishing 的战利品生成事件，
+> 后者监听原版 `PlayerFishEvent`。想「任意钓获都算」时可以两个目标都配，
+> 但同一个动作不会被计两次。
+
 ### `kill` 击杀
 
 ```yaml
@@ -109,6 +135,21 @@ amount: 20
 
 常用实体类型名：`ZOMBIE` `SKELETON` `CREEPER` `SPIDER` `ENDERMAN` `BLAZE` `WITHER_SKELETON` `PIG` `COW`。
 击杀玩家也算，写 `PLAYER`。
+
+**击杀 MythicMobs 的自定义怪**：加上 `mythic:` 前缀写它的内部名（`/mm mobs list` 里那个 id）。
+
+```yaml
+type: kill
+target: mythic:SkeletalKnight     # 需要服务端安装 MythicMobs 5.x
+amount: 10
+```
+
+- 可以和原版名混写：`ZOMBIE,mythic:SkeletalKnight` 表示两者都算
+- 自定义怪**同时**算作它的原版类型（上例的一只自定义僵尸也能推进 `target: ZOMBIE` 的任务），
+  但一次击杀只计 1 次，`target` 留空的任务不会因此翻倍
+- 编辑器里可以直接从实体选择器里搜 `mythic` 挑怪（装了 MythicMobs 时才会出现这些条目）
+- 没装 MythicMobs（或装的是 4.x）时，含 `mythic:` 的目标会被标成校验问题——
+  它们永远命中不了
 
 ### `enchant` 附魔
 

@@ -75,6 +75,8 @@ class QuestAdminServiceTest {
         quests = new QuestRegistryImpl();
         ObjectiveRegistryImpl objectiveTypes = new ObjectiveRegistryImpl();
         objectiveTypes.register(BuiltIns.objective("break_block"));
+        // 「自定义钓鱼」依赖 CustomFishing（单测环境没有），用于验证「类型可用性」也被校验到
+        objectiveTypes.register(BuiltIns.objective("custom_fish"));
         RewardRegistryImpl rewardTypes = new RewardRegistryImpl();
         // 只登记恒可用的类型：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
         rewardTypes.register(new ExpReward());
@@ -145,6 +147,33 @@ class QuestAdminServiceTest {
                 "应报告未知目标类型，实际: " + problems);
         assertTrue(problems.stream().anyMatch(p -> p.contains("no_such_reward")),
                 "应报告未知奖励类型，实际: " + problems);
+    }
+
+    @Test
+    @DisplayName("软依赖缺失的目标类型要报「不可用」，而不是让它静默不涨进度")
+    void validateReportsUnavailableObjectiveType() {
+        // 「自定义钓鱼」需要 CustomFishing，单测环境没有；target 怎么写都不重要
+        Quest quest = new Quest("fishy", "钓鱼任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+                List.of(QuestObjective.of("custom_fish", Map.of("target", "", "amount", 1))),
+                List.of(), 0.0, true);
+
+        List<String> problems = service.validate(quest);
+
+        assertTrue(problems.stream().anyMatch(p -> p.contains("custom_fish") && p.contains("CustomFishing")),
+                "应报告该类型依赖缺失，实际: " + problems);
+    }
+
+    @Test
+    @DisplayName("target 写了 mythic: 但服务端没有 MythicMobs：必须标出来（这种目标永远命中不了）")
+    void validateReportsMythicTargetsWithoutThePlugin() {
+        Quest quest = new Quest("mythic_kill", "讨伐自定义怪", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+                List.of(QuestObjective.of("kill", Map.of("target", "mythic:Boss", "amount", 1))),
+                List.of(), 0.0, true);
+
+        List<String> problems = service.validate(quest);
+
+        assertTrue(problems.stream().anyMatch(p -> p.contains("mythic:Boss") && p.contains("MythicMobs")),
+                "应报告该目标需要 MythicMobs，实际: " + problems);
     }
 
     @Test

@@ -47,6 +47,11 @@ public record ConfigField(
         return new ConfigField(key, label, FieldType.DECIMAL, true, defaultValue, List.of(), hint);
     }
 
+    /** 允许留空的小数字段；留空按 {@code defaultValue} 处理（例如「0 表示不限」）。 */
+    public static ConfigField optionalDecimal(String key, String label, double defaultValue, String hint) {
+        return new ConfigField(key, label, FieldType.DECIMAL, false, defaultValue, List.of(), hint);
+    }
+
     public static ConfigField bool(String key, String label, boolean defaultValue, String hint) {
         return new ConfigField(key, label, FieldType.BOOLEAN, true, defaultValue, List.of(), hint);
     }

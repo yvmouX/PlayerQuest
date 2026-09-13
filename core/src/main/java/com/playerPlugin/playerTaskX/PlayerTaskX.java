@@ -11,6 +11,8 @@ import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
+import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
+import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.listener.BlockListener;
 import com.playerPlugin.playerTaskX.core.listener.EntityListener;
 import com.playerPlugin.playerTaskX.core.listener.ItemListener;
@@ -78,6 +80,8 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private ProgressDisplay progressDisplay;
     private DailyService dailyService;
     private QuestAdminService questAdmin;
+    /** MythicMobs 接入点；null 表示未安装或不支持（原版击杀照常工作）。 */
+    private MythicMobsHook mythicMobs;
     private EditorServer editorServer;
 
     public static PlayerTaskX getInstance() {
@@ -170,6 +174,10 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         guard("默认预设写入", () -> presets.seedIfEmpty(ExamplePresets.all()));
         guard("任务载入", questAdmin::reload);
 
+        // ---------- 软依赖接入（游戏内容插件） ----------
+        // 必须在任务载入之后：这两个钩子不改任务数据，但要赶在监听器注册之前就位
+        guard("MythicMobs 接入", () -> mythicMobs = MythicMobsHook.create());
+
         // ---------- 事件、命令与调度 ----------
         // 每个子系统独立守护：任何一项失败都应只损失该功能，
         // 而不是让整个插件（乃至服务端启动）失败
@@ -250,12 +258,18 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     }
 
     private void registerListeners() {
-        getServer().getPluginManager().registerEvents(new BlockListener(progressService, progressDisplay::onProgressApplied), this);
-        getServer().getPluginManager().registerEvents(new EntityListener(progressService, progressDisplay::onProgressApplied), this);
-        getServer().getPluginManager().registerEvents(new ItemListener(progressService, progressDisplay::onProgressApplied), this);
-        getServer().getPluginManager().registerEvents(new TextListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(
+                new BlockListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(
+                new EntityListener(progressService, progressDisplay::onProgressApplied, mythicMobs), this);
+        getServer().getPluginManager().registerEvents(
+                new ItemListener(progressService, progressDisplay::onProgressApplied), this);
+        getServer().getPluginManager().registerEvents(
+                new TextListener(progressService, progressDisplay::onProgressApplied), this);
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(progressService, progressDisplay, dailyService, messages), this);
+        // CustomFishing 的钓获事件只存在于它的 API 里，因此监听器由钩子反射创建后再注册
+        CustomFishingHook.register(this, progressService, progressDisplay::onProgressApplied);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
     }
@@ -337,6 +351,15 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     /** 永久领取账本：前置判定与「做过没有」查询的唯一依据。 */
     public QuestClaimRepository claimRepository() {
         return claimRepository;
+    }
+
+    /**
+     * MythicMobs 接入点；未安装或不支持时为 {@code null}。
+     * <p>
+     * 编辑器用它把自定义怪物列进实体选择器（{@code mythic:<怪物id>}）。
+     */
+    public MythicMobsHook mythicMobs() {
+        return mythicMobs;
     }
 
     /** 存储描述，供编辑器与命令展示。 */

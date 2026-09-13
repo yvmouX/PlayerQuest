@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.web;
 import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
+import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
@@ -241,13 +242,22 @@ final class EditorApi {
     private void schemaRoutes(Javalin app) {
         app.get("/api/schema", ctx -> {
             Map<String, Object> schema = new LinkedHashMap<>();
-            schema.put("objectives", typeSchemas(services.objectiveTypes().all(), type -> Map.of()));
+            // 目标与奖励都带 available/unavailableReason：缺软依赖的类型（Vault、CustomFishing…）
+            // 在编辑器里要能一眼看出「选了也不会涨进度」，而不是让管理员去猜
+            schema.put("objectives", typeSchemas(services.objectiveTypes().all(), EditorApi::objectiveExtra));
             schema.put("rewards", typeSchemas(services.rewardTypes().all(), EditorApi::rewardExtra));
             ctx.result(json(schema));
         });
 
         // 素材目录：内容来自服务端自己的 Material / EntityType 枚举，天然只含当前版本支持的项
         app.get("/api/catalog", ctx -> ctx.result(json(catalog.build())));
+    }
+
+    /** 目标类型多带两个字段（与奖励同一套字段名，前端不必分两套逻辑）。 */
+    private static Map<String, Object> objectiveExtra(ConfigurableType type) {
+        ObjectiveType objective = (ObjectiveType) type;
+        return Map.of("available", objective.available(),
+                "unavailableReason", objective.unavailableReason());
     }
 
     /** 奖励类型多带两个字段，编辑器据此标红 / 提示管理员。 */

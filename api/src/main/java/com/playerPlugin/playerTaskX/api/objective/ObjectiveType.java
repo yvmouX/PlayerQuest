@@ -2,6 +2,9 @@ package com.playerPlugin.playerTaskX.api.objective;
 
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 任务目标类型——扩展点之一。
  * <p>
@@ -23,28 +26,51 @@ public interface ObjectiveType extends ConfigurableType {
      * @param properties 该目标的配置
      * @return 递增的进度值，0 表示本次动作不命中该目标
      */
-    int match(ProgressContext context, java.util.Map<String, Object> properties);
+    int match(ProgressContext context, Map<String, Object> properties);
 
     /**
-     * 默认的目标命中判定：ignoring case 比较 {@code target} 字段。
-     * 支持 {@code *} 或空值表示「任意」，多数简单类型直接复用即可。
+     * 默认的目标命中判定：忽略大小写比较 {@code target} 字段。
+     * <p>
+     * 支持 {@code *} 或空值表示「任意」、逗号分隔的多值配置（如
+     * {@code DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE}），并且会与
+     * {@link ProgressContext#aliases()} 一并比较——同一只怪物的原版类型名与
+     * MythicMobs 内部名都写在配置里时，命中任意一个即可。
      */
-    default boolean targetMatches(ProgressContext context, java.util.Map<String, Object> properties) {
+    default boolean targetMatches(ProgressContext context, Map<String, Object> properties) {
         Object configured = properties.get("target");
         String target = configured == null ? "" : String.valueOf(configured).trim();
         if (target.isEmpty() || "*".equals(target)) {
             return true;
         }
         String actual = context.target();
-        if (actual == null) {
-            return false;
-        }
+        List<String> aliases = context.aliases();
         // 支持逗号分隔的多值配置，如 "DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE"
         for (String candidate : target.split(",")) {
-            if (candidate.trim().equalsIgnoreCase(actual)) {
+            String trimmed = candidate.trim();
+            if (trimmed.equalsIgnoreCase(actual)) {
                 return true;
+            }
+            for (String alias : aliases) {
+                if (trimmed.equalsIgnoreCase(alias)) {
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    /**
+     * 该类型当前是否可用（依赖的软依赖是否已安装）。
+     * <p>
+     * 对应 {@code RewardType.available()}：不可用时编辑器会标红、校验会报问题，
+     * 而不是让管理员对着一个永远不涨进度的目标猜原因。
+     */
+    default boolean available() {
+        return true;
+    }
+
+    /** 不可用的原因，供编辑器与校验提示；可用时返回空串。 */
+    default String unavailableReason() {
+        return "";
     }
 }

@@ -1,7 +1,9 @@
 package com.playerPlugin.playerTaskX.core.quest;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
+import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
@@ -87,6 +89,8 @@ public final class QuestAdminService {
      * <p>
      * 奖励除了「类型是否存在」还要看「是否可用」：Vault 未装时金币奖励配置完全合法，
      * 但玩家一分钱也拿不到——这种情况必须暴露在管理员视图里，否则只能靠翻日志发现。
+     * 目标同理（{@link ObjectiveType#available()}），例如没装 CustomFishing 时
+     * 「自定义钓鱼」目标永远不涨进度。
      * <p>
      * 前置关系的问题（不存在、自引用、成环、指向已禁用任务）由
      * {@link PrerequisiteService#problems(Quest)} 给出：那是任务链的知识，
@@ -98,10 +102,15 @@ public final class QuestAdminService {
             problems.add("任务没有配置任何目标");
         }
         for (var objective : quest.objectives()) {
-            if (!objectiveTypes.contains(objective.type())) {
+            ObjectiveType type = objectiveTypes.find(objective.type()).orElse(null);
+            if (type == null) {
                 problems.add("未知目标类型 " + objective.type());
+            } else if (!type.available()) {
+                problems.add("目标类型 " + objective.type() + " 不可用（" + type.unavailableReason() + "）");
             }
         }
+        // target 里写了 mythic:<怪物id> 但服务端没有 MythicMobs：这些目标永远命中不了
+        problems.addAll(MythicMobsHook.targetProblems(quest));
         problems.addAll(prerequisites.problems(quest));
         problems.addAll(rewardService.validate(quest));
         return problems;

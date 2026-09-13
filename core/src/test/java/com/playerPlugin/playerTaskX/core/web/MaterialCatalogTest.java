@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.core.integration.FakeMythicMobsHook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -122,5 +123,26 @@ class MaterialCatalogTest {
         assertEquals("Deepslate Diamond Ore", MaterialCatalog.pretty("DEEPSLATE_DIAMOND_ORE"));
         assertEquals("", MaterialCatalog.pretty(null));
         assertEquals("", MaterialCatalog.pretty(""));
+    }
+
+    @Test
+    @DisplayName("MythicMobs 怪物进实体列表时 id 必须带 mythic: 前缀（它就是写入 target 的值）")
+    void mythicMobsEnterEntityCatalogWithPrefix() {
+        var entries = MaterialCatalog.mythicMobEntries(
+                FakeMythicMobsHook.ofMobIds("SkeletalKnight", "Boss"));
+
+        assertEquals(2, entries.size());
+        assertEquals("mythic:SkeletalKnight", entries.get(0).get("id"),
+                "少了前缀，管理员选出来的值就匹配不上 kill 目标的 mythic: 语法");
+        assertTrue(String.valueOf(entries.get(0).get("en")).contains("SkeletalKnight"),
+                "显示名要能被人认出来，实际: " + entries.get(0).get("en"));
+        assertEquals("", entries.get(0).get("zh"), "原版语言文件里没有自定义怪的译名，留空由前端回退");
+    }
+
+    @Test
+    @DisplayName("没有 MythicMobs、或怪物列表为空时，不往实体列表里塞东西")
+    void mythicCatalogIsEmptyWithoutHook() {
+        assertTrue(MaterialCatalog.mythicMobEntries(null).isEmpty());
+        assertTrue(MaterialCatalog.mythicMobEntries(FakeMythicMobsHook.ofMobIds()).isEmpty());
     }
 }

@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.reward;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.core.integration.SoftDependency;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -105,7 +106,7 @@ public final class MoneyReward implements RewardType {
     /**
      * 解析并缓存 Vault 经济服务。
      * <p>
-     * 用 {@link #isPluginPresent(String)} 而不是直接调 {@code Bukkit.getPluginManager()}：
+     * 用 {@link SoftDependency#isPresent(String)} 而不是直接调 {@code Bukkit.getPluginManager()}：
      * 后者在服务端尚未初始化时返回 null（例如单元测试、或插件在引导阶段被触碰），
      * 直接解引用会抛 NPE。软依赖检测失败只应表示「不可用」，不应让调用方崩掉。
      */
@@ -114,7 +115,7 @@ public final class MoneyReward implements RewardType {
             return cachedEconomy;
         }
         cachedEconomy = null;
-        if (!isPluginPresent("Vault")) {
+        if (!SoftDependency.isPresent("Vault")) {
             return null;
         }
         try {
@@ -128,20 +129,5 @@ public final class MoneyReward implements RewardType {
             cachedEconomy = null;
         }
         return cachedEconomy;
-    }
-
-    /**
-     * 探测软依赖插件是否已加载。
-     * <p>
-     * 独立成静态方法是因为 Vault / PlayerPoints 两处都需要同样的
-     * 「服务端未初始化时不崩」的保护；放在这里避免各处重复写 try/catch。
-     */
-    static boolean isPluginPresent(String name) {
-        try {
-            return Bukkit.getPluginManager() != null
-                    && Bukkit.getPluginManager().getPlugin(name) != null;
-        } catch (Throwable ignored) {
-            return false;
-        }
     }
 }

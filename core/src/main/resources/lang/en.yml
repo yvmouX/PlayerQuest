@@ -20,6 +20,7 @@ objective:
   place_block: "Place"
   craft: "Craft"
   fish: "Fish"
+  custom_fish: "Custom fishing"
   kill: "Kill"
   consume: "Consume"
   enchant: "Enchant"

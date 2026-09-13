@@ -72,7 +72,7 @@
     </header>
 
     <p v-if="unavailableReason" class="warn-line">
-      ⚠ 该奖励当前不可用：{{ unavailableReason }}
+      ⚠ 该{{ reward ? '奖励' : '目标' }}类型当前不可用：{{ unavailableReason }}
     </p>
     <p v-else-if="!schema" class="warn-line">
       ⚠ 后端不认识类型「{{ type || '（空）' }}」，保存后会被标记为校验问题。
@@ -137,9 +137,13 @@ const summary = computed(() => summarizeProperties(props.properties, schema.valu
 // 默认展开：新建后第一件事就是填字段，收起来反而多点一次
 const expanded = ref(true)
 
-const unavailableReason = computed(() =>
-  props.reward ? schema.value?.unavailableReason ?? '' : ''
-)
+/**
+ * 类型不可用（软依赖缺失，如未装 CustomFishing / Vault）。
+ *
+ * <p>目标与奖励同一套判断：后端 /api/schema 对两者都给 available / unavailableReason，
+ * 界面不该只对奖励提示——「自定义钓鱼」目标没装 CustomFishing 时同样永远不涨进度。
+ */
+const unavailableReason = computed(() => schema.value?.unavailableReason ?? '')
 
 const indexTitle = computed(() =>
   props.reward
@@ -147,7 +151,7 @@ const indexTitle = computed(() =>
     : `第 ${props.index + 1} 个目标，序号会出现在 setobjective 命令中`
 )
 
-/** 下拉选项：奖励若 available=false，标注原因并禁止选择。 */
+/** 下拉选项：available=false 的类型标注原因并禁止选择（目标与奖励同一规则）。 */
 const options = computed(() => schemaOptions(props.schemas))
 
 /** 切换类型：属性表必须一起换掉，旧类型的键对新类型没有意义。 */
