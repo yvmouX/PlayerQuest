@@ -531,14 +531,14 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
 | 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试） |
 
-**测试总量：209 项全部通过**（25 个测试类，全部 failures=0 / errors=0）：
+**测试总量：210 项全部通过**（25 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 引擎 12（`ProgressServiceTest`）+
 命令帮助 12（`YLibCommandHelpTest`）+ 前置判定 12（`PrerequisiteServiceTest`）+
 任务管理 11（`QuestAdminServiceTest`）+ 每日 10（`DailyServiceTest`）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 素材 9（`MaterialCatalogTest`）+
-结构指纹 8（`StructureFingerprintTest`）+ 奖励领取 7（`RewardServiceTest`）+
-字段一致性 7（`ObjectiveFieldTypeConsistencyTest`）+ 示例任务 7（`ExampleQuestsTest`）+
+结构指纹 8（`StructureFingerprintTest`）+ 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+
+奖励领取 7（`RewardServiceTest`）+ 示例任务 7（`ExampleQuestsTest`）+
 监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+
 别名匹配 6（`TargetMatchAliasTest`）+ 示例预设 5（`ExamplePresetsTest`）+
 每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
@@ -547,10 +547,10 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 统计口径：`.\gradlew.bat :core:test -x :core:frontendBuild` 之后读
 `core/build/test-results/test/*.xml` 逐套件累加（25 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 913 行 + `core/src/main` 10890 行
-＝ **11803 行 / 96 个 java 文件**；测试 `core/src/test` **5051 行 / 28 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 10892 行
+＝ **11815 行 / 96 个 java 文件**；测试 `core/src/test` **5064 行 / 28 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **5517 行 `.vue` + 1414 行 `.ts`/`.js` ＝ 6931 行 / 28 个文件**。
+前端 `task-editor-vue/src` **5526 行 `.vue` + 1420 行 `.ts`/`.js` ＝ 6946 行 / 28 个文件**。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：

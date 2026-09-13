@@ -49,7 +49,9 @@ public final class BuiltIns {
                 // CustomFishing 的自定义鱼：单独一个动作，因为原版垂钓事件看不到那些掉落
                 new CustomFishObjective(),
                 new TargetObjective("kill", "击杀生物", Trigger.KILL,
-                        ConfigField.optionalEntity("target", "生物类型", "ZOMBIE"), 1),
+                        ConfigField.optionalEntity("target", "生物类型", "ZOMBIE",
+                                "实体类型名，如 ZOMBIE；装了 MythicMobs 5.x 时也可写 mythic:<怪物id>；"
+                                        + "留空或 * 表示任意"), 1),
                 new TargetObjective("consume", "消耗物品", Trigger.CONSUME,
                         ConfigField.material("target", "目标物品", "BREAD"), 1),
                 new TargetObjective("enchant", "附魔", Trigger.ENCHANT,

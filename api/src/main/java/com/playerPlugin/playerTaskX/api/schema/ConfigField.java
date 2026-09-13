@@ -87,8 +87,18 @@ public record ConfigField(
 
     /** 允许留空的实体字段，用于「任意生物」这类目标。 */
     public static ConfigField optionalEntity(String key, String label, String defaultValue) {
-        return new ConfigField(key, label, FieldType.ENTITY, false, defaultValue, List.of(),
+        return optionalEntity(key, label, defaultValue,
                 "实体类型名，如 COW；留空或 * 表示任意");
+    }
+
+    /**
+     * 允许留空的实体字段，带自定义说明。
+     * <p>
+     * 说明文本会被编辑器与 GUI 原样展示给配置者，因此「这个字段还能接受什么写法」
+     * 只能写在这里——写进目标类型的实现里没人看得到。
+     */
+    public static ConfigField optionalEntity(String key, String label, String defaultValue, String hint) {
+        return new ConfigField(key, label, FieldType.ENTITY, false, defaultValue, List.of(), hint);
     }
 
     /** 允许留空的方块或实体字段。 */

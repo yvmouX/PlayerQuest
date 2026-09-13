@@ -89,18 +89,24 @@ export function typeLabel(schema: TypeSchema): string {
 /**
  * 类型下拉的候选项。
  *
- * <p>奖励可以「软依赖缺失」：预设在保存前就要拦住这类类型，实例卡片则靠同一条
- * 判断把不可用项置灰，两处的措辞与禁用规则必须一致，否则会出现「预设里能选、
- * 编辑器里选不了」这种自相矛盾的界面。因此统一在这里生成。
+ * <p>目标与奖励都可能「软依赖缺失」（未装 CustomFishing / Vault…）：预设在保存前就要拦住
+ * 这类类型，实例卡片则靠同一条判断把不可用项置灰，两处的措辞与禁用规则必须一致，
+ * 否则会出现「预设里能选、编辑器里选不了」这种自相矛盾的界面。因此统一在这里生成。
+ *
+ * <p>被禁用的选项要写清**为什么不能用**：只写「不可用」的话，管理员看到的是一个
+ * 看起来正常、实则永远不涨进度的类型。
  */
 export function schemaOptions(
   schemas: Record<string, TypeSchema>
 ): { id: string; label: string; disabled: boolean }[] {
   return Object.values(schemas).map(schema => {
     const unavailable = schema.available === false
+    const reason = schema.unavailableReason?.trim()
     return {
       id: schema.id,
-      label: unavailable ? `${typeLabel(schema)} — 不可用` : typeLabel(schema),
+      label: unavailable
+        ? `${typeLabel(schema)} — 不可用${reason ? `：${reason}` : ''}`
+        : typeLabel(schema),
       disabled: unavailable
     }
   })

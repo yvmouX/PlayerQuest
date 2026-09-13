@@ -42,14 +42,23 @@
         <section class="card">
           <header class="card-head">
             <h3>目标类型（{{ objectiveTypes.length }}）</h3>
-            <span class="hint">来自 /api/schema</span>
+            <span class="hint">不可用的类型会在编辑器里被禁用</span>
           </header>
           <p v-if="!objectiveTypes.length" class="guide-line">后端没有注册任何目标类型，请检查插件依赖。</p>
           <div v-else class="type-grid">
-            <div v-for="item in objectiveTypes" :key="item.id" class="type-item">
+            <div
+              v-for="item in objectiveTypes"
+              :key="item.id"
+              class="type-item"
+              :class="{ unavailable: item.available === false }"
+            >
               <strong>{{ item.displayName || item.id }}</strong>
               <span class="type-id mono">{{ item.id }}</span>
               <span class="hint">{{ fieldSummary(item) }}</span>
+              <!-- 目标与奖励同一套判断：缺 CustomFishing 的「自定义钓鱼」也是配了不涨进度的类型 -->
+              <span v-if="item.available === false" class="badge badge-warn">
+                不可用：{{ item.unavailableReason || '原因未提供' }}
+              </span>
             </div>
           </div>
         </section>

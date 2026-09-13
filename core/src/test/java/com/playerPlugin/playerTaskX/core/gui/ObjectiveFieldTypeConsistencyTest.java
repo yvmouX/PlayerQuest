@@ -139,4 +139,17 @@ class ObjectiveFieldTypeConsistencyTest {
         }
         assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
     }
+
+    @Test
+    @DisplayName("kill 的 target 说明里要写明支持 mythic: 前缀——写不进表单的能力等于没有")
+    void killTargetHintMentionsMythicMobs() {
+        ConfigField target = BuiltIns.objective("kill").schema().stream()
+                .filter(field -> "target".equals(field.key()))
+                .findFirst()
+                .orElseThrow();
+
+        assertTrue(target.hint().contains("mythic:"),
+                "「击杀 MythicMobs 自定义怪」只是 target 的写法，编辑器里唯一的提示就是这行 hint，"
+                        + "没写就等于没有这个功能。实际: " + target.hint());
+    }
 }
