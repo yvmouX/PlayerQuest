@@ -16,6 +16,8 @@ plugins/playerTaskX/
 ├── lang/               # 语言文件，可直接编辑
 │   ├── zh_CN.yml
 │   └── en.yml
+├── editor/
+│   └── zh_cn.json      # 编辑器图标列表的中文译名（自动下载；离线服可手动放一份）
 └── data/
     └── playerTaskX.db  # SQLite 数据库（任务定义、预设与玩家进度都在这里）
 ```

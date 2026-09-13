@@ -98,7 +98,7 @@ public class PluginConfig {
 
     @ConfigValue(value = "editor.fetch-chinese-names",
             description = "编辑器图标列表是否下载中文译名（Minecraft 服务端不含中文语言文件）；"
-                    + "关闭后仅显示英文名。也可手动把 zh_cn.json 放到 lang/ 目录，插件会优先使用本地文件")
+                    + "关闭后仅显示英文名。也可手动把 zh_cn.json 放到 editor/ 目录，插件会优先使用本地文件")
     private boolean editorFetchChineseNames = true;
 
     private static Map<String, MysqlSettings> defaultMysql() {

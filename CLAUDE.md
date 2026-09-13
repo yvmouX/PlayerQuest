@@ -82,8 +82,10 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - **能离线拿到的数据不要走网络**：英文名直接读服务端 jar 自带的
     `assets/minecraft/lang/en_us.json`，版本天然对齐。
   - 中文名服务端**没有**（实测服务端 jar 内 lang 文件只有 en_us.json 一个），
-    只能另行获取：优先读 `plugins/playerTaskX/lang/zh_cn.json`（管理员可手动放，
+    只能另行获取：优先读 `plugins/playerTaskX/editor/zh_cn.json`（管理员可手动放，
     离线服就这么用），没有则按 `editor.fetch-chinese-names` 决定是否从官方 CDN 下载并缓存。
+    放 `editor/` 不放 `lang/`：`lang/` 是插件自己的语言文件（`zh_CN.yml`，给玩家看的文案），
+    这份 `zh_cn.json` 是 Minecraft 的译名数据、只给编辑器图标列表用——别再挪回去。
   - 下载是**尽力而为**的：失败只记日志、不阻断启用、不重试。这一点是刻意的——
     不少服务器在受限网络里，且管理工具会把「插件外连」视为可疑行为。
   - 早期有一份内置手工中文表（约 175 行、材质覆盖仅两成），已删除；不要再引入这类表，

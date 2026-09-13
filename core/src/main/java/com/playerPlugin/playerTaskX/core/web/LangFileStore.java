@@ -34,10 +34,17 @@ import java.util.regex.Pattern;
  * （实测 26.1.2 的服务端 jar 内 lang 文件数为 1）。因此中文必须另行获取，
  * 优先顺序：
  * <ol>
- *   <li>插件目录下的 {@code lang/zh_cn.json}（管理员手动放置，也用于离线服）；</li>
+ *   <li>插件目录下的 {@code editor/zh_cn.json}（管理员手动放置，也用于离线服）；</li>
  *   <li>开启下载时，后台从 Mojang 资源 CDN 取一份并缓存到该路径；</li>
  *   <li>都拿不到就用英文名——<b>功能不受影响</b>，只是列表里没有中文。</li>
  * </ol>
+ *
+ * <h2>为什么放在 editor/ 而不是 lang/</h2>
+ * {@code lang/} 放的是<b>插件自己的语言文件</b>（{@code zh_CN.yml}），是发给玩家看的文案；
+ * 这份 {@code zh_cn.json} 是 <b>Minecraft 的译名数据</b>，只服务编辑器图标列表，
+ * 两者除了名字像以外毫无关系。混在一个目录里既容易误删，也容易让人以为改它能换插件语言。
+ * 放在 {@code editor/} 下还有个好处：不叫 {@code cache/}，
+ * 就不会被「缓存可以随时清」的直觉带走——离线服管理员放进去的那份是唯一的中文来源。
  *
  * <h2>为什么下载走「版本清单 → 资源清单 → CDN」三步</h2>
  * 直接写死某个版本的 zh_cn.json 哈希，服务端换版本后就可能取到不匹配的文件。
@@ -50,15 +57,19 @@ import java.util.regex.Pattern;
  */
 public class LangFileStore {
 
-    /** 语言缓存目录，位于插件数据文件夹下；也是管理员手动放置文件的位置。 */
-    private static final String CACHE_FOLDER = "lang";
+    /**
+     * 中文译名文件的目录（插件数据文件夹下），也是管理员手动放置文件的位置。
+     * <p>
+     * 用 {@code editor} 而不是 {@code lang} 或 {@code cache}，理由见类注释。
+     */
+    private static final String CHINESE_FOLDER = "editor";
 
     private static final String VERSION_MANIFEST =
             "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
     private static final String RESOURCE_CDN = "https://resources.download.minecraft.net/";
 
     private final PlayerTaskX plugin;
-    private final File cacheFile;
+    private final File chineseFile;
 
     /** 英文名（来自服务端 jar），按小写键索引。 */
     private volatile Map<String, String> english = Map.of();
@@ -70,7 +81,7 @@ public class LangFileStore {
 
     public LangFileStore(PlayerTaskX plugin) {
         this.plugin = plugin;
-        this.cacheFile = new File(new File(plugin.getDataFolder(), CACHE_FOLDER), "zh_cn.json");
+        this.chineseFile = new File(new File(plugin.getDataFolder(), CHINESE_FOLDER), "zh_cn.json");
     }
 
     /**
@@ -84,14 +95,14 @@ public class LangFileStore {
         Map<String, String> local = readLocalChinese();
         if (!local.isEmpty()) {
             chinese.set(local);
-            plugin.getLogger().info("已载入中文译名 " + local.size() + " 条: " + cacheFile.getPath());
+            plugin.getLogger().info("已载入中文译名 " + local.size() + " 条: " + chineseFile.getPath());
             return;
         }
         if (plugin.config().isEditorFetchChineseNames()) {
             startDownload();
         } else {
             plugin.getLogger().info("未启用中文译名下载，编辑器图标列表将显示英文名"
-                    + "（如需中文，可把 zh_cn.json 放到 " + cacheFile.getParentFile().getPath() + "）");
+                    + "（如需中文，可把 zh_cn.json 放到 " + chineseFile.getParentFile().getPath() + "）");
         }
     }
 
@@ -116,11 +127,6 @@ public class LangFileStore {
     /** 中文名是否可用（供状态展示与日志）。 */
     public boolean hasChinese() {
         return !chinese.get().isEmpty();
-    }
-
-    /** 语言缓存文件路径，供报错提示与「手动放置」说明使用。 */
-    public File cacheFile() {
-        return cacheFile;
     }
 
     // ------------------------------------------------------------------
@@ -156,13 +162,13 @@ public class LangFileStore {
 
     /** 读本地缓存的中文语言文件（管理员手动放置的那份也在这里）。 */
     private Map<String, String> readLocalChinese() {
-        if (!cacheFile.isFile()) {
+        if (!chineseFile.isFile()) {
             return Map.of();
         }
-        try (InputStream stream = Files.newInputStream(cacheFile.toPath())) {
+        try (InputStream stream = Files.newInputStream(chineseFile.toPath())) {
             return parse(stream);
         } catch (Exception e) {
-            plugin.getLogger().warning("读取 " + cacheFile.getName() + " 失败: " + e.getMessage());
+            plugin.getLogger().warning("读取 " + chineseFile.getName() + " 失败: " + e.getMessage());
             return Map.of();
         }
     }
@@ -262,7 +268,7 @@ public class LangFileStore {
             chinese.set(names);
             saveToCache(content);
             plugin.getLogger().info("已下载中文译名 " + names.size()
-                    + " 条并缓存到 " + cacheFile.getPath());
+                    + " 条并缓存到 " + chineseFile.getPath());
         } catch (Throwable e) {
             // 兜底：下载线程里任何意外都不该冒泡（守护线程崩溃虽不致命，但会静默失败）
             plugin.getLogger().warning("下载中文译名时出错（编辑器将显示英文名）: " + e);
@@ -344,13 +350,13 @@ public class LangFileStore {
     /** 写入缓存文件；失败只影响下次启动要重新下载，不影响本次使用。 */
     private void saveToCache(String content) {
         try {
-            File folder = cacheFile.getParentFile();
+            File folder = chineseFile.getParentFile();
             if (folder != null && !folder.isDirectory() && !folder.mkdirs()) {
                 return;
             }
-            Files.write(cacheFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
+            Files.write(chineseFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            plugin.getLogger().warning("写入 " + cacheFile.getName() + " 失败: " + e.getMessage());
+            plugin.getLogger().warning("写入 " + chineseFile.getName() + " 失败: " + e.getMessage());
         }
     }
 }
