@@ -37,11 +37,9 @@ allprojects {
 
         compileOnly("org.jetbrains:annotations:24.0.1")
 
-        // MiniMessage 文本：spigot-api 不含 Adventure（实测 1.21.8 中 net.kyori 类数为 0），
-        // 因此自带一份并在 shadowJar 中重定位，避免与 Paper 自带的 net.kyori.adventure 冲突。
-        implementation("net.kyori:adventure-text-minimessage:4.26.1")
-        implementation("net.kyori:adventure-text-serializer-legacy:4.26.1")
-        implementation("net.kyori:adventure-text-serializer-plain:4.26.1")
+        // 文本渲染所需的 Adventure（MiniMessage + 两个序列化器）由 YLib 的 core 模块以 api
+        // 依赖提供，这里不再重复声明：两处各写一份版本号迟早会漂移，而渲染实现已经统一在
+        // YLib 的 TextRenderer 里，插件侧只消费它的结果。
 
         // 软依赖：编译期需要，运行期缺失时对应功能自动降级
         compileOnly("me.clip:placeholderapi:2.11.6")

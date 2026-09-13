@@ -13,7 +13,7 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.gui.DailyQuestMenu;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -55,10 +55,11 @@ public class PlayerCommand {
     /**
      * 行内分隔符。
      * <p>
-     * 这里预先转成 {@code §} 形式而不是写 {@code &7 - &f}：拼接后的整行还会过一次
-     * {@link #render(String)}，先转义可以避免颜色码被 MiniMessage 当成普通字符留在正文里。
+     * 用 MiniMessage 标签而不是 {@code &7 - &f} 颜色码：整行最后会过一次
+     * {@link #render(String)}，标签与颜色码虽然都支持，但标签不依赖「{@code &} 后面
+     * 恰好是合法颜色字符」这个前提，写起来更没有歧义。
      */
-    private static final String SEPARATOR = TextRenderer.translateAmpersand(" &7- &f");
+    private static final String SEPARATOR = "<gray> - <white>";
 
     /** 无参构造：装配方只做 {@code register(new PlayerCommand())}，服务在执行时现取。 */
     public PlayerCommand() {
@@ -299,13 +300,12 @@ public class PlayerCommand {
     /**
      * 渲染一行拼接文本。
      * <p>
-     * 直接用 {@link TextRenderer#render(String)} 不够用：它的 {@code &} 转换只在 MiniMessage
-     * 解析失败时才生效，而「任务名（MiniMessage）+ 颜色码」混排时 MiniMessage 会解析成功，
-     * 于是 {@code &7} 被当成普通字符留在正文里。这里补上后一步转换，
-     * 使任务数据与语言键两种写法都能正常上色。
+     * YLib 的 {@link TextRenderer#render(String)} 会先把 {@code &} / {@code §} 颜色码
+     * 归一化成 MiniMessage 标签再解析，因此「任务名（MiniMessage）+ 颜色码」这类混排
+     * 一次即成，不需要再补第二次转换。
      */
     private static String render(String raw) {
-        return TextRenderer.translateAmpersand(TextRenderer.render(raw));
+        return TextRenderer.render(raw);
     }
 
     /** 完成度百分比（0~100，四舍五入）。 */

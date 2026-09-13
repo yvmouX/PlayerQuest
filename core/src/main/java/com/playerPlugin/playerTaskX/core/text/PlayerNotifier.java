@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.text;
 
+import cn.yvmou.ylib.text.TextRenderer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -23,8 +24,8 @@ import java.lang.reflect.Method;
  * <h2>为什么要传 {@code §} 色码而不是 MiniMessage</h2>
  * 实测发现 Paper 的 {@code sendActionBar(String)} <b>不解析 MiniMessage</b>：
  * 传 {@code <yellow>文字} 会把标签原样显示给玩家（真实线上截图证实）。
- * 所以这里传传统 {@code §} 色码——这是该类字符串接口的通行格式。
- * 文本的 MiniMessage 解析由 {@link TextRenderer} 在我们这一侧完成。
+ * YLib 的 {@link TextRenderer#render(String)} 输出的正是 {@code §} 色码，
+ * 因此直接用它的结果即可——这也是渲染放在 YLib 而不是各插件各写一遍的原因。
  */
 public final class PlayerNotifier {
 
@@ -43,7 +44,7 @@ public final class PlayerNotifier {
             return;
         }
         // 一律用 § 色码：sendActionBar(String) 不认 MiniMessage
-        String legacy = TextUpgrader.toLegacy(rawText);
+        String legacy = TextRenderer.render(rawText);
         Method method = resolveActionBar(player);
         if (method != null) {
             try {

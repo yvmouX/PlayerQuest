@@ -76,7 +76,7 @@ lore: ""                              # 多行用 | 分隔
 ```
 
 - `material` 用 Bukkit 材质名（如 `DIAMOND` `GOLDEN_APPLE` `NETHERITE_INGOT`）
-- `name` 与 `lore` 支持 MiniMessage 标签与 `&` 颜色码
+- `name` 与 `lore` 支持 MiniMessage 标签与 `&` 颜色码（两者可混排，见 [配置](configuration)）
 - 背包放不下时，多出的物品会**掉落在玩家脚下**，而不是凭空消失
 
 示例：带名称与描述的奖励物品

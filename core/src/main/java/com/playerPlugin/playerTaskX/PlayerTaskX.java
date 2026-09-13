@@ -5,6 +5,7 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
@@ -27,8 +28,7 @@ import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
-import com.playerPlugin.playerTaskX.core.text.LangMessageService;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -96,16 +96,16 @@ public final class PlayerTaskX extends JavaPlugin {
             return;
         }
 
-        // 包一层：YLib 消息服务只转 & 颜色码、不解析 MiniMessage，
-        // 而本项目要求「MiniMessage 为主、兼容 &」，因此在出口处统一渲染
-        messages = new LangMessageService(ylib.createMessageService(MessageSettings.builder()
+        // YLib 的消息服务自带文本渲染（MiniMessage 为主，兼容 & 与 § 颜色码），
+        // 出口已是渲染好的 § 形式，这里不需要再包一层
+        messages = ylib.createMessageService(MessageSettings.builder()
                 .defaultLanguage(config.getLanguageDefault())
                 .availableLanguages(config.getLanguageAvailable().toArray(new String[0]))
                 // 默认文件模式是 lang_%s.yml，这里改用更贴近惯例的 <code>.yml
                 .filePattern("%s.yml")
                 .languageFolder("lang")
                 .useClientLocale(config.isLanguageUseClientLocale())
-                .build()));
+                .build());
 
         // ---------- 存储 ----------
         try {
@@ -302,7 +302,7 @@ public final class PlayerTaskX extends JavaPlugin {
         return ylib;
     }
 
-    /** 渲染文本（MiniMessage 优先，兼容 & 颜色码）。 */
+    /** 渲染文本（MiniMessage 优先，兼容 & / § 颜色码）。 */
     public String text(String raw) {
         return TextRenderer.render(raw);
     }

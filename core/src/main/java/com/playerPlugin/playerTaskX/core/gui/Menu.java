@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.core.gui;
 
 import cn.yvmou.ylib.message.MessageService;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -212,17 +212,12 @@ public abstract class Menu {
 
     /**
      * 把原始文本渲染成 {@code §} 形式，供 {@code ItemMeta#setDisplayName/setLore} 使用。
-     *
-     * <h2>为什么要多一步 translateAmpersand</h2>
-     * {@link TextRenderer#render(String)} 只负责 MiniMessage 解析，它内部的 {@code &}
-     * 转换仅在小括号解析失败时才生效——也就是说「任务名（MiniMessage）+ 颜色码」拼出来的
-     * 文本会解析成功，于是 {@code &7} 原样留在正文里显示成字面量。
-     * 先 render 再统一转 {@code §}，两种写法（MiniMessage 标签 / & 颜色码）都能正确上色；
-     * {@code ProgressDisplay#render} 返回的进度行正是这种混合文本。
-     * 玩家命令与管理员命令里各有一份同策略的实现，这里保持一致。
+     * <p>
+     * YLib 的 {@link TextRenderer#render(String)} 已覆盖「MiniMessage 标签 + 颜色码」混排，
+     * 不需要额外补一次转换。
      */
     protected static String render(String raw) {
-        return TextRenderer.translateAmpersand(TextRenderer.render(raw));
+        return TextRenderer.render(raw);
     }
 
     /**

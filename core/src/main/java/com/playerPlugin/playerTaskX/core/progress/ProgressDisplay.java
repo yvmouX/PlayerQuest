@@ -8,7 +8,7 @@ import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.text.PlayerNotifier;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 

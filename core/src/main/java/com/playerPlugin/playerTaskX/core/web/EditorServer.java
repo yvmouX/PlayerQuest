@@ -5,7 +5,7 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
 import com.playerPlugin.playerTaskX.core.storage.StorageException;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.bukkit.Bukkit;

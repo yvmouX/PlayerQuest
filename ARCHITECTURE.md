@@ -25,7 +25,7 @@ PlayerTaskX/
 |---|---|---|
 | `spigot-api` | 服务端 API | compileOnly |
 | YLib（复合构建） | 调度器/日志/配置/命令/消息 | implementation |
-| `adventure-text-minimessage` + `serializer-legacy`/`plain` | MiniMessage 文本 | implementation，**shadow 时 relocate** 避免与 Paper 原生 Adventure 冲突 |
+| `adventure-text-minimessage` + `serializer-legacy`/`plain` | MiniMessage 文本 | 由 YLib 以 `api` 提供（4.x，Java 8 字节码）；**shadow 时 relocate** 避免与 Paper 原生 Adventure 冲突 |
 | `sqlite-jdbc` / `mysql-connector-java` | 存储 | implementation / compileOnly |
 | `HikariCP` | MySQL 连接池 | implementation |
 | `javalin` (+openapi/swagger/redoc) | 内置网页编辑器 HTTP 服务 | implementation |
@@ -192,23 +192,41 @@ messages.send(player, "quest.completed", questName);
 
 ⚠️ **不要为多语言再写一套 YAML 加载器**——那是重复实现。
 
-### 5.2 文本渲染：MiniMessage 优先，兼容 `&`
+### 5.2 文本渲染：MiniMessage 优先，兼容 `&` 与 `§`
 
-YLib 的消息服务只做 `&` → `§` 转换，**不支持 MiniMessage**，因此在消息服务之外
-单独提供 `TextRenderer`：
+**渲染在 YLib 里，不在本插件里**（`cn.yvmou.ylib.text.TextRenderer`）：
 
 ```java
-String render(String raw);   // MiniMessage 解析；解析失败则退回 & 转换，绝不把标签原文抛给玩家
+String render(String raw);   // 输出 § 色码，MiniMessage 标签 / & 码 / § 码可任意混排
+Component parse(String raw); // 需要 Adventure 原生组件时用
+String strip(String raw);    // 去掉全部格式，仅留纯文本
 ```
 
-MiniMessage 依赖需 **shadow + relocate**（Spigot 无 Adventure；Paper 自带，
-relocate 后不与服务端原生类冲突）：
+YLib 的 `MessageService` 所有出口（`raw` / `send` / `prefix`）都已经是渲染好的 `§` 色码，
+因此**插件侧不需要也不应该再包一层**——早期这里有一个 `LangMessageService` 包装器，
+把 YLib 的输出再过一遍 `TextRenderer`，那是因为 YLib 只做 `&` → `§` 转换。
+渲染能力上移到 YLib 后该包装器连同插件自己的 `TextRenderer`、`TextUpgrader` 一并删除。
 
-```kotlin
-implementation("net.kyori:adventure-text-minimessage:4.17.0")
-implementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
-// shadowJar: relocate("net.kyori", "com.playerPlugin.playerTaskX.libs.kyori")
-```
+Adventure 依赖由 **YLib 的 core 模块**以 `api` 依赖提供（版本 4.26.1）。
+选择 4.x 而非 5.x 是刻意的：**4.x 全线是 Java 8 字节码，5.x 需要 Java 21**，
+因此 YLib 的 `api`/`core` 得以继续停留在 Java 8，不必为了文本渲染抬升整个库的门槛。
+插件侧仍在自己的 shadowJar 里 `relocate("net.kyori", ...)`（Spigot 无 Adventure；
+Paper 自带，relocate 后不与服务端原生类冲突）。
+
+**渲染必须一次性完成，不能分段**。三个实测事实决定了这一点：
+
+1. MiniMessage 遇到 `§` 会抛 `ParsingExceptionImpl: Legacy formatting codes have been detected`，
+   而且是**整串**放弃解析（不是跳过那一段）；
+2. `LegacyComponentSerializer` 的 round-trip 会把 `§` 码原样写回，无法用来「清洗」残留颜色码；
+3. 它对普通文本里的 `<yellow>` 一律当字面量。
+
+因此 `TextRenderer` 先把 `&` / `§` 码（含 `&#RRGGBB` 与 `§x§R§R…` 两种十六进制写法）
+统一翻译成 MiniMessage 标签，再用 MiniMessage 渲染一次。
+另外 `legacySection()` 默认会把十六进制颜色**静默降级**成最近的 16 色之一，
+所以序列化器必须显式开 `hexColors()`。
+
+**失败时宁可显示原文，也不显示标签**：标签写法非法（未闭合、未知标签）时退化为纯文本，
+不把 `<red>` 这样的内部语法泄漏给玩家。
 
 ### 5.3 约束
 
@@ -319,7 +337,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 3 | `core` 存储层（SQLite/MySQL + 方言 + 仓储） | ✅ 完成（15 项 SQLite 集成测试） |
 | 4 | 引擎：`ProgressService` + 14 种目标类型 + 4 个监听器 | ✅ 完成（12 项引擎单元测试） |
 | 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
-| 6 | 多语言（YLib 消息服务 + MiniMessage 渲染包装） | ✅ 完成 |
+| 6 | 多语言（YLib 消息服务，文本渲染内置于 YLib） | ✅ 完成 |
 | 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
 | 9 | 网页编辑器前端（schema 驱动表单） | ✅ 完成（构建通过、类型检查 0 诊断） |
@@ -330,8 +348,12 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 14 | 编辑器：图标/材质选择器（`/api/catalog`，中英文搜索） | ✅ 完成 |
 | 15 | 编辑器：目标与奖励预设（`/api/presets`） | ✅ 完成 |
 
-**测试总量：103 项全部通过**（引擎 12 / 每日 10 / 存储 15 / 文本 13 / 奖励 19 /
-命令帮助 10 / 字段一致性 7 / 编辑器素材 6 / 进度渲染 5 / GUI 图标 6），`clean build` 全绿。
+**测试总量：112 项全部通过**（存储 15 / 引擎 12 / 命令帮助 12 / 每日 10 / 奖励 19 /
+任务管理 8 + 示例任务 6 + 监听器计数 6 / 字段一致性 7 / 编辑器素材 6 / GUI 图标 6 /
+进度渲染 5），`clean build` 全绿。
+
+文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项）：
+渲染能力既然上移到了 YLib，它的行为就该在 YLib 钉住，否则每个消费方只能各测各的。
 
 ### 真机验证结论（Folia 26.1.2-8）
 

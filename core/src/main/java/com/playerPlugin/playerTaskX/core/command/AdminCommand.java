@@ -15,7 +15,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.core.daily.DailyService;
 import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
-import com.playerPlugin.playerTaskX.core.text.TextRenderer;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -70,10 +70,10 @@ import java.util.Map;
 public class AdminCommand {
 
     /** 子命令帮助行的前缀记号（结构字符，不属于正文文案）。 */
-    private static final String HELP_PREFIX = TextRenderer.translateAmpersand("&8» &f");
+    private static final String HELP_PREFIX = "<dark_gray>» <white>";
 
-    /** 行内分隔符：预先转成 {@code §} 形式，避免拼接后再渲染时被 MiniMessage 当普通字符留下。 */
-    private static final String SEPARATOR = TextRenderer.translateAmpersand(" &7| &f");
+    /** 行内分隔符；标签写法不依赖「{@code &} 后恰好是合法颜色字符」这个前提。 */
+    private static final String SEPARATOR = " <gray>| <white>";
 
     /** 无参构造：装配方只做 {@code register(new AdminCommand())}，服务在执行时现取。 */
     public AdminCommand() {
@@ -468,11 +468,10 @@ public class AdminCommand {
     }
 
     /**
-     * 渲染一行拼接文本：先按 MiniMessage 解析（任务数据可能是标签写法），
-     * 再把遗留的 {@code &} 颜色码统一转成 {@code §}；玩家命令类里有一份同策略的实现。
+     * 渲染一行拼接文本（MiniMessage 标签与 {@code &} / {@code §} 颜色码可任意混排）。
      */
     private static String render(String raw) {
-        return TextRenderer.translateAmpersand(TextRenderer.render(raw));
+        return TextRenderer.render(raw);
     }
 
     /** 把目标/奖励的配置拼成一行，值可能是字符串、数字、布尔或列表。 */
