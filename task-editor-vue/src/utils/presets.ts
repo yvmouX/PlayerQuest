@@ -181,6 +181,15 @@ export function peekPresets(): PresetMap | null {
   return presetCache
 }
 
+/** 这个 id 有没有对应的预设（缓存里的）；用来标出「引用的预设已不存在」。 */
+export function presetExists(id: string): boolean {
+  const map = peekPresets()
+  if (!map) {
+    return true
+  }
+  return [...(map.objectives ?? []), ...(map.rewards ?? [])].some(preset => preset.id === id)
+}
+
 /** 让缓存失效，下次读取会重新请求。写操作后必须调用。 */
 export function invalidatePresets(): void {
   presetCache = null

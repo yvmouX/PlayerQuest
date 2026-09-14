@@ -124,17 +124,31 @@ public final class YamlDefinitions {
         return document;
     }
 
+    /**
+     * 目标 → YAML 节点。
+     * <p>
+     * 引用预设时写 {@code preset: <id>} + 任务自己的覆盖项；<b>不</b>写「生效值」
+     * （{@code resolved}）——那是预设 ⊕ 覆盖算出来的结果，写进文件只会在预设改动后变成
+     * 一份过期的副本，让人以为它才是准的。
+     */
     private static Map<String, Object> objectiveDocument(QuestObjective objective) {
-        Map<String, Object> document = new LinkedHashMap<>();
-        document.put("type", objective.type());
-        document.put("properties", YamlText.sortedProperties(objective.properties()));
-        return document;
+        return nodeDocument(objective.type(), objective.properties(),
+                objective.authored(), objective.presetId());
     }
 
     private static Map<String, Object> rewardDocument(QuestReward reward) {
+        return nodeDocument(reward.type(), reward.properties(), reward.authored(), reward.presetId());
+    }
+
+    private static Map<String, Object> nodeDocument(String type, Map<String, Object> effective,
+                                                    Map<String, Object> authored, String presetId) {
         Map<String, Object> document = new LinkedHashMap<>();
-        document.put("type", reward.type());
-        document.put("properties", YamlText.sortedProperties(reward.properties()));
+        if (presetId != null) {
+            document.put(QuestObjective.PRESET_KEY, presetId);
+        }
+        document.put("type", type);
+        document.put("properties", YamlText.sortedProperties(
+                presetId == null ? effective : QuestJson.withoutPresetKey(authored)));
         return document;
     }
 

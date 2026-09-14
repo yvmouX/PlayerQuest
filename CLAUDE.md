@@ -59,6 +59,11 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - **目标结构指纹不要删**：进度按目标下标记录，调换顺序会让旧进度静默错配到别的目标上，
     语法校验查不出来。检测必须放在 `ProgressService.load()`（覆盖全部记录），
     只放热路径会漏掉已完成记录。行为约定是「重置该任务进度 + 记日志」，不是静默错配。
+  - **预设引用（`preset:`）的两份配置不要合并**（见 ARCHITECTURE 4.8）：`QuestObjective` /
+    `QuestReward` 的 `properties` 是**生效值**、`authored` 是**作者写的那份**（含 `preset` 键）。
+    落库/导出只写 `authored`，引擎只读 `properties`，展开统一走 `PresetRefs.resolve`
+    （由 `QuestAdminService` 的 reload/save 调用）。少任何一份都会出静默错误：只留生效值 →
+    保存一次就把预设的值复制成显式覆盖、改预设再也不生效；只留作者那份 → 引擎拿到空配置。
 - 关于前端产物输出：
   - 产物输出到 `core/src/main/resources/web/`（vite outDir），不是`dist/`；该目录已加入 gitignore，属于构建临时文件，不要提交。
   - `task-editor-vue` 的 `npm run build` 会先跑 `vue-tsc` 类型检查，因此类型错误会让整个 Gradle build 失败。

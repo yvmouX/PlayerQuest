@@ -249,12 +249,16 @@
               :last="index === objectiveRows.length - 1"
               :type="row.type"
               :properties="row.properties"
+              :preset="row.preset"
+              :resolved="row.resolved"
+              :preset-missing="isPresetMissing(row)"
               :schemas="objectiveSchemas"
               @update:type="row.type = $event"
               @update:properties="row.properties = $event"
               @move-up="moveRow(objectiveRows, index, -1)"
               @move-down="moveRow(objectiveRows, index, 1)"
               @save-as-preset="askSavePreset('objectives', row)"
+              @expand="expandPreset(row)"
               @remove="removeObjective(index)"
             />
           </div>
@@ -281,6 +285,9 @@
               :last="index === rewardRows.length - 1"
               :type="row.type"
               :properties="row.properties"
+              :preset="row.preset"
+              :resolved="row.resolved"
+              :preset-missing="isPresetMissing(row)"
               :schemas="rewardSchemas"
               reward
               @update:type="row.type = $event"
@@ -288,6 +295,7 @@
               @move-up="moveRow(rewardRows, index, -1)"
               @move-down="moveRow(rewardRows, index, 1)"
               @save-as-preset="askSavePreset('rewards', row)"
+              @expand="expandPreset(row)"
               @remove="removeReward(index)"
             />
           </div>
@@ -379,7 +387,7 @@ import { useYamlMode } from '../composables/useYamlMode'
 import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
 import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
 import { loadCatalog } from '../utils/catalog'
-import { invalidatePresets, loadPresets, presetProperties, suggestPresetName } from '../utils/presets'
+import { invalidatePresets, loadPresets, presetExists, presetProperties, suggestPresetName } from '../utils/presets'
 import { defaultProperties, normalizeInstances, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
 import { stripTags } from '../utils/text'
 import { questFromYaml, questToYaml } from '../utils/yaml'
@@ -394,7 +402,12 @@ const toast = useToast()
 interface InstanceRow {
   uid: number
   type: string
+  /** 任务自己写的属性；引用预设时这是「覆盖项」 */
   properties: Properties
+  /** 引用的预设 id；为空表示独立配置 */
+  preset?: string | null
+  /** 预设 ⊕ 覆盖的生效值（后端算好给的，界面显示用） */
+  resolved?: Properties | null
 }
 
 /** 表单里的基础信息（描述单独用文本域，目标/奖励单独用行数组）。 */
@@ -472,6 +485,8 @@ function buildQuest(): Quest {
     enabled: form.enabled,
     // 去重去空：后端也会规范化，但保存前的序列化要稳定，否则「未保存修改」标志会误报
     prerequisites: [...new Set(form.prerequisites.map(id => id.trim()).filter(id => id !== ''))],
+    // normalizeInstances 会连 preset 一起带过来：漏掉它等于把「引用预设」降级成
+    // 「复制一份当时的配置」；resolved 是后端算的派生值，提交时会被忽略
     objectives: normalizeInstances(objectiveRows.value, objectiveSchemas.value),
     rewards: normalizeInstances(rewardRows.value, rewardSchemas.value),
     // problems 是后端算出来的派生信息，提交时会被忽略
@@ -563,13 +578,15 @@ const preview = computed(() => {
   const objectives = objectiveRows.value.map((row, index) => {
     const schema = objectiveSchemas.value[row.type]
     const amountKey = firstAmountField(schema)
-    const amount = amountKey ? Number(row.properties[amountKey]) : Number.NaN
+    // 预览看的是「玩家实际要做什么」：引用预设时用生效值，而不是任务自己写的覆盖项
+    const effective = effectiveProperties(row)
+    const amount = amountKey ? Number(effective[amountKey]) : Number.NaN
     return {
       key: `o${row.uid}`,
       index: index + 1,
       label: schema ? typeLabel(schema) : row.type || '（未选择类型）',
-      count: amountKey ? `0 / ${numberText(row.properties[amountKey])}` : '',
-      detail: summarizeProperties(row.properties, schema),
+      count: amountKey ? `0 / ${numberText(effective[amountKey])}` : '',
+      detail: summarizeProperties(effective, schema),
       // 玩家刚接取时进度必然是 0，因此有有效数量时画一条 0% 的进度条，否则不画
       percent: amountKey && Number.isFinite(amount) && amount > 0 ? 0 : null
     }
@@ -582,7 +599,7 @@ const preview = computed(() => {
       index: index + 1,
       label: schema ? typeLabel(schema) : row.type || '（未选择类型）',
       count: '',
-      detail: summarizeProperties(row.properties, schema),
+      detail: summarizeProperties(effectiveProperties(row), schema),
       percent: null
     }
   })
@@ -706,6 +723,32 @@ function toRows(
   schemas: Record<string, TypeSchema>
 ): InstanceRow[] {
   return normalizeInstances(instances, schemas).map(instance => ({ uid: ++uidSeq, ...instance }))
+}
+
+/** 显示与预览用的属性：引用预设时看生效值（resolved），否则就是作者写的那份。 */
+function effectiveProperties(row: InstanceRow): Properties {
+  return row.preset ? (row.resolved ?? {}) : row.properties
+}
+
+/** 引用的预设是不是已经不存在了（改名/删除）：卡片上要标出来，否则只表现为「字段全空」。 */
+function isPresetMissing(row: InstanceRow): boolean {
+  return !!row.preset && !presetExists(row.preset)
+}
+
+/**
+ * 解除预设引用：把当前生效值变成独立配置。
+ * <p>
+ * 之后这条目标/奖励不再跟着预设变——这是用户显式选择的结果，因此按钮上写的是「展开」，
+ * 而不是悄悄在编辑字段时发生（那会让「改预设」对某些任务部分失效，很难排查）。
+ */
+function expandPreset(row: InstanceRow): void {
+  if (!row.preset) {
+    return
+  }
+  row.properties = { ...effectiveProperties(row) }
+  row.preset = null
+  row.resolved = null
+  toast.info('已展开为独立配置：这条不再跟随预设变化')
 }
 
 function applyQuest(quest: Quest): void {

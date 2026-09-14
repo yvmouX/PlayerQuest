@@ -68,16 +68,30 @@ export interface SchemaResponse {
   rewards: Record<string, TypeSchema>
 }
 
-/** 一个具体目标实例。 */
+/**
+ * 一条「目标 / 奖励」配置。
+ *
+ * <p>引用预设时三样东西同时存在，缺一不可：
+ * <ul>
+ *   <li>{@code preset} = 引用的预设 id；</li>
+ *   <li>{@code properties} = <b>任务自己写的那份</b>（覆盖项），保存与导出都按它写回；</li>
+ *   <li>{@code resolved} = 预设 ⊕ 覆盖算出来的 <b>生效值</b>，界面直接显示它。</li>
+ * </ul>
+ * 只留生效值会让编辑器一保存就把继承来的字段写死成覆盖项，之后改预设再也不影响这个任务。
+ */
 export interface QuestObjective {
   type: string
   properties: Properties
+  preset?: string | null
+  resolved?: Properties | null
 }
 
-/** 一个具体奖励实例。 */
+/** 一个具体奖励实例；字段含义同 {@link QuestObjective}。 */
 export interface QuestReward {
   type: string
   properties: Properties
+  preset?: string | null
+  resolved?: Properties | null
 }
 
 /** 任务。列表与详情接口返回的对象都会带上 problems。 */

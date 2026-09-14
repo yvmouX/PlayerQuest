@@ -223,6 +223,38 @@ try {
     assert.equal(yaml.presetFromYaml('type: exp\nproperties:\n  amount: 10\n').value.id, '')
   })
 
+  // ------------------------------------------------------- 预设引用
+  check('预设引用：YAML 视图保留 preset（不把生效值写回去，否则以后改预设就不再跟随）', () => {
+    const quest = {
+      id: 'q',
+      name: '引用预设的任务',
+      description: [],
+      icon: 'PAPER',
+      category: '',
+      type: 'NORMAL',
+      prerequisites: [],
+      objectives: [{
+        type: 'break_block',
+        preset: 'mine-stone',
+        properties: { amount: 128 },
+        resolved: { target: 'STONE', amount: 128 }
+      }],
+      rewards: [],
+      refreshCost: 0,
+      enabled: true
+    }
+
+    const text = yaml.questToYaml(quest)
+    assert.ok(text.includes('preset: mine-stone'), text)
+    assert.ok(text.includes('amount: 128'), text)
+    assert.ok(!text.includes('resolved'), `生效值是派生数据，不该出现在 YAML 里：\n${text}`)
+
+    const back = yaml.questFromYaml(text, 'q')
+    assert.equal(back.error, '')
+    assert.equal(back.value.objectives[0].preset, 'mine-stone', '往返不能把引用降级成独立配置')
+    assert.deepEqual(back.value.objectives[0].properties, { amount: 128 }, '覆盖项要原样保留')
+  })
+
   // ------------------------------------------------------- 导入预检（一个文件一条）
   check('导入预检：一个文件只能放一条定义，列表 / 包一层都被拦下并指出该用 zip', () => {
     const single = 'id: q\nobjectives:\n  - type: chat\n    properties: {}\n'

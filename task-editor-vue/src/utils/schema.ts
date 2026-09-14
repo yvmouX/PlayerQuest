@@ -5,7 +5,7 @@
  * 不认识 break_block / money 之类的具体类型。后端新增一种类型时，
  * 这里以及所有视图都无需改动。
  */
-import type { FieldSchema, Properties, PropertyValue, TypeSchema } from '../types'
+import type { FieldSchema, Properties, PropertyValue, QuestObjective, TypeSchema } from '../types'
 
 /** 按字段类型给一个合理的空值。 */
 function emptyValue(field: FieldSchema): PropertyValue {
@@ -69,13 +69,24 @@ export function withDefaults(schema: TypeSchema | undefined, properties: Propert
  * 后端装载时。补而不是删，见 {@link withDefaults}。
  */
 export function normalizeInstances(
-  instances: { type: string; properties: Properties }[],
+  instances: QuestObjective[],
   schemas: Record<string, TypeSchema>
-): { type: string; properties: Properties }[] {
-  return instances.map(instance => ({
-    type: instance.type,
-    properties: withDefaults(schemas[instance.type], instance.properties)
-  }))
+): QuestObjective[] {
+  return instances.map(instance => {
+    // 引用预设的那条：properties 是「任务自己写的覆盖项」，补默认值等于把没写的字段写死，
+    // 之后改预设这些字段就再也不跟着变了（生效值看 resolved，由后端算）
+    const properties = instance.preset
+      ? { ...instance.properties }
+      : withDefaults(schemas[instance.type], instance.properties)
+    const normalized: QuestObjective = { type: instance.type, properties }
+    if (instance.preset) {
+      normalized.preset = instance.preset
+    }
+    if (instance.resolved) {
+      normalized.resolved = instance.resolved
+    }
+    return normalized
+  })
 }
 
 /** 类型下拉的显示文案：显示名（类型 id）。 */

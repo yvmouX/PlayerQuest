@@ -113,6 +113,10 @@ public final class RewardService {
     public List<String> validate(Quest quest) {
         List<String> problems = new ArrayList<>();
         for (QuestReward reward : quest.rewards()) {
+            if (reward.presetId() != null && reward.type().isBlank()) {
+                // 引用的预设不存在：具体原因由 PresetRefs 报，这里不再补一句「未知奖励类型 」的空名字
+                continue;
+            }
             RewardType type = rewardTypes.find(reward.type()).orElse(null);
             if (type == null) {
                 problems.add("未知奖励类型 " + reward.type());

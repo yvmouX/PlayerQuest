@@ -78,17 +78,34 @@
       ⚠ 后端不认识类型「{{ type || '（空）' }}」，保存后会被标记为校验问题。
     </p>
 
+    <!-- 引用预设：字段值由预设提供，这里只展示（改预设即改所有引用它的任务）。
+         要单独调数值就走 YAML 视图写覆盖项，或点「展开」把它变成独立配置 -->
+    <p v-if="preset" class="preset-ref-line">
+      <span class="badge badge-blue">引用预设</span>
+      <code class="mono">{{ preset }}</code>
+      <span v-if="presetMissing" class="warn-text">（预设不存在，这个{{ reward ? '奖励' : '目标' }}当前不生效）</span>
+      <button class="btn btn-small" type="button" title="解除引用，把当前生效值变成独立配置" @click="emit('expand')">
+        展开为独立配置
+      </button>
+    </p>
+
     <div v-if="expanded" class="instance-body">
+      <!-- 引用预设时字段只读：这里写的任何值都会被当成覆盖项，容易与「改预设」混淆 -->
+      <fieldset class="readonly-block" :disabled="!!preset">
       <div v-if="fields.length" class="fields-grid">
         <SchemaFieldInput
           v-for="field in fields"
           :key="field.key"
           :field="field"
-          :model-value="properties[field.key] ?? null"
+          :model-value="shown[field.key] ?? null"
           @update:model-value="value => setProperty(field.key, value)"
         />
       </div>
       <p v-else-if="schema" class="hint">该类型没有可配置字段。</p>
+      <p v-if="preset" class="hint">
+        上面显示的是预设给的生效值。要在本任务里改某个字段，到 YAML 视图的 properties 里写覆盖项。
+      </p>
+      </fieldset>
     </div>
   </div>
 </template>
@@ -106,12 +123,18 @@ const props = defineProps<{
   last?: boolean
   /** 当前类型 id */
   type: string
-  /** 当前属性表 */
+  /** 当前属性表：引用预设时这里是「任务自己写的覆盖项」 */
   properties: Properties
   /** 全部可选类型，来自 /api/schema */
   schemas: Record<string, TypeSchema>
   /** 奖励需要额外标注「不可用」 */
   reward?: boolean
+  /** 引用的预设 id；为空表示这条是独立配置 */
+  preset?: string | null
+  /** 预设给的生效值（{@code properties} 是覆盖项，显示要看这份） */
+  resolved?: Properties | null
+  /** 预设 id 在当前预设表里找不到（已删除/改名） */
+  presetMissing?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -121,8 +144,13 @@ const emit = defineEmits<{
   'move-down': []
   /** 把当前卡片另存为预设 */
   'save-as-preset': []
+  /** 解除预设引用，把生效值变成独立配置 */
+  expand: []
   remove: []
 }>()
+
+/** 显示用的属性表：引用预设时看生效值，否则就是作者写的那份。 */
+const shown = computed<Properties>(() => props.preset ? (props.resolved ?? {}) : props.properties)
 
 const schema = computed<TypeSchema | undefined>(() => props.schemas[props.type])
 
@@ -132,7 +160,7 @@ const fields = computed(() => schema.value?.fields ?? [])
  * 头部摘要：让折叠状态下也能一眼看出这条目标/奖励要做什么。
  * 完全按 schema 的字段顺序拼装，不认识具体类型。
  */
-const summary = computed(() => summarizeProperties(props.properties, schema.value))
+const summary = computed(() => summarizeProperties(shown.value, schema.value))
 
 // 默认展开：新建后第一件事就是填字段，收起来反而多点一次
 const expanded = ref(true)
@@ -183,6 +211,19 @@ function setProperty(key: string, value: PropertyValue): void {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* 引用预设的提示行：与字段区隔开一条，避免被当成普通说明 */
+.preset-ref-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+}
+
+.preset-ref-line .warn-text {
+  color: var(--warn);
 }
 
 .instance-index {

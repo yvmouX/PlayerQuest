@@ -217,9 +217,11 @@ public final class JdbcQuestRepository implements QuestRepository {
         List<QuestObjective> objectives = quest.objectives();
         for (int i = 0; i < objectives.size(); i++) {
             QuestObjective objective = objectives.get(i);
+            // 存「作者写的那份」：引用预设时它是 {preset: id, ...覆盖项}，
+            // 生效值由 PresetRefs 在载入时展开（见 QuestAdminService）
             database.execute(sqlInsertObjective, id, i,
                     objective.type() == null ? "" : objective.type(),
-                    JsonCodec.write(objective.properties()));
+                    JsonCodec.write(objective.authored()));
         }
 
         database.execute(sqlDeleteRewards, id);
@@ -228,7 +230,7 @@ public final class JdbcQuestRepository implements QuestRepository {
             QuestReward reward = rewards.get(i);
             database.execute(sqlInsertReward, id, i,
                     reward.type() == null ? "" : reward.type(),
-                    JsonCodec.write(reward.properties()));
+                    JsonCodec.write(reward.authored()));
         }
 
         // 前置与目标/奖励不同：它是集合而非有序列（判定是「全部满足」），因此按下标插入没有意义，
@@ -279,7 +281,9 @@ public final class JdbcQuestRepository implements QuestRepository {
     }
 
     private static QuestObjective readObjective(ResultSet rs) throws SQLException {
-        // type 是 NOT NULL 列，能读到 null 说明数据被外部改坏了；保留行但标记为空类型
+        // type 是 NOT NULL 列，能读到 null 说明数据被外部改坏了；保留行但标记为空类型。
+        // 两参构造把同一个 map 同时当作「生效值」与「作者那份」：引用预设的那条会带 preset 键，
+        // 生效值由 PresetRefs 在 QuestAdminService 载入时展开
         String type = rs.getString("type");
         return new QuestObjective(type == null ? "" : type,
                 JsonCodec.readMap(rs.getString("properties")));

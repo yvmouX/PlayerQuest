@@ -400,6 +400,9 @@ final class EditorApi {
                 return;
             }
             services.presets().save(preset);
+            // 引用这个预设的任务要立刻用上新值：重载一次定义（顺带重建在线玩家的进度索引）。
+            // 预设改动是低频操作，全量重载比在这里维护「谁引用了它」的反向索引简单也更不容易漏
+            services.questAdmin().reload();
             Map<String, Object> saved = PresetJson.toJson(preset);
             saved.put("source", presetSource(preset.id()));
             ctx.result(json(Map.of("ok", true, "preset", saved)));
@@ -407,7 +410,12 @@ final class EditorApi {
 
         app.delete("/api/presets/{kind}/{id}", ctx -> {
             String id = ctx.pathParam("id");
-            ctx.result(json(Map.of("ok", services.presets().delete(id), "id", id)));
+            boolean removed = services.presets().delete(id);
+            if (removed) {
+                // 删掉预设会让引用它的任务变成「悬空引用」（校验里会标出来），同样要重载
+                services.questAdmin().reload();
+            }
+            ctx.result(json(Map.of("ok", removed, "id", id)));
         });
     }
 

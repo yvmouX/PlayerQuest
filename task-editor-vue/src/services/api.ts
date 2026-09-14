@@ -22,6 +22,7 @@ import type {
   Properties,
   Quest,
   QuestImportResult,
+  QuestObjective,
   ReloadResult,
   SavePresetResult,
   SaveQuestResult,
@@ -187,7 +188,7 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
   if (!id) {
     return null
   }
-  const instances = (value: unknown): { type: string; properties: Properties }[] => {
+  const instances = (value: unknown): QuestObjective[] => {
     if (!Array.isArray(value)) {
       return []
     }
@@ -196,14 +197,23 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
       .map(item => {
         const entry = item as Record<string, unknown>
         const properties = entry.properties
-        return {
+        const instance: QuestObjective = {
           type: typeof entry.type === 'string' ? entry.type : '',
           properties: properties && typeof properties === 'object' && !Array.isArray(properties)
             ? properties as Properties
             : {}
         }
+        // 预设引用与生效值都要留着：前者决定保存时写回什么，后者是界面显示的值
+        if (typeof entry.preset === 'string' && entry.preset.trim()) {
+          instance.preset = entry.preset.trim()
+        }
+        const resolved = entry.resolved
+        if (resolved && typeof resolved === 'object' && !Array.isArray(resolved)) {
+          instance.resolved = resolved as Properties
+        }
+        return instance
       })
-      .filter(item => item.type !== '')
+      .filter(item => item.type !== '' || item.preset)
   }
   const description = Array.isArray(node.description)
     ? node.description.filter((line): line is string => typeof line === 'string')

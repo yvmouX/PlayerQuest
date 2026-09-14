@@ -788,7 +788,8 @@ class EditorApiTest {
             QuestAdminService real = new QuestAdminService(stored, quests, objectiveTypes,
                     new RewardService(quests, rewardTypes, playerQuests, claims,
                             new PrerequisiteService(quests, claims)),
-                    mock(ProgressService.class), new PrerequisiteService(quests, claims), List::of);
+                    mock(ProgressService.class), new PrerequisiteService(quests, claims), List::of,
+                    id -> presets.findById(id).orElse(null));
             // 只替换 reload()：它会经 Bukkit.getLogger() 写日志，而单测里装不了 Server 单例
             // ——Bukkit.setServer 只允许调用一次，已被 QuestAdminServiceTest 占用，
             // 再调一次会直接抛异常并连带把那个测试类弄挂。

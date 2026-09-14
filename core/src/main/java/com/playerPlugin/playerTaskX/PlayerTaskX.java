@@ -172,7 +172,9 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         questAdmin = new QuestAdminService(questDefinitions, quests, objectiveTypes, rewardService,
                 progressService, prerequisites,
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
-                () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList());
+                () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList(),
+                // 预设仓储同样是运行期查询：任务里的 preset: 引用按它展开（见 PresetRefs）
+                id -> presets.findById(id).orElse(null));
 
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，

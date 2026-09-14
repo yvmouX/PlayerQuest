@@ -388,6 +388,44 @@ zip 里逐条目解析、坏的那条只跳过它自己，单文件解析失败�
 
 ---
 
+### 4.8 预设引用：定义里写 `preset:`，载入时展开
+
+预设原来只是编辑器的便利设施（点一下套用，值复制到任务里）。要让「改一次预设、所有用到它的任务
+一起变」，引用就必须**留在定义里**，而不是在套用时展开成副本：
+
+```yaml
+objectives:
+  - preset: mine-stone      # 类型与字段来自预设
+    properties:
+      amount: 128           # 任务自己写的字段覆盖预设里的同名值
+```
+
+三个设计点：
+
+1. **一条配置带两份 map**（`QuestObjective` / `QuestReward` 各加了第三个分量 `authored`）：
+   `properties` 是<b>生效值</b>（预设 ⊕ 覆盖，引擎与界面都用它），`authored` 是<b>作者写的那份</b>
+   （含 `preset` 键，落库与导出按它写回）。只留生效值 → 保存一次就把继承来的字段写死成覆盖项，
+   预设之后再也影响不到它；只留作者那份 → 引擎还得自己去查预设。
+2. **展开只有一处**：`PresetRefs.resolve` 在 `QuestAdminService` 的 `reload()` 与 `save()` 里各调一次，
+   因此「什么最终生效」只有一个结论。`save()` 前先 `trim()`——编辑器回传的可能是展开过的值，
+   瘦身成「与预设不同的键」再落库（`trim→resolve` 是恒等变换，有测试钉住）。
+   存储层只搬运 `authored`（DB 的 `properties` 列、`quests/*.yml` 都是它），不认识预设。
+3. **悬空引用不静默**：预设被删/改名后，展开时类型留空、保留作者写的覆盖项，并报一条校验问题
+   （`引用的预设 x 不存在…`）；同一情形下不再额外报「未知目标类型 」（空名字）——
+   两条问题讲同一件事时，管理员只该看到说得清楚的那条。校验信息进编辑器、`/ptxa list`
+   与启动日志，和前置、软依赖的校验同一处出口。
+
+改动预设后如何生效：编辑器保存预设会调一次 `QuestAdminService.reload()`（顺带重建在线玩家的
+进度索引，因为展开可能改变目标类型、进而改变结构指纹）；文件里的预设仍走 `/ptxa reload`。
+预设改动是低频操作，全量重载比维护「谁引用了它」的反向索引更简单，也不会漏。
+
+编辑器契约（`QuestJson`）因此给目标/奖励节点三样东西：`preset`（引用）、`properties`
+（覆盖项，保存按它落库）、`resolved`（生效值，界面直接显示）。只给 `resolved` 会让
+「保存一次 = 把预设复制一份」。前端把引用预设的条目显示成「引用预设 xxx」的只读卡片，
+要单独调数值就写覆盖项、或点「展开为独立配置」（显式解除引用）。
+
+---
+
 ## 5. 多语言与文本
 
 ### 5.1 多语言：复用 YLib，不重复造
@@ -633,30 +671,31 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 27 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
 | 28 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
 | 29 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
+| 30 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.8，7 项 PresetRefs 测试 + 2 项服务级测试） |
 
-**测试总量：254 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+**测试总量：263 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
-示例文件 6（`ExampleFilesTest`）+ 引擎 12（`ProgressServiceTest`）+
-命令帮助 12（`YLibCommandHelpTest`）+ 前置判定 12（`PrerequisiteServiceTest`）+
-任务管理 11（`QuestAdminServiceTest`）+ 每日 10（`DailyServiceTest`）+
-素材 9（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
-自定义钓鱼 9（`CustomFishObjectiveTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
-字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 7（`RewardServiceTest`）+
-示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
-GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
-示例预设 5（`ExamplePresetsTest`）+ 每日抽取池 5（`DailyPoolPrerequisiteTest`）+
-进度渲染 5（`ProgressDisplayRenderTest`）+ CustomFishing 监听 5（`CustomFishingListenerTest`）+
-MythicMobs 目标 5（`MythicMobsHookTest`）+ 击杀监听 5（`EntityListenerTest`）+
-语言文件 3（`LanguageFileTest`）。
+预设引用 7（`PresetRefsTest`）+ 示例文件 6（`ExampleFilesTest`）+
+引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
+前置判定 12（`PrerequisiteServiceTest`）+ 任务管理 13（`QuestAdminServiceTest`）+
+每日 10（`DailyServiceTest`）+ 素材 9（`MaterialCatalogTest`）+
+奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 自定义钓鱼 9（`CustomFishObjectiveTest`）+
+结构指纹 8（`StructureFingerprintTest`）+ 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+
+奖励领取 7（`RewardServiceTest`）+ 示例任务 7（`ExampleQuestsTest`）+
+监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+
+别名匹配 6（`TargetMatchAliasTest`）+ 示例预设 5（`ExamplePresetsTest`）+
+每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
+CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
+击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（30 个 XML），不是靠日志里的汇总行。
+逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 12460 行
-＝ **13383 行 / 105 个 java 文件**；测试 `core/src/test` **6156 行 / 33 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 981 行 + `core/src/main` 12773 行
+＝ **13754 行 / 106 个 java 文件**；测试 `core/src/test` **6390 行 / 34 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6012 行 `.vue` + 1935 行 `.ts`/`.js` ＝ 7947 行 / 31 个文件**
+前端 `task-editor-vue/src` **6096 行 `.vue` + 1994 行 `.ts`/`.js` ＝ 8090 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
@@ -768,6 +807,22 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
 再验一次「不重复补」：删掉 `quests/example_file_daily_torch.yml` 后重启，
 日志里没有「已写入」、任务数 23、该文件没有被重新创建；把它放回去再 `POST /api/reload`，
 任务数回到 24——即「只铺一次、之后尊重目录现状」与「reload 会重读文件」都成立。
+
+**预设引用的真机冒烟（同一台测试服）**：导入一个引用预设的任务（`preset:` + 一个 `amount` 覆盖项），
+`GET /api/quests/<id>` 如实给出三样：
+
+```json
+{"preset":"example_file_mine-stone","type":"break_block",
+ "properties":{"amount":128},"resolved":{"amount":128,"target":"STONE"}}
+```
+
+即类型来自预设、`properties` 只有覆盖项、`resolved` 是合并后的生效值。
+再建一个库里的预设并让另一个任务引用它，然后**改这个预设**（DIRT/8 → SAND/99）：
+保存返回 200 之后直接读任务，`resolved` 已变成 SAND/99、`properties` 仍是空的
+—— 引用没有被写死，也不需要 reload（保存预设会触发一次重载）。
+导出该任务，YAML 里只有 `preset:` 与 `properties: {}`，**没有 `resolved`**（派生数据不落盘）。
+删掉被引用的预设：任务的目标类型变空，问题清单给出
+「引用的预设 xxx 不存在（已删除或 id 写错），这个目标当前不生效」。探针任务与预设随后已清理。
 
 同时验证了两条重要的健壮性行为：
 

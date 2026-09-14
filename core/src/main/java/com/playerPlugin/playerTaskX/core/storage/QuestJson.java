@@ -38,17 +38,62 @@ public final class QuestJson {
     }
 
     public static Map<String, Object> objectiveToJson(QuestObjective objective) {
-        Map<String, Object> json = new LinkedHashMap<>();
-        json.put("type", objective.type());
-        json.put("properties", objective.properties());
-        return json;
+        return nodeToJson(objective.type(), objective.properties(), objective.authored(), objective.presetId());
     }
 
     public static Map<String, Object> rewardToJson(QuestReward reward) {
+        return nodeToJson(reward.type(), reward.properties(), reward.authored(), reward.presetId());
+    }
+
+    /**
+     * 目标 / 奖励 → JSON 节点。
+     * <p>
+     * 引用预设时同时给三样东西：{@code preset}（引用本身）、{@code properties}（任务自己写的
+     * 覆盖项，也是保存时要落库的那份）、{@code resolved}（预设 ⊕ 覆盖的生效值，供界面直接显示）。
+     * 只给生效值会让编辑器一保存就把继承来的字段写死成覆盖项，预设后续再改就影响不到它了。
+     */
+    private static Map<String, Object> nodeToJson(String type, Map<String, Object> effective,
+                                                  Map<String, Object> authored, String presetId) {
         Map<String, Object> json = new LinkedHashMap<>();
-        json.put("type", reward.type());
-        json.put("properties", reward.properties());
+        if (presetId != null) {
+            json.put(QuestObjective.PRESET_KEY, presetId);
+        }
+        json.put("type", type);
+        json.put("properties", presetId == null ? effective : withoutPresetKey(authored));
+        if (presetId != null) {
+            json.put("resolved", effective);
+        }
         return json;
+    }
+
+    /** 作者那份去掉 {@code preset} 键：它是记账，不是类型的字段，混在 properties 里会被当成未知字段。 */
+    public static Map<String, Object> withoutPresetKey(Map<String, Object> authored) {
+        Map<String, Object> result = new LinkedHashMap<>(authored);
+        result.remove(QuestObjective.PRESET_KEY);
+        return result;
+    }
+
+    /**
+     * JSON 节点 → 目标 / 奖励的公共部分。
+     * <p>
+     * 这里<b>不</b>展开预设（拿不到预设仓储）：{@code properties} 先原样当作生效值，
+     * 由 {@code PresetRefs.resolve} 在载入/保存时统一展开。{@code authored} 记下作者写的那份
+     * ——含 {@code preset} 键，这样「引用」不会在编辑器往返里丢掉。
+     */
+    private static Map<String, Object> authoredOf(Map<String, Object> node) {
+        Map<String, Object> properties = JsonCodec.asMap(node.get("properties"));
+        String presetId = value(node.get(QuestObjective.PRESET_KEY));
+        if (presetId == null || presetId.isBlank()) {
+            return properties;
+        }
+        Map<String, Object> authored = new LinkedHashMap<>();
+        authored.put(QuestObjective.PRESET_KEY, presetId.trim());
+        authored.putAll(properties);
+        return authored;
+    }
+
+    private static String value(Object raw) {
+        return raw == null ? null : String.valueOf(raw);
     }
 
     /**
@@ -100,7 +145,8 @@ public final class QuestJson {
         if (rawObjectives instanceof List<?> list) {
             for (Object item : list) {
                 Map<String, Object> node = JsonCodec.asMap(item);
-                objectives.add(QuestObjective.of(string(node.get("type"), ""), JsonCodec.asMap(node.get("properties"))));
+                objectives.add(new QuestObjective(string(node.get("type"), ""),
+                        JsonCodec.asMap(node.get("properties")), authoredOf(node)));
             }
         }
 
@@ -109,7 +155,8 @@ public final class QuestJson {
         if (rawRewards instanceof List<?> list) {
             for (Object item : list) {
                 Map<String, Object> node = JsonCodec.asMap(item);
-                rewards.add(QuestReward.of(string(node.get("type"), ""), JsonCodec.asMap(node.get("properties"))));
+                rewards.add(new QuestReward(string(node.get("type"), ""),
+                        JsonCodec.asMap(node.get("properties")), authoredOf(node)));
             }
         }
 

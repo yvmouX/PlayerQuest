@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.quest;
 
+import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
@@ -45,11 +47,13 @@ public final class QuestAdminService {
     private final PrerequisiteService prerequisites;
     /** 在线玩家 id 供应器；抽出成 Supplier 是为了让 rebuild 的触发时机可测试。 */
     private final Supplier<Collection<UUID>> onlinePlayerIds;
+    /** 按 id 查预设：展开任务里的预设引用用（见 {@link PresetRefs}）。 */
+    private final Function<String, Preset> presets;
 
     public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
                              ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
                              ProgressService progressService, PrerequisiteService prerequisites,
-                             Supplier<Collection<UUID>> onlinePlayerIds) {
+                             Supplier<Collection<UUID>> onlinePlayerIds, Function<String, Preset> presets) {
         this.repository = repository;
         this.quests = quests;
         this.objectiveTypes = objectiveTypes;
@@ -57,6 +61,7 @@ public final class QuestAdminService {
         this.progressService = progressService;
         this.prerequisites = prerequisites;
         this.onlinePlayerIds = onlinePlayerIds;
+        this.presets = presets;
     }
 
     /**
@@ -65,10 +70,18 @@ public final class QuestAdminService {
      * 结构不完整（缺目标）的任务跳过而不让整个载入失败；
      * 引用了不存在/不可用类型的任务照常载入但记警告——配置问题
      * 不该让其它任务一起不可用。
+     * <p>
+     * 载入时会展开任务里的预设引用；因为这个展开结果可能改变目标的类型（结构指纹随之变化），
+     * 在线玩家的进度索引在这里也一并重建——否则「改了预设」之后，在线玩家的进度会按旧定义算。
      */
     public void reload() {
-        List<Quest> loaded = repository.findAll();
+        List<Quest> loaded = new ArrayList<>();
+        for (Quest quest : repository.findAll()) {
+            // 载入时就展开预设引用：注册表里放的永远是「生效值」，引擎不必知道预设的存在
+            loaded.add(PresetRefs.resolve(quest, presets));
+        }
         quests.replaceAll(loaded);
+        rebuildIndexes();
         int skipped = 0;
         for (Quest quest : loaded) {
             if (!quest.isUsable()) {
@@ -102,6 +115,10 @@ public final class QuestAdminService {
             problems.add("任务没有配置任何目标");
         }
         for (var objective : quest.objectives()) {
+            if (objective.presetId() != null && objective.type().isBlank()) {
+                // 引用的预设不存在：具体原因由 PresetRefs 报，这里不再补一句「未知目标类型 」的空名字
+                continue;
+            }
             ObjectiveType type = objectiveTypes.find(objective.type()).orElse(null);
             if (type == null) {
                 problems.add("未知目标类型 " + objective.type());
@@ -112,6 +129,8 @@ public final class QuestAdminService {
         // target 里写了 mythic:<怪物id> 但服务端没有 MythicMobs：这些目标永远命中不了
         problems.addAll(MythicMobsHook.targetProblems(quest));
         problems.addAll(prerequisites.problems(quest));
+        // 预设引用写错/被删/类别不对：目标或奖励实际不生效，但表面上任务还在
+        problems.addAll(PresetRefs.problems(quest, presets));
         problems.addAll(rewardService.validate(quest));
         return problems;
     }
@@ -139,10 +158,15 @@ public final class QuestAdminService {
      * <p>
      * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生：
      * 注册表是引擎与界面的数据源，索引决定玩家进度记到哪个任务定义上。
+     * <p>
+     * 预设引用在这里处理两次，顺序不能反：先 {@link PresetRefs#trim} 把生效值瘦身回
+     * 「作者写的那份」（否则编辑器回传的展开值会被当成显式覆盖写死），再
+     * {@link PresetRefs#resolve} 展开成生效值进注册表。
      */
     public void save(Quest quest) {
-        repository.save(quest);
-        quests.upsert(quest);
+        Quest trimmed = PresetRefs.trim(quest, presets);
+        repository.save(trimmed);
+        quests.upsert(PresetRefs.resolve(trimmed, presets));
         rebuildIndexes();
     }
 

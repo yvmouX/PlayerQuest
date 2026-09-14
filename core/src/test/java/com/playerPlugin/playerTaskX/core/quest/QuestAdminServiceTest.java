@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.quest;
 
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
+import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
@@ -86,8 +87,11 @@ class QuestAdminServiceTest {
         prerequisites = new PrerequisiteService(quests, claims);
         service = new QuestAdminService(repository, quests, objectiveTypes,
                 new RewardService(quests, rewardTypes, new NoopPlayerQuestRepository(), claims, prerequisites),
-                progress, prerequisites, () -> List.of(PLAYER));
+                progress, prerequisites, () -> List.of(PLAYER), presets::get);
     }
+
+    /** 测试用预设表：展开任务里的 {@code preset:} 引用时按它查（见 PresetRefsTest）。 */
+    private final Map<String, Preset> presets = new LinkedHashMap<>();
 
     @Test
     @DisplayName("保存时落库、更新注册表、重建在线玩家索引三者成对发生")
@@ -109,6 +113,51 @@ class QuestAdminServiceTest {
         assertEquals(5, quests.find("q1").orElseThrow().objectives().get(0).amount(),
                 "注册表里必须是被覆盖后的新定义");
         verify(progress, times(2)).rebuildIndex(PLAYER);
+    }
+
+    @Test
+    @DisplayName("引用预设的任务：库里存引用+覆盖项，注册表里是生效值；改预设后重载即刻生效")
+    void presetReferenceSurvivesSaveAndFollowsThePreset() {
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                Map.of("target", "STONE", "amount", 64), ""));
+
+        // 编辑器形状：引用 + 一个覆盖项（amount 改成 128）
+        service.save(new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+                List.of(new QuestObjective("", Map.of("preset", "mine-stone", "amount", 128))),
+                List.of(), 0.0, true));
+
+        Quest stored = repository.findById("q1").orElseThrow();
+        assertEquals(Map.of("preset", "mine-stone", "amount", 128), stored.objectives().get(0).authored(),
+                "库里存的应当是作者写的那份（引用 + 覆盖项），而不是展开后的值");
+        Quest live = quests.find("q1").orElseThrow();
+        assertEquals("break_block", live.objectives().get(0).type());
+        assertEquals("STONE", live.objectives().get(0).properties().get("target"));
+        assertEquals(128, live.objectives().get(0).properties().get("amount"));
+
+        // 改预设：重载后引用它的任务跟着变（target 变了，没被覆盖的字段跟着走）
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                Map.of("target", "COBBLESTONE", "amount", 64), ""));
+        service.reload();
+
+        Quest after = quests.find("q1").orElseThrow();
+        assertEquals("COBBLESTONE", after.objectives().get(0).properties().get("target"),
+                "继承来的字段必须跟着预设变");
+        assertEquals(128, after.objectives().get(0).properties().get("amount"), "覆盖项不受预设影响");
+        assertEquals("mine-stone", after.objectives().get(0).presetId());
+    }
+
+    @Test
+    @DisplayName("校验会报出悬空的预设引用")
+    void validateReportsMissingPreset() {
+        Quest broken = new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+                List.of(new QuestObjective("", Map.of("preset", "nope"))),
+                List.of(), 0.0, true);
+        service.save(broken);
+
+        List<String> problems = service.validate(quests.find("q1").orElseThrow());
+
+        assertTrue(problems.stream().anyMatch(problem -> problem.contains("nope")),
+                "引用不存在的预设必须报出来: " + problems);
     }
 
     @Test

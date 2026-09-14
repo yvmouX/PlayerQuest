@@ -89,9 +89,24 @@ export function questDocument(quest: Quest): Record<string, unknown> {
   return doc
 }
 
-/** 目标/奖励实例 → 普通对象：{@code type} + {@code properties}（与 JSON 契约一致）。 */
-function objectiveDocument(instance: { type: string; properties: Properties }) {
-  return { type: instance.type, properties: { ...instance.properties } }
+/** 目标/奖励实例 → 普通对象：{@code type} + {@code properties}（与 JSON 契约一致）。
+ *
+ * <p>引用预设时额外写 {@code preset: <id>}：契约里 {@code properties} 本来就是
+ * 「任务自己写的那份」，直接抄过来即可。{@code resolved}（预设 ⊕ 覆盖算出来的生效值）
+ * <b>不写</b>——它是派生数据，写进文件只会在预设改动后变成一份过期的副本。
+ */
+function objectiveDocument(instance: {
+  type: string
+  properties: Properties
+  preset?: string | null
+}) {
+  const doc: Record<string, unknown> = {}
+  if (instance.preset) {
+    doc.preset = instance.preset
+  }
+  doc.type = instance.type
+  doc.properties = { ...instance.properties }
+  return doc
 }
 
 /** YAML 文本 → 任务。 */
