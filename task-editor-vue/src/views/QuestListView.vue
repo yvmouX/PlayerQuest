@@ -154,8 +154,8 @@
           <div class="cell-name">
             <span class="raw" :title="row.name">{{ row.name }}</span>
             <!-- 来自 quests/ 的 YAML 定义：只读，不能在这里改 -->
-            <span v-if="row.source === 'file'" class="badge badge-gray" title="来自 quests/ 目录的 YAML 文件，只读">
-              YAML
+            <span v-if="row.source === 'file'" class="badge badge-gray" title="来自 quests/ 目录的 YAML 文件，只读：改文件后 /ptxa reload">
+              只读 · YAML
             </span>
             <span v-if="plainIfDifferent(row.name)" class="hint">{{ plainIfDifferent(row.name) }}</span>
           </div>
@@ -515,6 +515,10 @@ function rowClass(quest: Quest): string {
   const classes: string[] = []
   if (quest.problems.length) {
     classes.push('row-bad')
+  }
+  if (quest.source === 'file') {
+    // 只读定义整行压暗：一眼能看出这行「改不动」，不用先点进去撞一次禁用按钮
+    classes.push('row-readonly')
   }
   if (selected.value.has(quest.id)) {
     classes.push('row-selected')

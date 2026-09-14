@@ -38,26 +38,42 @@
             </p>
           </div>
 
-          <ul v-else class="preset-list">
-            <li
-              v-for="view in views"
-              :key="view.preset.id || view.preset.name"
-              class="preset-item"
-              :class="{ invalid: !view.valid }"
-              :title="view.valid ? '点击使用该预设' : view.invalidReason"
-              @click="pick(view)"
-            >
-              <div class="preset-item-head">
-                <strong>{{ view.preset.name }}</strong>
-                <span class="badge badge-blue">{{ view.typeLabel }}</span>
-                <span v-if="!view.valid" class="badge badge-warn">无效</span>
-              </div>
-              <code class="mono preset-item-type">{{ view.preset.type }}</code>
-              <p class="hint">{{ view.summary }}</p>
-              <p v-if="view.preset.description" class="hint preset-item-desc">{{ view.preset.description }}</p>
-              <p v-if="!view.valid" class="warn-line">{{ view.invalidReason }}</p>
-            </li>
-          </ul>
+          <template v-else>
+            <!-- 预设一多，一屏放不下：搜索框直接把候选缩到几条，比滚轮快 -->
+            <input
+              v-model="filter"
+              class="preset-search"
+              type="search"
+              :placeholder="`搜索预设：名称 / id / 类型（共 ${views.length} 条）`"
+            />
+
+            <p v-if="!visibleViews.length" class="hint">没有匹配「{{ filter }}」的预设。</p>
+            <ul v-else class="preset-list">
+              <li
+                v-for="view in visibleViews"
+                :key="view.preset.id || view.preset.name"
+                class="preset-item"
+                :class="{ invalid: !view.valid }"
+                :title="view.valid ? '点击使用该预设' : view.invalidReason"
+                @click="pick(view)"
+              >
+                <div class="preset-item-head">
+                  <strong>{{ view.preset.name }}</strong>
+                  <span class="badge badge-blue">{{ view.typeLabel }}</span>
+                  <span
+                    v-if="view.preset.source === 'file'"
+                    class="badge badge-gray"
+                    title="预设本身来自 presets/ 下的 YAML 文件（只读），但套用到任务里不受影响"
+                  >只读 · YAML</span>
+                  <span v-if="!view.valid" class="badge badge-warn">无效</span>
+                </div>
+                <code class="mono preset-item-type">{{ view.preset.type }}</code>
+                <p class="hint">{{ view.summary }}</p>
+                <p v-if="view.preset.description" class="hint preset-item-desc">{{ view.preset.description }}</p>
+                <p v-if="!view.valid" class="warn-line">{{ view.invalidReason }}</p>
+              </li>
+            </ul>
+          </template>
         </template>
 
         <footer class="preset-foot">
@@ -109,12 +125,23 @@ const toast = useToast()
 const loading = ref(false)
 const loadError = ref('')
 const presets = ref(peekPresets())
+const filter = ref('')
 
 const title = computed(() => (props.kind === 'objectives' ? '添加目标' : '添加奖励'))
 const views = computed(() => {
   const map = normalizePresetMap(presets.value)
   const list = props.kind === 'objectives' ? map.objectives : map.rewards
   return list.map(preset => presetView(preset, props.schemas))
+})
+
+const visibleViews = computed(() => {
+  const keyword = filter.value.trim().toLowerCase()
+  if (!keyword) {
+    return views.value
+  }
+  return views.value.filter(({ preset }) =>
+    [preset.name, preset.id, preset.type].some(value => (value ?? '').toLowerCase().includes(keyword))
+  )
 })
 /** 一个类型都没有时，「从空白新建」也无从下手，直接禁用并说明原因。 */
 const blankAvailable = computed(() => Object.keys(props.schemas).length > 0)
@@ -195,6 +222,10 @@ function close(): void {
   gap: 0.5rem;
   overflow: auto;
   padding-right: 0.2rem;
+}
+
+.preset-search {
+  width: 100%;
 }
 
 .preset-item {

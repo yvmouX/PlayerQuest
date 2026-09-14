@@ -65,36 +65,70 @@
     </div>
 
     <div v-else class="preset-layout">
-      <!-- 左：分组列表 -->
+      <!-- 左：分组列表。两类预设用标签页切换（而不是上下堆在一起）：
+           预设一多，一列长列表要滚很久，而且「目标」和「奖励」本来就很少同时找 -->
       <aside class="card preset-side">
-        <section v-for="group in groups" :key="group.kind" class="preset-group">
-          <header class="preset-group-head">
-            <strong>{{ group.label }}预设（{{ group.items.length }}）</strong>
-            <button class="btn btn-small" type="button" :disabled="busy" @click="createDraft(group.kind)">+ 新建</button>
-          </header>
+        <div class="preset-tabs" role="tablist" aria-label="预设类别">
+          <button
+            v-for="group in groups"
+            :key="group.kind"
+            class="preset-tab"
+            :class="{ active: group.kind === activeKind }"
+            type="button"
+            role="tab"
+            :aria-selected="group.kind === activeKind"
+            @click="activeKind = group.kind"
+          >
+            {{ group.label }}<span class="tab-count">{{ group.items.length }}</span>
+          </button>
+        </div>
 
-          <p v-if="!group.items.length" class="hint preset-group-empty">
-            还没有{{ group.label }}预设。
-          </p>
-          <ul v-else class="preset-items">
-            <li v-for="view in group.items" :key="view.preset.id || view.preset.name">
-              <button
-                class="list-item"
-                type="button"
-                :class="{ active: isSelected(group.kind, view), invalid: !view.valid }"
-                @click="select(group.kind, view)"
-              >
-                <span class="item-head">
-                  <span class="name">{{ view.preset.name }}</span>
-                  <span class="badge" :class="view.valid ? 'badge-blue' : 'badge-warn'">
-                    {{ view.valid ? view.typeLabel : '无效' }}
-                  </span>
+        <input
+          v-model="filter"
+          class="preset-search"
+          type="search"
+          :placeholder="`搜索${activeGroup.label}预设：名称 / id / 类型`"
+        />
+
+        <p v-if="!activeGroup.items.length" class="hint preset-group-empty">
+          还没有{{ activeGroup.label }}预设。
+        </p>
+        <p v-else-if="!visibleItems.length" class="hint preset-group-empty">
+          没有匹配「{{ filter }}」的预设。
+        </p>
+        <ul v-else class="preset-items">
+          <li v-for="view in visibleItems" :key="view.preset.id || view.preset.name">
+            <button
+              class="list-item"
+              type="button"
+              :class="{
+                active: isSelected(activeGroup.kind, view),
+                invalid: !view.valid,
+                readonly: view.preset.source === 'file'
+              }"
+              @click="select(activeGroup.kind, view)"
+            >
+              <span class="item-head">
+                <span class="name">{{ view.preset.name }}</span>
+                <span
+                  v-if="view.preset.source === 'file'"
+                  class="badge badge-gray"
+                  title="来自 presets/ 目录的 YAML 文件，只读：改文件后 /ptxa reload"
+                >只读 · YAML</span>
+                <span class="badge" :class="view.valid ? 'badge-blue' : 'badge-warn'">
+                  {{ view.valid ? view.typeLabel : '无效' }}
                 </span>
-                <span class="item-sub">{{ view.preset.type }} · {{ view.summary }}</span>
-              </button>
-            </li>
-          </ul>
-        </section>
+              </span>
+              <span class="item-sub">{{ view.preset.type }} · {{ view.summary }}</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="preset-side-foot">
+          <button class="btn btn-small" type="button" :disabled="busy" @click="createDraft(activeGroup.kind)">
+            + 新建{{ activeGroup.label }}预设
+          </button>
+        </div>
       </aside>
 
       <!-- 右：编辑区 -->
@@ -169,6 +203,9 @@
           />
 
           <template v-else>
+          <!-- 只读定义（presets/ 下的 YAML）：整块变灰且不可交互。
+               头部（视图切换 / 关闭 / 删除 / 保存）在 fieldset 之外，按钮另有自己的禁用逻辑 -->
+          <fieldset class="readonly-block" :disabled="draftReadOnly">
           <div class="form-rows">
             <label class="field field-stack">
               <span class="field-label">名称 <em class="required">*</em></span>
@@ -219,6 +256,7 @@
           <p class="hint preset-id-line">
             id：<code class="mono">{{ draft.id || '（保存后由后端生成）' }}</code>
           </p>
+          </fieldset>
           </template>
         </section>
       </div>
@@ -326,6 +364,23 @@ const groups = computed(() => [
     items: presets.value.rewards.map(preset => presetView(preset, rewardSchemas.value))
   }
 ])
+
+/** 当前显示哪一类；两类预设放在同一列里会变成一条长列表，切换比滚动省事。 */
+const activeKind = ref<PresetKind>('objectives')
+/** 名称 / id / 类型的即时过滤，只作用于当前类别。 */
+const filter = ref('')
+
+const activeGroup = computed(() => groups.value.find(group => group.kind === activeKind.value) ?? groups.value[0])
+
+const visibleItems = computed(() => {
+  const keyword = filter.value.trim().toLowerCase()
+  if (!keyword) {
+    return activeGroup.value.items
+  }
+  return activeGroup.value.items.filter(({ preset }) =>
+    [preset.name, preset.id, preset.type].some(value => (value ?? '').toLowerCase().includes(keyword))
+  )
+})
 
 const draftSchema = computed<TypeSchema | undefined>(() => {
   const current = draft.value
@@ -460,6 +515,7 @@ function select(kind: PresetKind, view: { preset: Preset; valid: boolean }): voi
   if (!confirmDiscard()) {
     return
   }
+  activeKind.value = kind
   draft.value = toDraft(kind, view.preset)
   yaml.mode.value = 'visual'
   yaml.syncFromSource()
@@ -469,6 +525,7 @@ function createDraft(kind: PresetKind): void {
   if (!confirmDiscard()) {
     return
   }
+  activeKind.value = kind
   const schemas = schemasOf(kind)
   const first = Object.keys(schemas)[0] ?? ''
   const value: Draft = {
@@ -791,39 +848,79 @@ async function confirmDelete(): Promise<void> {
 .preset-side {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.6rem;
   position: sticky;
   top: 1rem;
   max-height: calc(100vh - 3rem);
-  overflow: auto;
+  overflow: hidden;
 }
 
-.preset-group {
+/* 类别切换：一次只显示一类，省掉在长列表里滚很久 */
+.preset-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.3rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
 }
 
-.preset-group-head {
-  display: flex;
+.preset-tab {
+  flex: 1;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
 }
 
-.preset-group-head strong {
-  font-size: 0.88rem;
+.preset-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
-.preset-group-empty {
-  padding: 0.3rem 0;
+.preset-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
+.preset-tab .tab-count {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.preset-search {
+  width: 100%;
+}
+
+/* 列表自己滚：侧栏固定高度，条目再多也不会把整页撑长 */
 .preset-items {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.preset-side-foot {
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.preset-side-foot .btn {
+  width: 100%;
+}
+
+.preset-group-empty {
+  padding: 0.3rem 0;
 }
 
 .list-item.invalid .name {

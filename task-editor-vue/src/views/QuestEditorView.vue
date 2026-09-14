@@ -95,6 +95,11 @@
     </section>
 
     <div v-else class="editor-layout">
+      <!-- 只读定义（来自 quests/ 的 YAML）：整块变灰且不可交互。
+           用 <fieldset disabled> 一次覆盖所有控件，新增字段时不会漏；头部的视图切换与
+           「另存为副本」按钮在 fieldset 之外，因此仍然可用。
+           fieldset 自身 display:contents，所以栅格项仍是下面的 .editor-main -->
+      <fieldset class="readonly-block" :disabled="readOnly">
       <div class="editor-main">
         <!-- 1. 基本信息 -->
         <section class="card">
@@ -288,6 +293,7 @@
           </div>
         </section>
       </div>
+      </fieldset>
 
       <!-- 右侧：校验问题 + 实时预览 -->
       <div class="editor-side">

@@ -686,6 +686,16 @@ input[type='checkbox'] {
   border-bottom: 1px solid var(--border);
 }
 
+/* 只读定义（来自 quests/ 的 YAML）：整行压暗 + 左侧灰色标记。
+   与「有问题」的红条是两种信号，因此颜色与位置都刻意不同 */
+.data-table tr.row-readonly > td {
+  color: var(--text-dim);
+}
+
+.data-table tr.row-readonly > td:first-child {
+  box-shadow: inset 3px 0 0 var(--border);
+}
+
 .problems {
   margin: 0;
   padding-left: 1.1rem;
@@ -1035,7 +1045,7 @@ input[type='checkbox'] {
   }
 }
 
-/* ---------- 分栏（玩家进度 / 语言文件） ---------- */
+/* ---------- 分栏（玩家进度 / 预设管理） ---------- */
 
 .split-layout {
   display: grid;
@@ -1097,6 +1107,28 @@ input[type='checkbox'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---------- 只读定义（来自 quests/ 与 presets/ 的 YAML） ---------- */
+
+/* 整块表单只读：用 <fieldset disabled> 而不是逐个控件加 :disabled——加字段时不会漏掉一个；
+   display: contents 让 fieldset 不生成盒子，内部的卡片仍按原来的栅格排 */
+.readonly-block {
+  display: contents;
+}
+
+.readonly-block:disabled :is(input, select, textarea, button) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 分栏列表里的只读条目：压暗，但选中的那条保持可读（还要能看清正在看哪一条） */
+.list-item.readonly {
+  opacity: 0.6;
+}
+
+.list-item.readonly.active {
+  opacity: 1;
 }
 
 @media (max-width: 900px) {
