@@ -6,8 +6,6 @@ import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
-import com.playerPlugin.playerTaskX.core.reward.ExpReward;
-import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 import org.bukkit.Material;
@@ -50,8 +48,6 @@ class ExamplePresetsTest {
         rewardTypes = new RewardRegistryImpl();
         rewardTypes.register(new MoneyReward());
         rewardTypes.register(new PointsReward());
-        rewardTypes.register(new ExpReward());
-        rewardTypes.register(new ItemReward());
         rewardTypes.register(new CommandReward());
     }
 
@@ -94,16 +90,17 @@ class ExamplePresetsTest {
     }
 
     @Test
-    @DisplayName("目标预设的 target 与物品奖励的 material 必须是真实枚举名")
+    @DisplayName("目标预设的 target 必须是真实枚举名；命令奖励预设必须写命令")
     void enumValuesExist() {
         for (Preset preset : presets()) {
             if (preset.isReward()) {
-                if (!"item".equals(preset.type())) {
+                if (!"command".equals(preset.type())) {
                     continue;
                 }
-                String material = text(preset.properties().get("material"));
-                assertNotNull(Material.matchMaterial(material),
-                        "预设 " + preset.id() + " 的物品材质无效: " + material);
+                String command = text(preset.properties().get("command"));
+                assertTrue(!command.isBlank(), "预设 " + preset.id() + " 的命令奖励没有写命令");
+                assertTrue(command.contains("%player%"),
+                        "预设 " + preset.id() + " 的命令奖励缺少 %player% 占位符: " + command);
                 continue;
             }
             String target = text(preset.properties().get("target"));

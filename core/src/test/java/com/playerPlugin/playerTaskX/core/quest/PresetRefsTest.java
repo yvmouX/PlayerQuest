@@ -124,18 +124,18 @@ class PresetRefsTest {
     @Test
     @DisplayName("类别用错：拿奖励预设当目标用会被报出来")
     void kindMismatchIsReported() {
-        presets.put("reward-exp", new Preset(Preset.REWARDS, "reward-exp", "奖励经验", "exp",
+        presets.put("reward-money", new Preset(Preset.REWARDS, "reward-money", "奖励金币", "money",
                 map("amount", 100), ""));
         presets.put("obj-chat", new Preset(Preset.OBJECTIVES, "obj-chat", "发言", "chat",
                 map("amount", 1), ""));
 
         Quest right = PresetRefs.resolve(quest(
                 objective(map("preset", "obj-chat")),
-                reward(map("preset", "reward-exp"))), lookup);
+                reward(map("preset", "reward-money"))), lookup);
         assertTrue(PresetRefs.problems(right, lookup).isEmpty(), "配对正确时不该有问题");
 
         Quest swapped = PresetRefs.resolve(quest(
-                objective(map("preset", "reward-exp")),
+                objective(map("preset", "reward-money")),
                 reward(map("preset", "obj-chat"))), lookup);
         List<String> problems = PresetRefs.problems(swapped, lookup);
         assertEquals(2, problems.size(), problems.toString());

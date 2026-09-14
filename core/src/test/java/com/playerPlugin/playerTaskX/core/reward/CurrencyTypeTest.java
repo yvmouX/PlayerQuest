@@ -62,11 +62,14 @@ class CurrencyTypeTest {
     }
 
     @Test
-    @DisplayName("货币 id 与奖励类型 id 一致，便于复用 reward.<id> 语言键")
+    @DisplayName("金币 / 点券的 id 与同名奖励类型一致，可复用 reward.<id> 语言键；经验只是货币")
     void idsMatchRewardTypeIds() {
         assertEquals("money", CurrencyType.MONEY.id());
         assertEquals("points", CurrencyType.POINTS.id());
+        // 经验不再是奖励类型（奖励只留金币/点券/命令），因此没有 reward.exp 语言键，
+        // 显示名由枚举自带
         assertEquals("exp", CurrencyType.EXP.id());
+        assertEquals("经验", CurrencyType.EXP.displayName());
     }
 
     @Test

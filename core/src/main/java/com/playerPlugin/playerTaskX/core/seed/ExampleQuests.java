@@ -24,9 +24,10 @@ import java.util.Map;
  * {@code Trigger.SUBMIT}，GUI 也没有提交入口，写进示例只会得到一个永远做不动的任务，
  * 而示例随出厂数据发给每个新服。类型本身仍然保留，见 {@code docs/objectives.md}。</p>
  *
- * <p>奖励以经验与物品为主，金币只保留在挖矿日常一处：金币奖励依赖 Vault，
- * 未装经济插件的服务器上每个用金币的示例都会在启动日志里报「不可用」警告，
- * 示例自己不该制造这种噪音。</p>
+ * <p>奖励以<b>命令奖励</b>为主（{@code give} / {@code xp} 这类原版命令）：它不需要任何软依赖，
+ * 因此示例不会在没装经济插件的服务器上刷出「奖励不可用」的启动警告。金币只保留挖矿日常一处、
+ * 点券只保留驯兽师一处，用来展示「货币奖励长什么样」——这两处确实会在缺少对应插件时报不可用，
+ * 是刻意的示范代价。</p>
  *
  * <p>MiniMessage 写法注意：不要用闭合标签（如 {@code </yellow>}），
  * 「未开启标签的闭合」会直接抛异常；颜色由下一个标签覆盖，无需闭合。</p>
@@ -53,59 +54,72 @@ public final class ExampleQuests {
                         List.of("<gray>击杀 10 只僵尸或骷髅", "<gray>完成后可领取 200 经验"),
                         List.of(QuestObjective.of("kill",
                                 Map.of("target", "ZOMBIE,SKELETON", "amount", 10))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 200))),
+                        List.of(giveExp(200)),
                         dailyRefreshCost),
                 daily("example_daily_fish", "<yellow>渔夫的一天", "FISHING_ROD",
                         List.of("<gray>钓上 5 条鱼（任意种类）", "<gray>完成后可领取 5 个熟鲑鱼"),
                         List.of(QuestObjective.of("fish", Map.of("target", "", "amount", 5))),
-                        List.of(QuestReward.of("item",
-                                Map.of("material", "COOKED_SALMON", "amount", 5))),
+                        List.of(give("cooked_salmon", 5)),
                         dailyRefreshCost),
                 daily("example_daily_meal", "<yellow>一日三餐", "BREAD",
                         List.of("<gray>吃掉 8 个面包", "<gray>完成后可领取 150 经验"),
                         List.of(QuestObjective.of("consume", Map.of("target", "BREAD", "amount", 8))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 150))),
+                        List.of(giveExp(150)),
                         dailyRefreshCost),
                 daily("example_daily_torch", "<yellow>火把工坊", "TORCH",
                         List.of("<gray>合成 16 个火把", "<gray>完成后可领取 8 个煤炭"),
                         List.of(QuestObjective.of("craft", Map.of("target", "TORCH", "amount", 16))),
-                        List.of(QuestReward.of("item", Map.of("material", "COAL", "amount", 8))),
+                        List.of(give("coal", 8)),
                         dailyRefreshCost),
                 daily("example_daily_build", "<yellow>添砖加瓦", "BRICKS",
                         List.of("<gray>放置 64 个圆石", "<gray>完成后可领取 300 经验"),
                         List.of(QuestObjective.of("place_block",
                                 Map.of("target", "COBBLESTONE", "amount", 64))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 300))),
+                        List.of(giveExp(300)),
                         dailyRefreshCost),
 
                 // ---------- 常驻任务：长期存在，顺带展示多奖励、多值目标等写法 ----------
                 normal("example_normal_slayer", "<gold>亡灵猎人", "DIAMOND_SWORD",
                         List.of("<gray>击杀 64 只僵尸", "<gray>完成后可领取 3 颗钻石与 500 经验"),
                         List.of(QuestObjective.of("kill", Map.of("target", "ZOMBIE", "amount", 64))),
-                        List.of(QuestReward.of("item", Map.of("material", "DIAMOND", "amount", 3)),
-                                QuestReward.of("exp", Map.of("amount", 500)))),
+                        List.of(give("diamond", 3), giveExp(500))),
                 normal("example_normal_diamond", "<gold>钻石矿工", "DIAMOND",
                         List.of("<gray>挖掘 16 个钻石矿（含深层钻石矿）", "<gray>完成后可领取 1000 经验"),
                         List.of(QuestObjective.of("break_block",
                                 Map.of("target", "DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE", "amount", 16))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 1000)))),
+                        List.of(giveExp(1000))),
                 normal("example_normal_enchant", "<gold>附魔师", "ENCHANTING_TABLE",
                         List.of("<gray>完成 10 次附魔（任意附魔）", "<gray>完成后可领取 32 个青金石"),
                         List.of(QuestObjective.of("enchant", Map.of("target", "", "amount", 10))),
-                        List.of(QuestReward.of("item", Map.of("material", "LAPIS_LAZULI", "amount", 32)))),
+                        List.of(give("lapis_lazuli", 32))),
                 normal("example_normal_shepherd", "<gold>剪羊毛", "SHEARS",
                         List.of("<gray>给 32 只羊剪毛", "<gray>完成后可领取 16 个白色羊毛"),
                         List.of(QuestObjective.of("shear", Map.of("target", "SHEEP", "amount", 32))),
-                        List.of(QuestReward.of("item", Map.of("material", "WHITE_WOOL", "amount", 16)))),
+                        List.of(give("white_wool", 16))),
                 normal("example_normal_rancher", "<gold>繁殖计划", "GOLDEN_CARROT",
                         List.of("<gray>繁殖 16 只动物（任意种类）", "<gray>完成后可领取 32 个小麦"),
                         List.of(QuestObjective.of("breed", Map.of("target", "", "amount", 16))),
-                        List.of(QuestReward.of("item", Map.of("material", "WHEAT", "amount", 32)))),
+                        List.of(give("wheat", 32))),
                 normal("example_normal_tamer", "<gold>驯兽师", "NAME_TAG",
-                        List.of("<gray>驯服 3 只动物（任意种类）", "<gray>完成后可领取 300 经验"),
+                        List.of("<gray>驯服 3 只动物（任意种类）", "<gray>完成后可领取 300 点券"),
                         List.of(QuestObjective.of("tame", Map.of("target", "", "amount", 3))),
-                        List.of(QuestReward.of("exp", Map.of("amount", 300))))
+                        List.of(QuestReward.of("points", Map.of("amount", 300))))
         );
+    }
+
+    /**
+     * 用命令发物品：命令奖励由控制台执行，因此不需要给玩家任何权限。
+     * <p>
+     * 物品不再是一种奖励类型——那样每种要发的物品都得在插件里重做一遍 {@code material} /
+     * {@code name} / {@code lore} 字段，而 {@code /give} 早就把这些做完了。
+     */
+    private static QuestReward give(String item, int amount) {
+        return QuestReward.of("command", Map.of("command", "give %player% " + item + " " + amount));
+    }
+
+    /** 用命令发经验：同样是命令奖励，理由见 {@link #give}。 */
+    private static QuestReward giveExp(int points) {
+        return QuestReward.of("command", Map.of("command", "xp add %player% " + points + " points"));
     }
 
     /** 每日示例的公共外壳：分类「每日」，刷新费用与玩家实际刷新扣费保持一致。 */

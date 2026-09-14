@@ -183,7 +183,7 @@ class EditorApiTest {
                   "category": "mining",
                   "refreshCost": 250.0,
                   "objectives": [{"type": "break_block", "properties": {"target": "STONE", "amount": 3}}],
-                  "rewards": [{"type": "exp", "properties": {"amount": 50}}]
+                  "rewards": [{"type": "command", "properties": {"command": "give %player% diamond 1"}}]
                 }
                 """;
 
@@ -459,9 +459,9 @@ class EditorApiTest {
         assertEquals("INTEGER", fieldOf(breakBlock, "amount").get("type").asText(),
                 "每个目标都要有 amount，编辑器据此渲染数量输入框");
 
-        JsonNode exp = schema.get("rewards").get("exp");
-        assertTrue(exp.get("available").asBoolean(), "原版经验奖励恒可用");
-        assertEquals("", exp.get("unavailableReason").asText());
+        JsonNode command = schema.get("rewards").get("command");
+        assertTrue(command.get("available").asBoolean(), "命令奖励不需要任何依赖，恒可用");
+        assertEquals("", command.get("unavailableReason").asText());
         JsonNode money = schema.get("rewards").get("money");
         assertFalse(money.get("available").asBoolean(),
                 "单测环境没有 Vault，金币奖励必须如实报「不可用」而不是假装可用");
@@ -495,7 +495,7 @@ class EditorApiTest {
 
         // 未指定 id 时后端生成一个：预设必须可被删除与覆盖
         JsonNode generated = json(send("POST", "/api/presets/rewards", """
-                {"type": "exp", "properties": {"amount": 50}}
+                {"type": "command", "properties": {"command": "give %player% diamond 1"}}
                 """));
         String generatedId = generated.get("preset").get("id").asText();
         assertFalse(generatedId.isBlank());
@@ -503,7 +503,7 @@ class EditorApiTest {
         JsonNode grouped = json(send("GET", "/api/presets", null));
         assertEquals(1, grouped.get("objectives").size(), "URL 路径里的 objectives 决定分组");
         assertEquals(1, grouped.get("rewards").size(), "rewards 类别同样按路径分组");
-        assertEquals("exp", grouped.get("rewards").get(0).get("type").asText());
+        assertEquals("command", grouped.get("rewards").get(0).get("type").asText());
 
         JsonNode deleted = json(send("DELETE", "/api/presets/objectives/p1", null));
         assertTrue(deleted.get("ok").asBoolean());
@@ -749,7 +749,7 @@ class EditorApiTest {
     private static Quest quest(String id, QuestType type, String category) {
         return new Quest(id, "任务 " + id, List.of(), "PAPER", category, type,
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 1))),
-                List.of(QuestReward.of("exp", Map.of("amount", 10))), 0.0, true);
+                List.of(QuestReward.of("command", Map.of("command", "give %player% diamond 1"))), 0.0, true);
     }
 
     /** 引用了不存在的目标与奖励类型：校验必须报出来，编辑器据此标红。 */

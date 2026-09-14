@@ -62,7 +62,7 @@ try {
         { type: 'break_block', properties: { target: 'STONE', amount: 64 } },
         { type: 'chat', properties: { target: '你好', amount: 1 } }
       ],
-      rewards: [{ type: 'exp', properties: { amount: 200 } }],
+      rewards: [{ type: 'money', properties: { amount: 200 } }],
       refreshCost: 1000,
       enabled: false
     }
@@ -206,7 +206,7 @@ try {
     assert.deepEqual(result.warnings, [])
     assert.deepEqual(result.value, preset, '材质名 NO 不能被改成布尔')
 
-    const withUnknown = yaml.presetFromYaml('name: x\ntype: exp\npropertie: {}\n')
+    const withUnknown = yaml.presetFromYaml('name: x\ntype: money\npropertie: {}\n')
     assert.equal(withUnknown.error, '')
     assert.ok(withUnknown.warnings[0].includes('propertie'), withUnknown.warnings[0])
   })
@@ -216,7 +216,7 @@ try {
     assert.equal(result.value, null)
     assert.notEqual(result.error, '')
     // 新建预设时 id 可以留空：由后端生成
-    assert.equal(yaml.presetFromYaml('type: exp\nproperties:\n  amount: 10\n').value.id, '')
+    assert.equal(yaml.presetFromYaml('type: money\nproperties:\n  amount: 10\n').value.id, '')
   })
 
   // ------------------------------------------------------- 预设引用
@@ -235,7 +235,7 @@ try {
         resolved: { target: 'STONE', amount: 64 }
       }],
       rewards: [{
-        type: 'exp',
+        type: 'money',
         properties: { amount: 100 }
       }],
       refreshCost: 0,
@@ -247,7 +247,7 @@ try {
     assert.ok(!text.includes('resolved'), `生效值是派生数据，不该出现在 YAML 里：\n${text}`)
     assert.ok(!text.includes('STONE'), `引用条目不该写下字段值（改预设后它就是错的）：\n${text}`)
     // 独立配置的那条照常写 type + properties
-    assert.ok(text.includes('type: exp'), text)
+    assert.ok(text.includes('type: money'), text)
     assert.ok(text.includes('amount: 100'), text)
 
     const back = yaml.questFromYaml(text, 'q')
@@ -270,8 +270,8 @@ try {
     }
 
     // 预设同一套规则：列表拦下，单条通过（缺 type 的不算数）
-    assert.equal(yaml.previewPresetImport('type: exp\nproperties: { amount: 1 }\n').count, 1)
-    assert.ok(yaml.previewPresetImport('- type: exp\n- type: exp\n').error.includes('zip'))
+    assert.equal(yaml.previewPresetImport('type: money\nproperties: { amount: 1 }\n').count, 1)
+    assert.ok(yaml.previewPresetImport('- type: money\n- type: money\n').error.includes('zip'))
     assert.equal(yaml.previewPresetImport('name: 缺 type\n').count, 0)
   })
 

@@ -31,7 +31,7 @@ class YamlDefinitionsTest {
                 List.of("<gray>挖掘 64 个石头", "第二行"), "STONE_PICKAXE", "每日", QuestType.DAILY,
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 64)),
                         QuestObjective.of("chat", Map.of("target", "你好", "amount", 1))),
-                List.of(QuestReward.of("exp", Map.of("amount", 200))),
+                List.of(QuestReward.of("money", Map.of("amount", 200))),
                 1000.0, false);
 
         Quest loaded = YamlDefinitions.readQuest(YamlDefinitions.writeQuest(quest));
@@ -138,7 +138,7 @@ class YamlDefinitionsTest {
     @Test
     @DisplayName("预设往返：kind / name / type / properties 保留，导出带 kind")
     void presetRoundTrip() {
-        Preset preset = new Preset(Preset.REWARDS, "exp_100", "100 经验", "exp",
+        Preset preset = new Preset(Preset.REWARDS, "money_100", "100 金币", "money",
                 Map.of("amount", 100), "常用");
 
         String yaml = YamlDefinitions.writePreset(preset);
@@ -154,7 +154,7 @@ class YamlDefinitionsTest {
     @DisplayName("预设导入：文件里没写 kind 时按调用方给的类别兜底；缺 type 明确报错")
     void presetImportUsesDefaultKind() {
         Preset back = YamlDefinitions.readPreset("""
-                type: exp
+                type: money
                 properties: { amount: 100 }
                 """, Preset.REWARDS);
 

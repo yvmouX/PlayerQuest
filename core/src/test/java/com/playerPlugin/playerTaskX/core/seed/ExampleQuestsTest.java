@@ -9,8 +9,6 @@ import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
-import com.playerPlugin.playerTaskX.core.reward.ExpReward;
-import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 import org.bukkit.Material;
@@ -52,8 +50,6 @@ class ExampleQuestsTest {
         rewardTypes = new RewardRegistryImpl();
         rewardTypes.register(new MoneyReward());
         rewardTypes.register(new PointsReward());
-        rewardTypes.register(new ExpReward());
-        rewardTypes.register(new ItemReward());
         rewardTypes.register(new CommandReward());
     }
 
@@ -141,20 +137,21 @@ class ExampleQuestsTest {
     }
 
     @Test
-    @DisplayName("奖励属性有效：物品奖励材质真实、数量为正，数值奖励大于 0")
+    @DisplayName("奖励属性有效：货币奖励数量大于 0，命令奖励命令非空且带 %player%")
     void rewardPropertiesValid() {
         for (Quest quest : examples()) {
             for (QuestReward reward : quest.rewards()) {
                 switch (reward.type()) {
-                    case "item" -> {
-                        String material = reward.string("material", "");
-                        assertNotNull(Material.matchMaterial(material),
-                                "示例任务 " + quest.id() + " 的物品奖励材质无效: " + material);
-                        assertTrue(reward.integer("amount", 0) > 0,
-                                "示例任务 " + quest.id() + " 的物品奖励数量应为正数");
-                    }
-                    case "money", "exp", "points" -> assertTrue(reward.decimal("amount", 0) > 0,
+                    case "money", "points" -> assertTrue(reward.decimal("amount", 0) > 0,
                             "示例任务 " + quest.id() + " 的 " + reward.type() + " 奖励数量应大于 0");
+                    case "command" -> {
+                        String command = reward.string("command", "");
+                        assertTrue(!command.isBlank(),
+                                "示例任务 " + quest.id() + " 的命令奖励没有写命令");
+                        // 少了占位符就成了「每次奖励都发给同一个人」，是这类配置最常见的手滑
+                        assertTrue(command.contains("%player%"),
+                                "示例任务 " + quest.id() + " 的命令奖励缺少 %player% 占位符: " + command);
+                    }
                     default -> { }
                 }
             }

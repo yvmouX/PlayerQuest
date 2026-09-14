@@ -11,8 +11,8 @@ import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
-import com.playerPlugin.playerTaskX.core.reward.ExpReward;
-import com.playerPlugin.playerTaskX.core.reward.ItemReward;
+import com.playerPlugin.playerTaskX.core.reward.CommandReward;
+
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
@@ -80,8 +80,7 @@ class QuestAdminServiceTest {
         objectiveTypes.register(BuiltIns.objective("kill"));
         RewardRegistryImpl rewardTypes = new RewardRegistryImpl();
         // 只登记恒可用的类型：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
-        rewardTypes.register(new ExpReward());
-        rewardTypes.register(new ItemReward());
+        rewardTypes.register(new CommandReward());
         progress = mock(ProgressService.class);
         service = new QuestAdminService(repository, quests, objectiveTypes,
                 new RewardService(quests, rewardTypes, new NoopPlayerQuestRepository()),
@@ -301,12 +300,18 @@ class QuestAdminServiceTest {
     /** 指定目标的单目标任务：用于值域校验这类「配置里写了什么」的用例。 */
     private static Quest questWithObjective(String id, QuestObjective objective) {
         return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL,
-                List.of(objective), List.of(QuestReward.of("exp", Map.of("amount", 100))), 0.0, true);
+                List.of(objective), List.of(commandReward()), 0.0, true);
     }
+
     private static Quest questWithAmount(String id, int amount) {
         return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", amount))),
-                List.of(QuestReward.of("exp", Map.of("amount", 100))), 0.0, true);
+                List.of(commandReward()), 0.0, true);
+    }
+
+    /** 恒可用的奖励（命令由控制台执行，不需要任何插件）：单测里用它替代需要软依赖的货币奖励。 */
+    private static QuestReward commandReward() {
+        return QuestReward.of("command", Map.of("command", "give %player% diamond 1"));
     }
 
     /** 内存版任务定义仓储：仅用于测试，不涉及 JDBC。 */

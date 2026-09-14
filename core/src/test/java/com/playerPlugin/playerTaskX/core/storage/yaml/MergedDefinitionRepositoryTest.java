@@ -114,9 +114,9 @@ class MergedDefinitionRepositoryTest {
     @Test
     @DisplayName("预设：文件里有定义时，库里那套出厂预设照样播种（两套并存）")
     void presetSeedingIgnoresFiles(@TempDir Path dir) throws IOException {
-        write(dir.resolve("exp.yml"), """
+        write(dir.resolve("money.yml"), """
                 kind: rewards
-                type: exp
+                type: money
                 properties: { amount: 100 }
                 """);
         InMemoryPresetRepository database = new InMemoryPresetRepository();
@@ -134,9 +134,9 @@ class MergedDefinitionRepositoryTest {
     @Test
     @DisplayName("预设：文件定义只读、库定义可写")
     void presetReadOnlyFlag(@TempDir Path dir) throws IOException {
-        write(dir.resolve("exp.yml"), """
+        write(dir.resolve("money.yml"), """
                 kind: rewards
-                type: exp
+                type: money
                 properties: { amount: 100 }
                 """);
         InMemoryPresetRepository database = new InMemoryPresetRepository();
@@ -145,10 +145,10 @@ class MergedDefinitionRepositoryTest {
                 new DefinitionFolder(dir, "presets", warnings::add));
         MergedPresetRepository merged = new MergedPresetRepository(database, files, warnings::add);
 
-        assertTrue(merged.isReadOnly("exp"));
+        assertTrue(merged.isReadOnly("money"));
         assertFalse(merged.isReadOnly("db_preset"));
         assertThrows(DefinitionReadOnlyException.class,
-                () -> merged.save(new Preset(Preset.REWARDS, "exp", "改名", "exp", Map.of(), "")));
+                () -> merged.save(new Preset(Preset.REWARDS, "money", "改名", "money", Map.of(), "")));
     }
 
     // ---------- 辅助 ----------

@@ -17,14 +17,15 @@ import java.util.function.Supplier;
  * <ul>
  *   <li><b>MONEY</b>：任一经济插件（经 Vault 注册的 {@code Economy} 服务；Vault、VaultUnlocked 都算）</li>
  *   <li><b>POINTS</b>：PlayerPoints（很多服务器用它做第二货币）</li>
- *   <li><b>EXP</b>：原版经验，任何服务端都有，因此这条兜底永远成立</li>
+ *   <li><b>EXP</b>：原版经验（见 {@link ExpCurrency}）。它<b>不是</b>奖励类型——奖励只留
+ *       金币/点券/命令——但任何服务端都有经验，因此这条兜底永远成立</li>
  * </ul>
  * 这样同一份配置在装了经济插件的服务器上扣钱、在没有的服务器上扣经验，
  * 管理员不必为「有没有装 Vault」分别写配置。
  *
  * <h2>为什么把「检测与扣费」放在枚举里</h2>
- * 扣费涉及三个来源各自的可用性判断、余额读取与扣除方式，散落在 DailyService 里
- * 会让「到底扣了哪种货币」难以追查。集中到这里后，DailyService 只负责
+ * 扣费涉及三个来源各自的可用性判断、余额读取与扣除方式，散落在 PeriodicService 里
+ * 会让「到底扣了哪种货币」难以追查。集中到这里后，PeriodicService 只负责
  * 「确定货币 → 调用扣除 → 组装提示」。
  */
 public enum CurrencyType {
@@ -43,9 +44,9 @@ public enum CurrencyType {
 
     /** 经验（原版，总是可用）。 */
     EXP("exp", "经验",
-            ExpReward::isAvailable,
-            ExpReward::totalExperience,
-            (player, amount) -> ExpReward.take(player, (int) amount));
+            ExpCurrency::available,
+            ExpCurrency::totalExperience,
+            (player, amount) -> ExpCurrency.take(player, (int) amount));
 
     private final String id;
     private final String displayName;
@@ -62,7 +63,7 @@ public enum CurrencyType {
         this.charger = charger;
     }
 
-    /** 语言文件与命令里使用的 id（与奖励类型 id 一致，因此 {@code reward.<id>} 语言键可直接复用）。 */
+    /** 语言文件与命令里使用的 id（金币与点券与同名奖励类型一致，因此 {@code reward.<id>} 语言键可复用）。 */
     public String id() {
         return id;
     }

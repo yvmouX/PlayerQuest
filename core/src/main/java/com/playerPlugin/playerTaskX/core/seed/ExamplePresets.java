@@ -15,8 +15,8 @@ import java.util.Map;
  * 「预设长什么样、怎么套用」，不必先自己建一条才有参照。
  *
  * <p>刻意覆盖三类写法：最常见的目标、类型自己的默认值（{@code chat} 的任意发言）、
- * 以及依赖软依赖的奖励（金币要 Vault、点券要 PlayerPoints）——最后一类顺带验证
- * 编辑器对自己用不了的奖励类型是否有妥善提示。
+ * 以及三类奖励——命令（不需要任何依赖）、金币（要 Vault）、点券（要 PlayerPoints）。
+ * 后两类顺带验证编辑器对自己用不了的奖励类型是否有妥善提示。</p>
  */
 public final class ExamplePresets {
 
@@ -44,12 +44,12 @@ public final class ExamplePresets {
 
                 reward("reward-money", "奖励 500 金币", "money",
                         props("amount", 500), "需要 Vault"),
-                reward("reward-exp", "奖励 100 经验", "exp",
-                        props("amount", 100), "无需任何依赖"),
-                reward("reward-diamond", "奖励 3 个钻石", "item",
-                        props("material", "DIAMOND", "amount", 3), ""),
                 reward("reward-points", "奖励 100 点券", "points",
-                        props("amount", 100), "需要 PlayerPoints")
+                        props("amount", 100), "需要 PlayerPoints"),
+                reward("reward-diamond", "奖励 3 个钻石", "command",
+                        props("command", "give %player% diamond 3"), "用命令发物品，不需要任何依赖"),
+                reward("reward-broadcast", "全服公告", "command",
+                        props("command", "broadcast %player% 完成了一个任务！"), "命令奖励不限于发东西")
         );
     }
 

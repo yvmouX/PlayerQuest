@@ -149,10 +149,10 @@ class YamlDefinitionSourceTest {
     @Test
     @DisplayName("预设：kind 取自内容")
     void presetKindFromContent(@TempDir Path dir) throws IOException {
-        write(dir.resolve("exp_100.yml"), """
+        write(dir.resolve("money_100.yml"), """
                 kind: rewards
-                name: 100 经验
-                type: exp
+                name: 100 金币
+                type: money
                 properties: { amount: 100 }
                 """);
 
@@ -160,15 +160,15 @@ class YamlDefinitionSourceTest {
 
         assertEquals(1, presets.size());
         assertTrue(presets.get(0).isReward(), "kind: rewards 必须被认成奖励预设");
-        assertEquals("exp_100", presets.get(0).id());
+        assertEquals("money_100", presets.get(0).id());
     }
 
     @Test
     @DisplayName("预设：没写 kind 时按父目录名判断（presets/rewards/xxx.yml）")
     void presetKindFromFolder(@TempDir Path dir) throws IOException {
-        write(dir.resolve(Preset.REWARDS + "/exp_100.yml"), """
-                name: 100 经验
-                type: exp
+        write(dir.resolve(Preset.REWARDS + "/money_100.yml"), """
+                name: 100 金币
+                type: money
                 properties: { amount: 100 }
                 """);
 
@@ -183,7 +183,7 @@ class YamlDefinitionSourceTest {
     void presetWithoutKindIsSkipped(@TempDir Path dir) throws IOException {
         write(dir.resolve("mystery.yml"), """
                 name: 不知道是哪类
-                type: exp
+                type: money
                 properties: { amount: 100 }
                 """);
         List<String> warnings = new ArrayList<>();

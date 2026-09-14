@@ -10,8 +10,6 @@ import com.playerPlugin.playerTaskX.core.objective.CustomFishObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.objective.TargetObjective;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
-import com.playerPlugin.playerTaskX.core.reward.ExpReward;
-import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.reward.PointsReward;
 
@@ -102,8 +100,6 @@ public final class BuiltIns {
         return List.of(
                 new MoneyReward(),
                 new PointsReward(),
-                new ExpReward(),
-                new ItemReward(),
                 new CommandReward()
         );
     }
