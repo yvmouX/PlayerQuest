@@ -190,13 +190,6 @@
           <span class="mono">{{ row.rewards.length }}</span>
         </template>
 
-        <template #prerequisites="{ row }">
-          <span v-if="!row.prerequisites?.length" class="hint">—</span>
-          <span v-else class="mono" :title="row.prerequisites.join('\n')">
-            {{ row.prerequisites.length }}
-          </span>
-        </template>
-
         <template #state="{ row }">
           <button
             class="switch"
@@ -375,8 +368,6 @@ const columns: TableColumn[] = [
   { key: 'category', label: '分类', width: '7rem' },
   { key: 'objectives', label: '目标', sortable: true, align: 'right', width: '4.5rem' },
   { key: 'rewards', label: '奖励', align: 'right', width: '4.5rem' },
-  // 前置只显示数量 + 悬停看 id：列表里的重点是「有没有任务链」，具体关系在编辑页看
-  { key: 'prerequisites', label: '前置', align: 'right', width: '4.5rem' },
   { key: 'state', label: '启用', width: '6.5rem' },
   { key: 'problems', label: '校验', width: '9rem' },
   { key: 'actions', label: '操作', width: '14rem' }
@@ -433,9 +424,7 @@ const filtered = computed(() => {
   const keyword = search.value.trim().toLowerCase()
   const rows = quests.value.filter(quest => {
     if (keyword) {
-      // 前置 id 也进搜索：管理员常常是「谁依赖了这个任务」反过来找，列表里只看得到数量
-      const prerequisites = (quest.prerequisites ?? []).join('\n')
-      const haystack = `${quest.id}\n${quest.name}\n${plainIfDifferent(quest.name)}\n${prerequisites}`.toLowerCase()
+      const haystack = `${quest.id}\n${quest.name}\n${plainIfDifferent(quest.name)}`.toLowerCase()
       if (!haystack.includes(keyword)) {
         return false
       }

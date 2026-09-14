@@ -66,7 +66,7 @@ class MythicMobsHookTest {
     }
 
     private static Quest questWithTarget(String target) {
-        return new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        return new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("kill", Map.of("target", target, "amount", 1))),
                 List.of(), 0.0, true);
     }

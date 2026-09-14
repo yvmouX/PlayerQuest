@@ -44,7 +44,7 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     相对 SQLite 只剩劣势。需要 diff 或进版本控制时用编辑器的整份任务导出/导入。
     注意 `JsonCodec` 与 `QuestJson` **要留着**：前者是 `properties` / `progress` 列与
     编辑器 HTTP 传输的编解码，后者是编辑器与库之间的任务 JSON 映射，两者都还在用。
-  - **只读的 `quests/` + `presets/` YAML 目录不是那个后端回来了**（见 ARCHITECTURE 4.7）：
+  - **只读的 `quests/` + `presets/` YAML 目录不是那个后端回来了**（见 ARCHITECTURE 4.6）：
     它是**只读**来源，玩家数据完全不涉及；插件唯一的写入是「目录空着时铺一次示例」
     （`example_file_*`，与库里的 `example_*` 两套并存）。改动这一层时守住四条：
     定义写入永远只落库（只读判定放合并仓储里，别只靠前端禁用按钮）、同 id 冲突必须告警一次、
@@ -59,7 +59,7 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - **目标结构指纹不要删**：进度按目标下标记录，调换顺序会让旧进度静默错配到别的目标上，
     语法校验查不出来。检测必须放在 `ProgressService.load()`（覆盖全部记录），
     只放热路径会漏掉已完成记录。行为约定是「重置该任务进度 + 记日志」，不是静默错配。
-  - **预设引用（`preset:`）的两份配置不要合并**（见 ARCHITECTURE 4.8）：`QuestObjective` /
+  - **预设引用（`preset:`）的两份配置不要合并**（见 ARCHITECTURE 4.7）：`QuestObjective` /
     `QuestReward` 的 `properties` 是**生效值**、`authored` 是**作者写的那份**（含 `preset` 键）。
     落库/导出只写 `authored`，引擎只读 `properties`，展开统一走 `PresetRefs.resolve`
     （由 `QuestAdminService` 的 reload/save 调用）。少任何一份都会出静默错误：只留生效值 →

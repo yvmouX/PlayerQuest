@@ -25,8 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 示例文件（{@code quests/} 与 {@code presets/} 下的出厂示例）的测试。
  *
- * <p>这里钉的是三类「不报错的错」：文件铺完读不回来（写出去的 YAML 用了别的语义）、
- * 与前缀一起漏改的前置 id（文件里的任务链悄悄指向库里的任务）、
+ * <p>这里钉的是两类「不报错的错」：文件铺完读不回来（写出去的 YAML 用了别的语义）、
  * 以及重启时把管理员删掉的示例又补回来。</p>
  */
 class ExampleFilesTest {
@@ -53,7 +52,7 @@ class ExampleFilesTest {
     }
 
     @Test
-    @DisplayName("铺出来的任务能原样读回来（含目标、奖励、前置与刷新费用）")
+    @DisplayName("铺出来的任务能原样读回来（含目标、奖励与刷新费用）")
     void questFilesRoundTrip(@TempDir Path dir) {
         ExampleFiles.writeQuests(folder(dir, "quests"), ExampleQuests.all(REFRESH_COST));
 
@@ -75,18 +74,6 @@ class ExampleFilesTest {
             assertEquals(quest.objectives(), actual.objectives(), quest.id());
             assertEquals(quest.rewards(), actual.rewards(), quest.id());
         }
-    }
-
-    @Test
-    @DisplayName("前置 id 也跟着换前缀：文件里的任务链不会串到库里的任务上")
-    void prerequisitesFollowThePrefix(@TempDir Path dir) {
-        ExampleFiles.writeQuests(folder(dir, "quests"), ExampleQuests.all(REFRESH_COST));
-
-        Quest build = YamlDefinitions.questSources(folder(dir, "quests")).find("example_file_daily_build")
-                .orElseThrow();
-
-        assertEquals(List.of("example_file_daily_mine"), build.prerequisites(),
-                "漏改前缀会让文件里的前置指向库里的那条，两套示例被悄悄串起来");
     }
 
     @Test

@@ -1,7 +1,6 @@
 package com.playerPlugin.playerTaskX.core.gui;
 
 import cn.yvmou.ylib.message.MessageService;
-import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
@@ -21,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 任务详情：多目标进度 + 多奖励预览。
@@ -31,16 +29,14 @@ import java.util.Set;
  *   第 1 行（0~8）  ：正中放任务头部（图标 + 名称 + 描述）
  *   第 2、3 行（9~26）：目标，每个目标一个物品，名称带「当前/需求」
  *   第 4、5 行（27~44）：奖励，每个奖励一个物品，描述列出配置
- *   第 6 行（45~53）：前置（45，仅有前置时）、返回（49）、关闭（53）
+ *   第 6 行（45~53）：返回（49）、关闭（53）
  * </pre>
  * 目标与奖励之间空出一行，是为了让「要做什么」和「能拿什么」在视觉上分开。
- * 前置放在最后一行最左侧：它是「能不能开始做」的信息，混进目标区反而像多了一个目标。
  *
  * <h2>两个可变输入</h2>
  * <ul>
  *   <li>{@code playerQuest} 可以为 {@code null}：管理员预览看的是任务<b>定义</b>，
- *       没有玩家进度可读，此时进度一律按 0 处理，而不是再写一个「没有进度的详情界面」；
- *       前置此时只列名字、不判定达成状态（没有玩家可判）；</li>
+ *       没有玩家进度可读，此时进度一律按 0 处理，而不是再写一个「没有进度的详情界面」；</li>
  *   <li>{@code back} 决定「返回」去哪：玩家侧回每日任务列表，管理侧回原来那一页管理列表。
  *       注入一个动作比继承出两个几乎相同的界面便宜得多。</li>
  * </ul>
@@ -58,7 +54,6 @@ public final class QuestDetailMenu extends Menu {
     private static final int REWARD_START = 27;
     private static final int REWARD_LIMIT = 18;
     /** 底部操作行。 */
-    private static final int PREREQUISITE_SLOT = 45;
     private static final int BACK_SLOT = 49;
     private static final int CLOSE_SLOT = 53;
 
@@ -100,7 +95,6 @@ public final class QuestDetailMenu extends Menu {
         set(HEADER_SLOT, headerItem(quest));
         buildObjectives(plugin.objectiveTypes(), player);
         buildRewards(plugin.rewardTypes(), player);
-        buildPrerequisites(plugin, player);
 
         set(BACK_SLOT, MenuItem.of(Material.ARROW, text("gui.back"), List.of(),
                 context -> back.run()));
@@ -132,42 +126,6 @@ public final class QuestDetailMenu extends Menu {
     }
 
     // ---------- 物品构造 ----------
-
-    /**
-     * 前置任务物品：逐个列出前置，并标出各自是否已达成。
-     * <p>
-     * 只显示状态、不写「去做什么」：前置本身就是另一个任务，玩家可以在列表里看到它；
-     * 界面上再复述一遍它的目标，等于把任务定义抄了一份，改一处就要改两处。
-     * <p>
-     * 管理员预览（{@code playerQuest == null}）只列名字不判定：没有玩家就没有领取记录可判，
-     * 谎报「已完成」比不显示更糟。
-     */
-    private void buildPrerequisites(PlayerTaskX plugin, Player player) {
-        if (!quest.hasPrerequisites()) {
-            return;
-        }
-        boolean judgeable = playerQuest != null;
-        Set<String> claimed = judgeable
-                ? plugin.prerequisites().claimedIds(player.getUniqueId())
-                : Set.of();
-
-        List<String> lore = new ArrayList<>();
-        for (String prerequisiteId : quest.prerequisites()) {
-            Quest prerequisite = plugin.quests().find(prerequisiteId).orElse(null);
-            // 名字已剥离颜色标签：语言键里的整句还要走一次渲染，不剥的话标签会把整行染色
-            String name = prerequisite == null
-                    ? prerequisiteId
-                    : TextRenderer.strip(prerequisite.name());
-            if (!judgeable) {
-                lore.add(text("gui.prerequisite", name));
-            } else if (claimed.contains(prerequisiteId)) {
-                lore.add(text("gui.prerequisite-done", name));
-            } else {
-                lore.add(text("gui.prerequisite-todo", name));
-            }
-        }
-        set(PREREQUISITE_SLOT, MenuItem.display(Material.WRITABLE_BOOK, text("gui.prerequisites"), lore));
-    }
 
     /** 头部物品：图标 + 名称 + 描述；描述为空时只有名称。 */
     private static MenuItem headerItem(Quest quest) {

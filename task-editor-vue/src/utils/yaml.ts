@@ -66,7 +66,7 @@ export function questToYaml(quest: Quest): string {
  * 任务 → 与 JSON 契约同形的普通对象（键序即 YAML 里的顺序）。
  *
  * <p>空值策略：空字符串、空列表、以及后端算出来的 {@code problems} 一律省略——
- * 手写视图里堆一串 `category: ''`、`prerequisites: []` 只会让人以为必须填。
+ * 手写视图里堆一串 `category: ''` 只会让人以为必须填。
  * 省掉它们不丢信息：解析时本来就是「缺省即默认」。
  */
 export function questDocument(quest: Quest): Record<string, unknown> {
@@ -81,9 +81,6 @@ export function questDocument(quest: Quest): Record<string, unknown> {
   doc.type = quest.type
   doc.refreshCost = Number(quest.refreshCost) || 0
   doc.enabled = quest.enabled !== false
-  if (quest.prerequisites?.length) {
-    doc.prerequisites = [...quest.prerequisites]
-  }
   doc.objectives = (quest.objectives ?? []).map(objectiveDocument)
   doc.rewards = (quest.rewards ?? []).map(objectiveDocument)
   return doc
@@ -292,7 +289,7 @@ function unknownKeyWarnings(raw: Record<string, unknown>, allowedKeys: readonly 
  * 任务文档的键序，取自同一份构造逻辑，避免与 {@link questDocument} 漂移。
  *
  * <p>样本必须<b>每个可选字段都填上</b>：{@code questDocument} 会把空的可选字段省掉，
- * 用空样本取键会把 description/category/prerequisites 判成「未知字段」。
+ * 用空样本取键会把 description/category 判成「未知字段」。
  */
 function keysOfQuestDocument(): readonly string[] {
   return Object.keys(questDocument({
@@ -302,7 +299,6 @@ function keysOfQuestDocument(): readonly string[] {
     icon: 'PAPER',
     category: 'sample',
     type: 'NORMAL',
-    prerequisites: ['sample'],
     objectives: [],
     rewards: [],
     refreshCost: 0,

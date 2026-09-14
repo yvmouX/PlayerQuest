@@ -138,7 +138,7 @@ class ProgressServiceTest {
         Map<String, Object> chat = new LinkedHashMap<>();
         chat.put("target", "你好");
         chat.put("amount", 1);
-        Quest quest = new Quest("q2", "多目标", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("q2", "多目标", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("break_block", mine), QuestObjective.of("chat", chat)),
                 List.of(QuestReward.of("money", Map.of("amount", 100))), 0.0, true);
         assign(quest);
@@ -228,7 +228,7 @@ class ProgressServiceTest {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("target", material);
         properties.put("amount", amount);
-        return new Quest(id, "挖掘任务", List.of(), "DIAMOND_PICKAXE", null, QuestType.NORMAL, List.of(),
+        return new Quest(id, "挖掘任务", List.of(), "DIAMOND_PICKAXE", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("break_block", properties)),
                 List.of(QuestReward.of("money", Map.of("amount", 500))), 0.0, true);
     }

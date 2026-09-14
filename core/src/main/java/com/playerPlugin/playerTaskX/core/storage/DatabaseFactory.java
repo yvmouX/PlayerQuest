@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.core.storage;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 
@@ -122,7 +121,6 @@ public final class DatabaseFactory {
         private final QuestRepository quests;
         private final PresetRepository presets;
         private final PlayerQuestRepository playerQuestRepository;
-        private final QuestClaimRepository claimRepository;
         private final String description;
         private boolean closed;
 
@@ -131,7 +129,6 @@ public final class DatabaseFactory {
             this.quests = new JdbcQuestRepository(database);
             this.presets = new JdbcPresetRepository(database);
             this.playerQuestRepository = new JdbcPlayerQuestRepository(database);
-            this.claimRepository = new JdbcQuestClaimRepository(database);
             this.description = description;
         }
 
@@ -148,11 +145,6 @@ public final class DatabaseFactory {
         /** 玩家数据仓储：进度、状态与每日刷新次数。 */
         public PlayerQuestRepository playerQuestRepository() {
             return playerQuestRepository;
-        }
-
-        /** 永久领取账本：前置任务判定的唯一依据（每日记录会被整批删除，不能拿它当依据）。 */
-        public QuestClaimRepository claims() {
-            return claimRepository;
         }
 
         /** 人类可读描述，如 {@code SQLite: data/playerTaskX.db}。 */

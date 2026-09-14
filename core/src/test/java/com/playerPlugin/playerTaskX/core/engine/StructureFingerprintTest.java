@@ -57,7 +57,7 @@ class StructureFingerprintTest {
 
     /** 两个目标的任务：先挖石头、后发言。 */
     private static Quest twoObjectives() {
-        return new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        return new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(
                         QuestObjective.of("break_block", props("target", "STONE", "amount", 64)),
                         QuestObjective.of("chat", props("target", "", "amount", 1))),
@@ -66,7 +66,7 @@ class StructureFingerprintTest {
 
     /** 目标顺序调换后的同 id 任务。 */
     private static Quest twoObjectivesSwapped() {
-        return new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        return new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(
                         QuestObjective.of("chat", props("target", "", "amount", 1)),
                         QuestObjective.of("break_block", props("target", "STONE", "amount", 64))),
@@ -105,14 +105,14 @@ class StructureFingerprintTest {
         String base = ProgressService.structureHash(twoObjectives());
         assertNotEquals(base, ProgressService.structureHash(twoObjectivesSwapped()));
         // 改数量
-        Quest amountChanged = new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        Quest amountChanged = new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(
                         QuestObjective.of("break_block", props("target", "STONE", "amount", 32)),
                         QuestObjective.of("chat", props("target", "", "amount", 1))),
                 List.of(), 0.0, true);
         assertNotEquals(base, ProgressService.structureHash(amountChanged), "数量变化应改变摘要");
         // 改目标材质
-        Quest targetChanged = new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        Quest targetChanged = new Quest("q1", "两目标任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(
                         QuestObjective.of("break_block", props("target", "DIRT", "amount", 64)),
                         QuestObjective.of("chat", props("target", "", "amount", 1))),
@@ -207,7 +207,7 @@ class StructureFingerprintTest {
     @Test
     @DisplayName("空目标列表的摘要稳定且可用")
     void emptyObjectivesHashIsStable() {
-        Quest empty = new Quest("q0", "空任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        Quest empty = new Quest("q0", "空任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(), List.of(), 0.0, true);
         String first = ProgressService.structureHash(empty);
         String second = ProgressService.structureHash(empty);

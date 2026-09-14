@@ -25,10 +25,10 @@ import java.util.Optional;
  * <p>
  * 关键取舍：
  * <ul>
- *   <li><b>读：批量取子树，规避 N+1</b>。{@link #findAll()} 只发 5 条 SQL（主表 + 目标表 + 奖励表 + 前置表），
- *       子表整表取出后在内存里按 {@code quest_id} 分组；否则 N 个任务就是 1+3N 次查询，
+ *   <li><b>读：批量取子树，规避 N+1</b>。{@link #findAll()} 只发 3 条 SQL（主表 + 目标表 + 奖励表），
+ *       子表整表取出后在内存里按 {@code quest_id} 分组；否则 N 个任务就是 1+2N 次查询，
  *       网页编辑器一次刷新就能把 MySQL 打出几百次往返。</li>
- *   <li><b>写：先删子树再整体重建</b>。目标/奖励/前置都是一份整体配置，逐条 diff 只增加复杂度；
+ *   <li><b>写：先删子树再整体重建</b>。目标与奖励都是一份整体配置，逐条 diff 只增加复杂度；
  *       整个写入包在一个事务里，中途失败会整体回滚，不会留下「主表在、子树没了」的残缺任务。</li>
  *   <li><b>所有 SQL 只出现在本文件</b>，且 {@code idx} 列名一律经 {@link Dialect#quote(String)} 转义
  *       （MySQL 8 中 {@code idx} 是保留字）。语句在构造时拼好，避免每行重复字符串拼接。</li>
@@ -64,10 +64,6 @@ public final class JdbcQuestRepository implements QuestRepository {
     private final String sqlSelectRewardsOne;
     private final String sqlDeleteRewards;
     private final String sqlInsertReward;
-    private final String sqlSelectPrerequisites;
-    private final String sqlSelectPrerequisitesOne;
-    private final String sqlDeletePrerequisites;
-    private final String sqlInsertPrerequisite;
 
     public JdbcQuestRepository(Database database) {
         this.database = Objects.requireNonNull(database, "database 不能为空");
@@ -95,15 +91,6 @@ public final class JdbcQuestRepository implements QuestRepository {
         this.sqlDeleteRewards = "DELETE FROM quest_reward WHERE quest_id = ?";
         this.sqlInsertReward = "INSERT INTO quest_reward (quest_id, " + idx + ", type, properties)"
                 + " VALUES (?, ?, ?, ?)";
-
-        // 前置表没有 idx 列：判定是「全部满足」，顺序无意义。ORDER BY 只为了让读取结果稳定
-        this.sqlSelectPrerequisites = "SELECT quest_id, prerequisite_id FROM quest_prerequisite"
-                + " ORDER BY quest_id, prerequisite_id";
-        this.sqlSelectPrerequisitesOne = "SELECT prerequisite_id FROM quest_prerequisite"
-                + " WHERE quest_id = ? ORDER BY prerequisite_id";
-        this.sqlDeletePrerequisites = "DELETE FROM quest_prerequisite WHERE quest_id = ?";
-        this.sqlInsertPrerequisite = "INSERT INTO quest_prerequisite (quest_id, prerequisite_id)"
-                + " VALUES (?, ?)";
     }
 
     // ------------------------------------------------------------------
@@ -121,13 +108,9 @@ public final class JdbcQuestRepository implements QuestRepository {
                 database.query(sqlSelectObjectives, rs -> row(rs, JdbcQuestRepository::readObjective)));
         Map<String, List<QuestReward>> rewards = group(
                 database.query(sqlSelectRewards, rs -> row(rs, JdbcQuestRepository::readReward)));
-        Map<String, List<String>> prerequisites = group(
-                database.query(sqlSelectPrerequisites, rs -> row(rs, JdbcQuestRepository::readPrerequisite)));
-
         List<Quest> quests = new ArrayList<>(rows.size());
         for (QuestRow row : rows) {
             quests.add(toQuest(row,
-                    prerequisites.getOrDefault(row.id(), List.of()),
                     objectives.getOrDefault(row.id(), List.of()),
                     rewards.getOrDefault(row.id(), List.of())));
         }
@@ -145,7 +128,6 @@ public final class JdbcQuestRepository implements QuestRepository {
         }
         // 单条任务不需要分组，直接映射成列表
         return Optional.of(toQuest(row,
-                database.query(sqlSelectPrerequisitesOne, JdbcQuestRepository::readPrerequisite, id),
                 database.query(sqlSelectObjectivesOne, JdbcQuestRepository::readObjective, id),
                 database.query(sqlSelectRewardsOne, JdbcQuestRepository::readReward, id)));
     }
@@ -172,11 +154,9 @@ public final class JdbcQuestRepository implements QuestRepository {
         boolean[] deleted = new boolean[1];
         database.transaction(() -> {
             deleted[0] = database.count(sqlCount + " WHERE id = ?", id) > 0;
-            // 先删子表再删主表，顺序固定，MySQL 上即使将来补外键也不会被挡。
-            // 前置表同样要删：留下孤儿行的话，同名任务被重建时会凭空继承旧的前置关系
+            // 先删子表再删主表，顺序固定，MySQL 上即使将来补外键也不会被挡
             database.execute(sqlDeleteObjectives, id);
             database.execute(sqlDeleteRewards, id);
-            database.execute(sqlDeletePrerequisites, id);
             database.execute(sqlDelete, id);
         });
         return deleted[0];
@@ -233,12 +213,6 @@ public final class JdbcQuestRepository implements QuestRepository {
                     JsonCodec.write(reward.authored()));
         }
 
-        // 前置与目标/奖励不同：它是集合而非有序列（判定是「全部满足」），因此按下标插入没有意义，
-        // 而且主键就是 (quest_id, prerequisite_id)——重复的前置会在模型层被去重，写到这里不会冲突
-        database.execute(sqlDeletePrerequisites, id);
-        for (String prerequisiteId : quest.prerequisites()) {
-            database.execute(sqlInsertPrerequisite, id, prerequisiteId);
-        }
     }
 
     /** 子表整表取出后按 quest_id 分组；脏行（quest_id 为空）已被映射阶段过滤掉。 */
@@ -295,16 +269,10 @@ public final class JdbcQuestRepository implements QuestRepository {
                 JsonCodec.readMap(rs.getString("properties")));
     }
 
-    /** 前置行只有一列外键；取不到（被外部改坏）时由调用方按空串过滤掉。 */
-    private static String readPrerequisite(ResultSet rs) throws SQLException {
-        String prerequisiteId = rs.getString("prerequisite_id");
-        return prerequisiteId == null ? "" : prerequisiteId;
-    }
-
-    private static Quest toQuest(QuestRow row, List<String> prerequisites,
+    private static Quest toQuest(QuestRow row,
                                  List<QuestObjective> objectives, List<QuestReward> rewards) {
         return new Quest(row.id(), row.name(), JsonCodec.readStringList(row.description()),
-                row.icon(), row.category(), row.type(), prerequisites, objectives, rewards,
+                row.icon(), row.category(), row.type(), objectives, rewards,
                 row.refreshCost(), row.enabled());
     }
 

@@ -50,15 +50,6 @@ public final class Schema {
                         + "PRIMARY KEY (quest_id, " + dialect.quote("idx") + ")"
                         + ")" + option,
 
-                // 前置任务：一个任务可以有多个前置，多个目标任务各自配不同的前置，
-                // 于是这里就是一张「目标任务 → 前置任务」的边表。
-                // 刻意不设 idx 列：判定是「全部满足」，顺序没有意义，存下来只会暗示它有意义。
-                "CREATE TABLE IF NOT EXISTS quest_prerequisite ("
-                        + "quest_id VARCHAR(64) NOT NULL, "
-                        + "prerequisite_id VARCHAR(64) NOT NULL, "
-                        + "PRIMARY KEY (quest_id, prerequisite_id)"
-                        + ")" + option,
-
                 "CREATE TABLE IF NOT EXISTS player_quest ("
                         + "player_id VARCHAR(36) NOT NULL, "
                         + "quest_id VARCHAR(64) NOT NULL, "
@@ -70,16 +61,6 @@ public final class Schema {
                         // 接手该任务时目标列表的结构摘要：目标顺序变化后进度会整体错位，
                         // 靠它检测并重置，而不是静默套用到别的目标上
                         + "structure_hash VARCHAR(32), "
-                        + "PRIMARY KEY (player_id, quest_id)"
-                        + ")" + option,
-
-                // 永久领取账本：前置判定必须跨天成立，而 player_quest 里
-                // 每日任务的记录在跨天/刷新时会被整批删除，不能当作「做过没有」的依据。
-                // 只记「领取」这一个事实：前置的判定标准就是已领奖。
-                "CREATE TABLE IF NOT EXISTS quest_claim ("
-                        + "player_id VARCHAR(36) NOT NULL, "
-                        + "quest_id VARCHAR(64) NOT NULL, "
-                        + "claimed_at BIGINT NOT NULL, "
                         + "PRIMARY KEY (player_id, quest_id)"
                         + ")" + option,
 
@@ -117,9 +98,7 @@ public final class Schema {
     public static List<String> indexStatements() {
         return List.of(
                 "CREATE INDEX idx_player_quest_player ON player_quest (player_id)",
-                "CREATE INDEX idx_quest_type ON quest (type)",
-                // 前置判定每次都按玩家整批取回已领取的任务 id，因此索引建在玩家列上
-                "CREATE INDEX idx_quest_claim_player ON quest_claim (player_id)"
+                "CREATE INDEX idx_quest_type ON quest (type)"
         );
     }
 

@@ -37,7 +37,7 @@ PlayerTaskX/
 | `sqlite-jdbc` / `mysql-connector-java` | 存储 | implementation / compileOnly |
 | `HikariCP` | MySQL 连接池 | implementation |
 | `javalin` | 内置网页编辑器 HTTP 服务 | implementation |
-| `snakeyaml`（服务端自带，随 `spigot-api` 编译期可见） | `quests/` / `presets/` 只读 YAML 定义（4.7）；**不打包**，服务端本来就有 | 服务端提供 |
+| `snakeyaml`（服务端自带，随 `spigot-api` 编译期可见） | `quests/` / `presets/` 只读 YAML 定义（4.6）；**不打包**，服务端本来就有 | 服务端提供 |
 | `VaultAPI` / `playerpoints` | 金币 / 点券 | compileOnly（软依赖） |
 | `placeholderapi` | 变量 | compileOnly（软依赖） |
 
@@ -59,7 +59,7 @@ PlayerTaskX/
   `DatabaseFactory`。**包外代码只需要 import 这些。**
 - `jdbc` 子包是实现细节，**包外不得 import**：实际 import 它的只有父包里的装配点
   `DatabaseFactory` 与做真机 SQL 验证的 `StorageIntegrationTest`
-  （`DailyService` 读 DailyState 曾是业务层的唯一例外，周期任务改成走
+  （`PeriodicService` 读 DailyState 曾是业务层的唯一例外，周期任务改成走
   `PlayerQuestRepository` 接口后这个例外没了）。
 - **SQL 字符串只允许出现在本包（含子包）内**，且列名一律经方言转义。
 - 未知存储类型回退 SQLite 而不是启动失败——写错一个单词不该让插件起不来。
@@ -99,7 +99,6 @@ PlayerTaskX/
 Quest                    任务定义（静态，由配置/网页编辑器维护）
 ├── id, name, description, icon, category
 ├── type: DAILY | NORMAL
-├── prerequisites: List<String>   前置任务 id（全部**领奖**后才解锁，空 = 无前置）
 ├── objectives: List<QuestObjective>
 ├── rewards:    List<QuestReward>
 └── refreshCost（刷新费用，仅 DAILY）
@@ -158,7 +157,7 @@ GUI 图标推导与字段说明、管理员命令的类型名回显）需要的�
 而是 `BuiltIns` 里的 12 行 `TargetObjective` 数据：类型之间只差 id、响应动作与
 `target` 字段的语义类型（材质 / 实体 / 自由文本）。真正有自己判定逻辑的只有
 `InteractObjective`（`mode` 匹配）、`ChatObjective`（关键词包含匹配）与
-`CustomFishObjective`（鱼 id + 最小尺寸，且依赖 CustomFishing，见 4.6）。
+`CustomFishObjective`（鱼 id + 最小尺寸，且依赖 CustomFishing，见 4.5）。
 「类型自描述」没有损失——`schema()` 仍由类型自己给出，编辑器与 GUI 照旧自动生成表单。
 
 ### 3.2 奖励类型 `RewardType`
@@ -284,41 +283,15 @@ player_quest(player_id, quest_id, type, assigned_at, expires_at, status,
              PRIMARY KEY(player_id, quest_id))
 period_state(player_id, type, period, refresh_count, assigned_at,
               PRIMARY KEY(player_id, type))   -- 四种周期各一行，见 6
--- 永久账本：只记「领取过」，永不删除（每日任务记录会被整批删掉，前置判定不能依赖它）
-quest_claim(player_id, quest_id, claimed_at, PRIMARY KEY(player_id, quest_id))
-
 -- 任务定义与预设（内容类）
 quest(id PK, name, description, icon, category, type, refresh_cost, enabled)
 quest_objective(quest_id, idx, type, properties TEXT)   -- properties 为 JSON
 quest_reward(quest_id, idx, type, properties TEXT)
-quest_prerequisite(quest_id, prerequisite_id, PRIMARY KEY(quest_id, prerequisite_id))
 preset(kind, id PK, name, type, properties TEXT, description)
 ```
 
 约定：**所有 SQL 收敛在 `storage/` 包**，其它包不得出现 SQL 字符串。
-`quest_prerequisite` 刻意没有 `idx` 列：判定是「全部满足」，顺序没有意义，
-存下来只会暗示它有意义（而 `quest_objective` 必须有，玩家进度按它记录）。
-
-### 4.5 前置任务（任务链）
-
-**判定标准是「已领取奖励」**，不是「已完成」：依据 `quest_claim` 永久账本。
-若不另立账本、直接用 `player_quest` 的状态判断，每日任务跨天/刷新时记录被整批删除，
-任务链第二天就断了——这是本功能唯一必须新增一张表的原因。
-
-三个落点由 `PrerequisiteService` 一处给出结论，调用方不做第二次判断：
-
-| 落点 | 行为 | 为什么在这里 |
-|---|---|---|
-| 每日抽取（`DailyService.availablePool`） | 前置未满足的任务不进候选池 | 抽到再做不了才是真的坑；玩家侧只看得到「没这个任务」 |
-| 领取奖励（`RewardService.claim`） | 前置未满足 → 领不到，并列出还差哪几个 | 已发给玩家的任务会因管理员改定义而变成锁定状态，把关不嫌多 |
-| 界面与诊断（详情 GUI、`/ptxa list`/`info`、编辑器 problems） | 列出前置与达成状态、报出配置问题 | 配置问题必须让管理员看到，不能只表现为「任务一直不出现」 |
-
-配置校验（`PrerequisiteService.problems`）覆盖四类会让任务**永远解锁不了**的写法：
-前置不存在、自己当前置、成环、前置已禁用。成环检测用「起点用待校验任务自己的配置、
-其余节点取注册表」的 DFS——编辑器保存前的任务还没进注册表，而那时恰恰最需要检出新配的环。
-每轮抽取前取一次「已领取 id 快照」再逐个任务判定，避免按任务数打 N 次查询。
-
-### 4.6 游戏内容插件联动（MythicMobs / CustomFishing）
+### 4.5 游戏内容插件联动（MythicMobs / CustomFishing）
 
 `core/integration/` 是**软依赖接入点**：这些类只在装了对应插件时才被创建/加载，
 没装的服务器上完全不参与运行。接入方式与三条不变量：
@@ -368,7 +341,7 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 > 家具（furniture）不在支持范围内：那是实体而不是方块，需要各自的交互事件与持久化，
 > 与「方块/物品目标」不是同一类需求。
 
-### 4.7 只读 YAML 定义来源（`quests/` 与 `presets/`）
+### 4.6 只读 YAML 定义来源（`quests/` 与 `presets/`）
 
 管理员常想把任务定义随插件一起发布、或放进 git 做 diff。为此在数据库之外接了一层
 **只读**的 YAML 定义来源：`definitions.read-files`（默认开启）打开时，扫描数据目录下的
@@ -412,7 +385,7 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 
 - **id 必须与库里那套不同**（`example_file_*` vs `example_*`）：同 id 会立刻撞上「库优先」，
   整套文件变成「被忽略的重复定义」还刷一屏告警。因此文件那套把 `file_` 插在 `example_` 之后，
-  两套并存；前置 id 也跟着换前缀——漏改会让文件里的任务链悄悄指向库里的任务；
+  两套并存；漏改 id 会让文件里那套指向库里的定义；
 - **只在空目录里铺**：管理员删掉几个示例、或放了自己的定义，重启时不该把它们变回来。
   代价是「整个目录清空后重启会重新铺一份」，这是刻意的（空目录 = 没配过）；
 - **文件名即 id，正文不写 `id`**：复制文件改个名就是一个新任务，示例本身就该示范这一点。
@@ -452,7 +425,7 @@ zip 里逐条目解析、坏的那条只跳过它自己，单文件解析失败�
 
 ---
 
-### 4.8 预设引用：定义里写 `preset:`，载入时展开
+### 4.7 预设引用：定义里写 `preset:`，载入时展开
 
 预设原来只是编辑器的便利设施（点一下套用，值复制到任务里）。要让「改一次预设、所有用到它的任务
 一起变」，引用就必须**留在定义里**，而不是在套用时展开成副本：
@@ -477,7 +450,7 @@ objectives:
 3. **悬空引用不静默**：预设被删/改名后，展开时类型留空、保留作者写的覆盖项，并报一条校验问题
    （`引用的预设 x 不存在…`）；同一情形下不再额外报「未知目标类型 」（空名字）——
    两条问题讲同一件事时，管理员只该看到说得清楚的那条。校验信息进编辑器、`/ptxa list`
-   与启动日志，和前置、软依赖的校验同一处出口。
+   与启动日志，和软依赖的校验同一处出口。
 
 改动预设后如何生效：编辑器保存预设会调一次 `QuestAdminService.reload()`（顺带重建在线玩家的
 进度索引，因为展开可能改变目标类型、进而改变结构指纹）；文件里的预设仍走 `/ptxa reload`。
@@ -680,7 +653,7 @@ GET    /api/stats              统计          POST   /api/reload         重载
 出厂默认预设（`core/seed/ExamplePresets`，7 个目标 + 4 个奖励）在 `preset` 表为空时写入一次，
 与示例任务同一时机（`PlayerTaskX` 启用流程里的 `guard`）。它原先藏在文件后端的 `load()` 里，
 后端删除后必须显式接上——否则不报任何错，只是编辑器打开时预设列表变成空的。
-判空看的是**数据库**（`databaseEmpty()`，见 4.7）：`presets/` 目录里那份示例与库里这份是
+判空看的是**数据库**（`databaseEmpty()`，见 4.6）：`presets/` 目录里那份示例与库里这份是
 并存的两套，拿合并数量判断会让库里这套永远不出现。
 
 ---
@@ -718,7 +691,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 6. **命令参数类型**只支持 `String/int/Integer/double/Double/boolean/Boolean/Player/World/Enum`，
    其余（`long`/`Material`/`OfflinePlayer` 等）会当 `String` 注入并在反射调用时抛异常。
    需要别的类型就自己 `@Arg String` 再转换，或补全方法里处理。
-7. **Tab 补全拿不到前置参数值**：`CommandDispatcher.tabComplete` 传的是空 map，
+7. **Tab 补全拿不到前一个参数的值**：`CommandDispatcher.tabComplete` 传的是空 map，
    补全器签名 `List<String> f(CommandSender, CommandContext, String current)`。
 8. `chat` 目标的进度判定要注意：异步事件里**不要**碰 Bukkit API，
    需要发消息/改物品时回到主线程（`scheduler.runTask`）。
@@ -735,7 +708,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 4 | 引擎：`ProgressService` + 14 种目标类型 + 5 个监听器 | ✅ 完成（12 项引擎单元测试） |
 | 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
 | 6 | 多语言（YLib 消息服务，文本渲染内置于 YLib） | ✅ 完成 |
-| 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试；阶段 31 扩成四种周期） |
+| 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试；阶段 30 扩成四种周期） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
 | 9 | 网页编辑器前端（schema 驱动表单） | ✅ 完成（构建通过、类型检查 0 诊断） |
 | 10 | 玩家 GUI + 管理 GUI | ✅ 完成 |
@@ -750,41 +723,40 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
-| 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
-| 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试；阶段 32 又加了 ItemsAdder / CraftEngine） |
-| 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
-| 25 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.7） |
-| 26 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（6 项测试） |
-| 27 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
-| 28 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
-| 29 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
-| 30 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.8，7 项 PresetRefs 测试 + 2 项服务级测试） |
-| 31 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
-| 32 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.6，8 项接入层测试 + 2 项目录测试） |
+| 22 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试；阶段 31 又加了 ItemsAdder / CraftEngine） |
+| 23 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
+| 24 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.6） |
+| 25 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（5 项测试） |
+| 26 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
+| 27 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
+| 28 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
+| 29 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.7，7 项 PresetRefs 测试 + 2 项服务级测试） |
+| 30 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
+| 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 2 项目录测试） |
 
-**测试总量：275 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
-存储 20（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
+**测试总量：249 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
-预设引用 7（`PresetRefsTest`）+ 示例文件 6（`ExampleFilesTest`）+
-周期算法 12（`PeriodsTest`）+ 周期抽取池 5（`PeriodicPoolPrerequisiteTest`）+
+预设引用 7（`PresetRefsTest`）+ 示例文件 5（`ExampleFilesTest`）+
+周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-前置判定 12（`PrerequisiteServiceTest`）+ 任务管理 13（`QuestAdminServiceTest`）+
+任务管理 12（`QuestAdminServiceTest`）+
 素材 11（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
-字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 7（`RewardServiceTest`）+
-示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
+示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
 示例预设 5（`ExamplePresetsTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（32 个 XML），不是靠日志里的汇总行。
+逐套件累加（30 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1008 行 + `core/src/main` 14061 行
-＝ **15069 行 / 112 个 java 文件**；测试 `core/src/test` **6658 行 / 36 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 976 行 + `core/src/main` 13458 行
+＝ **14434 行 / 106 个 java 文件**；测试 `core/src/test` **6064 行 / 33 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6116 行 `.vue` + 2019 行 `.ts`/`.js` ＝ 8135 行 / 31 个文件**
+前端 `task-editor-vue/src` **5961 行 `.vue` + 2000 行 `.ts`/`.js` ＝ 7961 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
@@ -829,18 +801,10 @@ gzip 已生效（Javalin 对超过 1500 字节的响应自动压缩）：
 /assets/index-*.js        238 KB → 85.7 KB
 ```
 
-**清空数据库后重新初始化**：建表清单为 8 张（quest / quest_objective / quest_reward /
-quest_prerequisite / player_quest / period_state / quest_claim / preset）；
+**清空数据库后重新初始化**：建表清单为 6 张（quest / quest_objective / quest_reward /
+player_quest / period_state / preset）；
 早期一次真机验证里 `PRAGMA integrity_check` 为 ok。
 （`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
-
-**前置任务的真机冒烟（Folia 26.1.2-8）**：空库启动 → 写入 12 个示例任务（含任务链
-「添砖加瓦」以「挖矿日常」为前置）→ `GET /api/quests` 读回
-`prerequisites: ["example_daily_mine"]` 且 `problems: []`，即
-「编辑器 JSON → 模型 → SQLite 子表 → 读回 → JSON」整条链路在真机上成立；
-`quest_prerequisite` 与 `quest_claim` 两张新表也确实落在库里（建表无异常，插件正常启用）。
-**未验证**：真人进服后的抽取排除与领取门禁表现——需要玩家在线才能触发，
-本轮只到「定义读写 + 建表 + 编辑器接口」这一层。
 
 **插件联动的真机冒烟（同一台测试服，未安装 MythicMobs / CustomFishing）**：
 启动日志为「已启用（12 个任务，**15 种目标**，5 种奖励）」，没有任何异常，
@@ -874,7 +838,7 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 `GET /api/quests/export` 输出干净（`refreshCost: 1000` 是整数，不是 `!!float`）。
 导入侧用**含 `target: NO` 与 `target: yes` 的目标**验证类型语义：`POST /api/quests/import?replace=false`
 返回 `{"total":14,"skipped":[],"ok":true,"imported":1}`，读回后两个值都是**字符串** `"NO"` / `"yes"`——
-这正是 4.7 那套 1.2-core resolver 要解决的核心风险（修好前实测会变成布尔 `false`）。
+这正是 4.6 那套 1.2-core resolver 要解决的核心风险（修好前实测会变成布尔 `false`）。
 探针文件与导入的任务随后已清理。
 
 **铺示例文件的真机冒烟（同一台测试服，先清空 `quests/` 与 `presets/`）**：启动时两个目录
@@ -889,9 +853,7 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 
 接口侧：`/api/quests` 24 条（12 条 `source=database` + 12 条 `source=file`）、
 `/api/presets` 14 目标 + 8 奖励（库与文件各一半），**没有一条「库优先」冲突告警**——
-两套 id 前缀不同正是为此。文件里的任务链也对：
-`GET /api/quests/example_file_daily_build` 的 `prerequisites` 是 `example_file_daily_mine`
-（若漏改前缀，它会指向库里那条，两套示例就被串起来了）。
+两套 id 前缀不同正是为此。
 
 再验一次「不重复补」：删掉 `quests/example_file_daily_torch.yml` 后重启，
 日志里没有「已写入」、任务数 23、该文件没有被重新创建；把它放回去再 `POST /api/reload`，
@@ -945,9 +907,8 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 - **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
   兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
 - **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有周期任务一条来源
-  （`DailyService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
-  普通任务因此只存在于定义与编辑器里；给它配前置不会报错，但游戏内看不到效果。
-  前置判定本身与任务类型无关（周期任务链已完整生效），缺的是「接取常驻任务」这一步。
+  （`PeriodicService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
+  普通任务因此只存在于定义与编辑器里，缺的是「接取常驻任务」这一步。
 - **MythicMobs / CustomFishing 只做了「未安装」这一支的真机验证**：本机测试服没有这两个插件，
   验证到的是「插件照常启用、目标类型标为不可用、`mythic:` 目标被校验拦下」；
   装上插件后的实际击杀/钓获计数只有替身事件与反射入口的单测覆盖，
@@ -961,14 +922,14 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 - **一件事只有一个出处**：凡是「多个入口都要做同一件事」的地方都收敛到一处，
   避免同一个功能两种口径。已收敛的几处：
   - 任务校验（编辑器标红 / `/ptxa list` / 管理 GUI）→ `QuestAdminService.validate`；
-  - 刷新结果的提示措辞（玩家命令 / 管理员命令 / GUI 按钮）→ `DailyService.RefreshResult`
+  - 刷新结果的提示措辞（玩家命令 / 管理员命令 / GUI 按钮）→ `PeriodicService.RefreshResult`
     自带回复消息，调用方只调 `report(...)`，不再各自拼 success/cost/limit/error；
   - 启用状态切换（落库 + 同步注册表 + 重建索引）→ `QuestAdminService.setEnabled`；
   - 文本装配（渲染 / 数字去小数尾巴 / 配置表摊平 / 类型显示名）→ `core/text/Texts`；
   - 命令帮助清单 → `CommandHelp.ofAnnotations` 从注解生成，不再手写第二份；
   - 定义来源的合并与只读判定（库优先 / 冲突告警去重 / 只读写入抛异常）→
     `MergedSources` + 两个 `Merged*Repository`：游戏内命令、管理 GUI、编辑器 HTTP
-    拿到的是同一个结论，不需要各自再判断一次「这个 id 能不能改」（见 4.7）。
+    拿到的是同一个结论，不需要各自再判断一次「这个 id 能不能改」（见 4.6）。
 - **目标类型**：`core/objective/` 只有三个类——数据形态的 `TargetObjective` 与两个自带判定
   逻辑的 `InteractObjective` / `ChatObjective` / `CustomFishObjective`；15 种内置类型的清单在 `BuiltIns` 里显式列出
   （不扫描包，保证「新增类型必须登记」的确定性）。共用的目标命中判定是
@@ -990,8 +951,8 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
   省略哪些空值」（空字符串与空列表不写出去：手写文件里堆一串 `category: ''` 只会让人以为必须填）。
 - **出厂示例有两套，且刻意不同前缀**：库里 `example_*`（可编辑，编辑器里改）、
   文件里 `example_file_*`（只读，编辑器里对照格式）。`ExampleFilesTest` 钉住「两套只差前缀、
-  内容等价、前置跟着换前缀」，`ExampleFiles` 只在目录为空时写一次——这三条都是
-  「不报错但会让人困惑很久」的类型（id 撞库→整套被忽略、前置漏改→任务链串到库里、
+  内容等价」，`ExampleFiles` 只在目录为空时写一次——这几条都是
+  「不报错但会让人困惑很久」的类型（id 撞库→整套被忽略、
   反复补文件→删了又回来）。
 - **包归位**：三个类型/任务注册表实现同处 `core/registry`（`api.registry` 也是这么分组的），
   `core/quest` 只留 `QuestAdminService` 这一处「任务定义维护入口」。

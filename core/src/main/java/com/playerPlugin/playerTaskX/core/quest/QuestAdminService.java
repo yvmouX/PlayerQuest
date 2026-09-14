@@ -45,7 +45,6 @@ public final class QuestAdminService {
     private final ObjectiveRegistryImpl objectiveTypes;
     private final RewardService rewardService;
     private final ProgressService progressService;
-    private final PrerequisiteService prerequisites;
     /** 在线玩家 id 供应器；抽出成 Supplier 是为了让 rebuild 的触发时机可测试。 */
     private final Supplier<Collection<UUID>> onlinePlayerIds;
     /** 按 id 查预设：展开任务里的预设引用用（见 {@link PresetRefs}）。 */
@@ -60,15 +59,15 @@ public final class QuestAdminService {
 
     public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
                              ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
-                             ProgressService progressService, PrerequisiteService prerequisites,
+                             ProgressService progressService,
                              Supplier<Collection<UUID>> onlinePlayerIds, Function<String, Preset> presets) {
-        this(repository, quests, objectiveTypes, rewardService, progressService, prerequisites,
+        this(repository, quests, objectiveTypes, rewardService, progressService,
                 onlinePlayerIds, presets, CustomContentHooks::empty);
     }
 
     public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
                              ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
-                             ProgressService progressService, PrerequisiteService prerequisites,
+                             ProgressService progressService,
                              Supplier<Collection<UUID>> onlinePlayerIds, Function<String, Preset> presets,
                              Supplier<CustomContentHooks> customContent) {
         this.repository = repository;
@@ -76,7 +75,6 @@ public final class QuestAdminService {
         this.objectiveTypes = objectiveTypes;
         this.rewardService = rewardService;
         this.progressService = progressService;
-        this.prerequisites = prerequisites;
         this.onlinePlayerIds = onlinePlayerIds;
         this.presets = presets;
         this.customContent = customContent == null ? CustomContentHooks::empty : customContent;
@@ -122,10 +120,6 @@ public final class QuestAdminService {
      * 但玩家一分钱也拿不到——这种情况必须暴露在管理员视图里，否则只能靠翻日志发现。
      * 目标同理（{@link ObjectiveType#available()}），例如没装 CustomFishing 时
      * 「自定义钓鱼」目标永远不涨进度。
-     * <p>
-     * 前置关系的问题（不存在、自引用、成环、指向已禁用任务）由
-     * {@link PrerequisiteService#problems(Quest)} 给出：那是任务链的知识，
-     * 判定与校验必须同一处，否则运行时按一种口径、编辑器按另一种口径。
      */
     public List<String> validate(Quest quest) {
         List<String> problems = new ArrayList<>();
@@ -146,7 +140,6 @@ public final class QuestAdminService {
         }
         // target 里写了 mythic:<怪物id> 但服务端没有 MythicMobs：这些目标永远命中不了
         problems.addAll(MythicMobsHook.targetProblems(quest));
-        problems.addAll(prerequisites.problems(quest));
         // 预设引用写错/被删/类别不对：目标或奖励实际不生效，但表面上任务还在
         problems.addAll(PresetRefs.problems(quest, presets));
         // itemsadder: / craftengine: 目标在没装对应插件（或接入失败）时永远命中不了

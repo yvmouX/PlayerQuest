@@ -173,12 +173,12 @@ class PresetRefsTest {
     }
 
     private static Quest quest(QuestObjective... objectives) {
-        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(objectives), List.of(), 0.0, true);
     }
 
     private static Quest quest(QuestObjective objective, QuestReward reward) {
-        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(objective), List.of(reward), 0.0, true);
     }
 }

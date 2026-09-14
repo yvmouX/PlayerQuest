@@ -168,7 +168,7 @@ class MergedDefinitionRepositoryTest {
     }
 
     private static Quest quest(String id, String name) {
-        return new Quest(id, name, List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        return new Quest(id, name, List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("chat", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
     }

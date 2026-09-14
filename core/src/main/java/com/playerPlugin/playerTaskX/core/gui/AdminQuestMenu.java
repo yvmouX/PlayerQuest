@@ -121,10 +121,6 @@ public final class AdminQuestMenu extends Menu {
         lore.add("&7分类: &f" + (category == null || category.isBlank() ? text("common.none") : category));
         lore.add("&7目标: &f" + describeObjectives(plugin, player, quest));
         lore.add("&7奖励: &f" + describeRewards(plugin, player, quest));
-        // 前置原样列 id：管理员要靠它定位到具体任务，与「目标」「奖励」两行同一套诊断口径
-        if (quest.hasPrerequisites()) {
-            lore.add("&7前置: &f" + String.join("&7, &f", quest.prerequisites()));
-        }
         lore.add("&7启用: &f" + text(quest.enabled() ? "common.yes" : "common.no"));
         // 只读定义（quests/ 下的 YAML）在管理界面里要一眼看出，否则管理员会反复点开关以为坏了
         if (plugin.questDefinitions().isReadOnly(quest.id())) {

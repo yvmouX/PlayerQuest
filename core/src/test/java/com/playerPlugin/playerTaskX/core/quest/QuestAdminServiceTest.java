@@ -14,7 +14,6 @@ import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.ExpReward;
 import com.playerPlugin.playerTaskX.core.reward.ItemReward;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
-import com.playerPlugin.playerTaskX.core.storage.InMemoryQuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import org.bukkit.Bukkit;
@@ -58,8 +57,6 @@ class QuestAdminServiceTest {
     private FakeQuestRepository repository;
     private QuestRegistryImpl quests;
     private ProgressService progress;
-    private InMemoryQuestClaimRepository claims;
-    private PrerequisiteService prerequisites;
     private QuestAdminService service;
 
     @BeforeAll
@@ -83,11 +80,9 @@ class QuestAdminServiceTest {
         rewardTypes.register(new ExpReward());
         rewardTypes.register(new ItemReward());
         progress = mock(ProgressService.class);
-        claims = new InMemoryQuestClaimRepository();
-        prerequisites = new PrerequisiteService(quests, claims);
         service = new QuestAdminService(repository, quests, objectiveTypes,
-                new RewardService(quests, rewardTypes, new NoopPlayerQuestRepository(), claims, prerequisites),
-                progress, prerequisites, () -> List.of(PLAYER), presets::get);
+                new RewardService(quests, rewardTypes, new NoopPlayerQuestRepository()),
+                progress, () -> List.of(PLAYER), presets::get);
     }
 
     /** 测试用预设表：展开任务里的 {@code preset:} 引用时按它查（见 PresetRefsTest）。 */
@@ -122,7 +117,7 @@ class QuestAdminServiceTest {
                 Map.of("target", "STONE", "amount", 64), ""));
 
         // 编辑器形状：引用 + 一个覆盖项（amount 改成 128）
-        service.save(new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        service.save(new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(new QuestObjective("", Map.of("preset", "mine-stone", "amount", 128))),
                 List.of(), 0.0, true));
 
@@ -149,7 +144,7 @@ class QuestAdminServiceTest {
     @Test
     @DisplayName("校验会报出悬空的预设引用")
     void validateReportsMissingPreset() {
-        Quest broken = new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest broken = new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(new QuestObjective("", Map.of("preset", "nope"))),
                 List.of(), 0.0, true);
         service.save(broken);
@@ -186,7 +181,7 @@ class QuestAdminServiceTest {
     @Test
     @DisplayName("校验能发现未知的目标与奖励类型")
     void validateReportsUnknownTypes() {
-        Quest broken = new Quest("broken", "坏任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest broken = new Quest("broken", "坏任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("no_such_objective", Map.of("amount", 1))),
                 List.of(QuestReward.of("no_such_reward", Map.of("amount", 1))), 0.0, true);
 
@@ -202,7 +197,7 @@ class QuestAdminServiceTest {
     @DisplayName("软依赖缺失的目标类型要报「不可用」，而不是让它静默不涨进度")
     void validateReportsUnavailableObjectiveType() {
         // 「自定义钓鱼」需要 CustomFishing，单测环境没有；target 怎么写都不重要
-        Quest quest = new Quest("fishy", "钓鱼任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("fishy", "钓鱼任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("custom_fish", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
 
@@ -215,7 +210,7 @@ class QuestAdminServiceTest {
     @Test
     @DisplayName("target 写了 mythic: 但服务端没有 MythicMobs：必须标出来（这种目标永远命中不了）")
     void validateReportsMythicTargetsWithoutThePlugin() {
-        Quest quest = new Quest("mythic_kill", "讨伐自定义怪", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("mythic_kill", "讨伐自定义怪", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("kill", Map.of("target", "mythic:Boss", "amount", 1))),
                 List.of(), 0.0, true);
 
@@ -229,33 +224,6 @@ class QuestAdminServiceTest {
     @DisplayName("合法任务没有校验问题")
     void validQuestHasNoProblems() {
         assertTrue(service.validate(quest("q1")).isEmpty());
-    }
-
-    @Test
-    @DisplayName("校验把前置关系的问题一并报出来（三条入口共用同一份结论）")
-    void validateReportsPrerequisiteProblems() {
-        service.save(quest("p1"));
-
-        // 前置不存在
-        assertTrue(service.validate(questWithPrerequisites("q1", "ghost")).stream()
-                        .anyMatch(problem -> problem.contains("前置任务不存在: ghost")),
-                "前置写错 id 必须报出来，否则玩家只会看到这个任务永远不出现");
-
-        // 自引用
-        assertTrue(service.validate(questWithPrerequisites("q2", "q2")).stream()
-                        .anyMatch(problem -> problem.contains("不能是自己")));
-
-        // 成环：p1 以 q3 为前置、q3 以 p1 为前置
-        service.save(questWithPrerequisites("q3", "p1"));
-        service.save(questWithPrerequisites("p1", "q3"));
-        assertTrue(service.validate(quests.find("p1").orElseThrow()).stream()
-                        .anyMatch(problem -> problem.contains("成环")),
-                "成环的两个任务谁也别想领到奖，必须报出来");
-
-        // 前置被禁用
-        service.setEnabled("p1", false);
-        assertTrue(service.validate(questWithPrerequisites("q4", "p1")).stream()
-                        .anyMatch(problem -> problem.contains("已禁用")));
     }
 
     @Test
@@ -289,15 +257,8 @@ class QuestAdminServiceTest {
     }
 
     private static Quest questWithAmount(String id, int amount) {
-        return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
-                List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", amount))),
-                List.of(QuestReward.of("exp", Map.of("amount", 100))), 0.0, true);
-    }
-
-    private static Quest questWithPrerequisites(String id, String... prerequisites) {
         return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL,
-                List.of(prerequisites),
-                List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 1))),
+                List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", amount))),
                 List.of(QuestReward.of("exp", Map.of("amount", 100))), 0.0, true);
     }
 

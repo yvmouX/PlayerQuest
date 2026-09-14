@@ -25,11 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class YamlDefinitionsTest {
 
     @Test
-    @DisplayName("任务往返：字段、目标、奖励、前置全都保留")
+    @DisplayName("任务往返：字段、目标、奖励全都保留")
     void questRoundTrip() {
         Quest quest = new Quest("daily_mine", "<yellow>挖矿日常",
                 List.of("<gray>挖掘 64 个石头", "第二行"), "STONE_PICKAXE", "每日", QuestType.DAILY,
-                List.of("p1", "p2"),
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 64)),
                         QuestObjective.of("chat", Map.of("target", "你好", "amount", 1))),
                 List.of(QuestReward.of("exp", Map.of("amount", 200))),
@@ -43,7 +42,6 @@ class YamlDefinitionsTest {
         assertEquals(quest.type(), loaded.type());
         assertFalse(loaded.enabled(), "enabled 是布尔，往返不能变字符串");
         assertEquals(1000.0, loaded.refreshCost());
-        assertEquals(quest.prerequisites(), loaded.prerequisites());
         assertEquals(quest.objectives(), loaded.objectives());
         assertEquals(quest.rewards(), loaded.rewards());
     }
@@ -56,7 +54,7 @@ class YamlDefinitionsTest {
                 "1.20", "123", "0x10", "012", "*", "~", "null", ".inf", "", "带 空格", "冒号: 后面");
 
         for (String value : tricky) {
-            Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+            Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                     List.of(QuestObjective.of("chat", Map.of("target", value, "amount", 1))),
                     List.of(), 0.0, true);
 
@@ -71,7 +69,7 @@ class YamlDefinitionsTest {
     @Test
     @DisplayName("数值与布尔属性保持原类型")
     void numbersAndBooleansKeepTheirType() {
-        Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("x",
                         Map.of("amount", 64, "ratio", 1.5, "flag", true))),
                 List.of(), 0.0, true);
@@ -87,7 +85,7 @@ class YamlDefinitionsTest {
     @Test
     @DisplayName("导出省略空的可选字段，但关键字段一定在")
     void emptyOptionalFieldsAreOmitted() {
-        Quest quest = new Quest("q", "任务", List.of(), "PAPER", "", QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("q", "任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(QuestObjective.of("chat", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
 
@@ -95,7 +93,6 @@ class YamlDefinitionsTest {
 
         assertFalse(yaml.contains("description:"), yaml);
         assertFalse(yaml.contains("category:"), yaml);
-        assertFalse(yaml.contains("prerequisites:"), yaml);
         assertTrue(yaml.contains("id: q"), yaml);
         assertTrue(yaml.contains("objectives:"), yaml);
     }
@@ -104,7 +101,7 @@ class YamlDefinitionsTest {
     @DisplayName("长描述不折行：折行会在读回来时改变字符串")
     void longTextIsNotFolded() {
         String longLine = "很长的描述".repeat(40);
-        Quest quest = new Quest("q", "任务", List.of(longLine), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("q", "任务", List.of(longLine), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("chat", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
 

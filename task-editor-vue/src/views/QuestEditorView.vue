@@ -89,7 +89,7 @@
         :readonly="readOnly"
         :error="yaml.error.value"
         :warnings="yaml.warnings.value"
-        hint="顶层是任务字段：id / name / description / icon / category / type / refreshCost / enabled / prerequisites / objectives / rewards。"
+        hint="顶层是任务字段：id / name / description / icon / category / type / refreshCost / enabled / objectives / rewards。"
         @regenerate="yaml.syncFromSource()"
       />
     </section>
@@ -183,50 +183,6 @@
               <small class="hint">一行一条，保存时转成数组。</small>
             </label>
 
-            <!-- 前置任务：任务链。判定标准是「已领取奖励」，文案必须与后端一致 -->
-            <div class="field field-stack field-wide">
-              <span class="field-label">前置任务</span>
-              <small class="hint">
-                玩家<b>领取</b>过这里全部任务的奖励后，本任务才会进入每日抽取池、才可领取奖励。
-                多个前置之间是「且」的关系；「已完成但没领奖」不算数。留空表示没有前置。
-              </small>
-
-              <ul v-if="form.prerequisites.length" class="prerequisite-list">
-                <li v-for="id in form.prerequisites" :key="id">
-                  <span class="mono">{{ id }}</span>
-                  <span class="hint">{{ questLabel(id) }}</span>
-                  <button class="btn btn-small btn-danger" type="button" @click="removePrerequisite(id)">
-                    移除
-                  </button>
-                </li>
-              </ul>
-              <small v-else class="hint">未设置前置任务。</small>
-
-              <div class="field-control">
-                <select v-model="prerequisiteToAdd" :disabled="optionsFailed">
-                  <option value="">— 选择一个任务作为前置 —</option>
-                  <option
-                    v-for="option in prerequisiteCandidates"
-                    :key="option.id"
-                    :value="option.id"
-                    :disabled="option.cycles"
-                  >
-                    {{ option.id }}{{ option.label ? ` — ${option.label}` : '' }}{{ option.cycles ? '（会与当前任务成环，不能选）' : '' }}
-                  </option>
-                </select>
-                <button
-                  class="btn btn-small"
-                  type="button"
-                  :disabled="!prerequisiteToAdd"
-                  @click="addPrerequisite"
-                >
-                  添加前置
-                </button>
-              </div>
-              <small v-if="optionsFailed" class="warn-line">
-                任务列表加载失败，暂时无法选择前置；下拉里的 id 仍可手打到任务数据里，保存后由后端校验。
-              </small>
-            </div>
           </div>
         </section>
 
@@ -426,8 +382,6 @@ interface QuestForm {
   type: QuestType
   refreshCost: number
   enabled: boolean
-  /** 前置任务 id；顺序只影响界面显示，判定是「全部满足」 */
-  prerequisites: string[]
 }
 
 const form = reactive<QuestForm>({
@@ -437,8 +391,7 @@ const form = reactive<QuestForm>({
   category: '',
   type: 'NORMAL',
   refreshCost: 0,
-  enabled: true,
-  prerequisites: []
+  enabled: true
 })
 
 const descriptionText = ref('')
@@ -490,8 +443,6 @@ function buildQuest(): Quest {
     type: form.type,
     refreshCost: form.refreshCost,
     enabled: form.enabled,
-    // 去重去空：后端也会规范化，但保存前的序列化要稳定，否则「未保存修改」标志会误报
-    prerequisites: [...new Set(form.prerequisites.map(id => id.trim()).filter(id => id !== ''))],
     // normalizeInstances 会连 preset 一起带过来：漏掉它等于把「引用预设」降级成
     // 「复制一份当时的配置」；resolved 是后端算的派生值，提交时会被忽略
     objectives: normalizeInstances(objectiveRows.value, objectiveSchemas.value),
@@ -544,7 +495,6 @@ function applyYamlQuest(quest: Quest): void {
   form.type = quest.type ?? 'NORMAL'
   form.refreshCost = Number(quest.refreshCost) || 0
   form.enabled = quest.enabled !== false
-  form.prerequisites = [...(quest.prerequisites ?? [])]
   if (!persisted.value && quest.id) {
     form.id = quest.id
   }
@@ -618,7 +568,6 @@ const preview = computed(() => {
       id ? `id: ${id}` : '',
       `${QUEST_TYPE_LABELS[form.type] ?? form.type}任务`,
       form.category ? `分类: ${form.category}` : '',
-      form.prerequisites.length ? `前置 ${form.prerequisites.length} 个` : '',
       form.enabled ? '' : '（已禁用，玩家看不到）'
     ].filter(Boolean).join(' · '),
     description: descriptionText.value
@@ -642,8 +591,6 @@ watch(() => props.id, id => {
 
 onMounted(() => {
   void loadCategories()
-  // 前置任务的下拉需要全部任务定义；和素材目录一样预加载，避免点开时才卡一下
-  void loadQuestOptions()
   // 预加载素材目录与预设：打开选择器/弹层时不用等网络，也不会在输入时才卡一下
   void loadCatalog()
   void loadPresets()
@@ -768,7 +715,6 @@ function applyQuest(quest: Quest): void {
   form.type = quest.type ?? 'NORMAL'
   form.refreshCost = Number(quest.refreshCost) || 0
   form.enabled = quest.enabled !== false
-  form.prerequisites = [...(quest.prerequisites ?? [])]
   descriptionText.value = (quest.description ?? []).join('\n')
   objectiveRows.value = toRows(quest.objectives, objectiveSchemas.value)
   rewardRows.value = toRows(quest.rewards, rewardSchemas.value)
@@ -788,7 +734,6 @@ function resetToNew(): void {
   form.type = 'NORMAL'
   form.refreshCost = 0
   form.enabled = true
-  form.prerequisites = []
   descriptionText.value = ''
   objectiveRows.value = []
   rewardRows.value = []
@@ -938,95 +883,6 @@ function onRefreshCostInput(event: Event): void {
   const target = event.target as HTMLInputElement | null
   const value = target ? Number(target.value) : 0
   form.refreshCost = Number.isFinite(value) && value >= 0 ? value : 0
-}
-
-/* ---------------- 前置任务 ---------------- */
-
-/**
- * 全部任务定义（用于前置任务的下拉候选与成环预判）。
- *
- * <p>刻意存整份定义而不是「id + 名称」：成环判断需要每条任务的前置边，
- * 少了它就只能等后端保存后报错，而那时管理员已经点了保存。
- */
-const allQuests = ref<Quest[]>([])
-const optionsFailed = ref(false)
-const prerequisiteToAdd = ref('')
-
-async function loadQuestOptions(): Promise<void> {
-  try {
-    allQuests.value = await QuestApi.list()
-    optionsFailed.value = false
-  } catch {
-    // 只是便利功能：加载失败不该挡住编辑，但要说清楚为什么选不了
-    allQuests.value = []
-    optionsFailed.value = true
-  }
-}
-
-/** 任务显示名：剥掉颜色标签，缺失时退回 id。 */
-function questLabel(id: string): string {
-  const quest = allQuests.value.find(candidate => candidate.id === id)
-  if (!quest) {
-    return '（任务不存在或已被删除）'
-  }
-  return stripTags(quest.name) || quest.id
-}
-
-/**
- * 把候选作为前置后是否会成环：从候选出发沿前置边能不能走回当前任务。
- *
- * <p>界面预判只为了避免「保存后才知道成环」，不是权威判定——真正的校验在后端
- * {@code PrerequisiteService.problems}，它还能看到编辑器之外的改动。
- */
-function causesCycle(candidateId: string): boolean {
-  const selfId = String(form.id ?? '').trim()
-  if (!selfId) {
-    return candidateId === selfId
-  }
-  const edges = new Map(allQuests.value.map(quest => [quest.id, quest.prerequisites ?? []]))
-  const seen = new Set<string>()
-  const stack = [candidateId]
-  while (stack.length) {
-    const node = stack.pop() as string
-    if (node === selfId) {
-      return true
-    }
-    if (seen.has(node)) {
-      continue
-    }
-    seen.add(node)
-    for (const next of edges.get(node) ?? []) {
-      stack.push(next)
-    }
-  }
-  return false
-}
-
-/** 下拉候选：排除自己与已选中的，标注会成环的那些（成环的禁选）。 */
-const prerequisiteCandidates = computed(() => {
-  const selfId = String(form.id ?? '').trim()
-  const chosen = new Set(form.prerequisites)
-  return allQuests.value
-    .filter(quest => quest.id !== selfId && !chosen.has(quest.id))
-    .map(quest => ({
-      id: quest.id,
-      label: stripTags(quest.name),
-      cycles: causesCycle(quest.id)
-    }))
-    .sort((left, right) => left.id.localeCompare(right.id))
-})
-
-function addPrerequisite(): void {
-  const id = prerequisiteToAdd.value.trim()
-  prerequisiteToAdd.value = ''
-  if (!id || form.prerequisites.includes(id)) {
-    return
-  }
-  form.prerequisites.push(id)
-}
-
-function removePrerequisite(id: string): void {
-  form.prerequisites = form.prerequisites.filter(candidate => candidate !== id)
 }
 
 /* ---------------- 保存 / 删除 ---------------- */

@@ -32,7 +32,7 @@ class ProgressDisplayRenderTest {
 
     private Quest quest() {
         return new Quest("example_daily_mine", "<yellow>挖矿日常",
-                List.of("<gray>挖掘 64 个石头"), "STONE_PICKAXE", "每日", QuestType.DAILY, List.of(),
+                List.of("<gray>挖掘 64 个石头"), "STONE_PICKAXE", "每日", QuestType.DAILY,
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", 64))),
                 List.of(QuestReward.of("money", Map.of("amount", 500))), 1000.0, true);
     }
@@ -112,7 +112,7 @@ class ProgressDisplayRenderTest {
     @Test
     @DisplayName("未知目标类型时才退化为显示原始 id（保证可见性而非静默丢失）")
     void unknownTypeShowsRawId() {
-        Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("nonexistent_type", Map.of("amount", 5))),
                 List.of(), 0.0, true);
         // 注意断言的是「不崩溃且包含数量」，而不是具体文案

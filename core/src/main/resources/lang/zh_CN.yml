@@ -53,9 +53,6 @@ quest:
   refresh-limit: "<red>{0}任务的刷新次数已用完（上限 {1} 次）。</red>"
   refresh-cost: "<gray>本次刷新消耗 {0}。</gray>"
   not-found: "<red>找不到任务：{0}</red>"
-  # 前置任务未全部领取时领取奖励的提示。{0} 是未满足的前置任务名（多个用逗号分隔）。
-  # 判定标准是「已领取奖励」而不是「已完成」，措辞必须与此一致，否则玩家会以为做完了就能领。
-  locked: "<red>前置任务尚未全部领取：{0}</red>"
   # 与 gui.in-progress / completed / claimed 同族：占位符里的任务状态文案。
   # 调用方传 0 个参数并会 strip 掉格式，因此不要写 {0}。
   abandoned: "<gray>已放弃</gray>"
@@ -97,11 +94,6 @@ gui:
   back: "<yellow>返回</yellow>"
   refresh: "<yellow>刷新任务</yellow>"
   refresh-cost: "<yellow>刷新（{0}）</yellow>"
-  # 前置任务：物品名 + 三种状态行（未达成 / 已达成 / 管理员预览时不判定）
-  prerequisites: "<yellow>前置任务"
-  prerequisite-todo: "<red>✘ {0}（尚未领取）</red>"
-  prerequisite-done: "<green>✔ {0}</green>"
-  prerequisite: "<gray>{0}</gray>"
 
 # ---------- 编辑器 ----------
 editor:

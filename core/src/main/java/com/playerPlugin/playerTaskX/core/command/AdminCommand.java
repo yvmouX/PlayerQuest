@@ -173,7 +173,6 @@ public class AdminCommand {
                     + "&7" + quest.type() + SEPARATOR
                     + "&7目标 " + quest.objectives().size() + SEPARATOR
                     + "&7奖励 " + quest.rewards().size() + SEPARATOR
-                    + (quest.hasPrerequisites() ? "&7前置 " + quest.prerequisites().size() + SEPARATOR : "")
                     + "&7启用 &f" + messages.raw(sender, quest.enabled() ? "common.yes" : "common.no")));
             for (String problem : plugin.questAdmin().validate(quest)) {
                 messages.sendRaw(sender, Texts.render("&8  ! &c" + problem));
@@ -210,10 +209,6 @@ public class AdminCommand {
                 + "&7分类: &f" + (TextRenderer.isBlank(quest.category())
                 ? messages.raw(sender, "common.none") : quest.category())));
         messages.sendRaw(sender, Texts.render("&7图标: &f" + quest.icon()));
-        // 前置原样列 id：管理员要靠它定位到具体任务（与 /ptxa list、管理 GUI 的「前置」一行同一口径）
-        messages.sendRaw(sender, Texts.render("&7前置: &f" + (quest.hasPrerequisites()
-                ? String.join("&7, &f", quest.prerequisites())
-                : messages.raw(sender, "common.none"))));
         messages.sendRaw(sender, Texts.render("&7刷新费用: &f" + (quest.refreshCost() > 0
                 ? Texts.number(quest.refreshCost())
                 : messages.raw(sender, "common.none"))));

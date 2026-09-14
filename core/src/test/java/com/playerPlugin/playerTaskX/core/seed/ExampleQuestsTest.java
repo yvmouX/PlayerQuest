@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -160,32 +159,6 @@ class ExampleQuestsTest {
                 }
             }
         }
-    }
-
-    @Test
-    @DisplayName("示例里的前置 id 必须指向真实存在的示例任务，且不能成环")
-    void prerequisitesPointAtRealExamples() {
-        List<Quest> examples = examples();
-        Set<String> ids = new HashSet<>();
-        for (Quest quest : examples) {
-            ids.add(quest.id());
-        }
-
-        for (Quest quest : examples) {
-            for (String prerequisiteId : quest.prerequisites()) {
-                assertTrue(ids.contains(prerequisiteId),
-                        "示例任务 " + quest.id() + " 的前置不存在: " + prerequisiteId);
-                assertFalse(prerequisiteId.equals(quest.id()),
-                        "示例任务 " + quest.id() + " 把自己列为前置");
-            }
-        }
-
-        // 任务链示例必须真的存在：它是「前置任务」功能的活文档，被删掉后就没人知道这个字段了
-        Quest chained = examples.stream()
-                .filter(quest -> !quest.prerequisites().isEmpty())
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("示例里至少要有一条带前置的任务链"));
-        assertTrue(ids.contains(chained.prerequisites().get(0)));
     }
 
     private static <E extends Enum<E>> void assertEnumValue(Class<E> type, String name, String message) {

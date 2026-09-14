@@ -7,7 +7,6 @@ import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PeriodSettings;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.quest.PrerequisiteService;
 import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
@@ -24,7 +23,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -49,16 +47,14 @@ public final class PeriodicService {
     private final QuestRegistry quests;
     private final PlayerQuestRepository repository;
     private final ProgressService progressService;
-    private final PrerequisiteService prerequisites;
     private UniversalTask resetTask;
 
     public PeriodicService(PluginConfig config, QuestRegistry quests, PlayerQuestRepository repository,
-                           ProgressService progressService, PrerequisiteService prerequisites) {
+                           ProgressService progressService) {
         this.config = config;
         this.quests = quests;
         this.repository = repository;
         this.progressService = progressService;
-        this.prerequisites = prerequisites;
     }
 
     /** 已启用的周期类型（配置里 enabled 的那些），固定按 每日→每周→每月→自定义 的顺序。 */
@@ -133,26 +129,6 @@ public final class PeriodicService {
         }
         pool.sort(Comparator.comparing(Quest::id));
         return pool;
-    }
-
-    /**
-     * 该玩家当前可抽取的池：全局池去掉前置尚未满足的任务。
-     * <p>
-     * 前置未满足的任务<b>不进池</b>，玩家因此不会抽到一个做不了的任务。
-     * 代价是锁住的任务在界面里完全不出现——这是刻意的：抽到再做不了才是真的坑。
-     * <p>
-     * 前置判定放在抽取前（而不是抽到后再补抽）：抽取种子只由
-     * (玩家, 周期, 刷新次数) 决定，加一次过滤就让「同一玩家同一周期结果一致」不再成立。
-     * 因此前置满足与否会直接改变本周期抽到的那一批，这符合直觉——解锁后新任务才会出现。
-     *
-     * @param playerId 玩家；null 时按「没有任何前置满足」处理（全锁的任务排除）
-     */
-    public List<Quest> availablePool(UUID playerId, QuestType type) {
-        List<Quest> pool = pool(type);
-        Set<String> claimed = prerequisites.claimedIds(playerId);
-        return pool.stream()
-                .filter(quest -> prerequisites.isUnlocked(claimed, quest))
-                .toList();
     }
 
     /**
@@ -307,8 +283,7 @@ public final class PeriodicService {
      */
     private void assign(UUID playerId, QuestType type, String period,
                         int seedRefreshCount, int storedRefreshCount) {
-        // 前置未满足的任务不进池：玩家不该抽到一个被锁住的任务
-        List<Quest> pool = availablePool(playerId, type);
+        List<Quest> pool = pool(type);
         if (pool.isEmpty()) {
             // 没有可用任务时也要记录周期，否则每次检查都会重复走一遍流程
             repository.transaction(() -> {

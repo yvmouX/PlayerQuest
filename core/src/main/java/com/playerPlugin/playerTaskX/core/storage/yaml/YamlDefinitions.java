@@ -23,12 +23,11 @@ import java.util.Map;
  * 新增目标类型时这里一行都不用改。
  *
  * <h2>省略空的可选字段</h2>
- * 空字符串与空列表不写出去：手写文件里堆一串 {@code category: ''}、
- * {@code prerequisites: []} 只会让人以为必须填。省掉它们不丢信息——读的一侧本来就是
- * 「缺省即默认」。
+ * 空字符串与空列表不写出去：手写文件里堆一串 {@code category: ''} 只会让人以为必须填。
+ * 省掉它们不丢信息——读的一侧本来就是「缺省即默认」。
  *
  * <p>键序与前端 YAML 视图保持一致（id、name、description、icon、category、type、
- * refreshCost、enabled、prerequisites、objectives、rewards），这样两边生成的文本可以逐行对照。
+ * refreshCost、enabled、objectives、rewards），这样两边生成的文本可以逐行对照。
  */
 public final class YamlDefinitions {
 
@@ -102,9 +101,6 @@ public final class YamlDefinitions {
         document.put("type", quest.type().name());
         document.put("refreshCost", YamlText.number(quest.refreshCost()));
         document.put("enabled", quest.enabled());
-        if (!quest.prerequisites().isEmpty()) {
-            document.put("prerequisites", new ArrayList<>(quest.prerequisites()));
-        }
         document.put("objectives", quest.objectives().stream().map(YamlDefinitions::objectiveDocument).toList());
         document.put("rewards", quest.rewards().stream().map(YamlDefinitions::rewardDocument).toList());
         return document;

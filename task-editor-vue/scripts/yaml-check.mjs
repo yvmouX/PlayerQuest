@@ -49,7 +49,7 @@ function check(name, fn) {
 
 try {
   // ---------------------------------------------------------------- 任务往返
-  check('任务往返：字段、目标、奖励、前置全部保留', () => {
+  check('任务往返：字段、目标、奖励全部保留', () => {
     const quest = {
       id: 'daily_mine',
       name: '<yellow>挖矿日常',
@@ -57,7 +57,6 @@ try {
       icon: 'STONE_PICKAXE',
       category: '每日',
       type: 'DAILY',
-      prerequisites: ['p1', 'p2'],
       objectives: [
         { type: 'break_block', properties: { target: 'STONE', amount: 64 } },
         { type: 'chat', properties: { target: '你好', amount: 1 } }
@@ -77,7 +76,6 @@ try {
     assert.equal(result.value.type, 'DAILY')
     assert.equal(result.value.enabled, false)
     assert.equal(result.value.refreshCost, 1000)
-    assert.deepEqual(result.value.prerequisites, ['p1', 'p2'])
     assert.deepEqual(result.value.objectives, quest.objectives, '目标的结构与顺序都不能变')
     assert.deepEqual(result.value.rewards, quest.rewards)
   })
@@ -93,7 +91,6 @@ try {
       icon: 'PAPER',
       category: '',
       type: 'NORMAL',
-      prerequisites: [],
       objectives: tricky.map(value => ({ type: 'chat', properties: { target: value, amount: 1 } })),
       rewards: [],
       refreshCost: 0,
@@ -135,7 +132,6 @@ try {
       icon: 'PAPER',
       category: '',
       type: 'NORMAL',
-      prerequisites: [],
       objectives: [{ type: 'x', properties: { amount: 64, ratio: 1.5, flag: true, note: null } }],
       rewards: [],
       refreshCost: 0,
@@ -185,12 +181,11 @@ try {
   check('空字段不写进 YAML（免得让人以为必须填）', () => {
     const text = yaml.questToYaml({
       id: 'q', name: 'n', description: [], icon: 'PAPER', category: '', type: 'NORMAL',
-      prerequisites: [], objectives: [], rewards: [], refreshCost: 0, enabled: true
+      objectives: [], rewards: [], refreshCost: 0, enabled: true
     })
 
     assert.ok(!text.includes('description'), text)
     assert.ok(!text.includes('category'), text)
-    assert.ok(!text.includes('prerequisites'), text)
     assert.ok(text.includes('objectives'), '关键字段仍要显式写出')
   })
 
@@ -232,7 +227,6 @@ try {
       icon: 'PAPER',
       category: '',
       type: 'NORMAL',
-      prerequisites: [],
       objectives: [{
         type: 'break_block',
         preset: 'mine-stone',

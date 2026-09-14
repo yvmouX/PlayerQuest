@@ -7,11 +7,8 @@ import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
-import com.playerPlugin.playerTaskX.core.quest.PrerequisiteService;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
-import com.playerPlugin.playerTaskX.core.storage.QuestClaimRepository;
 import cn.yvmou.ylib.message.MessageService;
-import cn.yvmou.ylib.text.TextRenderer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -27,26 +24,20 @@ import java.util.logging.Level;
  * 关键取舍：**单个奖励失败不影响其它奖励**。一个配置错误的物品奖励
  * 不应该让玩家连金币也拿不到。
  *
- * <h2>领取时为什么要再查一次前置</h2>
- * 每日抽取时已经把前置未满足的任务挡在池外，但「已发给玩家的任务」会因为管理员改定义
- * 而变成锁定状态（给任务补了个前置）。此时再放行就等于前置形同虚设，
- * 因此这里把同一套判定再走一遍——把关不嫌多，漏一次的代价是任务链被绕过。
+ * <h2>领取的判定只有这一处</h2>
+ * 「未接取 / 未完成 / 已领过」三种状态在这里判定并给出措辞，
+ * 玩家命令、GUI 与占位符因此不可能出现两种说法。
  */
 public final class RewardService {
 
     private final QuestRegistry quests;
     private final RewardRegistry rewardTypes;
     private final PlayerQuestRepository repository;
-    private final QuestClaimRepository claims;
-    private final PrerequisiteService prerequisites;
 
-    public RewardService(QuestRegistry quests, RewardRegistry rewardTypes, PlayerQuestRepository repository,
-                         QuestClaimRepository claims, PrerequisiteService prerequisites) {
+    public RewardService(QuestRegistry quests, RewardRegistry rewardTypes, PlayerQuestRepository repository) {
         this.quests = quests;
         this.rewardTypes = rewardTypes;
         this.repository = repository;
-        this.claims = claims;
-        this.prerequisites = prerequisites;
     }
 
     /**
@@ -57,34 +48,24 @@ public final class RewardService {
     public ClaimOutcome claim(Player player, String questId) {
         Quest quest = quests.find(questId).orElse(null);
         if (quest == null) {
-            return new ClaimOutcome(ClaimOutcome.Status.NOT_ASSIGNED, "", List.of());
+            return new ClaimOutcome(ClaimOutcome.Status.NOT_ASSIGNED, "");
         }
         PlayerQuest playerQuest = repository.find(player.getUniqueId(), questId).orElse(null);
         if (playerQuest == null) {
-            return new ClaimOutcome(ClaimOutcome.Status.NOT_ASSIGNED, rawName(quest), List.of());
+            return new ClaimOutcome(ClaimOutcome.Status.NOT_ASSIGNED, rawName(quest));
         }
         if (playerQuest.status() == QuestStatus.CLAIMED) {
             // 重复领取会被这里挡住
-            return new ClaimOutcome(ClaimOutcome.Status.ALREADY_CLAIMED, rawName(quest), List.of());
+            return new ClaimOutcome(ClaimOutcome.Status.ALREADY_CLAIMED, rawName(quest));
         }
         if (playerQuest.status() != QuestStatus.COMPLETED) {
-            return new ClaimOutcome(ClaimOutcome.Status.NOT_COMPLETED, rawName(quest), List.of());
+            return new ClaimOutcome(ClaimOutcome.Status.NOT_COMPLETED, rawName(quest));
         }
-        List<String> missing = prerequisites.unsatisfied(player.getUniqueId(), quest);
-        if (!missing.isEmpty()) {
-            return new ClaimOutcome(ClaimOutcome.Status.LOCKED, rawName(quest), displayNames(missing));
-        }
-
         grant(player, quest);
 
         playerQuest.status(QuestStatus.CLAIMED);
-        // 状态与永久账本一起落库：只写状态的话，跨天重置后前置判定就丢了依据；
-        // 只写账本的话，玩家能重复领奖
-        repository.transaction(() -> {
-            repository.save(playerQuest);
-            claims.markClaimed(player.getUniqueId(), quest.id(), System.currentTimeMillis());
-        });
-        return new ClaimOutcome(ClaimOutcome.Status.CLAIMED, rawName(quest), List.of());
+        repository.save(playerQuest);
+        return new ClaimOutcome(ClaimOutcome.Status.CLAIMED, rawName(quest));
     }
 
     /** 只发放奖励、不改状态，供管理员补发使用。 */
@@ -139,22 +120,6 @@ public final class RewardService {
         return quest.name() == null ? quest.id() : quest.name();
     }
 
-    /**
-     * 未满足的前置 → 给玩家看的名字。
-     * <p>
-     * 前置任务已被删除时退回 id：那种情况下「名字」本来就不存在，而 id 至少让管理员对得上。
-     * 颜色标签一律剥掉，避免嵌进消息后把后半句也染上颜色。
-     */
-    private List<String> displayNames(List<String> missingIds) {
-        List<String> names = new ArrayList<>(missingIds.size());
-        for (String id : missingIds) {
-            String raw = quests.find(id)
-                    .map(quest -> quest.name() == null ? id : quest.name())
-                    .orElse(id);
-            names.add(TextRenderer.strip(raw));
-        }
-        return names;
-    }
 
     private void log(Level level, String message) {
         Bukkit.getLogger().log(level, "[PlayerTaskX] " + message);
@@ -169,25 +134,18 @@ public final class RewardService {
      *
      * @param status    结果状态
      * @param questName 任务原始名（{@link #report} 用；任务不存在时为空串）
-     * @param missing   未满足的前置显示名（仅 {@link Status#LOCKED} 非空）
      */
-    public record ClaimOutcome(Status status, String questName, List<String> missing) {
+    public record ClaimOutcome(Status status, String questName) {
 
         public enum Status {
-            /** 已成功领取并写入账本 */
+            /** 已成功领取 */
             CLAIMED,
             /** 该玩家没有这条任务记录 */
             NOT_ASSIGNED,
             /** 有记录但尚未完成 */
             NOT_COMPLETED,
             /** 已经领过 */
-            ALREADY_CLAIMED,
-            /** 已完成，但前置任务尚未全部领取 */
-            LOCKED
-        }
-
-        public ClaimOutcome {
-            missing = missing == null ? List.of() : List.copyOf(missing);
+            ALREADY_CLAIMED
         }
 
         public boolean claimed() {
@@ -198,7 +156,6 @@ public final class RewardService {
         public void report(MessageService messages, CommandSender receiver) {
             switch (status) {
                 case CLAIMED -> messages.send(receiver, "quest.claimed", questName);
-                case LOCKED -> messages.send(receiver, "quest.locked", String.join(", ", missing));
                 case ALREADY_CLAIMED -> messages.send(receiver, "quest.already-claimed");
                 case NOT_ASSIGNED -> messages.send(receiver, "quest.unavailable");
                 case NOT_COMPLETED -> messages.send(receiver, "quest.not-completed");

@@ -50,7 +50,7 @@ import java.util.List;
  *       所以本类只用 {@code String} 与 {@code Player}；</li>
  *   <li>补全方法签名必须是 {@code List<String> f(CommandSender, CommandContext, String)}，
  *       并且必须声明在本类中——YLib 用 {@code getDeclaredMethod} 精确查找，抽到父类或工具类会静默失效；</li>
- *   <li>Tab 补全时 YLib 传的是空 context，<b>拿不到已解析的前置参数</b>，补全只能基于 sender 推断。</li>
+ *   <li>Tab 补全时 YLib 传的是空 context，<b>拿不到前面已解析的参数</b>，补全只能基于 sender 推断。</li>
  * </ul>
  */
 @Command(name = "playertaskx", aliases = {"ptx"}, description = "PlayerTaskX 玩家命令")
@@ -245,7 +245,7 @@ public class PlayerCommand {
     /**
      * {@code claim <id>}：领取指定任务的奖励。
      * <p>
-     * 「为什么领不到」（未接取 / 未完成 / 已领过 / 前置未满足）由
+     * 「为什么领不到」（未接取 / 未完成 / 已领过）由
      * {@code RewardService.ClaimOutcome} 一处给出，命令与 GUI 因此不可能出现两种说法。
      */
     @SubCommand(value = "claim", description = "领取已完成任务的奖励")

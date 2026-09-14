@@ -104,15 +104,14 @@ public final class ExampleFiles {
     }
 
     /**
-     * 换成「文件里的那份」：改 id 前缀，<b>并把前置 id 一起改</b>。
+     * 换成「文件里的那份」：改 id 前缀。
      * <p>
-     * 前置漏改会让文件里的任务链指向库里的那条，两套示例就被悄悄串起来了——
-     * 这类「看起来正常、实际连到别处」的错最难发现。
+     * 库里那套与文件里那套示例必须完全独立：漏改 id 会让文件里的定义指向库里那条，
+     * 两套示例就被悄悄串起来了——这类「看起来正常、实际连到别处」的错最难发现。
      */
     private static Quest asFileExample(Quest quest) {
-        List<String> prerequisites = quest.prerequisites().stream().map(ExampleFiles::fileId).toList();
         return new Quest(fileId(quest.id()), quest.name(), quest.description(), quest.icon(),
-                quest.category(), quest.type(), prerequisites, quest.objectives(), quest.rewards(),
+                quest.category(), quest.type(), quest.objectives(), quest.rewards(),
                 quest.refreshCost(), quest.enabled());
     }
 

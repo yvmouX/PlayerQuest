@@ -22,7 +22,6 @@ import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
 import com.playerPlugin.playerTaskX.core.listener.TextListener;
 import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
 import com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook;
-import com.playerPlugin.playerTaskX.core.quest.PrerequisiteService;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
@@ -35,7 +34,6 @@ import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
-import com.playerPlugin.playerTaskX.core.storage.QuestClaimRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.DefinitionFolder;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedPresetRepository;
@@ -75,11 +73,9 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     /** 任务定义仓储：数据库 + 可选的 quests/ 只读 YAML（库优先）。 */
     private QuestRepository questDefinitions;
     private PlayerQuestRepository playerQuestRepository;
-    private QuestClaimRepository claimRepository;
     private QuestRegistryImpl quests;
     private ObjectiveRegistryImpl objectiveTypes;
     private RewardRegistryImpl rewardTypes;
-    private PrerequisiteService prerequisites;
     private ProgressService progressService;
     private RewardService rewardService;
     private ProgressDisplay progressDisplay;
@@ -146,7 +142,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
             return;
         }
         playerQuestRepository = handle.playerQuestRepository();
-        claimRepository = handle.claims();
         presets = handle.presets();
         questDefinitions = handle.quests();
         // 定义来源：数据库（权威、可写）+ 可选的 quests/ 与 presets/ 只读 YAML（库优先）
@@ -168,14 +163,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         progressService.onStructureChanged((questId, playerId) -> log.warn(
                 "任务 {} 的目标结构已变化，玩家 {} 的该任务进度已重置（旧进度的下标已错位）",
                 questId, playerId));
-        // 前置判定只依赖「永久领取账本」：每日任务记录会被整批删除，不能拿它当依据
-        prerequisites = new PrerequisiteService(quests, claimRepository);
-        rewardService = new RewardService(quests, rewardTypes, playerQuestRepository,
-                claimRepository, prerequisites);
+        rewardService = new RewardService(quests, rewardTypes, playerQuestRepository);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
-        periodicService = new PeriodicService(config, quests, playerQuestRepository, progressService, prerequisites);
+        periodicService = new PeriodicService(config, quests, playerQuestRepository, progressService);
         questAdmin = new QuestAdminService(questDefinitions, quests, objectiveTypes, rewardService,
-                progressService, prerequisites,
+                progressService,
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
                 () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList(),
                 // 预设仓储同样是运行期查询：任务里的 preset: 引用按它展开（见 PresetRefs）
@@ -369,11 +361,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return progressService;
     }
 
-    /** 前置任务判定与校验（任务链）。 */
-    public PrerequisiteService prerequisites() {
-        return prerequisites;
-    }
-
     public RewardService rewardService() {
         return rewardService;
     }
@@ -414,11 +401,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     public PlayerQuestRepository playerQuestRepository() {
         return playerQuestRepository;
-    }
-
-    /** 永久领取账本：前置判定与「做过没有」查询的唯一依据。 */
-    public QuestClaimRepository claimRepository() {
-        return claimRepository;
     }
 
     /**

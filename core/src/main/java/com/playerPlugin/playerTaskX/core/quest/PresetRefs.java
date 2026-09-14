@@ -49,7 +49,7 @@ public final class PresetRefs {
             rewards.add(resolve(reward, presets));
         }
         return new Quest(quest.id(), quest.name(), quest.description(), quest.icon(), quest.category(),
-                quest.type(), quest.prerequisites(), objectives, rewards, quest.refreshCost(), quest.enabled());
+                quest.type(), objectives, rewards, quest.refreshCost(), quest.enabled());
     }
 
     private static QuestObjective resolve(QuestObjective objective, Function<String, Preset> presets) {
@@ -159,7 +159,7 @@ public final class PresetRefs {
             rewards.add(trim(reward, presets));
         }
         return new Quest(quest.id(), quest.name(), quest.description(), quest.icon(), quest.category(),
-                quest.type(), quest.prerequisites(), objectives, rewards, quest.refreshCost(), quest.enabled());
+                quest.type(), objectives, rewards, quest.refreshCost(), quest.enabled());
     }
 
     private static QuestObjective trim(QuestObjective objective, Function<String, Preset> presets) {

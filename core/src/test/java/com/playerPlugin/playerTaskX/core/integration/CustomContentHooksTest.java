@@ -159,7 +159,7 @@ class CustomContentHooksTest {
     }
 
     private static Quest questWithTarget(String target) {
-        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+        return new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("break_block", java.util.Map.of("target", target))),
                 List.of(), 0.0, true);
     }

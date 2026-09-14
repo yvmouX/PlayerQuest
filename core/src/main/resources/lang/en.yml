@@ -53,9 +53,6 @@ quest:
   refresh-limit: "<red>You have used all {0} refreshes (limit {1}).</red>"
   refresh-cost: "<gray>This refresh cost {0}.</gray>"
   not-found: "<red>Quest not found: {0}</red>"
-  # Reward claim blocked by prerequisites. {0} lists the prerequisite quest names.
-  # The criterion is "reward already claimed", so the wording must say claimed, not completed.
-  locked: "<red>Prerequisite quests not claimed yet: {0}</red>"
   # Same family as gui.in-progress / completed / claimed: quest status text for
   # placeholders. The caller passes 0 arguments and strips formatting, so no {0}.
   abandoned: "<gray>Abandoned</gray>"
@@ -96,11 +93,6 @@ gui:
   back: "<yellow>Back</yellow>"
   refresh: "<yellow>Refresh quests</yellow>"
   refresh-cost: "<yellow>Refresh ({0})</yellow>"
-  # Prerequisites: item name plus the three status lines (todo / done / not judgeable)
-  prerequisites: "<yellow>Prerequisites"
-  prerequisite-todo: "<red>✘ {0} (not claimed yet)</red>"
-  prerequisite-done: "<green>✔ {0}</green>"
-  prerequisite: "<gray>{0}</gray>"
 
 # ---------- Editor ----------
 editor:
