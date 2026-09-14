@@ -169,7 +169,7 @@ Bukkit 事件 → GameListener → ProgressContext
 | 写入频率 | 极低（管理员改动） | **每个游戏事件** |
 | 需要事务 | 否 | **是**（每日刷新要删旧写新原子完成） |
 | 需要跨服 | 是（同一份定义） | 是（共享玩家数据） |
-| 落在哪张表 | `quest` / `quest_objective` / `quest_reward` / `preset` | `player_quest` / `daily_state` |
+| 落在哪张表 | `quest` / `quest_objective` / `quest_reward` / `preset` | `player_quest` / `period_state` |
 
 **为什么不是一个接口**：玩家侧需要 `findActiveByPlayer`（在进度热路径上）、
 `countPlayers`、`distinctPlayerIds` 与 `transaction`，这些定义侧都不需要。
@@ -236,7 +236,8 @@ player_quest(player_id, quest_id, type, assigned_at, expires_at, status,
              progress TEXT,              -- {"0":32,"1":5} 目标下标 → 计数
              structure_hash,             -- 目标列表摘要，见 4.3
              PRIMARY KEY(player_id, quest_id))
-daily_state(player_id PK, period, refresh_count, assigned_at)
+period_state(player_id, type, period, refresh_count, assigned_at,
+              PRIMARY KEY(player_id, type))   -- 四种周期各一行，见 6
 -- 永久账本：只记「领取过」，永不删除（每日任务记录会被整批删掉，前置判定不能依赖它）
 quest_claim(player_id, quest_id, claimed_at, PRIMARY KEY(player_id, quest_id))
 
@@ -500,14 +501,34 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 
 ---
 
-## 6. 每日任务
+## 6. 周期任务（每日 / 每周 / 每月 / 自定义）
 
-- 配置 `daily.pool`（任务 ID 列表）、`daily.amount`（每人每日抽取数量）、`daily.reset-hour`（默认 `4`，早于该时刻算前一天）。
-- 发放规则：**全局池 + 按玩家抽取**，种子 = `hash(playerId, 周期, 刷新次数)`，保证同一天重登结果一致、刷新后换一批。
-- 刷新：`/ptx refresh`，按 `daily.refresh-currency` 的顺序消耗第一种可用货币
-  （金币 / 点券 / 经验，经验是永远可用的兜底），**只重抽该玩家自己的列表**，
-  消耗与次数记录在 `daily_state`，可配置每日刷新上限与刷新费用。
-- 跨天检测：登录时与定时任务中检查 `daily_state.assigned_at`，过期则重抽。
+四种周期共用一套逻辑（`PeriodicService` + `Periods`），差别只有「周期怎么算」与「配置读哪一段」：
+
+| 类型 | 周期标识 | 锚点配置 | 重置时刻 |
+|---|---|---|---|
+| `DAILY` | `2026-09-14` | — | `reset-hour`（早于它算前一天） |
+| `WEEKLY` | `W2026-09-14`（本周起始日） | `reset-weekday`（MONDAY…SUNDAY） | 锚点日 + `reset-hour` |
+| `MONTHLY` | `2026-09` | `reset-month-day`（1-28） | 锚点日 + `reset-hour` |
+| `CUSTOM` | `C3d#6893`（周期长度 + 桶号） | `period`（`3d` / `12h`） | 按固定锚点（Unix 纪元）取整 |
+
+- **配置**：`periodic.<type>` 一段一个周期（`enabled` / `amount` / `reset-hour` / 锚点 /
+  `refresh-cost` / `refresh-limit` / `pool`），刷新货币顺序是所有周期共用的 `refresh-currency`
+  ——它说的是「这台服务器有什么货币」，不是某个周期的属性。每种周期默认值不同：
+  每日默认开启，其余默认关闭（开了才会凭空多出一批任务）。
+- **发放规则**：全局池（或配置的 `pool`）+ 按玩家抽取，种子 = `hash(playerId, 周期, 刷新次数)`，
+  保证同一周期内重登结果一致、刷新后换一批。四种周期各自独立发放，一个玩家可以同时有每日与每周任务。
+- **刷新**：`/ptx refresh [类型]`，按 `refresh-currency` 的顺序消耗第一种可用货币
+  （金币 / 点券 / 经验，经验是永远可用的兜底），**只重抽该玩家这一种周期**，
+  消耗与次数记录在 `period_state`，上限与费用按该周期的配置。不给类型就刷新所有已启用的周期
+  （各自扣费、各自提示）；管理员用 `/ptxa resetperiod <玩家> [类型]`，不扣费也不消耗次数。
+- **跨期检测**：登录时与定时任务（每 5 分钟）检查 `period_state.period`，不是当前周期就重抽。
+- **存储**：`period_state(player_id, type)` 复合主键，四种周期各一行。
+  表名与旧版的 `daily_state` 不同是刻意的：主键从 `player_id` 变成 `(player_id, type)`，
+  改名后新表自然建出来，不必对旧表做迁移（旧表留在库里不影响任何事）。
+
+判定「什么时候换一批」的逻辑全在 `Periods`（纯函数，输入时刻 + 配置，输出周期标识与下次重置时刻），
+因此跨周、跨月、跨年、重置小时这些边界都能用单测钉住，不必等到真实时间走到那一步。
 
 ---
 
@@ -516,7 +537,10 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 ### 7.1 玩家 GUI（`core/gui/`）
 
 通用菜单框架（`Menu` / `MenuItem`，用 `InventoryHolder` 区分归属），
-在此之上实现：每日任务列表、任务详情（多目标进度 + 多奖励预览）、点击领取奖励。
+在此之上实现：周期任务列表（底部一排标签切换四种周期，只显示已启用的）、
+任务详情（多目标进度 + 多奖励预览）、点击领取奖励。
+刷新按钮永远只刷新「当前正在看的那种周期」——四种周期的费用与上限各不相同，
+混在一起时「这个按钮扣哪份钱」根本说不清。
 （任务**分类**目前只作为任务的一个字段用于筛选与展示，没有按分类分页浏览的界面。）
 
 ### 7.2 管理 GUI
@@ -648,7 +672,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 4 | 引擎：`ProgressService` + 14 种目标类型 + 5 个监听器 | ✅ 完成（12 项引擎单元测试） |
 | 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
 | 6 | 多语言（YLib 消息服务，文本渲染内置于 YLib） | ✅ 完成 |
-| 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试） |
+| 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试；阶段 31 扩成四种周期） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
 | 9 | 网页编辑器前端（schema 驱动表单） | ✅ 完成（构建通过、类型检查 0 诊断） |
 | 10 | 玩家 GUI + 管理 GUI | ✅ 完成 |
@@ -672,30 +696,31 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 28 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
 | 29 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
 | 30 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.8，7 项 PresetRefs 测试 + 2 项服务级测试） |
+| 31 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
 
-**测试总量：263 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+**测试总量：265 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
 预设引用 7（`PresetRefsTest`）+ 示例文件 6（`ExampleFilesTest`）+
+周期算法 12（`PeriodsTest`）+ 周期抽取池 5（`PeriodicPoolPrerequisiteTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 前置判定 12（`PrerequisiteServiceTest`）+ 任务管理 13（`QuestAdminServiceTest`）+
-每日 10（`DailyServiceTest`）+ 素材 9（`MaterialCatalogTest`）+
-奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+ 自定义钓鱼 9（`CustomFishObjectiveTest`）+
-结构指纹 8（`StructureFingerprintTest`）+ 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+
-奖励领取 7（`RewardServiceTest`）+ 示例任务 7（`ExampleQuestsTest`）+
-监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+
-别名匹配 6（`TargetMatchAliasTest`）+ 示例预设 5（`ExamplePresetsTest`）+
-每日抽取池 5（`DailyPoolPrerequisiteTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
+素材 9（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
+自定义钓鱼 9（`CustomFishObjectiveTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
+字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 7（`RewardServiceTest`）+
+示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
+GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
+示例预设 5（`ExamplePresetsTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
 逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 981 行 + `core/src/main` 12773 行
-＝ **13754 行 / 106 个 java 文件**；测试 `core/src/test` **6390 行 / 34 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1008 行 + `core/src/main` 13246 行
+＝ **14254 行 / 108 个 java 文件**；测试 `core/src/test` **6430 行 / 34 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6096 行 `.vue` + 1994 行 `.ts`/`.js` ＝ 8090 行 / 31 个文件**
+前端 `task-editor-vue/src` **6116 行 `.vue` + 2019 行 `.ts`/`.js` ＝ 8135 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
@@ -741,7 +766,7 @@ gzip 已生效（Javalin 对超过 1500 字节的响应自动压缩）：
 ```
 
 **清空数据库后重新初始化**：建表清单为 8 张（quest / quest_objective / quest_reward /
-quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
+quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 早期一次真机验证里 `PRAGMA integrity_check` 为 ok。
 （`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
 
@@ -846,10 +871,10 @@ quest_prerequisite / player_quest / daily_state / quest_claim / preset）；
   真机只走了主路径（铺示例、`example_file_*` 只读、缺文件不补、reload 重读）。
 - **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
   兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
-- **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有每日任务一条来源
+- **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有周期任务一条来源
   （`DailyService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
   普通任务因此只存在于定义与编辑器里；给它配前置不会报错，但游戏内看不到效果。
-  前置判定本身与任务类型无关（每日任务链已完整生效），缺的是「接取常驻任务」这一步。
+  前置判定本身与任务类型无关（周期任务链已完整生效），缺的是「接取常驻任务」这一步。
 - **MythicMobs / CustomFishing 只做了「未安装」这一支的真机验证**：本机测试服没有这两个插件，
   验证到的是「插件照常启用、目标类型标为不可用、`mythic:` 目标被校验拦下」；
   装上插件后的实际击杀/钓获计数只有替身事件与反射入口的单测覆盖，

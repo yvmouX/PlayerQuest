@@ -378,13 +378,14 @@ class QuestAdminServiceTest {
         }
 
         @Override
-        public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.DailyState findDailyState(UUID playerId) {
+        public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.PeriodState findPeriodState(
+                UUID playerId, QuestType type) {
             return null;
         }
 
         @Override
-        public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
-            // 测试替身不持久化每日状态
+        public void savePeriodState(UUID playerId, QuestType type, String period, int refreshCount, long assignedAt) {
+            // 测试替身不持久化周期状态
         }
     }
 }

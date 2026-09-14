@@ -23,6 +23,7 @@ import type {
   Quest,
   QuestImportResult,
   QuestObjective,
+  QuestType,
   ReloadResult,
   SavePresetResult,
   SaveQuestResult,
@@ -220,7 +221,7 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
     : typeof node.description === 'string' && node.description
       ? [node.description]
       : []
-  const type = node.type === 'DAILY' ? 'DAILY' : typeof node.type === 'string' && node.type ? node.type : 'NORMAL'
+  const type = typeof node.type === 'string' && node.type ? node.type : 'NORMAL'
   const refreshCost = Number(node.refreshCost)
   const prerequisites = Array.isArray(node.prerequisites)
     ? node.prerequisites
@@ -234,7 +235,7 @@ export function normalizeImportedQuest(raw: unknown, fallbackId: string): Quest 
     description,
     icon: typeof node.icon === 'string' && node.icon ? node.icon : 'PAPER',
     category: typeof node.category === 'string' ? node.category : '',
-    type: type === 'DAILY' ? 'DAILY' : 'NORMAL',
+    type: (type.toUpperCase() as QuestType),
     refreshCost: Number.isFinite(refreshCost) && refreshCost >= 0 ? refreshCost : 0,
     enabled: node.enabled !== false,
     prerequisites,

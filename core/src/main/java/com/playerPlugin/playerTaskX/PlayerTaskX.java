@@ -5,10 +5,11 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
-import com.playerPlugin.playerTaskX.core.daily.DailyService;
+import com.playerPlugin.playerTaskX.core.period.PeriodicService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
 import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
@@ -53,7 +54,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  *   <li><b>启停</b>：按序开启/关闭各子系统，单步失败互不拖垮（{@link #guard}）；</li>
  *   <li><b>访问点</b>：向命令、GUI、编辑器暴露各子系统。</li>
  * </ol>
- * 业务逻辑不住在这里：每日逻辑在 DailyService，任务维护在 QuestAdminService，
+ * 业务逻辑不住在这里：周期任务逻辑在 PeriodicService，任务维护在 QuestAdminService，
  * 事件翻译在 listener 包，类型清单在 BuiltIns。往本类加方法前先想想它属于哪个子系统。
  *
  * <h2>为什么 implements {@link EditorServices}</h2>
@@ -81,7 +82,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private ProgressService progressService;
     private RewardService rewardService;
     private ProgressDisplay progressDisplay;
-    private DailyService dailyService;
+    private PeriodicService periodicService;
     private QuestAdminService questAdmin;
     /** MythicMobs 接入点；null 表示未安装或不支持（原版击杀照常工作）。 */
     private MythicMobsHook mythicMobs;
@@ -168,7 +169,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         rewardService = new RewardService(quests, rewardTypes, playerQuestRepository,
                 claimRepository, prerequisites);
         progressDisplay = new ProgressDisplay(config, quests, playerQuestRepository, messages, objectiveTypes);
-        dailyService = new DailyService(config, quests, playerQuestRepository, progressService, prerequisites);
+        periodicService = new PeriodicService(config, quests, playerQuestRepository, progressService, prerequisites);
         questAdmin = new QuestAdminService(questDefinitions, quests, objectiveTypes, rewardService,
                 progressService, prerequisites,
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
@@ -179,7 +180,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
         // 让插件以「零任务」状态启动而不是直接崩掉
-        guard("示例任务写入", () -> questAdmin.seedIfEmpty(ExampleQuests.all(config.getDailyRefreshCost())));
+        guard("示例任务写入", () -> questAdmin.seedIfEmpty(ExampleQuests.all(config.periodic(QuestType.DAILY).refreshCost())));
         guard("默认预设写入", () -> presets.seedIfEmpty(ExamplePresets.all()));
         guard("任务载入", questAdmin::reload);
 
@@ -194,7 +195,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         guard("命令注册", this::registerCommands);
         guard("进度展示调度", () -> progressDisplay.startAutoRefresh(ylib.getScheduler()));
         guard("每日任务调度", () ->
-                dailyService.startResetCheck(ylib.getScheduler(), messages, () -> getServer().getOnlinePlayers()));
+                periodicService.startResetCheck(ylib.getScheduler(), messages, () -> getServer().getOnlinePlayers()));
         guard("网页编辑器", this::startEditor);
         guard("PlaceholderAPI 变量", () -> PlaceholderHook.register(this));
 
@@ -230,7 +231,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
      * 重启时不该把它们变回来。
      */
     private void seedExampleFiles(DefinitionFolder questFolder, DefinitionFolder presetFolder) {
-        int quests = ExampleFiles.writeQuests(questFolder, ExampleQuests.all(config.getDailyRefreshCost()));
+        int quests = ExampleFiles.writeQuests(questFolder, ExampleQuests.all(config.periodic(QuestType.DAILY).refreshCost()));
         int presetsWritten = ExampleFiles.writePresets(presetFolder, ExamplePresets.all());
         if (quests > 0) {
             log.info("quests/ 是空的，已写入 {} 个示例任务文件（只读来源，可自由删改）", quests);
@@ -259,7 +260,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     @Override
     public void onDisable() {
         // 先停运行期任务再关底层资源：定时器若在库关闭后触发会报连接错误
-        dailyService.shutdown();
+        periodicService.shutdown();
         progressDisplay.shutdown();
         if (editorServer != null) {
             editorServer.stop();
@@ -311,7 +312,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         getServer().getPluginManager().registerEvents(
                 new TextListener(progressService, progressDisplay::onProgressApplied), this);
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(progressService, progressDisplay, dailyService, messages), this);
+                new PlayerListener(progressService, progressDisplay, periodicService, messages), this);
         // CustomFishing 的钓获事件只存在于它的 API 里，因此监听器由钩子反射创建后再注册
         CustomFishingHook.register(this, progressService, progressDisplay::onProgressApplied);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应
@@ -374,8 +375,8 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return progressDisplay;
     }
 
-    public DailyService dailyService() {
-        return dailyService;
+    public PeriodicService periodicService() {
+        return periodicService;
     }
 
     /** 任务定义维护入口（保存/删除/重载/校验），管理命令、管理 GUI 与编辑器后台共用。 */

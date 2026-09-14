@@ -94,12 +94,12 @@ plugins/playerTaskX/
 
 ## 4. 让玩家拿到任务
 
-每日任务在玩家**登录时**自动发放，数量由 `daily.amount` 决定（默认 3 个）。
+周期任务在玩家**登录时**自动发放，数量由 `periodic.<类型>.amount` 决定（每日默认 3 个）。
 
 想手动验证，用管理员命令给某位玩家重抽一批：
 
 ```
-/ptxa resetdaily <玩家名>
+/ptxa resetperiod <玩家名>
 ```
 
 ---
@@ -108,7 +108,7 @@ plugins/playerTaskX/
 
 让玩家执行 `/ptx`：
 
-- 打开**每日任务界面**，看到任务列表与进度
+- 打开**周期任务界面**（底部标签切换每日 / 每周 / 每月 / 自定义），看到任务列表与进度
 - 点击任务查看**详情**（各目标进度、奖励预览）
 - 完成后点击任务**领取奖励**
 
@@ -126,10 +126,10 @@ plugins/playerTaskX/
 
 | 想做什么 | 怎么做 |
 |---|---|
-| 改每日任务数量 | `daily.amount` |
-| 改重置时间 | `daily.reset-hour`（早于该时刻算前一天） |
-| 让刷新免费 | `daily.refresh-cost: 0`（无需经济插件） |
-| 改刷新费用 | `daily.refresh-cost`（按「金币 → 点券 → 经验」自动选可用货币） |
+| 改周期任务数量 | `periodic.<类型>.amount`（如 `periodic.daily.amount`） |
+| 改重置时间 | `periodic.<类型>.reset-hour`（早于该时刻算上一个周期）；每周 / 每月另可配锚点日 |
+| 让刷新免费 | `periodic.<类型>.refresh-cost: 0`（无需经济插件） |
+| 改刷新费用 | `periodic.<类型>.refresh-cost`（按 `refresh-currency` 的顺序自动选可用货币） |
 | 关掉动作栏进度 | `progress.actionbar: false` |
 | 关掉完成标题 | `progress.title-on-complete: false` |
 | 改文案 | 编辑 `lang/zh_CN.yml`，然后 `/ptxa reload` |

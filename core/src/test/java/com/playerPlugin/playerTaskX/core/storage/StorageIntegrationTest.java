@@ -269,16 +269,16 @@ class StorageIntegrationTest {
     @Test
     @DisplayName("每日状态读写与覆盖")
     void dailyStateRoundTrip() {
-        assertNull(playerQuestRepository.findDailyState(PLAYER));
+        assertNull(playerQuestRepository.findPeriodState(PLAYER, QuestType.DAILY));
 
-        playerQuestRepository.saveDailyState(PLAYER, "2026-09-10", 0, 123L);
-        JdbcPlayerQuestRepository.DailyState state = playerQuestRepository.findDailyState(PLAYER);
+        playerQuestRepository.savePeriodState(PLAYER, QuestType.DAILY, "2026-09-10", 0, 123L);
+        PlayerQuestRepository.PeriodState state = playerQuestRepository.findPeriodState(PLAYER, QuestType.DAILY);
         assertNotNull(state);
         assertEquals("2026-09-10", state.period());
         assertEquals(0, state.refreshCount());
 
-        playerQuestRepository.saveDailyState(PLAYER, "2026-09-10", 2, 456L);
-        JdbcPlayerQuestRepository.DailyState updated = playerQuestRepository.findDailyState(PLAYER);
+        playerQuestRepository.savePeriodState(PLAYER, QuestType.DAILY, "2026-09-10", 2, 456L);
+        PlayerQuestRepository.PeriodState updated = playerQuestRepository.findPeriodState(PLAYER, QuestType.DAILY);
         assertEquals(2, updated.refreshCount(), "刷新次数应被覆盖而不是累加");
         assertEquals(456L, updated.assignedAt());
     }

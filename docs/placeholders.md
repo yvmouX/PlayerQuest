@@ -14,16 +14,20 @@
 | `%playertaskx_active%` | 进行中的任务总数（含普通任务） |
 | `%playertaskx_claimable%` | 可领取奖励的任务数量 |
 
-## 每日任务
+## 周期任务
+
+把 `<周期>` 换成 `daily` / `weekly` / `monthly` / `custom` 之一，例如 `%playertaskx_daily_count%`：
 
 | 变量 | 返回 |
 |---|---|
-| `%playertaskx_daily_count%` | 今日每日任务总数 |
-| `%playertaskx_daily_active%` | 其中进行中的数量 |
-| `%playertaskx_daily_completed%` | 其中已完成待领取的数量 |
-| `%playertaskx_daily_claimed%` | 其中已领取的数量 |
-| `%playertaskx_daily_refresh_left%` | 今日剩余刷新次数 |
-| `%playertaskx_daily_refresh_cost%` | 刷新费用（数字） |
+| `%playertaskx_<周期>_count%` | 本周期该种任务的总数 |
+| `%playertaskx_<周期>_active%` | 其中进行中的数量 |
+| `%playertaskx_<周期>_completed%` | 其中已完成待领取的数量 |
+| `%playertaskx_<周期>_claimed%` | 其中已领取的数量 |
+| `%playertaskx_<周期>_refresh_left%` | 本周期剩余刷新次数 |
+| `%playertaskx_<周期>_refresh_cost%` | 该周期的刷新费用（数字） |
+
+> 服务器没启用的周期照样能查，只是结果为空（`0`）——这比「变量不存在」更容易排查。
 
 ## 指定任务的进度
 
@@ -49,6 +53,7 @@
 
 ```
 &e每日任务 &f%playertaskx_daily_completed%&7/&f%playertaskx_daily_count%
+&e每周任务 &f%playertaskx_weekly_completed%&7/&f%playertaskx_weekly_count%
 &7待领取: &a%playertaskx_claimable%
 &7刷新次数: &f%playertaskx_daily_refresh_left%
 ```
@@ -62,7 +67,7 @@
 ### 菜单插件里的任务入口
 
 ```
-&e每日任务 &7(%playertaskx_daily_active% 进行中)
+&e每日任务 &7(%playertaskx_<周期>_active% 进行中)
 &7点击打开
 ```
 

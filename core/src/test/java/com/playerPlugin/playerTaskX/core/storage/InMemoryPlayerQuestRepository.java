@@ -78,12 +78,16 @@ public final class InMemoryPlayerQuestRepository implements PlayerQuestRepositor
     }
 
     @Override
-    public DailyState findDailyState(UUID playerId) {
+    public PeriodState findPeriodState(UUID playerId, QuestType type) {
         return null;
     }
 
     @Override
-    public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
-        // 测试替身不持久化每日状态
+    public void savePeriodState(UUID playerId, QuestType type, String period, int refreshCount, long assignedAt) {
+        // 测试替身不持久化周期状态；需要它的测试用这个字段自己接管
+        periodStates.put(playerId + "/" + type, new PeriodState(period, refreshCount, assignedAt));
     }
+
+    /** 记录写入过的周期状态，供测试断言「刷新次数有没有写回」。 */
+    public final Map<String, PeriodState> periodStates = new LinkedHashMap<>();
 }

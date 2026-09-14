@@ -48,9 +48,9 @@ quest:
   not-completed: "<red>This quest is not complete yet.</red>"
   already-claimed: "<red>This reward has already been claimed.</red>"
   unavailable: "<red>This quest is currently unavailable, please contact an administrator.</red>"
-  refreshed: "<green>Daily quests refreshed.</green>"
+  refreshed: "<green>{0} quests refreshed.</green>"
   refresh-failed: "<red>Refresh failed: {0}</red>"
-  refresh-limit: "<red>You have used all refreshes for today (limit {0}).</red>"
+  refresh-limit: "<red>You have used all {0} refreshes (limit {1}).</red>"
   refresh-cost: "<gray>This refresh cost {0}.</gray>"
   not-found: "<red>Quest not found: {0}</red>"
   # Reward claim blocked by prerequisites. {0} lists the prerequisite quest names.
@@ -60,10 +60,13 @@ quest:
   # placeholders. The caller passes 0 arguments and strips formatting, so no {0}.
   abandoned: "<gray>Abandoned</gray>"
 
-# ---------- Daily ----------
-daily:
-  none: "<gray>No daily quests available today.</gray>"
-  reset: "<green>A new day - your daily quests have been reset.</green>"
+# ---------- Periodic quests (daily / weekly / monthly / custom) ----------
+periodic:
+  none: "<gray>No quests in this period.</gray>"
+  # {0} is the period name
+  reset: "<green>A new {0} has started - your quests have been reset.</green>"
+  section: "<aqua>{0} quests:</aqua>"
+  unknown-type: "<red>Unknown period type: {0} (available: daily / weekly / monthly / custom)</red>"
 
 # ---------- Commands ----------
 command:
@@ -75,7 +78,10 @@ command:
 
 # ---------- GUI ----------
 gui:
-  daily-title: "Daily Quests"
+  periodic-title: "Periodic Quests"
+  periodic-button: "{0}"
+  periodic-current: "<green>Viewing this period</green>"
+  periodic-switch: "<gray>Click to switch</gray>"
   quest-detail-title: "Quest: {0}"
   admin-title: "Quest Admin"
   click-to-view: "<yellow>Click for details</yellow>"
@@ -88,7 +94,7 @@ gui:
   next: "<yellow>Next</yellow>"
   close: "<red>Close</red>"
   back: "<yellow>Back</yellow>"
-  refresh: "<yellow>Refresh daily quests</yellow>"
+  refresh: "<yellow>Refresh quests</yellow>"
   refresh-cost: "<yellow>Refresh ({0})</yellow>"
   # Prerequisites: item name plus the three status lines (todo / done / not judgeable)
   prerequisites: "<yellow>Prerequisites"

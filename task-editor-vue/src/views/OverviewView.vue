@@ -115,6 +115,7 @@ import UnauthorizedHint from '../components/UnauthorizedHint.vue'
 import { useToast } from '../composables/useToast'
 import { SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
 import type { Stats, TypeSchema } from '../types'
+import { PERIODIC_TYPES, QUEST_TYPE_LABELS } from '../types'
 
 const toast = useToast()
 
@@ -130,14 +131,20 @@ const reloadFailed = ref(false)
 
 const categories = computed(() => stats.value?.categories ?? [])
 
-const metrics = computed(() => [
-  { label: '任务总数', value: stats.value?.quests ?? 0 },
-  { label: '每日任务', value: stats.value?.dailyQuests ?? 0 },
-  { label: '目标类型', value: stats.value?.objectives ?? objectiveTypes.value.length },
-  { label: '奖励类型', value: stats.value?.rewards ?? rewardTypes.value.length },
-  { label: '玩家数据', value: stats.value?.players ?? 0 },
-  { label: '存储类型', value: stats.value?.storage || '—' }
-])
+const metrics = computed(() => {
+  const perType = stats.value?.questsByType ?? {}
+  const periodic = PERIODIC_TYPES
+    .map(type => `${QUEST_TYPE_LABELS[type]} ${perType[type] ?? 0}`)
+    .join(' · ')
+  return [
+    { label: '任务总数', value: stats.value?.quests ?? 0 },
+    { label: '周期任务', value: `${stats.value?.periodicQuests ?? 0}（${periodic}）` },
+    { label: '目标类型', value: stats.value?.objectives ?? objectiveTypes.value.length },
+    { label: '奖励类型', value: stats.value?.rewards ?? rewardTypes.value.length },
+    { label: '玩家数据', value: stats.value?.players ?? 0 },
+    { label: '存储类型', value: stats.value?.storage || '—' }
+  ]
+})
 
 /** 类型卡片上的字段摘要，例如 "目标方块 · 数量"。 */
 function fieldSummary(schema: TypeSchema): string {

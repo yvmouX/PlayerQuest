@@ -23,7 +23,7 @@ class CurrencyTypeTest {
     @Test
     @DisplayName("默认顺序为 金币 → 点券 → 经验")
     void defaultOrderIsMoneyPointsExp() {
-        assertEquals(List.of("MONEY", "POINTS", "EXP"), new PluginConfig().getDailyRefreshCurrency());
+        assertEquals(List.of("MONEY", "POINTS", "EXP"), new PluginConfig().getRefreshCurrency());
     }
 
     @Test

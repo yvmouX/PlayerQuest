@@ -47,10 +47,15 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
      */
     private static final String PLAYER_QUEST_KEY_COLUMNS = "player_id,quest_id";
 
-    /** daily_state 列清单，同样与 upsert 占位符同序。 */
-    private static final String DAILY_STATE_COLUMNS = "player_id,period,refresh_count,assigned_at";
+    /**
+     * period_state 列清单，同样与 upsert 占位符同序。
+     * <p>
+     * 主键是 {@code (player_id, type)}：四种周期各存一行，互不干扰。
+     * 表名从旧版的 {@code daily_state} 改过来（旧表不会被读写，留在库里不影响任何事）。
+     */
+    private static final String PERIOD_STATE_COLUMNS = "player_id,type,period,refresh_count,assigned_at";
 
-    private static final String DAILY_STATE_KEY_COLUMNS = "player_id";
+    private static final String PERIOD_STATE_KEY_COLUMNS = "player_id,type";
 
     private final Database database;
 
@@ -62,9 +67,9 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     private final String sqlDeleteByType;
     private final String sqlCountPlayers;
 
-    private final String sqlSelectDailyState;
-    private final String sqlUpsertDailyState;
-    private final String sqlDeleteDailyState;
+    private final String sqlSelectPeriodState;
+    private final String sqlUpsertPeriodState;
+    private final String sqlDeletePeriodState;
 
     private final String sqlSelectDistinctPlayerIds;
 
@@ -86,11 +91,11 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
 
         this.sqlSelectDistinctPlayerIds = "SELECT DISTINCT player_id FROM player_quest";
 
-        this.sqlSelectDailyState = "SELECT period, refresh_count, assigned_at"
-                + " FROM daily_state WHERE player_id = ?";
-        this.sqlUpsertDailyState = database.dialect().upsert(
-                "daily_state", DAILY_STATE_KEY_COLUMNS, DAILY_STATE_COLUMNS);
-        this.sqlDeleteDailyState = "DELETE FROM daily_state WHERE player_id = ?";
+        this.sqlSelectPeriodState = "SELECT period, refresh_count, assigned_at"
+                + " FROM period_state WHERE player_id = ? AND type = ?";
+        this.sqlUpsertPeriodState = database.dialect().upsert(
+                "period_state", PERIOD_STATE_KEY_COLUMNS, PERIOD_STATE_COLUMNS);
+        this.sqlDeletePeriodState = "DELETE FROM period_state WHERE player_id = ? AND type = ?";
     }
 
     // ------------------------------------------------------------------
@@ -178,32 +183,33 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     // ------------------------------------------------------------------
-    // 每日任务状态（不在接口内，供每日任务模块使用）
+    // 周期任务状态（每日 / 每周 / 每月 / 自定义各一行）
     // ------------------------------------------------------------------
 
-    /** 读取玩家的每日状态；无记录返回 null（首次进入当天即「还没有周期」）。 */
+    /** 读取某种周期的状态；无记录返回 null（首次进入该周期即「还没有周期」）。 */
     @Override
-    public DailyState findDailyState(UUID playerId) {
-        if (playerId == null) {
+    public PeriodState findPeriodState(UUID playerId, QuestType type) {
+        if (playerId == null || type == null) {
             return null;
         }
-        return database.queryOne(sqlSelectDailyState,
-                rs -> new DailyState(
+        return database.queryOne(sqlSelectPeriodState,
+                rs -> new PeriodState(
                         rs.getString("period"),
                         rs.getInt("refresh_count"),
                         rs.getLong("assigned_at")),
-                playerId.toString());
+                playerId.toString(), type.name());
     }
 
-    /** 写入（或覆盖）玩家的每日状态。 */
+    /** 写入（或覆盖）某种周期的状态。 */
     @Override
-    public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
-        if (playerId == null) {
-            warn("saveDailyState 收到 null playerId，已忽略");
+    public void savePeriodState(UUID playerId, QuestType type, String period, int refreshCount, long assignedAt) {
+        if (playerId == null || type == null) {
+            warn("savePeriodState 收到 null 参数，已忽略");
             return;
         }
-        database.execute(sqlUpsertDailyState,
+        database.execute(sqlUpsertPeriodState,
                 playerId.toString(),
+                type.name(),
                 // period 是 NOT NULL 列，脏参数宁可写空串也不要让保存失败
                 period == null ? "" : period,
                 Math.max(0, refreshCount),
@@ -211,16 +217,16 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     }
 
     /**
-     * 删除玩家的每日状态（例如重置该玩家的每日任务时使用）。
+     * 删除某种周期的状态（例如管理员重置该玩家的周期任务时使用）。
      * <p>
      * 契约里未列出，但保存/读取成对出现时清理入口是必需的，这里一并提供。
      */
     @Override
-    public void deleteDailyState(UUID playerId) {
-        if (playerId == null) {
+    public void deletePeriodState(UUID playerId, QuestType type) {
+        if (playerId == null || type == null) {
             return;
         }
-        database.execute(sqlDeleteDailyState, playerId.toString());
+        database.execute(sqlDeletePeriodState, playerId.toString(), type.name());
     }
 
     // ------------------------------------------------------------------

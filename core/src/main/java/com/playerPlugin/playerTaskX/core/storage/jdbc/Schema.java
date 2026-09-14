@@ -83,11 +83,16 @@ public final class Schema {
                         + "PRIMARY KEY (player_id, quest_id)"
                         + ")" + option,
 
-                "CREATE TABLE IF NOT EXISTS daily_state ("
-                        + "player_id VARCHAR(36) PRIMARY KEY, "
-                        + "period VARCHAR(16) NOT NULL, "
+                // 周期任务的发放状态：四种周期（每日/每周/每月/自定义）各一行。
+                // 表名与旧版的 daily_state 不同是刻意的：主键从 player_id 变成
+                // (player_id, type)，改名后新表自然建出来，不必对旧表做迁移。
+                "CREATE TABLE IF NOT EXISTS period_state ("
+                        + "player_id VARCHAR(36) NOT NULL, "
+                        + "type VARCHAR(16) NOT NULL, "
+                        + "period VARCHAR(32) NOT NULL, "
                         + "refresh_count INT NOT NULL DEFAULT 0, "
-                        + "assigned_at BIGINT NOT NULL DEFAULT 0"
+                        + "assigned_at BIGINT NOT NULL DEFAULT 0, "
+                        + "PRIMARY KEY (player_id, type)"
                         + ")" + option,
 
                 // 预设：目标/奖励的模板。kind 区分两类，不做成两张表——字段完全一致，

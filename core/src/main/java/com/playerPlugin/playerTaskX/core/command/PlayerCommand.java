@@ -12,7 +12,9 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
-import com.playerPlugin.playerTaskX.core.gui.DailyQuestMenu;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
+import com.playerPlugin.playerTaskX.core.gui.PeriodicQuestMenu;
+import com.playerPlugin.playerTaskX.core.period.Periods;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -25,9 +27,9 @@ import java.util.List;
  *
  * <h2>子命令</h2>
  * <ul>
- *   <li>{@code ""} / {@code menu} / {@code gui}：打开每日任务界面；</li>
- *   <li>{@code list}：聊天中列出当前每日任务与完成度；</li>
- *   <li>{@code refresh}：消耗货币重抽自己的每日任务；</li>
+ *   <li>{@code ""} / {@code menu} / {@code gui}：打开周期任务界面；</li>
+ *   <li>{@code list}：聊天中列出当前周期任务与完成度；</li>
+ *   <li>{@code refresh [类型]}：消耗货币重抽自己的周期任务（不给类型就刷新所有已启用的周期）；</li>
  *   <li>{@code claim <id>}：领取已完成任务的奖励；</li>
  *   <li>{@code progress}：列出所有进行中任务的进度。</li>
  * </ul>
@@ -75,7 +77,7 @@ public class PlayerCommand {
             showHelp(sender, 1);
             return;
         }
-        new DailyQuestMenu((Player) sender, messages()).open();
+        new PeriodicQuestMenu((Player) sender, messages()).open();
     }
 
     /** {@code menu}：与主命令等价，显式写出来是为了让玩家在 Tab 补全里看得到入口。 */
@@ -120,7 +122,7 @@ public class PlayerCommand {
      * <p>
      * 已完成的追加一行状态提示，玩家才知道下一步该去领取而不是继续刷。
      */
-    @SubCommand(value = "list", description = "列出当前任务与完成度")
+    @SubCommand(value = "list", description = "列出当前周期任务与完成度")
     public void list(CommandSender sender) {
         Player player = requirePlayer(sender);
         if (player == null) {
@@ -129,26 +131,36 @@ public class PlayerCommand {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         MessageService messages = plugin.messages();
 
-        List<PlayerQuest> current = plugin.dailyService().currentQuests(player.getUniqueId());
-        if (current.isEmpty()) {
-            messages.send(player, "daily.none");
-            return;
-        }
-
-        messages.sendRaw(player, Texts.render(messages.raw(player, "quest.progress")));
-        for (PlayerQuest playerQuest : current) {
-            Quest quest = plugin.quests().find(playerQuest.questId()).orElse(null);
-            if (quest == null) {
-                // 任务定义已被删除但玩家记录还在：跳过，不让一条脏数据把整条命令带崩
+        // 四种周期分开列：不说清是哪一种，玩家看到「同一个任务名出现两次」会以为出了 bug
+        List<String> lines = new ArrayList<>();
+        for (QuestType type : plugin.periodicService().enabledTypes()) {
+            List<PlayerQuest> current = plugin.periodicService().currentQuests(player.getUniqueId(), type);
+            if (current.isEmpty()) {
                 continue;
             }
-            StringBuilder builder = new StringBuilder(TextRenderer.render(quest.name()));
-            builder.append(SEPARATOR).append(Math.round(playerQuest.completionRatio(quest) * 100)).append('%');
-            String status = statusHint(messages, player, playerQuest.status());
-            if (!status.isEmpty()) {
-                builder.append(SEPARATOR).append(status);
+            lines.add(messages.raw(player, "periodic.section", Periods.label(type)));
+            for (PlayerQuest playerQuest : current) {
+                Quest quest = plugin.quests().find(playerQuest.questId()).orElse(null);
+                if (quest == null) {
+                    // 任务定义已被删除但玩家记录还在：跳过，不让一条脏数据把整条命令带崩
+                    continue;
+                }
+                StringBuilder builder = new StringBuilder(TextRenderer.render(quest.name()));
+                builder.append(SEPARATOR).append(Math.round(playerQuest.completionRatio(quest) * 100)).append('%');
+                String status = statusHint(messages, player, playerQuest.status());
+                if (!status.isEmpty()) {
+                    builder.append(SEPARATOR).append(status);
+                }
+                lines.add(builder.toString());
             }
-            messages.sendRaw(player, Texts.render(builder.toString()));
+        }
+        if (lines.isEmpty()) {
+            messages.send(player, "periodic.none");
+            return;
+        }
+        messages.sendRaw(player, Texts.render(messages.raw(player, "quest.progress")));
+        for (String line : lines) {
+            messages.sendRaw(player, Texts.render(line));
         }
     }
 
@@ -168,15 +180,64 @@ public class PlayerCommand {
 
     // ---------- 刷新 ----------
 
-    /** {@code refresh}：消耗货币重抽自己的每日任务。 */
-    @SubCommand(value = "refresh", description = "刷新每日任务（消耗货币）")
-    public void refresh(CommandSender sender) {
+    /**
+     * {@code refresh [类型]}：消耗货币重抽自己的周期任务。
+     * <p>
+     * 不给类型就刷新<b>所有已启用的周期</b>，每种各自扣费、各自提示——
+     * 只刷新「第一种」会让开了每周任务的服务器上，玩家以为刷新没生效。
+     * 某种周期刷新失败（次数用完、货币不足）不影响其它周期。
+     */
+    @SubCommand(value = "refresh", description = "刷新周期任务（消耗货币）：/ptx refresh [daily|weekly|monthly|custom]")
+    public void refresh(CommandSender sender, @Arg(value = "类型", suggestion = "suggestPeriodTypes") @Optional String type) {
         Player player = requirePlayer(sender);
         if (player == null) {
             return;
         }
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        plugin.dailyService().refresh(player).report(plugin.messages(), player);
+        List<QuestType> targets;
+        if (type == null || type.isBlank()) {
+            targets = plugin.periodicService().enabledTypes();
+        } else {
+            QuestType parsed = parseType(type);
+            if (parsed == null) {
+                plugin.messages().send(player, "periodic.unknown-type", type);
+                return;
+            }
+            targets = List.of(parsed);
+        }
+        if (targets.isEmpty()) {
+            plugin.messages().send(player, "periodic.none");
+            return;
+        }
+        for (QuestType each : targets) {
+            plugin.periodicService().refresh(player, each).report(plugin.messages(), player);
+        }
+    }
+
+    /** 补全候选：已启用的周期类型（命令补全拿不到已输入的参数，因此只能按全部候选给）。 */
+    @SuppressWarnings("unused") // 由 YLib 反射调用
+    public List<String> suggestPeriodTypes(CommandSender sender, CommandContext context, String current) {
+        List<String> options = new ArrayList<>();
+        PlayerTaskX plugin = PlayerTaskX.getInstance();
+        if (plugin == null) {
+            return List.of();
+        }
+        for (QuestType type : plugin.periodicService().enabledTypes()) {
+            options.add(type.name().toLowerCase(java.util.Locale.ROOT));
+        }
+        return options.stream()
+                .filter(option -> option.startsWith(current == null ? "" : current.toLowerCase(java.util.Locale.ROOT)))
+                .toList();
+    }
+
+    /** 解析周期类型名；认不出来返回 null（由调用方提示，而不是抛异常）。 */
+    private static QuestType parseType(String raw) {
+        try {
+            QuestType type = QuestType.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+            return type.isPeriodic() ? type : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // ---------- 领取 ----------
@@ -269,7 +330,7 @@ public class PlayerCommand {
         if (player == null) {
             return;
         }
-        new DailyQuestMenu(player, messages()).open();
+        new PeriodicQuestMenu(player, messages()).open();
     }
 
     /** 取消息服务：命令对象不缓存服务引用，统一在执行时向插件实例索取。 */

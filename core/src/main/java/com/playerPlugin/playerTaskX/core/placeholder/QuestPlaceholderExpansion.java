@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
 import cn.yvmou.ylib.text.TextRenderer;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
@@ -80,16 +81,44 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
         String key = params.toLowerCase(Locale.ROOT);
 
         return switch (key) {
-            case "daily_count" -> String.valueOf(plugin.dailyService().currentQuests(playerId).size());
-            case "daily_active" -> String.valueOf(countDaily(playerId, QuestStatus.IN_PROGRESS));
-            case "daily_completed" -> String.valueOf(countDaily(playerId, QuestStatus.COMPLETED));
-            case "daily_claimed" -> String.valueOf(countDaily(playerId, QuestStatus.CLAIMED));
-            case "daily_refresh_left" -> String.valueOf(plugin.dailyService().remainingRefreshes(playerId));
-            case "daily_refresh_cost" -> formatCost();
             case "claimable" -> String.valueOf(plugin.rewardService().claimableCount(playerId));
             case "active" -> String.valueOf(plugin.progressService().activeQuests(playerId).size());
-            default -> handleQuestVariable(playerId, key);
+            default -> {
+                String periodic = handlePeriodicVariable(playerId, key);
+                yield periodic != null ? periodic : handleQuestVariable(playerId, key);
+            }
         };
+    }
+
+    /**
+     * 处理 {@code <周期>_<字段>} 形式的变量，周期 ∈ {@code daily / weekly / monthly / custom}。
+     * <p>
+     * 四种周期共用一套字段名（{@code daily_count} 就是 {@code daily} 这一种），
+     * 因此加一种周期不必再往这里补一遍分支；服务器没启用的周期照样能查，
+     * 只是结果为空（0 / 空串）——这比「变量不存在」更容易排查。
+     */
+    private String handlePeriodicVariable(UUID playerId, String key) {
+        for (QuestType type : QuestType.values()) {
+            if (!type.isPeriodic()) {
+                continue;
+            }
+            String prefix = type.name().toLowerCase(Locale.ROOT) + "_";
+            if (!key.startsWith(prefix)) {
+                continue;
+            }
+            String field = key.substring(prefix.length());
+            return switch (field) {
+                case "count" -> String.valueOf(plugin.periodicService().currentQuests(playerId, type).size());
+                case "active" -> String.valueOf(countPeriodic(playerId, type, QuestStatus.IN_PROGRESS));
+                case "completed" -> String.valueOf(countPeriodic(playerId, type, QuestStatus.COMPLETED));
+                case "claimed" -> String.valueOf(countPeriodic(playerId, type, QuestStatus.CLAIMED));
+                case "refresh_left" ->
+                        String.valueOf(plugin.periodicService().remainingRefreshes(playerId, type));
+                case "refresh_cost" -> formatCost(type);
+                default -> null;
+            };
+        }
+        return null;
     }
 
     /** 处理 {@code quest_<字段>_<任务id>} 形式的变量。 */
@@ -150,8 +179,8 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
         return TextRenderer.strip(raw);
     }
 
-    private long countDaily(UUID playerId, QuestStatus status) {
-        return plugin.dailyService().currentQuests(playerId).stream()
+    private long countPeriodic(UUID playerId, QuestType type, QuestStatus status) {
+        return plugin.periodicService().currentQuests(playerId, type).stream()
                 .filter(record -> record.status() == status)
                 .count();
     }
@@ -168,8 +197,8 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
         return done;
     }
 
-    private String formatCost() {
-        double cost = plugin.config().getDailyRefreshCost();
+    private String formatCost(QuestType type) {
+        double cost = plugin.periodicService().settings(type).refreshCost();
         // 去掉多余小数位，避免变量里出现 1000.0 这种不美观的输出
         if (cost == Math.floor(cost)) {
             return String.valueOf((long) cost);

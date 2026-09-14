@@ -1,4 +1,4 @@
-package com.playerPlugin.playerTaskX.core.daily;
+package com.playerPlugin.playerTaskX.core.period;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
@@ -27,15 +27,15 @@ import static org.mockito.Mockito.mock;
  *
  * <p>要防的错误：抽到一个前置还没满足的任务。玩家在界面里看不到它被锁的原因
  * （前置未满足的任务本来就不展示），只会觉得这个任务做不了——而
- * {@code DailyServiceTest} 里的纯函数测试查不出这一点，因为过滤发生在抽取之前。</p>
+ * {@code PeriodsTest} 里的纯函数测试查不出这一点，因为过滤发生在抽取之前。</p>
  */
-class DailyPoolPrerequisiteTest {
+class PeriodicPoolPrerequisiteTest {
 
     private static final UUID ALICE = UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001");
 
     private QuestRegistryImpl quests;
     private InMemoryQuestClaimRepository claims;
-    private DailyService service;
+    private PeriodicService service;
 
     @BeforeEach
     void setUp() {
@@ -43,34 +43,34 @@ class DailyPoolPrerequisiteTest {
         // d2 前置 d1；d1 无前置；n1 是常驻任务，不该出现在每日池里
         upsert(daily("d1"), daily("d2", "d1"), normal("n1"));
         claims = new InMemoryQuestClaimRepository();
-        service = new DailyService(new PluginConfig(), quests, new InMemoryPlayerQuestRepository(),
+        service = new PeriodicService(new PluginConfig(), quests, new InMemoryPlayerQuestRepository(),
                 mock(ProgressService.class), new PrerequisiteService(quests, claims));
     }
 
     @Test
     @DisplayName("前置未领取的任务不进候选池")
     void lockedQuestIsNotInPool() {
-        assertEquals(List.of("d1"), ids(service.availablePool(ALICE)));
+        assertEquals(List.of("d1"), ids(service.availablePool(ALICE, QuestType.DAILY)));
     }
 
     @Test
     @DisplayName("领取过前置之后目标任务才进池")
     void questEntersPoolOncePrerequisiteClaimed() {
         claims.given(ALICE, "d1");
-        assertEquals(List.of("d1", "d2"), ids(service.availablePool(ALICE)));
+        assertEquals(List.of("d1", "d2"), ids(service.availablePool(ALICE, QuestType.DAILY)));
     }
 
     @Test
     @DisplayName("前置判定按玩家隔离：别人的领取记录不解锁我")
     void poolIsPerPlayer() {
         claims.given(UUID.randomUUID(), "d1");
-        assertFalse(ids(service.availablePool(ALICE)).contains("d2"));
+        assertFalse(ids(service.availablePool(ALICE, QuestType.DAILY)).contains("d2"));
     }
 
     @Test
     @DisplayName("全局池仍然是全部每日任务（availablePool 只在它基础上过滤）")
     void globalPoolKeepsEverything() {
-        assertEquals(List.of("d1", "d2"), ids(service.pool()));
+        assertEquals(List.of("d1", "d2"), ids(service.pool(QuestType.DAILY)));
     }
 
     @Test
@@ -80,11 +80,11 @@ class DailyPoolPrerequisiteTest {
         QuestRegistryImpl locked = new QuestRegistryImpl();
         locked.upsert(daily("cycle_a", "cycle_b"));
         locked.upsert(daily("cycle_b", "cycle_a"));
-        DailyService onlyLocked = new DailyService(new PluginConfig(), locked,
+        PeriodicService onlyLocked = new PeriodicService(new PluginConfig(), locked,
                 new InMemoryPlayerQuestRepository(), mock(ProgressService.class),
                 new PrerequisiteService(locked, new InMemoryQuestClaimRepository()));
 
-        assertTrue(onlyLocked.availablePool(ALICE).isEmpty());
+        assertTrue(onlyLocked.availablePool(ALICE, QuestType.DAILY).isEmpty());
     }
 
     private static List<String> ids(List<Quest> quests) {

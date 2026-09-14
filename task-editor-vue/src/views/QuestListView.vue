@@ -46,7 +46,7 @@
     <div class="stat-bar">
       <span class="stat-item">共 <b>{{ quests.length }}</b> 个任务</span>
       <span class="stat-item ok">启用 <b>{{ enabledCount }}</b></span>
-      <span class="stat-item">每日 <b>{{ dailyCount }}</b></span>
+      <span class="stat-item">周期 <b>{{ periodicCount }}</b></span>
       <span class="stat-item" :class="{ danger: problemCount > 0 }">
         有问题 <b>{{ problemCount }}</b>
       </span>
@@ -71,6 +71,9 @@
           <select v-model="typeFilter">
             <option value="ALL">全部</option>
             <option value="DAILY">每日（DAILY）</option>
+            <option value="WEEKLY">每周（WEEKLY）</option>
+            <option value="MONTHLY">每月（MONTHLY）</option>
+            <option value="CUSTOM">自定义周期（CUSTOM）</option>
             <option value="NORMAL">普通（NORMAL）</option>
           </select>
         </label>
@@ -170,8 +173,8 @@
         </template>
 
         <template #type="{ row }">
-          <span class="badge" :class="row.type === 'DAILY' ? 'badge-blue' : 'badge-gray'">
-            {{ row.type === 'DAILY' ? '每日' : '普通' }}
+          <span class="badge" :class="isPeriodicType(row.type) ? 'badge-blue' : 'badge-gray'">
+            {{ QUEST_TYPE_LABELS[row.type] ?? row.type }}
           </span>
         </template>
 
@@ -326,6 +329,8 @@ import type {
   SortDirection,
   TableColumn
 } from '../types'
+import { QUEST_TYPE_LABELS, isPeriodicType } from '../types'
+import type { QuestType } from '../types'
 import { plainIfDifferent } from '../utils/text'
 import { decodeBytes, downloadBytes, isZipBytes } from '../utils/files'
 import { previewQuestImport } from '../utils/yaml'
@@ -334,7 +339,7 @@ const toast = useToast()
 const router = useRouter()
 
 /** 各筛选下拉的取值类型。 */
-type TypeFilter = 'ALL' | 'DAILY' | 'NORMAL'
+type TypeFilter = 'ALL' | QuestType
 type EnabledFilter = 'ALL' | 'ON' | 'OFF'
 type ProblemFilter = 'ALL' | 'ONLY' | 'NONE'
 
@@ -394,7 +399,7 @@ const categoryChoices = computed(() => {
 })
 
 const enabledCount = computed(() => quests.value.filter(quest => quest.enabled).length)
-const dailyCount = computed(() => quests.value.filter(quest => quest.type === 'DAILY').length)
+const periodicCount = computed(() => quests.value.filter(quest => isPeriodicType(quest.type)).length)
 const problemCount = computed(() => quests.value.filter(quest => quest.problems.length > 0).length)
 
 /** 中文环境下的自然比较，避免「任务10」排在「任务2」前面。 */

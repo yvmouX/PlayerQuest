@@ -13,6 +13,7 @@ import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
@@ -342,15 +343,44 @@ public class AdminCommand {
     }
 
     /**
-     * {@code resetdaily <玩家>}：重新抽取该玩家的每日任务（管理员工具）。
+     * {@code resetperiod <玩家> [类型]}：重新抽取该玩家的周期任务（管理员工具）。
      * <p>
      * 与玩家的 {@code /ptx refresh} 刻意区分：后者消耗货币与一次刷新次数，
      * 前者都不消耗（它是排障工具，不是消费入口）。
+     * 不给类型就重置<b>所有已启用的周期</b>。
      */
-    @SubCommand(value = "resetdaily", description = "重置玩家的每日任务（不扣费、不消耗次数）")
-    public void resetDaily(CommandSender sender, @Arg("player") Player target) {
+    @SubCommand(value = "resetperiod", description = "重置玩家的周期任务（不扣费、不消耗次数）：/ptxa resetperiod <玩家> [daily|weekly|monthly|custom]")
+    public void resetPeriod(CommandSender sender, @Arg("player") Player target,
+                            @Arg(value = "类型", suggestion = "suggestPeriodTypes") @Optional String type) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        plugin.dailyService().resetDaily(target).report(plugin.messages(), sender);
+        List<QuestType> targets;
+        if (type == null || type.isBlank()) {
+            targets = plugin.periodicService().enabledTypes();
+        } else {
+            QuestType parsed = parsePeriodType(type);
+            if (parsed == null) {
+                plugin.messages().send(sender, "periodic.unknown-type", type);
+                return;
+            }
+            targets = List.of(parsed);
+        }
+        if (targets.isEmpty()) {
+            plugin.messages().send(sender, "periodic.none");
+            return;
+        }
+        for (QuestType each : targets) {
+            plugin.periodicService().resetPeriod(target, each).report(plugin.messages(), sender);
+        }
+    }
+
+    /** 解析周期类型名；认不出来返回 null（由调用方提示，而不是抛异常）。 */
+    private static QuestType parsePeriodType(String raw) {
+        try {
+            QuestType type = QuestType.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+            return type.isPeriodic() ? type : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // ---------- 补全 ----------
@@ -373,6 +403,22 @@ public class AdminCommand {
             }
         }
         return ids;
+    }
+
+    /** 周期类型补全：已启用的周期（与玩家命令同名同形，YLib 按类查找补全方法）。 */
+    @SuppressWarnings("unused") // 由 YLib 反射调用
+    public List<String> suggestPeriodTypes(CommandSender sender, CommandContext context, String current) {
+        PlayerTaskX plugin = PlayerTaskX.getInstance();
+        if (plugin == null) {
+            return List.of();
+        }
+        List<String> options = new ArrayList<>();
+        for (QuestType type : plugin.periodicService().enabledTypes()) {
+            options.add(type.name().toLowerCase(java.util.Locale.ROOT));
+        }
+        return options.stream()
+                .filter(option -> option.startsWith(current == null ? "" : current.toLowerCase(java.util.Locale.ROOT)))
+                .toList();
     }
 
     // ---------- 内部工具 ----------

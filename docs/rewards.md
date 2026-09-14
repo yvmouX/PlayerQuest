@@ -33,7 +33,7 @@ amount: 1000
 经 Vault 发放，需要服务器装有 Vault 与任一经济插件（EssentialsX、CMI 等）。
 金额支持小数。
 
-它也是刷新每日任务的**首选**费用来源（见 `daily.refresh-cost`）：
+它也是刷新周期任务的**首选**费用来源（见 `refresh-currency`）：
 装了经济插件就扣金币，没装则自动改用点券或经验。
 
 ---

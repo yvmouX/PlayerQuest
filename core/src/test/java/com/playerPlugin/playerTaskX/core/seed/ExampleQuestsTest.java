@@ -78,7 +78,7 @@ class ExampleQuestsTest {
     @Test
     @DisplayName("每日池必须大于默认抽取数量（3），否则「每天换一批」名存实亡")
     void dailyPoolLargerThanDefaultDraw() {
-        long dailies = examples().stream().filter(Quest::isDaily).count();
+        long dailies = examples().stream().filter(Quest::isPeriodic).count();
         assertTrue(dailies > 3, "每日示例只有 " + dailies + " 个，与默认抽取数相同就没有抽取的意义了");
     }
 
@@ -86,7 +86,7 @@ class ExampleQuestsTest {
     @DisplayName("每日示例的刷新费用统一取传入配置，常驻示例固定为 0")
     void refreshCostFollowsConvention() {
         for (Quest quest : examples()) {
-            if (quest.isDaily()) {
+            if (quest.isPeriodic()) {
                 assertEquals(ANY_REFRESH_COST, quest.refreshCost(),
                         "示例任务 " + quest.id() + " 的刷新费用应取配置值");
             } else {

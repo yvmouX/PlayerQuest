@@ -51,36 +51,36 @@ public interface PlayerQuestRepository {
     java.util.List<UUID> distinctPlayerIds();
 
     // ------------------------------------------------------------------
-    // 每日任务状态
+    // 周期任务状态（每日 / 每周 / 每月 / 自定义各一条）
     // ------------------------------------------------------------------
 
     /**
-     * 每日任务状态：当前周期、已刷新次数、上次发放时刻。
+     * 某个周期的发放状态：当前周期、已刷新次数、上次发放时刻。
      * <p>
      * 定义在接口上而不是某个实现里：它是玩家数据的一部分，
      * 所有后端都必须能存——否则换后端会静默丢掉刷新次数与周期判定。
      *
-     * @param period       当前周期标识（如 {@code 2026-09-13}）
+     * @param period       周期标识（如 {@code 2026-09-13}、{@code W2026-09-14}、{@code C3d#6893}）
      * @param refreshCount 本周期已刷新次数，用于刷新上限
      * @param assignedAt   上次发放时刻的毫秒时间戳
      */
-    record DailyState(String period, int refreshCount, long assignedAt) {
+    record PeriodState(String period, int refreshCount, long assignedAt) {
     }
 
-    /** 读取每日状态；从未发放过时返回 null。 */
-    DailyState findDailyState(UUID playerId);
+    /** 读取某种周期的状态；该周期从未发放过时返回 null。 */
+    PeriodState findPeriodState(UUID playerId, QuestType type);
 
-    /** 写入每日状态。 */
-    void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt);
+    /** 写入某种周期的状态。 */
+    void savePeriodState(UUID playerId, QuestType type, String period, int refreshCount, long assignedAt);
 
     /**
-     * 清除每日状态。
+     * 清除某种周期的状态。
      * <p>
      * 提供默认空实现：并非所有后端都需要它（例如只用内存替身的测试），
-     * 而 {@link #findDailyState} 与 {@link #saveDailyState} 没有默认实现——
+     * 而 {@link #findPeriodState} 与 {@link #savePeriodState} 没有默认实现——
      * 它们是功能主体，缺失必须让编译器报错，而不是静默丢掉刷新次数。
      */
-    default void deleteDailyState(UUID playerId) {
+    default void deletePeriodState(UUID playerId, QuestType type) {
         // 由具备该能力的后端覆盖
     }
 }

@@ -48,9 +48,9 @@ quest:
   not-completed: "<red>该任务尚未完成，无法领取奖励。</red>"
   already-claimed: "<red>该任务的奖励已经领取过了。</red>"
   unavailable: "<red>该任务当前不可用，请联系管理员。</red>"
-  refreshed: "<green>每日任务已刷新。</green>"
+  refreshed: "<green>{0}任务已刷新。</green>"
   refresh-failed: "<red>刷新失败：{0}</red>"
-  refresh-limit: "<red>今日刷新次数已用完（上限 {0} 次）。</red>"
+  refresh-limit: "<red>{0}任务的刷新次数已用完（上限 {1} 次）。</red>"
   refresh-cost: "<gray>本次刷新消耗 {0}。</gray>"
   not-found: "<red>找不到任务：{0}</red>"
   # 前置任务未全部领取时领取奖励的提示。{0} 是未满足的前置任务名（多个用逗号分隔）。
@@ -60,10 +60,13 @@ quest:
   # 调用方传 0 个参数并会 strip 掉格式，因此不要写 {0}。
   abandoned: "<gray>已放弃</gray>"
 
-# ---------- 每日任务 ----------
-daily:
-  none: "<gray>今日暂无每日任务。</gray>"
-  reset: "<green>新的一天，每日任务已重置。</green>"
+# ---------- 周期任务（每日 / 每周 / 每月 / 自定义） ----------
+periodic:
+  none: "<gray>本周期暂无任务。</gray>"
+  # {0} 是周期名（每日 / 每周 / 每月 / 自定义周期）
+  reset: "<green>新的{0}开始了，任务已重置。</green>"
+  section: "<aqua>{0}任务：</aqua>"
+  unknown-type: "<red>未知的周期类型：{0}（可用：daily / weekly / monthly / custom）</red>"
 
 # ---------- 命令 ----------
 command:
@@ -75,7 +78,11 @@ command:
 
 # ---------- GUI ----------
 gui:
-  daily-title: "每日任务"
+  periodic-title: "周期任务"
+  # {0} 是周期名；带色的是「当前查看的」，点一下切换
+  periodic-button: "{0}"
+  periodic-current: "<green>正在查看这一种周期</green>"
+  periodic-switch: "<gray>点击切换查看</gray>"
   quest-detail-title: "任务详情：{0}"
   admin-title: "任务管理"
   click-to-view: "<yellow>点击查看详情</yellow>"
@@ -88,7 +95,7 @@ gui:
   next: "<yellow>下一页</yellow>"
   close: "<red>关闭</red>"
   back: "<yellow>返回</yellow>"
-  refresh: "<yellow>刷新每日任务</yellow>"
+  refresh: "<yellow>刷新任务</yellow>"
   refresh-cost: "<yellow>刷新（{0}）</yellow>"
   # 前置任务：物品名 + 三种状态行（未达成 / 已达成 / 管理员预览时不判定）
   prerequisites: "<yellow>前置任务"

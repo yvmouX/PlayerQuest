@@ -147,17 +147,23 @@
             <label class="field field-stack">
               <span class="field-label">类型</span>
               <select v-model="form.type">
-                <option value="NORMAL">普通任务（NORMAL）</option>
+                <option value="NORMAL">普通任务（NORMAL）· 常驻</option>
                 <option value="DAILY">每日任务（DAILY）</option>
+                <option value="WEEKLY">每周任务（WEEKLY）</option>
+                <option value="MONTHLY">每月任务（MONTHLY）</option>
+                <option value="CUSTOM">自定义周期（CUSTOM）</option>
               </select>
-              <small class="hint">每日任务按天重置，可被玩家消耗货币刷新。</small>
+              <small class="hint">
+                周期任务按玩家抽取、过周期失效、可被消耗货币刷新；抽取数量与重置锚点在
+                <code class="mono">config.yml</code> 的 <code class="mono">periodic.&lt;类型&gt;</code> 里配置。
+              </small>
             </label>
 
-            <!-- 刷新费用只对每日任务有意义 -->
-            <label v-if="form.type === 'DAILY'" class="field field-stack">
+            <!-- 刷新费用只对周期任务有意义 -->
+            <label v-if="isPeriodicType(form.type)" class="field field-stack">
               <span class="field-label">刷新费用</span>
               <input type="number" step="0.01" min="0" :value="form.refreshCost" @input="onRefreshCostInput" />
-              <small class="hint">玩家手动刷新每日任务时扣除的金额，0 表示免费。</small>
+              <small class="hint">玩家手动刷新这种周期任务时扣除的金额，0 表示免费。</small>
             </label>
 
             <div class="field field-stack">
@@ -386,6 +392,7 @@ import { useToast } from '../composables/useToast'
 import { useYamlMode } from '../composables/useYamlMode'
 import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized } from '../services/api'
 import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
+import { QUEST_TYPE_LABELS, isPeriodicType } from '../types'
 import { loadCatalog } from '../utils/catalog'
 import { invalidatePresets, loadPresets, presetExists, presetProperties, suggestPresetName } from '../utils/presets'
 import { defaultProperties, normalizeInstances, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
@@ -534,7 +541,7 @@ function applyYamlQuest(quest: Quest): void {
   form.name = quest.name ?? ''
   form.icon = quest.icon || 'PAPER'
   form.category = quest.category ?? ''
-  form.type = quest.type === 'DAILY' ? 'DAILY' : 'NORMAL'
+  form.type = quest.type ?? 'NORMAL'
   form.refreshCost = Number(quest.refreshCost) || 0
   form.enabled = quest.enabled !== false
   form.prerequisites = [...(quest.prerequisites ?? [])]
@@ -609,7 +616,7 @@ const preview = computed(() => {
     title: stripTags(form.name) || id || '',
     subtitle: [
       id ? `id: ${id}` : '',
-      form.type === 'DAILY' ? '每日任务' : '普通任务',
+      `${QUEST_TYPE_LABELS[form.type] ?? form.type}任务`,
       form.category ? `分类: ${form.category}` : '',
       form.prerequisites.length ? `前置 ${form.prerequisites.length} 个` : '',
       form.enabled ? '' : '（已禁用，玩家看不到）'
@@ -758,7 +765,7 @@ function applyQuest(quest: Quest): void {
   form.name = quest.name ?? ''
   form.icon = quest.icon || 'PAPER'
   form.category = quest.category ?? ''
-  form.type = quest.type === 'DAILY' ? 'DAILY' : 'NORMAL'
+  form.type = quest.type ?? 'NORMAL'
   form.refreshCost = Number(quest.refreshCost) || 0
   form.enabled = quest.enabled !== false
   form.prerequisites = [...(quest.prerequisites ?? [])]

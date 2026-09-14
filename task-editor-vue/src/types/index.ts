@@ -9,8 +9,29 @@
  * 因此本文件里<b>不存在</b>任何具体目标/奖励类型的字段定义。
  */
 
-/** 任务类型：DAILY 需要刷新费用，NORMAL 不需要。 */
-export type QuestType = 'DAILY' | 'NORMAL'
+/**
+ * 任务类型。
+ *
+ * <p>DAILY / WEEKLY / MONTHLY / CUSTOM 都是**周期任务**：会被抽取、会过期、可消耗货币刷新，
+ * 刷新费用与次数上限由 config.yml 里 `periodic.<type>` 那一段决定；NORMAL 是常驻任务。
+ */
+export type QuestType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM' | 'NORMAL'
+
+/** 周期任务的类型（顺序即界面上的显示顺序）。 */
+export const PERIODIC_TYPES: QuestType[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM']
+
+/** 类型的中文显示名；后端有权威定义（Periods.label），前端只在徽标与筛选里用。 */
+export const QUEST_TYPE_LABELS: Record<QuestType, string> = {
+  DAILY: '每日',
+  WEEKLY: '每周',
+  MONTHLY: '每月',
+  CUSTOM: '自定义周期',
+  NORMAL: '普通'
+}
+
+export function isPeriodicType(type: string): boolean {
+  return type !== 'NORMAL'
+}
 
 /** schema 里字段的输入类型，决定渲染什么控件（后端 FieldType）。 */
 export type FieldType =
@@ -111,7 +132,7 @@ export interface Quest {
    * 界面文案必须与后端一致，否则玩家会以为做完前置就能解锁。
    */
   prerequisites: string[]
-  /** DAILY 刷新费用 */
+  /** 周期任务的刷新费用（NORMAL 无意义） */
   refreshCost: number
   enabled: boolean
   objectives: QuestObjective[]
@@ -146,7 +167,10 @@ export interface DeleteQuestResult {
 /** GET /api/stats 的响应。 */
 export interface Stats {
   quests: number
-  dailyQuests: number
+  /** 周期任务总数（四种周期合起来） */
+  periodicQuests: number
+  /** 每种类型的任务数，键是 QuestType 的名字 */
+  questsByType: Record<string, number>
   objectives: number
   rewards: number
   players: number

@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.config;
 
 import cn.yvmou.ylib.config.AutoConfiguration;
 import cn.yvmou.ylib.config.ConfigValue;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -58,25 +59,12 @@ public class PluginConfig {
     @ConfigValue(value = "progress.title-on-complete", description = "任务完成时是否发送 title 提醒")
     private boolean titleOnComplete = true;
 
-    @ConfigValue(value = "daily.enabled", description = "是否启用每日任务")
-    private boolean dailyEnabled = true;
-
-    @ConfigValue(value = "daily.pool", description = "每日任务池（任务 id 列表，留空则取所有 type=DAILY 的任务）")
-    private java.util.List<String> dailyPool = java.util.List.of();
-
-    @ConfigValue(value = "daily.amount", description = "每位玩家每日抽取的任务数量")
-    private int dailyAmount = 3;
-
-    @ConfigValue(value = "daily.reset-hour", description = "每日重置时间（小时，0-23）")
-    private int dailyResetHour = 4;
-
-    @ConfigValue(value = "daily.refresh-cost", description = "刷新每日任务的费用；0 表示免费。货币由 daily.refresh-currency 决定")
-    private double dailyRefreshCost = 1000.0;
-
-    @ConfigValue(value = "daily.refresh-currency",
-            description = "刷新费用使用的货币，按顺序取第一个可用的：MONEY（金币/Vault）、POINTS（点券/PlayerPoints）、EXP（经验/原版）。"
-                    + "想把经验排在金币前面就写成 [EXP, MONEY]；只写 [EXP] 表示完全不碰经济插件")
-    private java.util.List<String> dailyRefreshCurrency = defaultCurrencyOrder();
+    @ConfigValue(value = "refresh-currency",
+            description = "周期任务的刷新费用使用哪种货币，按顺序取第一个可用的：MONEY（金币/Vault）、"
+                    + "POINTS（点券/PlayerPoints）、EXP（经验/原版）。"
+                    + "想把经验排在金币前面就写成 [EXP, MONEY]；只写 [EXP] 表示完全不碰经济插件。"
+                    + "四种周期共用这一处配置——它说的是「这台服务器有什么货币」，不是某个周期的属性")
+    private java.util.List<String> refreshCurrency = defaultCurrencyOrder();
 
     private static java.util.List<String> defaultCurrencyOrder() {
         return java.util.List.of("MONEY", "POINTS", "EXP");
@@ -87,15 +75,51 @@ public class PluginConfig {
      * <p>
      * 列表为空时退回内置顺序，避免用户清空后刷新功能失效。
      */
-    public java.util.List<String> getDailyRefreshCurrency() {
-        if (dailyRefreshCurrency == null || dailyRefreshCurrency.isEmpty()) {
+    public java.util.List<String> getRefreshCurrency() {
+        if (refreshCurrency == null || refreshCurrency.isEmpty()) {
             return defaultCurrencyOrder();
         }
-        return dailyRefreshCurrency;
+        return refreshCurrency;
     }
 
-    @ConfigValue(value = "daily.refresh-limit", description = "每日最多刷新次数")
-    private int dailyRefreshLimit = 3;
+    @ConfigValue(value = "periodic", description = "周期任务：daily / weekly / monthly / custom 各一段配置。"
+            + "enabled 决定这种周期是否启用；amount 是每位玩家每周期抽取的数量；"
+            + "reset-hour 是重置时刻（早于它算上一个周期）；"
+            + "weekly 用 reset-weekday（MONDAY…SUNDAY），monthly 用 reset-month-day（1-28），"
+            + "custom 用 period（周期长度，如 3d / 12h，按固定锚点取整、跨服一致）；"
+            + "refresh-cost / refresh-limit 是玩家刷新的费用与次数上限；pool 留空则取该类型的全部任务")
+    private Map<String, PeriodSettings> periodic = defaultPeriodic();
+
+    /** 四种周期的默认配置：每日默认开启，其余默认关闭（想用再开，免得凭空多出一堆任务）。 */
+    private static Map<String, PeriodSettings> defaultPeriodic() {
+        Map<String, PeriodSettings> map = new LinkedHashMap<>();
+        map.put("daily", PeriodSettings.daily());
+        map.put("weekly", PeriodSettings.weekly());
+        map.put("monthly", PeriodSettings.monthly());
+        map.put("custom", PeriodSettings.custom());
+        return map;
+    }
+
+    /**
+     * 某种周期的配置；缺失时退回该类型的内置默认值。
+     * <p>
+     * 配置文件被删掉一段（或旧版本配置里没有这一项）时不能让周期任务静默失效，
+     * 因此这里永远返回一个可用的对象。
+     */
+    public PeriodSettings periodic(QuestType type) {
+        PeriodSettings settings = periodic == null ? null : periodic.get(type.name().toLowerCase(java.util.Locale.ROOT));
+        return settings == null ? PeriodSettings.defaultsFor(type) : settings;
+    }
+
+    /** 是否有任何一种周期任务处于启用状态（没有的话连定时检查都不用起）。 */
+    public boolean isAnyPeriodicEnabled() {
+        for (QuestType type : QuestType.values()) {
+            if (type.isPeriodic() && periodic(type).isEnabled()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @ConfigValue(value = "editor.enabled", description = "是否启用内置网页编辑器")
     private boolean editorEnabled = true;
@@ -159,30 +183,6 @@ public class PluginConfig {
 
     public boolean isTitleOnComplete() {
         return titleOnComplete;
-    }
-
-    public boolean isDailyEnabled() {
-        return dailyEnabled;
-    }
-
-    public java.util.List<String> getDailyPool() {
-        return dailyPool;
-    }
-
-    public int getDailyAmount() {
-        return Math.max(1, dailyAmount);
-    }
-
-    public int getDailyResetHour() {
-        return Math.min(23, Math.max(0, dailyResetHour));
-    }
-
-    public double getDailyRefreshCost() {
-        return dailyRefreshCost;
-    }
-
-    public int getDailyRefreshLimit() {
-        return Math.max(0, dailyRefreshLimit);
     }
 
     public boolean isEditorEnabled() {

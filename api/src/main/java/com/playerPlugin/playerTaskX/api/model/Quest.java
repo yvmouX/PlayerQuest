@@ -64,8 +64,9 @@ public record Quest(
         return List.copyOf(ids);
     }
 
-    public boolean isDaily() {
-        return type == QuestType.DAILY;
+    /** 是不是周期任务（每日/每周/每月/自定义）：会被抽取、会过期、可刷新。 */
+    public boolean isPeriodic() {
+        return type.isPeriodic();
     }
 
     /** 是否有前置任务。 */

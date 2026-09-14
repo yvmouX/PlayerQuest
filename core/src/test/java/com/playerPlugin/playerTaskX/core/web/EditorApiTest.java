@@ -567,7 +567,10 @@ class EditorApiTest {
         JsonNode stats = json(send("GET", "/api/stats", null));
 
         assertEquals(2, stats.get("quests").asInt());
-        assertEquals(1, stats.get("dailyQuests").asInt());
+        assertEquals(1, stats.get("periodicQuests").asInt(), "周期任务数 = 四种周期里已启用的任务");
+        assertEquals(1, stats.get("questsByType").get("DAILY").asInt());
+        assertEquals(1, stats.get("questsByType").get("NORMAL").asInt());
+        assertEquals(0, stats.get("questsByType").get("WEEKLY").asInt());
         assertEquals(BuiltIns.objectives().size(), stats.get("objectives").asInt(),
                 "数量取自注册表，硬编码会随新增类型漂移");
         assertEquals(BuiltIns.rewards().size(), stats.get("rewards").asInt());
@@ -994,12 +997,13 @@ class EditorApiTest {
         }
 
         @Override
-        public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.DailyState findDailyState(UUID playerId) {
+        public com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository.PeriodState findPeriodState(
+                UUID playerId, QuestType type) {
             return null;
         }
 
         @Override
-        public void saveDailyState(UUID playerId, String period, int refreshCount, long assignedAt) {
+        public void savePeriodState(UUID playerId, QuestType type, String period, int refreshCount, long assignedAt) {
         }
     }
 }

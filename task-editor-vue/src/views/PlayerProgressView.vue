@@ -118,8 +118,8 @@
                 </template>
 
                 <template #type="{ row }">
-                  <span class="badge" :class="row.type === 'DAILY' ? 'badge-blue' : 'badge-gray'">
-                    {{ row.type === 'DAILY' ? '每日' : '普通' }}
+                  <span class="badge" :class="row.type === 'NORMAL' ? 'badge-gray' : 'badge-blue'">
+                    {{ QUEST_TYPE_LABELS[row.type] ?? row.type }}
                   </span>
                 </template>
 
@@ -192,6 +192,7 @@ import type {
   TableColumn,
   TypeSchema
 } from '../types'
+import { QUEST_TYPE_LABELS } from '../types'
 import { clampPercent, formatTime, isExpired } from '../utils/text'
 
 /** 路由 /players/:uuid 传入的玩家；从侧栏进入时没有这个参数。 */

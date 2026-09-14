@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.web;
 import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
+import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
@@ -449,7 +450,13 @@ final class EditorApi {
         app.get("/api/stats", ctx -> {
             Map<String, Object> stats = new LinkedHashMap<>();
             stats.put("quests", services.quests().all().size());
-            stats.put("dailyQuests", services.quests().daily().size());
+            stats.put("periodicQuests", services.quests().periodic().size());
+            // 每种周期各多少条：概览页与「类型」筛选都要按周期分开看
+            Map<String, Object> perType = new LinkedHashMap<>();
+            for (QuestType type : QuestType.values()) {
+                perType.put(type.name(), services.quests().ofType(type).size());
+            }
+            stats.put("questsByType", perType);
             stats.put("objectives", services.objectiveTypes().all().size());
             stats.put("rewards", services.rewardTypes().all().size());
             stats.put("players", services.playerQuestRepository().countPlayers());

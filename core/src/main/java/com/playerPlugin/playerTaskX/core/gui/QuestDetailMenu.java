@@ -68,10 +68,10 @@ public final class QuestDetailMenu extends Menu {
     /** 「返回」按钮的落点。 */
     private final Runnable back;
 
-    /** 玩家侧：返回每日任务列表。 */
+    /** 玩家侧：返回周期任务列表（回到打开详情前看的那一种周期）。 */
     public QuestDetailMenu(Player viewer, MessageService messages, Quest quest, PlayerQuest playerQuest) {
         this(viewer, messages, quest, playerQuest,
-                () -> new DailyQuestMenu(viewer, messages).open());
+                () -> new PeriodicQuestMenu(viewer, messages, playerQuest.type()).open());
     }
 
     /**
