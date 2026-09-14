@@ -114,33 +114,33 @@ class QuestAdminServiceTest {
     }
 
     @Test
-    @DisplayName("引用预设的任务：库里存引用+覆盖项，注册表里是生效值；改预设后重载即刻生效")
+    @DisplayName("引用预设的任务：库里只存引用，注册表里是生效值；改预设后重载即刻生效")
     void presetReferenceSurvivesSaveAndFollowsThePreset() {
         presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
                 Map.of("target", "STONE", "amount", 64), ""));
 
-        // 编辑器形状：引用 + 一个覆盖项（amount 改成 128）
+        // 早期写法留下的覆盖项（amount）不该活过这次保存
         service.save(new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(new QuestObjective("", Map.of("preset", "mine-stone", "amount", 128))),
                 List.of(), 0.0, true));
 
         Quest stored = repository.findById("q1").orElseThrow();
-        assertEquals(Map.of("preset", "mine-stone", "amount", 128), stored.objectives().get(0).authored(),
-                "库里存的应当是作者写的那份（引用 + 覆盖项），而不是展开后的值");
+        assertEquals(Map.of("preset", "mine-stone"), stored.objectives().get(0).authored(),
+                "库里存的应当是引用本身，而不是展开后的值或覆盖项");
         Quest live = quests.find("q1").orElseThrow();
         assertEquals("break_block", live.objectives().get(0).type());
         assertEquals("STONE", live.objectives().get(0).properties().get("target"));
-        assertEquals(128, live.objectives().get(0).properties().get("amount"));
+        assertEquals(64, live.objectives().get(0).properties().get("amount"), "生效值完全来自预设");
 
-        // 改预设：重载后引用它的任务跟着变（target 变了，没被覆盖的字段跟着走）
+        // 改预设：重载后引用它的任务整体跟着变
         presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
-                Map.of("target", "COBBLESTONE", "amount", 64), ""));
+                Map.of("target", "COBBLESTONE", "amount", 32), ""));
         service.reload();
 
         Quest after = quests.find("q1").orElseThrow();
         assertEquals("COBBLESTONE", after.objectives().get(0).properties().get("target"),
-                "继承来的字段必须跟着预设变");
-        assertEquals(128, after.objectives().get(0).properties().get("amount"), "覆盖项不受预设影响");
+                "字段必须跟着预设变");
+        assertEquals(32, after.objectives().get(0).properties().get("amount"));
         assertEquals("mine-stone", after.objectives().get(0).presetId());
     }
 

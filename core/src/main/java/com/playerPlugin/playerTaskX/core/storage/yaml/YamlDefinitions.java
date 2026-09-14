@@ -123,28 +123,25 @@ public final class YamlDefinitions {
     /**
      * 目标 → YAML 节点。
      * <p>
-     * 引用预设时写 {@code preset: <id>} + 任务自己的覆盖项；<b>不</b>写「生效值」
-     * （{@code resolved}）——那是预设 ⊕ 覆盖算出来的结果，写进文件只会在预设改动后变成
-     * 一份过期的副本，让人以为它才是准的。
+     * 引用预设时<b>只</b>写 {@code preset: <id>}：类型与字段都由预设提供，写进文件只会是一份
+     * 会过期的副本（改预设后文件里的值就是错的）。要偏离预设，先在编辑器里「展开为独立配置」。
      */
     private static Map<String, Object> objectiveDocument(QuestObjective objective) {
-        return nodeDocument(objective.type(), objective.properties(),
-                objective.authored(), objective.presetId());
+        return nodeDocument(objective.type(), objective.properties(), objective.presetId());
     }
 
     private static Map<String, Object> rewardDocument(QuestReward reward) {
-        return nodeDocument(reward.type(), reward.properties(), reward.authored(), reward.presetId());
+        return nodeDocument(reward.type(), reward.properties(), reward.presetId());
     }
 
-    private static Map<String, Object> nodeDocument(String type, Map<String, Object> effective,
-                                                    Map<String, Object> authored, String presetId) {
+    private static Map<String, Object> nodeDocument(String type, Map<String, Object> effective, String presetId) {
         Map<String, Object> document = new LinkedHashMap<>();
         if (presetId != null) {
             document.put(QuestObjective.PRESET_KEY, presetId);
+            return document;
         }
         document.put("type", type);
-        document.put("properties", YamlText.sortedProperties(
-                presetId == null ? effective : QuestJson.withoutPresetKey(authored)));
+        document.put("properties", YamlText.sortedProperties(effective));
         return document;
     }
 

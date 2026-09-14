@@ -47,37 +47,31 @@ public final class QuestJson {
     /**
      * 目标 / 奖励 → JSON 节点。
      * <p>
-     * 引用预设时同时给三样东西：{@code preset}（引用本身）、{@code properties}（任务自己写的
-     * 覆盖项，也是保存时要落库的那份）、{@code resolved}（预设 ⊕ 覆盖的生效值，供界面直接显示）。
-     * 只给生效值会让编辑器一保存就把继承来的字段写死成覆盖项，预设后续再改就影响不到它了。
+     * 引用预设时给两样东西：{@code preset}（引用本身）与 {@code resolved}（预设给的生效值，
+     * 供界面直接显示）。不给 {@code properties}：引用条目没有「任务自己写的字段」，
+     * 送一个空表过去只会让人以为那里可以填东西（要调值先「展开为独立配置」）。
      */
     private static Map<String, Object> nodeToJson(String type, Map<String, Object> effective,
                                                   Map<String, Object> authored, String presetId) {
         Map<String, Object> json = new LinkedHashMap<>();
         if (presetId != null) {
             json.put(QuestObjective.PRESET_KEY, presetId);
+            json.put("type", type);
+            json.put("resolved", effective);
+            return json;
         }
         json.put("type", type);
-        json.put("properties", presetId == null ? effective : withoutPresetKey(authored));
-        if (presetId != null) {
-            json.put("resolved", effective);
-        }
+        json.put("properties", effective);
         return json;
-    }
-
-    /** 作者那份去掉 {@code preset} 键：它是记账，不是类型的字段，混在 properties 里会被当成未知字段。 */
-    public static Map<String, Object> withoutPresetKey(Map<String, Object> authored) {
-        Map<String, Object> result = new LinkedHashMap<>(authored);
-        result.remove(QuestObjective.PRESET_KEY);
-        return result;
     }
 
     /**
      * JSON 节点 → 目标 / 奖励的公共部分。
      * <p>
-     * 这里<b>不</b>展开预设（拿不到预设仓储）：{@code properties} 先原样当作生效值，
-     * 由 {@code PresetRefs.resolve} 在载入/保存时统一展开。{@code authored} 记下作者写的那份
-     * ——含 {@code preset} 键，这样「引用」不会在编辑器往返里丢掉。
+     * 这里<b>不</b>展开预设（拿不到预设仓储）：引用条目的生效值由 {@code PresetRefs.resolve}
+     * 在载入/保存时统一展开。{@code authored} 记下作者写的那份——引用时就是 {@code {preset: id}}，
+     * 这样「引用」不会在编辑器往返里丢掉；引用条目上多写的字段会被保留下来交给校验报错
+     * （{@code PresetRefs.problems}），保存时由 {@code trim} 清掉，不在这里静默丢弃。
      */
     private static Map<String, Object> authoredOf(Map<String, Object> node) {
         Map<String, Object> properties = JsonCodec.asMap(node.get("properties"));

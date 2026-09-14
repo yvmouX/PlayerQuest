@@ -121,23 +121,22 @@ class StorageIntegrationTest {
     }
 
     @Test
-    @DisplayName("引用预设的目标落库的是「作者那份」：preset 键必须留在库里")
+    @DisplayName("引用预设的目标落库的是引用本身：preset 键必须留在库里")
     void presetReferenceSurvivesRoundTrip() {
         Quest reference = new Quest("ref", "引用预设的任务", List.of(), "PAPER", "", QuestType.NORMAL,
                 List.of(new QuestObjective("break_block",
-                        Map.of("target", "STONE", "amount", 128),
-                        Map.of("preset", "mine-stone", "amount", 128))),
+                        Map.of("target", "STONE"), Map.of("preset", "mine-stone"))),
                 List.of(), 0.0, true);
         questRepository.save(reference);
 
         Quest loaded = questRepository.findById("ref").orElseThrow();
-        // 生效值原样来回（真正的展开由 PresetRefs 在载入/保存时做，存储层不认识预设）
-        assertEquals(128, loaded.objectives().get(0).amount());
 
-        // 引用本身必须活过这次往返。丢了它，这次保存就把继承来的值变成了显式覆盖，
+        // 引用本身必须活过这次往返。丢了它，这次保存就把预设的值变成本任务的显式配置，
         // 之后再改预设这个任务不会跟着变——而且不报任何错，只有翻库才看得出来
         assertEquals("mine-stone", loaded.objectives().get(0).presetId());
-        assertEquals(Map.of("preset", "mine-stone", "amount", 128), loaded.objectives().get(0).authored());
+        assertEquals(Map.of("preset", "mine-stone"), loaded.objectives().get(0).authored());
+        // 生效值由 PresetRefs 在载入时展开，存储层不认识预设
+        assertEquals("break_block", loaded.objectives().get(0).type());
     }
 
     @Test

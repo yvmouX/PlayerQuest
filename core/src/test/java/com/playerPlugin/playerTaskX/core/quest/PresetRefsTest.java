@@ -21,10 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 预设引用（{@code objectives: [{preset: mine-stone, properties: {amount: 128}}]}）的测试。
+ * 预设引用（{@code objectives: [{preset: mine-stone}]}）的测试。
  *
- * <p>要防的是三类静默错误：展开时覆盖项没赢（任务按预设的旧数量算）、保存时把继承来的值
- * 写成了显式覆盖（此后改预设再也不生效）、引用悬空却被当成「这个目标不存在」悄悄丢掉。</p>
+ * <p>要防的是几类静默错误：引用在保存一次之后退化成副本（此后改预设不再跟随）、
+ * 引用悬空却被当成「这个目标不存在」悄悄丢掉、条目上多写的字段被当成覆盖项悄悄生效。</p>
  */
 class PresetRefsTest {
 
@@ -33,32 +33,92 @@ class PresetRefsTest {
     private final Function<String, Preset> lookup = id -> presets.get(id);
 
     @Test
-    @DisplayName("展开：预设字段 ⊕ 任务自己的覆盖项，覆盖项赢")
-    void overridesWin() {
+    @DisplayName("展开：类型与字段全部来自预设，引用本身留着")
+    void resolveTakesEverythingFromThePreset() {
         presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
                 map("target", "STONE", "amount", 64), ""));
 
-        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "mine-stone", "amount", 128))), lookup);
+        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "mine-stone"))), lookup);
 
         QuestObjective objective = quest.objectives().get(0);
         assertEquals("break_block", objective.type(), "类型来自预设");
-        assertEquals("STONE", objective.properties().get("target"), "没覆盖的字段用预设的");
-        assertEquals(128, objective.properties().get("amount"), "覆盖项要赢过预设");
+        assertEquals(map("target", "STONE", "amount", 64), objective.properties(), "生效值就是预设那份");
         assertFalse(objective.properties().containsKey("preset"), "preset 是记账键，不该进生效值");
-        assertEquals("mine-stone", objective.presetId(), "引用本身要留着，否则下次保存就退化成独立配置");
+        assertEquals("mine-stone", objective.presetId(), "引用本身要留着，否则下次保存就退化成副本");
+        assertTrue(PresetRefs.problems(quest, lookup).isEmpty());
     }
 
     @Test
-    @DisplayName("悬空引用：类型留空、保留覆盖项，并报出「预设不存在」")
+    @DisplayName("悬空引用：类型留空、配置为空，并报出「预设不存在」")
     void missingPresetIsReported() {
-        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "gone", "amount", 5))), lookup);
+        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "gone"))), lookup);
 
         assertEquals("", quest.objectives().get(0).type());
-        assertEquals(5, quest.objectives().get(0).properties().get("amount"), "作者写的值不能丢");
+        assertTrue(quest.objectives().get(0).properties().isEmpty(), "查不到预设就没有生效值");
         List<String> problems = PresetRefs.problems(quest, lookup);
         assertEquals(1, problems.size(), problems.toString());
         assertTrue(problems.get(0).contains("gone"), problems.get(0));
         assertTrue(problems.get(0).contains("不存在"), problems.get(0));
+    }
+
+    @Test
+    @DisplayName("引用上多写的字段不生效，并报出来（覆盖项机制已移除）")
+    void extraFieldsOnReferenceAreReportedAndIgnored() {
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                map("target", "STONE", "amount", 64), ""));
+
+        // 早期写法（preset + 覆盖项）与手工改库都可能长这样
+        Quest quest = PresetRefs.resolve(
+                quest(objective(map("preset", "mine-stone", "amount", 128))), lookup);
+
+        assertEquals(64, quest.objectives().get(0).properties().get("amount"),
+                "多写的 amount 不生效，生效值仍然是预设的");
+        List<String> problems = PresetRefs.problems(quest, lookup);
+        assertEquals(1, problems.size(), problems.toString());
+        assertTrue(problems.get(0).contains("不能再写字段"), problems.get(0));
+        assertTrue(problems.get(0).contains("amount"), problems.get(0));
+        assertTrue(problems.get(0).contains("展开为独立配置"), problems.get(0));
+    }
+
+    @Test
+    @DisplayName("trim：引用被清成只剩 preset 键")
+    void trimLeavesOnlyTheReference() {
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                map("target", "STONE", "amount", 64), ""));
+        Quest polluted = quest(new QuestObjective("break_block",
+                map("target", "STONE", "amount", 64),
+                map("preset", "mine-stone", "target", "STONE", "amount", 128)));
+
+        Quest trimmed = PresetRefs.trim(polluted);
+        assertEquals(map("preset", "mine-stone"), trimmed.objectives().get(0).authored());
+        assertEquals("mine-stone", trimmed.objectives().get(0).presetId());
+        // 幂等：已经干净的再清一次不变
+        assertEquals(PresetRefs.trim(trimmed).objectives(), trimmed.objectives());
+    }
+
+    @Test
+    @DisplayName("trim 不碰独立配置（没有引用的条目原样返回）")
+    void trimIgnoresPlainDefinitions() {
+        Quest quest = quest(objective(map("target", "STONE", "amount", 64)));
+
+        Quest trimmed = PresetRefs.trim(quest);
+
+        assertEquals(quest.objectives(), trimmed.objectives());
+        assertNull(trimmed.objectives().get(0).presetId());
+    }
+
+    @Test
+    @DisplayName("trim 后再展开，生效值与原来一致（保存 → 载入是一次恒等变换）")
+    void trimThenResolveIsStable() {
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                map("target", "STONE", "amount", 64), ""));
+
+        Quest effective = PresetRefs.resolve(
+                quest(objective(map("preset", "mine-stone"))), lookup);
+        Quest again = PresetRefs.resolve(PresetRefs.trim(effective), lookup);
+
+        assertEquals(effective.objectives().get(0).properties(), again.objectives().get(0).properties());
+        assertEquals("mine-stone", again.objectives().get(0).presetId());
     }
 
     @Test
@@ -69,10 +129,10 @@ class PresetRefsTest {
         presets.put("obj-chat", new Preset(Preset.OBJECTIVES, "obj-chat", "发言", "chat",
                 map("amount", 1), ""));
 
-        Quest wrongReward = PresetRefs.resolve(quest(
+        Quest right = PresetRefs.resolve(quest(
                 objective(map("preset", "obj-chat")),
                 reward(map("preset", "reward-exp"))), lookup);
-        assertTrue(PresetRefs.problems(wrongReward, lookup).isEmpty(), "配对正确时不该有问题");
+        assertTrue(PresetRefs.problems(right, lookup).isEmpty(), "配对正确时不该有问题");
 
         Quest swapped = PresetRefs.resolve(quest(
                 objective(map("preset", "reward-exp")),
@@ -81,39 +141,6 @@ class PresetRefsTest {
         assertEquals(2, problems.size(), problems.toString());
         assertTrue(problems.get(0).contains("奖励预设"), problems.get(0));
         assertTrue(problems.get(1).contains("目标预设"), problems.get(1));
-    }
-
-    @Test
-    @DisplayName("trim：只把「与预设不同」的字段留成覆盖项，继承来的字段不写死")
-    void trimKeepsOnlyRealOverrides() {
-        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
-                map("target", "STONE", "amount", 64), ""));
-
-        // 模拟编辑器回传：生效值被原样送回来（target/amount 都填着），其中 amount 被改过
-        Quest roundTripped = quest(new QuestObjective("break_block",
-                map("preset", "mine-stone", "target", "STONE", "amount", 128),
-                map("preset", "mine-stone", "target", "STONE", "amount", 128)));
-
-        Quest trimmed = PresetRefs.trim(roundTripped, lookup);
-
-        Map<String, Object> authored = trimmed.objectives().get(0).authored();
-        assertEquals("mine-stone", authored.get("preset"));
-        assertEquals(128, authored.get("amount"), "改过的字段要留成覆盖项");
-        assertFalse(authored.containsKey("target"), "与预设相同的字段不该被写死，否则以后改预设它不跟着变");
-    }
-
-    @Test
-    @DisplayName("trim 后再展开，结果与原来一致（保存 → 载入是一次恒等变换）")
-    void trimThenResolveIsStable() {
-        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
-                map("target", "STONE", "amount", 64), ""));
-
-        Quest effective = PresetRefs.resolve(
-                quest(objective(map("preset", "mine-stone", "target", "STONE", "amount", 128))), lookup);
-        Quest again = PresetRefs.resolve(PresetRefs.trim(effective, lookup), lookup);
-
-        assertEquals(effective.objectives().get(0).properties(), again.objectives().get(0).properties());
-        assertEquals("mine-stone", again.objectives().get(0).presetId());
     }
 
     @Test
@@ -129,28 +156,32 @@ class PresetRefsTest {
     }
 
     @Test
-    @DisplayName("编辑器 JSON：给出 preset、覆盖项与生效值三样，回传时不丢引用")
-    void editorJsonCarriesBoth() {
+    @DisplayName("编辑器 JSON：引用给 preset / type / resolved，不给 properties，回传时不丢引用")
+    void editorJsonCarriesTheReferenceOnly() {
         presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
                 map("target", "STONE", "amount", 64), ""));
-        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "mine-stone", "amount", 128))), lookup);
+        Quest quest = PresetRefs.resolve(quest(objective(map("preset", "mine-stone"))), lookup);
 
         Map<String, Object> json = QuestJson.toJson(quest);
         @SuppressWarnings("unchecked")
         Map<String, Object> node = (Map<String, Object>) ((List<?>) json.get("objectives")).get(0);
 
         assertEquals("mine-stone", node.get("preset"));
-        assertEquals(128, ((Map<?, ?>) node.get("properties")).get("amount"), "properties 是任务自己写的那份");
-        assertFalse(((Map<?, ?>) node.get("properties")).containsKey("target"),
-                "继承来的字段不该出现在覆盖项里");
-        assertEquals("STONE", ((Map<?, ?>) node.get("resolved")).get("target"), "resolved 是给界面直接显示的生效值");
-        assertEquals(128, ((Map<?, ?>) node.get("resolved")).get("amount"));
+        assertEquals("break_block", node.get("type"), "类型由预设提供，界面要能直接显示");
+        assertEquals(map("target", "STONE", "amount", 64), node.get("resolved"), "resolved 是给界面显示的值");
+        assertFalse(node.containsKey("properties"), "引用条目没有「任务自己写的字段」，不该送一个空表过去");
 
-        // 再解析回来：引用、覆盖项都还在（这是「编辑器保存一次就把预设写死」的防线）
+        // 再解析回来：引用还在（这是「编辑器保存一次就把预设写死」的防线）
         Quest back = QuestJson.fromJson(json);
         assertEquals("mine-stone", back.objectives().get(0).presetId());
-        assertEquals(map("preset", "mine-stone", "amount", 128), back.objectives().get(0).authored());
-        assertNotNull(QuestJson.toJson(back).get("objectives"));
+        assertEquals(map("preset", "mine-stone"), back.objectives().get(0).authored());
+
+        // 独立配置仍然照常带 properties
+        Map<String, Object> plain = QuestJson.toJson(quest(objective(map("target", "STONE"))));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> plainNode = (Map<String, Object>) ((List<?>) plain.get("objectives")).get(0);
+        assertEquals(map("target", "STONE"), plainNode.get("properties"));
+        assertNotNull(plainNode.get("type"));
     }
 
     // ---------- 辅助 ----------

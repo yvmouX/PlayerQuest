@@ -204,6 +204,50 @@ class EditorApiTest {
     }
 
     @Test
+    @DisplayName("引用预设的任务：GET 给 preset/type/resolved 而不给 properties；多写的字段不生效且被报出来")
+    void presetReferenceRoundTrip() throws Exception {
+        services.presets().save(new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
+                Map.of("target", "STONE", "amount", 64), ""));
+
+        // 编辑器的新形状：引用条目只有 preset（没有 type、没有 properties）
+        HttpResponse<String> saved = send("POST", "/api/quests", """
+                {
+                  "id": "ref_quest",
+                  "name": "引用预设",
+                  "objectives": [{"preset": "mine-stone"}],
+                  "rewards": []
+                }
+                """);
+        assertEquals(200, saved.statusCode(), "保存应成功，实际: " + saved.body());
+        assertEquals(0, json(saved).get("problems").size(), json(saved).get("problems").toString());
+
+        JsonNode node = json(send("GET", "/api/quests/ref_quest", null)).get("objectives").get(0);
+        assertEquals("mine-stone", node.get("preset").asText());
+        assertEquals("break_block", node.get("type").asText(), "类型由预设提供，界面要能直接显示");
+        assertEquals("STONE", node.get("resolved").get("target").asText(), "resolved 是给界面显示的值");
+        assertEquals(64, node.get("resolved").get("amount").asInt());
+        assertFalse(node.has("properties"), "引用条目没有覆盖项，不该送一个空表过去");
+
+        // 早期写法（引用 + 覆盖项）：字段不生效，报一条问题，保存时被清掉
+        HttpResponse<String> polluted = send("POST", "/api/quests", """
+                {
+                  "id": "ref_quest",
+                  "name": "引用预设",
+                  "objectives": [{"preset": "mine-stone", "properties": {"amount": 128}}],
+                  "rewards": []
+                }
+                """);
+        assertEquals(200, polluted.statusCode(), polluted.body());
+        String problems = json(polluted).get("problems").toString();
+        assertTrue(problems.contains("不能再写字段") && problems.contains("amount"),
+                "多写的字段必须报出来，实际: " + problems);
+
+        JsonNode after = json(send("GET", "/api/quests/ref_quest", null)).get("objectives").get(0);
+        assertEquals(64, after.get("resolved").get("amount").asInt(), "生效值仍然只有预设那份");
+        assertFalse(after.has("properties"), "保存时应当把多余的字段清掉");
+    }
+
+    @Test
     @DisplayName("POST /api/quests：缺 id 回 400，且不落库")
     void postQuestWithoutIdIsRejected() throws Exception {
         HttpResponse<String> response = send("POST", "/api/quests", "{\"name\":\"没有 id\"}");

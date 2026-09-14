@@ -223,12 +223,12 @@ public final class QuestAdminService {
      * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生：
      * 注册表是引擎与界面的数据源，索引决定玩家进度记到哪个任务定义上。
      * <p>
-     * 预设引用在这里处理两次，顺序不能反：先 {@link PresetRefs#trim} 把生效值瘦身回
-     * 「作者写的那份」（否则编辑器回传的展开值会被当成显式覆盖写死），再
+     * 预设引用在这里处理两次，顺序不能反：先 {@link PresetRefs#trim} 把引用条目清成
+     * 只有 {@code preset} 键（导入的文件与手工改库都可能留下多余的字段），再
      * {@link PresetRefs#resolve} 展开成生效值进注册表。
      */
     public void save(Quest quest) {
-        Quest trimmed = PresetRefs.trim(quest, presets);
+        Quest trimmed = PresetRefs.trim(quest);
         repository.save(trimmed);
         quests.upsert(PresetRefs.resolve(trimmed, presets));
         rebuildIndexes();
