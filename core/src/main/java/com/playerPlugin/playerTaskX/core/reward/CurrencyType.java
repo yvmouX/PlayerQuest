@@ -11,20 +11,18 @@ import java.util.function.Supplier;
 /**
  * 刷新费用可用的货币。
  *
- * <h2>兜底链</h2>
- * 服务器未必装经济插件，但「刷新任务」这个功能不该因此直接不可用。
- * 因此按 <b>金币 → 点券 → 经验</b> 的顺序自动挑一个可用的：
+ * <h2>只有两种，且都可能不可用</h2>
  * <ul>
  *   <li><b>MONEY</b>：任一经济插件（经 Vault 注册的 {@code Economy} 服务；Vault、VaultUnlocked 都算）</li>
  *   <li><b>POINTS</b>：PlayerPoints（很多服务器用它做第二货币）</li>
- *   <li><b>EXP</b>：原版经验（见 {@link ExpCurrency}）。它<b>不是</b>奖励类型——奖励只留
- *       金币/点券/命令——但任何服务端都有经验，因此这条兜底永远成立</li>
  * </ul>
- * 这样同一份配置在装了经济插件的服务器上扣钱、在没有的服务器上扣经验，
- * 管理员不必为「有没有装 Vault」分别写配置。
+ * 这两样都没有时，刷新功能就是不可用——{@link #select} 返回 {@code null}，
+ * 调用方给出明确提示（{@link #unavailableReason()}）。刻意<b>不</b>留一条「免费刷新」或
+ * 「扣经验」的兜底：前者会让配错的 {@code refresh-cost} 看不出来，后者要靠读写玩家的
+ * 等级与经验进度当余额，等于把一件小事做成一等公民。
  *
  * <h2>为什么把「检测与扣费」放在枚举里</h2>
- * 扣费涉及三个来源各自的可用性判断、余额读取与扣除方式，散落在 PeriodicService 里
+ * 扣费涉及两个来源各自的可用性判断、余额读取与扣除方式，散落在 PeriodicService 里
  * 会让「到底扣了哪种货币」难以追查。集中到这里后，PeriodicService 只负责
  * 「确定货币 → 调用扣除 → 组装提示」。
  */
@@ -40,13 +38,7 @@ public enum CurrencyType {
     POINTS("points", "点券",
             PointsReward::isAvailable,
             player -> PointsReward.balanceOf(player.getUniqueId()),
-            (player, amount) -> PointsReward.takeFrom(player.getUniqueId(), (int) amount)),
-
-    /** 经验（原版，总是可用）。 */
-    EXP("exp", "经验",
-            ExpCurrency::available,
-            ExpCurrency::totalExperience,
-            (player, amount) -> ExpCurrency.take(player, (int) amount));
+            (player, amount) -> PointsReward.takeFrom(player.getUniqueId(), (int) amount));
 
     private final String id;
     private final String displayName;
@@ -63,7 +55,7 @@ public enum CurrencyType {
         this.charger = charger;
     }
 
-    /** 语言文件与命令里使用的 id（金币与点券与同名奖励类型一致，因此 {@code reward.<id>} 语言键可复用）。 */
+    /** 语言文件与命令里使用的 id（与同名奖励类型一致，因此 {@code reward.<id>} 语言键可复用）。 */
     public String id() {
         return id;
     }
@@ -91,14 +83,15 @@ public enum CurrencyType {
     /**
      * 按配置的顺序挑选可用货币。
      * <p>
-     * 配置的是一个<b>有序列表</b>，先出现的优先：写 {@code [EXP, MONEY]} 表示优先扣经验。
-     * 列表里没有的货币视为禁用（如只写 {@code [EXP]} 就完全不碰经济插件）。
-     * 配置为空、或配的货币在当前环境下都不可用时退回内置顺序——经验总是满足条件，
-     * 因此这里不会返回 null。
+     * 配置的是一个<b>有序列表</b>，先出现的优先：写 {@code [POINTS, MONEY]} 表示优先扣点券。
+     * 列表里没有的货币视为禁用（如只写 {@code [POINTS]} 就完全不碰经济插件）。
+     * 配置为空、或配的货币在当前环境下都不可用时退回内置顺序。
      *
      * @param configured 配置的货币 id 顺序
+     * @return 可用的货币；服务器一个都没有时返回 {@code null}——
+     *         调用方必须据此给出「刷新不可用」的明确提示，而不是当成免费刷新
      */
-    public static CurrencyType select(List<String> configured) {
+    public static @Nullable CurrencyType select(List<String> configured) {
         if (configured != null) {
             for (String name : configured) {
                 CurrencyType type = parse(name);
@@ -112,11 +105,21 @@ public enum CurrencyType {
                 return type;
             }
         }
-        return EXP;
+        return null;
     }
 
-    /** 按枚举名或 id 解析，无法识别时返回 {@code null}（让调用方跳过该项继续往下找）。 */
-    private static @Nullable CurrencyType parse(String name) {
+    /** 一个货币都不可用时给玩家看的说明；提示文案只有这一处，避免 GUI 与命令各写一句。 */
+    public static String unavailableReason() {
+        return "本服务器没有可用的货币（需要经济插件或 PlayerPoints）";
+    }
+
+    /**
+     * 按枚举名或 id 解析，无法识别时返回 {@code null}（让调用方跳过该项继续往下找）。
+     * <p>
+     * 包内可见：货币名要在单测里逐个钉住——单测环境两种货币都不可用，
+     * 光靠 {@link #select} 分不清「名字没认出来」与「认出来了但服务器没有」。
+     */
+    static @Nullable CurrencyType parse(String name) {
         if (name == null || name.trim().isEmpty()) {
             return null;
         }

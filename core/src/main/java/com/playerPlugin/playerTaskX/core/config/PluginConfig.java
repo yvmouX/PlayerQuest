@@ -61,13 +61,14 @@ public class PluginConfig {
 
     @ConfigValue(value = "refresh-currency",
             description = "周期任务的刷新费用使用哪种货币，按顺序取第一个可用的：MONEY（金币，需经济插件）、"
-                    + "POINTS（点券/PlayerPoints）、EXP（经验/原版）。"
-                    + "想把经验排在金币前面就写成 [EXP, MONEY]；只写 [EXP] 表示完全不碰经济插件。"
-                    + "四种周期共用这一处配置——它说的是「这台服务器有什么货币」，不是某个周期的属性")
+                    + "POINTS（点券/PlayerPoints）。想优先扣点券就写成 [POINTS, MONEY]；"
+                    + "只写 [POINTS] 表示完全不碰经济插件。两者都不可用时刷新直接不可用并提示玩家，"
+                    + "不会白送刷新。四种周期共用这一处配置——它说的是「这台服务器有什么货币」，"
+                    + "不是某个周期的属性")
     private java.util.List<String> refreshCurrency = defaultCurrencyOrder();
 
     private static java.util.List<String> defaultCurrencyOrder() {
-        return java.util.List.of("MONEY", "POINTS", "EXP");
+        return java.util.List.of("MONEY", "POINTS");
     }
 
     /**

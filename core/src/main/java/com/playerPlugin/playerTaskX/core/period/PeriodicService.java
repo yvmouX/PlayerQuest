@@ -207,9 +207,12 @@ public final class PeriodicService {
 
         double cost = settings.refreshCost();
         if (charge && samePeriod && cost > 0) {
-            // 货币顺序由配置决定（默认「金币 → 点券 → 经验」）：装了经济插件扣钱，
-            // 没装的服务器扣经验，刷新功能在任何服务端上都可用
+            // 货币顺序由配置决定（默认「金币 → 点券」）。一个都没有时直接失败并说明原因：
+            // 白送一次刷新会让「refresh-cost 配错了」这件事永远看不出来
             CurrencyType currency = CurrencyType.select(config.getRefreshCurrency());
+            if (currency == null) {
+                return RefreshResult.of("quest.refresh-failed", CurrencyType.unavailableReason());
+            }
             long units = currency.toUnits(cost);
             if (!currency.charge(player, units)) {
                 return RefreshResult.of("quest.refresh-failed", currency.displayName() + "不足，需要 " + units
@@ -252,14 +255,18 @@ public final class PeriodicService {
     }
 
     /**
-     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「1000 经验」。
+     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「100 点券」。
      * <p>
-     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），其它货币是整数，直接用其显示名。
+     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），点券是整数，直接用其显示名。
      * 放在这里而不是各个调用点：费用文案与实际扣费必须用同一套货币推断，
-     * 分开写迟早会不一致。
+     * 分开写迟早会不一致。一个货币都没有时返回不可用说明——GUI 的按钮上就会写着刷新用不了，
+     * 而不是点下去才发现。
      */
     public String formatCost(double cost) {
         CurrencyType currency = CurrencyType.select(config.getRefreshCurrency());
+        if (currency == null) {
+            return CurrencyType.unavailableReason();
+        }
         if (currency == CurrencyType.MONEY) {
             return MoneyReward.format(cost);
         }

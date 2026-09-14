@@ -14,6 +14,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -70,13 +71,13 @@ class MoneyRewardTest {
             assertTrue(MoneyReward.isAvailable(), "服务在册就说明钱发得出去，与插件叫什么名字无关");
             assertEquals("", new MoneyReward().unavailableReason());
             // 刷新货币按同一条判据选：MONEY 在配置里就该被选中
-            assertEquals(CurrencyType.MONEY, CurrencyType.select(List.of("MONEY", "EXP")),
-                    "有经济服务却不用它、退回经验扣费，等于白装经济插件");
+            assertEquals(CurrencyType.MONEY, CurrencyType.select(List.of("POINTS", "MONEY")),
+                    "有经济服务却不用它，等于白装经济插件");
         }
     }
 
     @Test
-    @DisplayName("服务在册但经济插件被禁用：视为不可用，刷新退回经验")
+    @DisplayName("服务在册但经济插件被禁用：视为不可用，刷新这条货币选不出来")
     void disabledEconomyCountsAsUnavailable() {
         Economy economy = mock(Economy.class);
         when(economy.isEnabled()).thenReturn(false);
@@ -90,7 +91,8 @@ class MoneyRewardTest {
             assertFalse(MoneyReward.isAvailable(), "禁用的经济插件发不出钱");
             assertTrue(new MoneyReward().unavailableReason().contains("Vault"),
                     "提示里要说清缺的是什么，实际: " + new MoneyReward().unavailableReason());
-            assertEquals(CurrencyType.EXP, CurrencyType.select(List.of("MONEY", "EXP")));
+            assertNull(CurrencyType.select(List.of("MONEY")),
+                    "配置里只写了金币、而金币不可用：宁可返回 null（刷新不可用），也不要换一种货币偷偷扣");
         }
     }
 
