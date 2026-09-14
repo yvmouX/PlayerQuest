@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.FakeMythicMobsHook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -144,5 +146,29 @@ class MaterialCatalogTest {
     void mythicCatalogIsEmptyWithoutHook() {
         assertTrue(MaterialCatalog.mythicMobEntries(null).isEmpty());
         assertTrue(MaterialCatalog.mythicMobEntries(FakeMythicMobsHook.ofMobIds()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("自定义物品/方块进材质列表时 id 带插件前缀（它就是写入 target 的值）")
+    void customContentEntersMaterialCatalogWithPrefix() {
+        var entries = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("ItemsAdder", "itemsadder:",
+                        List.of("myitems:ruby"), List.of("myitems:ruby_block"))));
+
+        // 方块排在物品前面：同一个选择器里先看到能挖/能放的那些
+        assertEquals(2, entries.size());
+        assertEquals("itemsadder:myitems:ruby_block", entries.get(0).get("id"));
+        assertEquals("block", entries.get(0).get("category"));
+        assertEquals("itemsadder:myitems:ruby", entries.get(1).get("id"));
+        assertEquals("item", entries.get(1).get("category"));
+        assertTrue(String.valueOf(entries.get(0).get("en")).contains("ItemsAdder"),
+                "显示名要让人一眼看出不是原版方块，实际: " + entries.get(0).get("en"));
+    }
+
+    @Test
+    @DisplayName("两家都没接上时，材质列表里一条自定义内容都不加")
+    void customCatalogIsEmptyWithoutHooks() {
+        assertTrue(MaterialCatalog.customEntries(null).isEmpty());
+        assertTrue(MaterialCatalog.customEntries(CustomContentHooks.empty()).isEmpty());
     }
 }

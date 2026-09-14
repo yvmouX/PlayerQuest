@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -23,11 +24,25 @@ import java.util.function.Consumer;
  * 注意 {@link PlayerInteractEvent} 会同时承载「左键破坏」与「右键交互」，
  * 因此在这里区分：左键且**可瞬间破坏**的方块（草、花、火把等）视为挖掘，
  * 其余交互一律交给 {@link Trigger#INTERACT}，避免同一次操作既算挖掘又算交互。
+ *
+ * <h2>自定义方块</h2>
+ * ItemsAdder / CraftEngine 的自定义方块在服务端仍是原版方块（靠方块状态与资源包呈现），
+ * 因此这些事件照常触发。这里额外把自定义 id 作为<b>别名</b>带上，于是
+ * {@code target: itemsadder:myitems:ruby_block} 与 {@code target: NOTE_BLOCK} 都能命中。
  */
 public final class BlockListener extends ProgressListener implements Listener {
 
+    /** 自定义内容来源；空实现表示两家都没装（最常见的情况）。 */
+    private final CustomContentHooks customContent;
+
     public BlockListener(ProgressService progress, Consumer<ApplyResult> onProgress) {
+        this(progress, onProgress, CustomContentHooks.empty());
+    }
+
+    public BlockListener(ProgressService progress, Consumer<ApplyResult> onProgress,
+                         CustomContentHooks customContent) {
         super(progress, onProgress);
+        this.customContent = customContent == null ? CustomContentHooks.empty() : customContent;
     }
 
     /**
@@ -38,7 +53,9 @@ public final class BlockListener extends ProgressListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        push(ProgressContext.of(event.getPlayer(), Trigger.BREAK_BLOCK, event.getBlock().getType().name()));
+        Block block = event.getBlock();
+        push(new ProgressContext(event.getPlayer(), Trigger.BREAK_BLOCK, block.getType().name(), 1, null,
+                customContent.aliases(block)));
     }
 
     /**
@@ -48,7 +65,9 @@ public final class BlockListener extends ProgressListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
-        push(ProgressContext.of(event.getPlayer(), Trigger.PLACE_BLOCK, event.getBlockPlaced().getType().name()));
+        Block block = event.getBlockPlaced();
+        push(new ProgressContext(event.getPlayer(), Trigger.PLACE_BLOCK, block.getType().name(), 1, null,
+                customContent.aliases(block)));
     }
 
     /**
@@ -68,7 +87,8 @@ public final class BlockListener extends ProgressListener implements Listener {
         }
 
         if (action == Action.LEFT_CLICK_BLOCK && isInstantlyBreakable(block.getType())) {
-            push(ProgressContext.of(player, Trigger.BREAK_BLOCK, block.getType().name()));
+            push(new ProgressContext(player, Trigger.BREAK_BLOCK, block.getType().name(), 1, null,
+                    customContent.aliases(block)));
             return;
         }
 
@@ -77,7 +97,8 @@ public final class BlockListener extends ProgressListener implements Listener {
             case RIGHT_CLICK_BLOCK -> "RIGHT_CLICK_BLOCK";
             default -> action.name();
         };
-        push(new ProgressContext(player, Trigger.INTERACT, block.getType().name(), 1, mode));
+        push(new ProgressContext(player, Trigger.INTERACT, block.getType().name(), 1, mode,
+                customContent.aliases(block)));
     }
 
     /**

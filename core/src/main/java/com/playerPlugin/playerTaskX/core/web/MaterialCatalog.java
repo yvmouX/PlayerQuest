@@ -1,5 +1,6 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -39,13 +40,22 @@ public class MaterialCatalog {
     /** MythicMobs 接入点；null 表示服务端没有（或不支持）MythicMobs。 */
     private final MythicMobsHook mythicMobs;
 
+    /** 自定义内容来源（ItemsAdder / CraftEngine）；空实现表示两家都没装。 */
+    private final CustomContentHooks customContent;
+
     public MaterialCatalog(LangFileStore langFiles) {
-        this(langFiles, null);
+        this(langFiles, null, CustomContentHooks.empty());
     }
 
     public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs) {
+        this(langFiles, mythicMobs, CustomContentHooks.empty());
+    }
+
+    public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs,
+                           CustomContentHooks customContent) {
         this.langFiles = langFiles;
         this.mythicMobs = mythicMobs;
+        this.customContent = customContent == null ? CustomContentHooks.empty() : customContent;
     }
 
     /**
@@ -65,6 +75,9 @@ public class MaterialCatalog {
             }
             materials.add(entry(material.name(), english, chinese, categoryOf(material)));
         }
+        // 自定义物品与自定义方块混进材质列表、id 带插件前缀：写入 target 的值天然就是我们要的语法
+        // （与下面 MythicMobs 的处理同一套思路），前端也不用新增一种选择器
+        materials.addAll(customEntries(customContent));
         materials.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
 
         List<Map<String, Object>> entities = new ArrayList<>();
@@ -116,6 +129,46 @@ public class MaterialCatalog {
             entries.add(entry);
         }
         return entries;
+    }
+
+    /**
+     * 自定义物品与方块条目：{@code id} 形如 {@code itemsadder:myitems:ruby}，
+     * 显示名带上插件名前缀，好让搜索「itemsadder」一次筛出全部自定义内容。
+     * <p>
+     * 方块与物品都进材质列表：目标任务里的 {@code target} 本来就既可能是方块也可能是物品，
+     * 选择器再分一类只会让人找不到。
+     * <p>
+     * 静态、且不碰译名数据与 Bukkit：这样它可以被单独测试（见 {@code MaterialCatalogTest}）。
+     */
+    static List<Map<String, Object>> customEntries(CustomContentHooks customContent) {
+        if (customContent == null || customContent.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> entries = new ArrayList<>();
+        for (String id : customContent.blockIds()) {
+            entries.add(customEntry(id, "block"));
+        }
+        for (String id : customContent.itemIds()) {
+            entries.add(customEntry(id, "item"));
+        }
+        return entries;
+    }
+
+    private static Map<String, Object> customEntry(String id, String category) {
+        String plugin = CustomContentHooks.pluginOf(prefixOf(id));
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("id", id);
+        entry.put("en", (plugin == null ? "" : plugin + ": ") + id);
+        entry.put("zh", "");
+        entry.put("category", category);
+        return entry;
+    }
+
+    /** 取 {@code itemsadder:xxx} 里的 {@code itemsadder:} 部分；没有前缀时返回空串。 */
+    private static String prefixOf(String id) {
+        int colon = id.indexOf(':');
+        // 注意 itemsadder:ns:path 有两段冒号：这里只切第一段
+        return colon < 0 ? "" : id.substring(0, colon + 1);
     }
 
     private static Map<String, Object> entry(String id, Map<String, String> english,

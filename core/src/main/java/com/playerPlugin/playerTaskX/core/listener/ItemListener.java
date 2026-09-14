@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -28,8 +29,17 @@ import java.util.function.Consumer;
  */
 public final class ItemListener extends ProgressListener implements Listener {
 
+    /** 自定义内容来源；空实现表示 ItemsAdder / CraftEngine 都没装。 */
+    private final CustomContentHooks customContent;
+
     public ItemListener(ProgressService progress, Consumer<ApplyResult> onProgress) {
+        this(progress, onProgress, CustomContentHooks.empty());
+    }
+
+    public ItemListener(ProgressService progress, Consumer<ApplyResult> onProgress,
+                        CustomContentHooks customContent) {
         super(progress, onProgress);
+        this.customContent = customContent == null ? CustomContentHooks.empty() : customContent;
     }
 
     /**
@@ -37,6 +47,9 @@ public final class ItemListener extends ProgressListener implements Listener {
      * <p>
      * 数量是本次合成的<b>实际产出</b>而不是配方单批产量：
      * Shift+点击会一次连做多批，批数计算见 {@link #craftedAmount}。
+     * <p>
+     * 产物是自定义物品时带上它的 id 作为别名（{@code itemsadder:...} / {@code craftengine:...}），
+     * 于是「合成 N 个自定义物品」既能按原版材质写、也能按自定义 id 写。
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
@@ -50,7 +63,8 @@ public final class ItemListener extends ProgressListener implements Listener {
         }
         int amount = craftedAmount(event.isShiftClick(),
                 event.getInventory().getMatrix(), result.getAmount());
-        push(ProgressContext.of(player, Trigger.CRAFT, result.getType().name(), amount));
+        push(new ProgressContext(player, Trigger.CRAFT, result.getType().name(), amount, null,
+                customContent.aliases(result)));
     }
 
     /**
@@ -96,7 +110,9 @@ public final class ItemListener extends ProgressListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
-        push(ProgressContext.of(event.getPlayer(), Trigger.CONSUME, event.getItem().getType().name()));
+        ItemStack item = event.getItem();
+        push(new ProgressContext(event.getPlayer(), Trigger.CONSUME, item.getType().name(), 1, null,
+                customContent.aliases(item)));
     }
 
     /**
@@ -111,7 +127,9 @@ public final class ItemListener extends ProgressListener implements Listener {
                 .findFirst()
                 .map(key -> key.getKey().getKey())
                 .orElse(null);
-        push(new ProgressContext(event.getEnchanter(), Trigger.ENCHANT, enchantment, 1, event.getItem().getType().name()));
+        ItemStack item = event.getItem();
+        push(new ProgressContext(event.getEnchanter(), Trigger.ENCHANT, enchantment, 1,
+                item.getType().name(), customContent.aliases(item)));
     }
 
     /** 从配方中取产物；不支持取产物的配方返回 null。 */

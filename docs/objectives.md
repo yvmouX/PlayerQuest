@@ -41,6 +41,31 @@
 - **大小写不敏感**：`diamond_ore` 与 `DIAMOND_ORE` 等价
 - **支持多值**：用英文逗号分隔，例如 `DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE` 表示两种都算
 - **通配**：留空或写 `*` 表示「任意」，例如 `kill` 的 `target` 留空表示击杀任何生物
+- **可以写其它插件的自定义内容**（见下）
+
+### 自定义内容（ItemsAdder / CraftEngine）
+
+装了 **ItemsAdder** 或 **CraftEngine** 时，方块与物品类目标可以直接按它们的自定义 id 写：
+
+```yaml
+type: break_block
+target: itemsadder:myitems:ruby_block    # 前缀 + 插件里的命名空间 id
+amount: 64
+```
+
+- 前缀是 **`itemsadder:`** 与 **`craftengine:`**，后面跟插件自己的 `命名空间:id`；
+- **裸 id 也能写**（`target: myitems:ruby_block`）：它会与两家比对，命中任意一家都算——
+  同一个 id 被两家都定义时不必纠结写哪个前缀；
+- 一个 `target` 里可以混写，例如 `target: DIAMOND_ORE,itemsadder:myitems:ruby_block`；
+- 自定义**方块**在服务端其实就是某个原版方块（靠方块状态与资源包呈现成别的样子），
+  因此挖掘 / 放置 / 交互这些目标照常触发，插件会把自定义 id 与材质名一起参与匹配；
+  **自定义物品**同理（合成 / 消耗 / 附魔 / 垂钓的产物）。
+- 编辑器里的材质选择器会把这些 id 一并列出（显示成 `ItemsAdder: myitems:ruby_block`），
+  搜索「itemsadder」或「craftengine」可以一次筛出来；
+- 没装对应插件、或接口签名对不上时，这类目标**永远命中不了**：编辑器会标红，
+  `/ptxa list` 与启动日志也会写明原因（与 `mythic:` 目标同一套处理）。
+
+> 前置/自定义家具（furniture）不在支持范围内：那是实体而不是方块，需要各自的交互事件。
 
 ### 数量的计算方式
 

@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
@@ -49,11 +50,27 @@ public final class QuestAdminService {
     private final Supplier<Collection<UUID>> onlinePlayerIds;
     /** 按 id 查预设：展开任务里的预设引用用（见 {@link PresetRefs}）。 */
     private final Function<String, Preset> presets;
+    /**
+     * 自定义内容来源：校验 {@code itemsadder:} / {@code craftengine:} 目标时问它有没有接上。
+     * <p>
+     * 用 Supplier 而不是直接持有：接入点在装配流程里比本服务晚一步创建
+     * （要等软依赖探测），直接持有的话这里永远拿到「还没接上」的空实现。
+     */
+    private final Supplier<CustomContentHooks> customContent;
 
     public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
                              ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
                              ProgressService progressService, PrerequisiteService prerequisites,
                              Supplier<Collection<UUID>> onlinePlayerIds, Function<String, Preset> presets) {
+        this(repository, quests, objectiveTypes, rewardService, progressService, prerequisites,
+                onlinePlayerIds, presets, CustomContentHooks::empty);
+    }
+
+    public QuestAdminService(QuestRepository repository, QuestRegistryImpl quests,
+                             ObjectiveRegistryImpl objectiveTypes, RewardService rewardService,
+                             ProgressService progressService, PrerequisiteService prerequisites,
+                             Supplier<Collection<UUID>> onlinePlayerIds, Function<String, Preset> presets,
+                             Supplier<CustomContentHooks> customContent) {
         this.repository = repository;
         this.quests = quests;
         this.objectiveTypes = objectiveTypes;
@@ -62,6 +79,7 @@ public final class QuestAdminService {
         this.prerequisites = prerequisites;
         this.onlinePlayerIds = onlinePlayerIds;
         this.presets = presets;
+        this.customContent = customContent == null ? CustomContentHooks::empty : customContent;
     }
 
     /**
@@ -131,6 +149,8 @@ public final class QuestAdminService {
         problems.addAll(prerequisites.problems(quest));
         // 预设引用写错/被删/类别不对：目标或奖励实际不生效，但表面上任务还在
         problems.addAll(PresetRefs.problems(quest, presets));
+        // itemsadder: / craftengine: 目标在没装对应插件（或接入失败）时永远命中不了
+        problems.addAll(customContent.get().problems(quest));
         problems.addAll(rewardService.validate(quest));
         return problems;
     }

@@ -281,29 +281,46 @@ preset(kind, id PK, name, type, properties TEXT, description)
 |---|---|---|
 | MythicMobs 5.x | 反射调用 `MythicBukkit#inst → getMobManager → getMythicMobInstance → getMobType` | `kill` 的 `target` 写 `mythic:<内部名>`（不需要新类型） |
 | CustomFishing | `compileOnly` API + 反射创建监听器，监听 `FishingLootSpawnEvent` | 新的目标类型 `custom_fish`（原版垂钓事件看不到它的战利品） |
+| ItemsAdder | 反射绑定 `CustomStack.byItemStack → getNamespacedID` / `CustomBlock.byAlreadyPlaced`（旧静态 API `ItemsAdder.getCustomItemName` 作后备） | 方块/物品类目标的 `target` 写 `itemsadder:<命名空间id>` |
+| CraftEngine | 反射绑定 `CraftEngineItems.getCustomItemId` / `CraftEngineBlocks.getCustomBlockState → owner().value().id()` | 同上，前缀 `craftengine:` |
 
 **为什么一个用反射、一个用依赖**：MythicMobs 的 API 类继承自另一个 Lumine 构件，
 编译期引用它会连带要求 `LumineUtils` 之类的依赖（实测报错 `无法访问 LuminePlugin`），
 而我们只用三个方法——反射的代价更小，还能容忍 5.x 内部改名；
 CustomFishing 的 API jar 自包含，直接编译进来更清晰。
-两者都不是「碰运气」：检测不到插件就完全跳过，接入失败只记一条 warn。
+ItemsAdder（API 在 JitPack 上，且新旧两套 API 并存）与 CraftEngine（构件与 Minecraft 版本绑定）
+同样走反射：只用三四个方法，没装的服务器连类都不会加载。
+四者都不是「碰运气」：检测不到插件就完全跳过，接入失败只记一条 warn。
+
+**自定义物品/方块走「别名」，不新增目标类型**（`CustomContentHook` / `CustomContentHooks`）：
+IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资源包呈现），
+因此 `BlockBreakEvent` / `BlockPlaceEvent` 照常触发——监听器照常推原版材质名，
+只额外把自定义 id（带前缀与裸 id 各一份）塞进 `ProgressContext.aliases`，
+于是「同一个方块的两个名字」由 `targetMatches` 一次命中。
+两家共用一个接口：加第三家（Oraxen / Nexo…）时监听器、校验、编辑器目录都不用改。
 
 三条不变量：
 
 1. **没装插件时行为与从前完全一致**。`MythicMobsHook.create()` 返回 `null`、
-   CustomFishing 的监听器根本不注册；`custom_fish` 目标类型照常存在，但
-   `available()` 为 false，编辑器会标为不可用。
+   CustomFishing 的监听器根本不注册、`CustomContentHooks` 是空实现；
+   `custom_fish` 目标类型照常存在，但 `available()` 为 false，编辑器会标为不可用。
 2. **同一个对象只能计一次**。一只自定义怪同时是 `ZOMBIE` 与 `mythic:SkeletalKnight`；
    若为两个名字各推一次动作，「击杀任意生物」会被计成两次。因此
    `ProgressContext` 带上 `aliases`：一个动作、多个等价标识，判定时任一命中即可。
-3. **配置问题必须露面**。`mythic:` 目标在没装 MythicMobs 的服务端上永远命中不了，
-   由 `MythicMobsHook.targetProblems(quest)` 报进 `QuestAdminService.validate`——
-   编辑器标红、`/ptxa list`/`info` 与启动日志同时给出，而不是等玩家来问「杀了不涨」。
+   自定义方块同理：材质名是主标识，自定义 id 是别名。
+3. **配置问题必须露面**。`mythic:` / `itemsadder:` / `craftengine:` 目标在没装对应插件的
+   服务端上永远命中不了，分别由 `MythicMobsHook.targetProblems` 与
+   `CustomContentHooks.problems` 报进 `QuestAdminService.validate`——
+   编辑器标红、`/ptxa list`/`info` 与启动日志同时给出，而不是等玩家来问「挖了不涨」。
 
 编辑器侧：MythicMobs 的怪物会被追加进 `/api/catalog` 的实体列表（id 形如
-`mythic:SkeletalKnight`，也就是要写进 `target` 的值本身），因此选择器直接可用；
+`mythic:SkeletalKnight`，也就是要写进 `target` 的值本身）；IA/CE 的自定义方块与物品
+追加进**材质**列表（id 形如 `itemsadder:myitems:ruby_block`），因此不用新增选择器；
 `/api/schema` 对**目标类型**也开始下发 `available` / `unavailableReason`
 （与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
+
+> 家具（furniture）不在支持范围内：那是实体而不是方块，需要各自的交互事件与持久化，
+> 与「方块/物品目标」不是同一类需求。
 
 ### 4.7 只读 YAML 定义来源（`quests/` 与 `presets/`）
 
@@ -688,7 +705,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 | 22 | 前置任务（任务链）：模型 + 定义子表 + 永久领取账本 + 抽取/领取门禁 + 编辑器 | ✅ 完成（29 项测试） |
-| 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试） |
+| 23 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试；阶段 32 又加了 ItemsAdder / CraftEngine） |
 | 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
 | 25 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.7） |
 | 26 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（6 项测试） |
@@ -697,8 +714,9 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 29 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
 | 30 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.8，7 项 PresetRefs 测试 + 2 项服务级测试） |
 | 31 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
+| 32 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.6，8 项接入层测试 + 2 项目录测试） |
 
-**测试总量：265 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+**测试总量：275 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
@@ -706,8 +724,8 @@ YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepos
 周期算法 12（`PeriodsTest`）+ 周期抽取池 5（`PeriodicPoolPrerequisiteTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 前置判定 12（`PrerequisiteServiceTest`）+ 任务管理 13（`QuestAdminServiceTest`）+
-素材 9（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
-自定义钓鱼 9（`CustomFishObjectiveTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
+素材 11（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
+自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 7（`RewardServiceTest`）+
 示例任务 7（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
@@ -715,10 +733,10 @@ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（31 个 XML），不是靠日志里的汇总行。
+逐套件累加（32 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1008 行 + `core/src/main` 13246 行
-＝ **14254 行 / 108 个 java 文件**；测试 `core/src/test` **6430 行 / 34 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1008 行 + `core/src/main` 14061 行
+＝ **15069 行 / 112 个 java 文件**；测试 `core/src/test` **6658 行 / 36 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **6116 行 `.vue` + 2019 行 `.ts`/`.js` ＝ 8135 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
@@ -861,6 +879,11 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 - **MySQL 路径未做真机验证**：SQL 由 `Dialect` 统一生成、与 SQLite 共用同一套仓储代码，
   但 `ON DUPLICATE KEY UPDATE` 分支、HikariCP 连接与 `CREATE INDEX` 的容错路径
   只在代码与 SQLite 测试层面覆盖，没有连过真实 MySQL 实例。
+- **ItemsAdder / CraftEngine 的接入只在单测层面验证过**：本机测试服没有装这两个插件，
+  验证到的是「插件照常启用、`/api/catalog` 不变、写了 `itemsadder:` 的目标被校验报出来」；
+  反射绑定的方法名（`CustomStack.byItemStack`、`CraftEngineBlocks.getCustomBlockState` 等）
+  是照它们的公开 API 与源码写的，但**没有在真机上跑过**——装上去之后若签名对不上，
+  日志里会给一条「接入 … 失败」的 warn，对应目标不可用而不会影响其它功能。
 - **周期任务的发放/刷新只有单测覆盖**：四种周期的「换一批」判定由 `PeriodsTest` 钉住
   （重置小时、跨周、跨月、跨年、自定义分桶），存储往返由 `StorageIntegrationTest` 在真实
   SQLite 上跑；但本机没有可登录的客户端，因此「登录时发一批、跨周期换一批、扣费刷新」

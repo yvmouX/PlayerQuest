@@ -12,6 +12,7 @@ import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.period.PeriodicService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
+import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.listener.BlockListener;
@@ -83,6 +84,9 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private RewardService rewardService;
     private ProgressDisplay progressDisplay;
     private PeriodicService periodicService;
+
+    /** 自定义内容来源（ItemsAdder / CraftEngine）：没装时是空实现，监听器与目录都会拿到空表。 */
+    private CustomContentHooks customContent = CustomContentHooks.empty();
     private QuestAdminService questAdmin;
     /** MythicMobs 接入点；null 表示未安装或不支持（原版击杀照常工作）。 */
     private MythicMobsHook mythicMobs;
@@ -175,7 +179,9 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
                 // 在线玩家列表延迟到使用时才取：保存/删除发生在运行期，装配时还没有玩家
                 () -> getServer().getOnlinePlayers().stream().map(Player::getUniqueId).toList(),
                 // 预设仓储同样是运行期查询：任务里的 preset: 引用按它展开（见 PresetRefs）
-                id -> presets.findById(id).orElse(null));
+                id -> presets.findById(id).orElse(null),
+                // 自定义内容接入点在下面几步才装配完，因此传的是「用的时候再取」的 supplier
+                this::customContent);
 
         // ---------- 任务数据 ----------
         // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
@@ -187,6 +193,7 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         // ---------- 软依赖接入（游戏内容插件） ----------
         // 必须在任务载入之后：这两个钩子不改任务数据，但要赶在监听器注册之前就位
         guard("MythicMobs 接入", () -> mythicMobs = MythicMobsHook.create());
+        guard("自定义内容接入（ItemsAdder / CraftEngine）", () -> customContent = CustomContentHooks.create());
 
         // ---------- 事件、命令与调度 ----------
         // 每个子系统独立守护：任何一项失败都应只损失该功能，
@@ -304,11 +311,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(
-                new BlockListener(progressService, progressDisplay::onProgressApplied), this);
+                new BlockListener(progressService, progressDisplay::onProgressApplied, customContent), this);
         getServer().getPluginManager().registerEvents(
                 new EntityListener(progressService, progressDisplay::onProgressApplied, mythicMobs), this);
         getServer().getPluginManager().registerEvents(
-                new ItemListener(progressService, progressDisplay::onProgressApplied), this);
+                new ItemListener(progressService, progressDisplay::onProgressApplied, customContent), this);
         getServer().getPluginManager().registerEvents(
                 new TextListener(progressService, progressDisplay::onProgressApplied), this);
         getServer().getPluginManager().registerEvents(
@@ -373,6 +380,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     public ProgressDisplay progressDisplay() {
         return progressDisplay;
+    }
+
+    /** 自定义内容来源（ItemsAdder / CraftEngine）；SPI 查询为空实现。 */
+    public CustomContentHooks customContent() {
+        return customContent;
     }
 
     public PeriodicService periodicService() {
