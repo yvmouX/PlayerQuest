@@ -105,7 +105,7 @@
           当前只有英文名：Minecraft 服务端不自带中文语言文件。用英文名或枚举名同样能搜到。
         </span>
         <span v-else class="hint">
-          共 {{ pool.length }} 项，可搜中文名 / 英文名 / 枚举名（如 钻石、diamond、DIAMOND_ORE）。
+          共 {{ visible.total }} 项，可搜中文名 / 英文名 / 枚举名（如 钻石、diamond、DIAMOND_ORE）。
         </span>
       </div>
 
@@ -219,8 +219,9 @@ const text = computed(() => props.modelValue ?? '')
 const ariaLabel = computed(() => (props.multi ? '选择材质，可多选' : '选择条目'))
 const kinds = computed(() => props.kinds ?? [])
 const pool = computed(() => entriesForKinds(catalog.value, kinds.value))
-const tabs = computed(() => categoryTabs(catalog.value, kinds.value))
-const sources = computed(() => sourceTabs(catalog.value, kinds.value))
+/** 两排标签互相约束：各自只列「另一个筛选器也满足」时真的有内容的选项。 */
+const tabs = computed(() => categoryTabs(catalog.value, kinds.value, source.value))
+const sources = computed(() => sourceTabs(catalog.value, kinds.value, category.value))
 const visible = computed(() =>
   visibleEntries(pool.value, keyword.value, category.value, source.value)
 )
@@ -234,17 +235,23 @@ watch([kinds, category, source, keyword], () => {
 })
 
 /**
- * 值域变化时把来源与分类收窄回「全部」：从方块切到实体时留着 craftengine 或「食物」，
- * 列表会直接空掉，看起来像「这里什么都没有」。
+ * 筛选条件变化后，把已经选不到东西的那一项收窄回「全部」。
+ *
+ * <p>两排标签互为条件（见 {@link categoryTabs}/{@link sourceTabs}），因此这里也要
+ * 双向兜一次：变了来源就可能没有原来的分类、变了分类就可能没有原来的来源。
+ * 判断是幂等的（只在「当前值不在可选项里」时改），所以两边互相触发也会立刻收敛。
  */
-watch(kinds, () => {
-  const availableSources = sources.value.map(tab => tab.value)
-  if (source.value !== SOURCE_ALL && !availableSources.includes(source.value)) {
-    source.value = SOURCE_ALL
-  }
-  const availableCategories = tabs.value.map(tab => tab.value)
-  if (category.value !== CATEGORY_ALL && !availableCategories.includes(category.value)) {
+watch([kinds, source], () => {
+  const available = tabs.value.map(tab => tab.value)
+  if (category.value !== CATEGORY_ALL && !available.includes(category.value)) {
     category.value = CATEGORY_ALL
+  }
+})
+
+watch([kinds, category], () => {
+  const available = sources.value.map(tab => tab.value)
+  if (source.value !== SOURCE_ALL && !available.includes(source.value)) {
+    source.value = SOURCE_ALL
   }
 })
 

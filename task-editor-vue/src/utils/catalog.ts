@@ -408,15 +408,20 @@ export function entriesForKinds(catalog: MaterialCatalog | null, kinds: readonly
 /**
  * 选择器顶部的分类标签。
  *
- * <p>顺序来自 {@code catalog.categories}（不硬编码），实体、鱼、附魔各作为单独一栏，
- * 且只在当前值域真的含它们时出现——在方块字段里给一个「鱼」分类栏毫无意义。
+ * <p>只列**当前值域 + 当前来源**下真的有条目的分类：两个筛选器各自取值域的全集时，
+ * 会出现「单独看都有内容、合起来一条都没有」的组合（物品字段里选 CraftEngine + 方块
+ * 就是这样：该来源在这个值域下只剩物品，而方块那一栏是给原版方块物品准备的），
+ * 界面上表现为一句「没有匹配的条目」配着一句「共 1610 项」——看起来像坏了。
+ *
+ * <p>实体、鱼、附魔各作为单独一栏（它们的分类是补出来的，不在 {@code catalog.categories} 里）。
  */
-export function categoryTabs(catalog: MaterialCatalog | null, kinds: readonly string[]): { value: string; label: string }[] {
+export function categoryTabs(catalog: MaterialCatalog | null, kinds: readonly string[],
+                             source: string = SOURCE_ALL): { value: string; label: string }[] {
   const tabs: { value: string; label: string }[] = [{ value: CATEGORY_ALL, label: '全部' }]
   if (!catalog) {
     return tabs
   }
-  const pool = entriesForKinds(catalog, kinds)
+  const pool = filterBySource(entriesForKinds(catalog, kinds), source)
   const present = new Set(pool.map(entry => entry.category ?? CATEGORY_ENTITY))
   for (const category of catalog.categories) {
     if (category === CATEGORY_FISH || category === CATEGORY_ENCHANTMENT) {
@@ -441,12 +446,13 @@ export function categoryTabs(catalog: MaterialCatalog | null, kinds: readonly st
 /**
  * 选择器顶部的来源（插件）标签。
  *
- * <p>只列出**当前值域里真的有条目**的来源：在实体字段里塞一个 ItemsAdder 标签，
- * 点进去只会是空列表。只有一个来源时返回空数组——没什么可筛的，
- * 那一排标签只会占地方（原版方块字段正是这种情况）。
+ * <p>只列**当前值域 + 当前分类**下真的有条目的来源（与 {@link categoryTabs} 互为条件，
+ * 这样两边都不会给出「点了没结果」的选项）。只有一个来源时返回空数组——
+ * 没什么可筛的，那一排标签只会占地方（原版方块字段正是这种情况）。
  */
-export function sourceTabs(catalog: MaterialCatalog | null, kinds: readonly string[]): { value: string; label: string }[] {
-  const entries = entriesForKinds(catalog, kinds)
+export function sourceTabs(catalog: MaterialCatalog | null, kinds: readonly string[],
+                           category: string = CATEGORY_ALL): { value: string; label: string }[] {
+  const entries = filterByCategory(entriesForKinds(catalog, kinds), category)
   if (!entries.length) {
     return []
   }

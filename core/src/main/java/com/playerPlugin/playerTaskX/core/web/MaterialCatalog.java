@@ -296,10 +296,12 @@ public class MaterialCatalog {
         entry.put("category", category);
         // 来源就是前缀本身（itemsadder / craftengine），去掉冒号与前缀语义无关
         entry.put("source", prefix.isEmpty() ? SOURCE_MINECRAFT : prefix.substring(0, prefix.length() - 1));
-        // 自定义内容的值域按它自己声明的那一类给：方块家的 id 只有 BLOCK/PLACEABLE，
-        // 物品家的只有 ITEM。离线判断不了它在游戏里到底是不是方块，因此以插件自己的分类为准
+        // 自定义方块同时也是物品：它不是「世界里的一个方块」，而是拿在手里右键放下去的东西
+        // （这正是它区别于原版方块的地方）。因此值域与原版方块对齐：block + placeable + item。
+        // 少了 ITEM 的后果很具体：CraftEngine 的方块在「合成 / 消耗 / 提交」这类物品字段里
+        // 一条都选不到——而它们明明有物品形态，也确实是合成产物。
         entry.put("kinds", kindsJson("block".equals(category)
-                ? EnumSet.of(ValueKind.BLOCK, ValueKind.PLACEABLE)
+                ? EnumSet.of(ValueKind.BLOCK, ValueKind.PLACEABLE, ValueKind.ITEM)
                 : EnumSet.of(ValueKind.ITEM)));
         return entry;
     }

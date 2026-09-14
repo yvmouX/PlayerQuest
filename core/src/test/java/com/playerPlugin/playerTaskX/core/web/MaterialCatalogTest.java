@@ -220,6 +220,19 @@ class MaterialCatalogTest {
     }
 
     @Test
+    @DisplayName("自定义方块同时也是物品：合成/消耗这类字段必须能选到它")
+    void customBlocksAreAlsoItems() {
+        var entries = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("CraftEngine", "craftengine:",
+                        List.of("default:bench"), List.of("default:torch"))));
+
+        assertEquals(List.of("block", "placeable", "item"), entries.get(0).get("kinds"),
+                "自定义方块是「拿在手里右键放下去」的东西，因此与原版方块一样同时属于三种值域；"
+                        + "少了 item，它就会从合成/消耗/提交的候选里整片消失");
+        assertEquals(List.of("item"), entries.get(1).get("kinds"), "纯物品只有 item");
+    }
+
+    @Test
     @DisplayName("CustomFishing 战利品单独一栏：id 不带前缀，显示名用配置里的 nick")
     void fishEntriesCarryBareIds() {
         var entries = MaterialCatalog.fishEntries(List.of(

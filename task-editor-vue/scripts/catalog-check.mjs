@@ -50,7 +50,9 @@ function fakeCatalog(overrides = {}) {
       { id: 'APPLE', en: 'Apple', zh: '苹果', category: 'food', source: 'minecraft', kinds: ['item', 'food'] },
       { id: 'BREAD', en: 'Bread', zh: '面包', category: 'food', source: 'minecraft', kinds: ['item', 'food'] },
       { id: 'craftengine:default:bench', en: 'CraftEngine: default:bench', zh: '', category: 'item', source: 'craftengine', kinds: ['item'] },
-      { id: 'craftengine:default:torch', en: 'CraftEngine: default:torch', zh: '', category: 'block', source: 'craftengine', kinds: ['block', 'placeable'] },
+      // 自定义方块同时也是物品（拿在手里右键放下去），因此三种值域都有——与原版 STONE 对齐
+      { id: 'craftengine:default:torch', en: 'CraftEngine: default:torch', zh: '', category: 'block', source: 'craftengine', kinds: ['block', 'placeable', 'item'] },
+      { id: 'craftengine:default:lamp', en: 'CraftEngine: default:lamp', zh: '', category: 'block', source: 'craftengine', kinds: ['block', 'placeable', 'item'] },
       { id: 'itemsadder:myitems:ruby', en: 'ItemsAdder: myitems:ruby', zh: '', category: 'item', source: 'itemsadder', kinds: ['item'] }
     ],
     entities: [
@@ -90,9 +92,9 @@ try {
     assert.ok(!blocks.includes('ZOMBIE'), '实体不该出现在方块字段里')
   })
 
-  check('放置方块只列「可放置」：刷怪笼与物品都不行', () => {
+  check('放置方块只列「可放置」：物品不行', () => {
     const placeable = catalog.entriesForKinds(fakeCatalog(), ['placeable']).map(entry => entry.id)
-    assert.deepEqual(placeable.sort(), ['STONE', 'craftengine:default:torch'])
+    assert.deepEqual(placeable.sort(), ['STONE', 'craftengine:default:lamp', 'craftengine:default:torch'])
   })
 
   check('消耗/合成只列物品：方块如果能吃也照样算物品', () => {
@@ -160,6 +162,29 @@ try {
     assert.deepEqual(catalog.sourceTabs(vanillaOnly, ['block']), [])
   })
 
+  // ------------------------------------------------------------ 两个筛选器互为条件
+  check('分类栏按当前来源收窄：选不到东西的组合不会被列出来', () => {
+    const f = fakeCatalog()
+    // 物品值域里选了 CraftEngine：方块那一栏仍然要在，因为自定义方块本身也是物品
+    assert.deepEqual(catalog.categoryTabs(f, ['item'], 'craftengine').map(tab => tab.value),
+      ['ALL', 'block', 'item'], '自定义方块是「拿在手里放下去」的物品，因此物品字段里也该能按方块筛')
+    // 反过来，选了「食物」之后没有 CraftEngine 的食物，于是来源栏里不该出现 CraftEngine
+    assert.ok(!catalog.sourceTabs(f, ['item'], 'food').map(tab => tab.value).includes('craftengine'),
+      '食物分类下 CraftEngine 一条都没有，点进去只会是空列表')
+    // 原版方块物品（STONE）在物品值域里属于「方块」分类，因此那个分类栏不是空壳
+    assert.ok(catalog.entriesForKinds(f, ['item']).some(e => e.id === 'STONE' && e.category === 'block'))
+  })
+
+  check('自定义方块在物品字段里选得到：它同时是方块也是物品', () => {
+    const items = catalog.entriesForKinds(fakeCatalog(), ['item']).map(entry => entry.id)
+    assert.ok(items.includes('craftengine:default:torch'),
+      '自定义方块有物品形态（右键放下），合成/消耗/提交这类字段必须能选到它')
+    const craftEngineBlocks = catalog
+      .visibleEntries(catalog.entriesForKinds(fakeCatalog(), ['item']), '', 'block', 'craftengine')
+    assert.ok(craftEngineBlocks.total > 0,
+      '「物品字段 + CraftEngine + 方块」这个组合过去是空的（自定义方块缺 ITEM 值域）')
+  })
+
   // ------------------------------------------------------------ 旧版后端
   check('旧后端没有 kinds：按所在列表粗判，选择器不至于空掉', () => {
     const legacy = catalog.normalizeCatalog({
@@ -183,8 +208,8 @@ try {
     const f = fakeCatalog()
     const pool = catalog.entriesForKinds(f, ['block'])
     assert.deepEqual(
-      catalog.visibleEntries(pool, '', 'block', 'craftengine').items.map(entry => entry.id),
-      ['craftengine:default:torch'])
+      catalog.visibleEntries(pool, '', 'block', 'craftengine').items.map(entry => entry.id).sort(),
+      ['craftengine:default:lamp', 'craftengine:default:torch'])
     assert.deepEqual(
       catalog.visibleEntries(pool, 'stone', 'ALL', 'ALL').items.map(entry => entry.id),
       ['STONE'])
