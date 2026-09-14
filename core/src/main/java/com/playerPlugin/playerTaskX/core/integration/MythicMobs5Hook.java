@@ -21,60 +21,119 @@ import java.util.List;
  *
  * <p>这与 {@code PlaceholderHook}、{@code PointsReward} 是同一套做法：
  * <b>对方是别人的插件 jar，就用最小的方式接进去</b>。
+ *
+ * <h2>为什么怪物管理器要延迟解析</h2>
+ * MythicMobs 的 plugin.yml 是 {@code load: POSTWORLD}，它<b>启用</b>得比本插件晚
+ * （实测 Folia/Canvas 上：本插件 20:01:33 启用，MythicMobs 20:01:33 才开始启用），
+ * 而怪物管理器是它在自己的 onEnable 里创建的。早先的实现在创建时读一次
+ * {@code getMobManager()} 并保存实例，于是「装了 MythicMobs 也永远接不上」——
+ * 只有启动日志里一行 warn，玩家侧表现为 {@code mythic:} 目标永远不涨进度。
+ * 现在只保存 {@code MythicBukkit} 单例（它在<b>加载</b>阶段就绑好了），
+ * 管理器在第一次真正用到时解析，拿到即缓存（见 {@link #manager()}）。
  */
 final class MythicMobs5Hook implements MythicMobsHook {
 
     private static final String BUKKIT_CLASS = "io.lumine.mythic.bukkit.MythicBukkit";
 
-    /** 怪物管理器实例（{@code MobExecutor} / {@code MobManager}）。 */
-    private final Object mobManager;
+    /** 怪物管理器接口（{@code getMythicMobInstance} / {@code getMobNames} 都声明在它上面）。 */
+    private static final String MOB_MANAGER_CLASS = "io.lumine.mythic.core.mobs.MobManager";
 
-    private final Method getMythicMobInstance;
+    private static final String ACTIVE_MOB_CLASS = "io.lumine.mythic.core.mobs.ActiveMob";
+
+    /** {@code MythicBukkit} 单例；MythicMobs 只是加载完就有。 */
+    private final Object bukkit;
+
+    /** {@code MythicBukkit#getMobManager()}；管理器未就绪时返回 null，不当成失败。 */
+    private final Method getMobManager;
+
+    /** {@code ActiveMob#getMobType()}；与实例无关，创建时解析一次即可。 */
     private final Method getMobType;
-    private final Method getMobNames;
 
-    private MythicMobs5Hook(Object mobManager, Method getMythicMobInstance,
-                            Method getMobType, @Nullable Method getMobNames) {
-        this.mobManager = mobManager;
-        this.getMythicMobInstance = getMythicMobInstance;
+    /** 已解析到的怪物管理器；拿到就缓存，避免击杀热路径上每次反射取 getter。 */
+    private Object mobManager;
+
+    /** 管理器就绪后才解析出来的两个方法。 */
+    private Method getMythicMobInstance;
+    private Method getMobNames;
+
+    private MythicMobs5Hook(Object bukkit, Method getMobManager, Method getMobType) {
+        this.bukkit = bukkit;
+        this.getMobManager = getMobManager;
         this.getMobType = getMobType;
-        this.getMobNames = getMobNames;
     }
 
     /**
-     * 解析 MythicMobs 5.x 的必要入口。
+     * 解析 {@code MythicBukkit} 与 {@code ActiveMob} 这两个入口。
+     * <p>
+     * <b>刻意不在这里读怪物管理器</b>：那时 MythicMobs 还没启用，读到的一定是 null。
      *
-     * @throws ReflectiveOperationException 版本不匹配（方法被改名/移除）时
+     * @throws ReflectiveOperationException 版本不匹配（类/方法被改名或移除）时
      */
     static MythicMobs5Hook create() throws ReflectiveOperationException {
-        Class<?> bukkit = Class.forName(BUKKIT_CLASS);
-        Object instance = bukkit.getMethod("inst").invoke(null);
+        Class<?> bukkitClass = Class.forName(BUKKIT_CLASS);
+        Object instance = bukkitClass.getMethod("inst").invoke(null);
         if (instance == null) {
             throw new IllegalStateException("MythicBukkit.inst() 返回 null");
         }
-        Object mobManager = bukkit.getMethod("getMobManager").invoke(instance);
-        if (mobManager == null) {
-            throw new IllegalStateException("MythicBukkit#getMobManager() 返回 null");
+        Method mobManager = bukkitClass.getMethod("getMobManager");
+        Method mobType = Class.forName(ACTIVE_MOB_CLASS).getMethod("getMobType");
+        return new MythicMobs5Hook(instance, mobManager, mobType);
+    }
+
+    /**
+     * 怪物管理器；MythicMobs 尚未启用时返回 {@code null}，由各调用方降级。
+     * <p>
+     * 方法先按运行时类取（公开方法在类与接口上都找得到，因此对实现类改名免疫），
+     * 取不到再按 {@code MobManager} 接口取一次——两条都失败才算「签名对不上」。
+     */
+    @Nullable
+    private Object manager() {
+        if (mobManager != null) {
+            return mobManager;
         }
-        // 签名取自 MythicMobs 5.x：getMythicMobInstance(Entity) → ActiveMob；
-        // ActiveMob#getMobType() 是怪物内部名
-        Method instanceOf = mobManager.getClass().getMethod("getMythicMobInstance", Entity.class);
-        Class<?> activeMob = Class.forName("io.lumine.mythic.core.mobs.ActiveMob");
-        Method mobType = activeMob.getMethod("getMobType");
-        // 列全部怪物名只是编辑器的便利功能，取不到就退化为「不列」
-        Method mobNames = null;
+        Object resolved;
         try {
-            mobNames = mobManager.getClass().getMethod("getMobNames");
-        } catch (NoSuchMethodException ignored) {
-            // 5.x 一直有这个方法；真没有也只是编辑器少一份清单
+            resolved = getMobManager.invoke(bukkit);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
         }
-        return new MythicMobs5Hook(mobManager, instanceOf, mobType, mobNames);
+        if (resolved == null) {
+            return null;
+        }
+        Class<?> managerType = resolved.getClass();
+        getMythicMobInstance = method(managerType, "getMythicMobInstance", Entity.class);
+        getMobNames = method(managerType, "getMobNames");
+        if (getMythicMobInstance == null || getMobNames == null) {
+            try {
+                Class<?> iface = Class.forName(MOB_MANAGER_CLASS);
+                if (getMythicMobInstance == null) {
+                    getMythicMobInstance = method(iface, "getMythicMobInstance", Entity.class);
+                }
+                if (getMobNames == null) {
+                    getMobNames = method(iface, "getMobNames");
+                }
+            } catch (ClassNotFoundException ignored) {
+                // 没有这个接口时以运行时类的结果为准
+            }
+        }
+        mobManager = resolved;
+        return resolved;
+    }
+
+    /** 取公开方法；不存在或签名不符时返回 {@code null}（调用方各自降级）。 */
+    @Nullable
+    private static Method method(Class<?> type, String name, Class<?>... parameters) {
+        try {
+            return type.getMethod(name, parameters);
+        } catch (NoSuchMethodException | RuntimeException e) {
+            return null;
+        }
     }
 
     @Override
     @Nullable
     public String mobId(LivingEntity entity) {
-        if (entity == null) {
+        if (entity == null || manager() == null || getMythicMobInstance == null) {
             return null;
         }
         try {
@@ -92,7 +151,7 @@ final class MythicMobs5Hook implements MythicMobsHook {
 
     @Override
     public List<String> mobIds() {
-        if (getMobNames == null) {
+        if (manager() == null || getMobNames == null) {
             return List.of();
         }
         try {

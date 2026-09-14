@@ -162,6 +162,10 @@ rewards:
 - 留空的字段表示「任意」，选择器不会强制你填
 - 装了 **MythicMobs** 时，实体列表里会额外出现自定义怪（显示成 `MythicMobs: 名字`），
   选中后写入的就是 `mythic:<怪物id>` —— 也就是击杀任务要用的写法
+- 装了 **ItemsAdder** / **CraftEngine** 时，它们的**自定义方块与物品**会一并进材质列表
+  （显示成 `CraftEngine: default:amethyst_torch`，写入 `target` 的值是带前缀的
+  `craftengine:default:amethyst_torch`）。两家的内容较多，直接搜 `itemsadder` 或
+  `craftengine` 一次筛出来最快；同一个 id 既是方块又是物品时只列一条，避免重复
 - **缺软依赖的类型会被标灰**：没装 CustomFishing 时「自定义钓鱼」在下拉里显示「不可用」，
   没装 Vault 时「金币」奖励同理；已经用了这类类型的任务会在右侧「后端校验问题」里列出原因
 

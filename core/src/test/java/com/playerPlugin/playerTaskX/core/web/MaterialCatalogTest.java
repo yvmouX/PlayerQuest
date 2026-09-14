@@ -166,6 +166,30 @@ class MaterialCatalogTest {
     }
 
     @Test
+    @DisplayName("显示名不重复插件前缀：id 里已经有 craftengine:，名字里不再叠一遍")
+    void customEntryNameDropsTheRepeatedPrefix() {
+        var entries = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("CraftEngine", "craftengine:",
+                        List.of(), List.of("default:amethyst_torch"))));
+
+        assertEquals("craftengine:default:amethyst_torch", entries.get(0).get("id"),
+                "写入 target 的值必须带前缀");
+        assertEquals("CraftEngine: default:amethyst_torch", entries.get(0).get("en"),
+                "显示名里的 id 要剥掉前缀，否则读起来是「CraftEngine: craftengine:…」");
+    }
+
+    @Test
+    @DisplayName("同一个 id 既在方块表又在物品表时只留一条（否则「全部」里并排两条一样的）")
+    void customContentIsDeduplicatedById() {
+        var entries = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("CraftEngine", "craftengine:",
+                        List.of("default:torch"), List.of("default:torch"))));
+
+        assertEquals(1, entries.size(), "两条的 id 完全一样，写进 target 的值也完全一样");
+        assertEquals("block", entries.get(0).get("category"), "方块优先：先看到的应该是能挖/能放的那类");
+    }
+
+    @Test
     @DisplayName("两家都没接上时，材质列表里一条自定义内容都不加")
     void customCatalogIsEmptyWithoutHooks() {
         assertTrue(MaterialCatalog.customEntries(null).isEmpty());

@@ -135,7 +135,9 @@ public class MaterialCatalog {
      * 显示名带上插件名前缀，好让搜索「itemsadder」一次筛出全部自定义内容。
      * <p>
      * 方块与物品都进材质列表：目标任务里的 {@code target} 本来就既可能是方块也可能是物品，
-     * 选择器再分一类只会让人找不到。
+     * 选择器再分一类只会让人找不到。<b>同一个 id 既在方块表又在物品表时只留一条</b>
+     * （CraftEngine 的默认包就这样，例如火把），否则「全部」分类里会并排出现两个一模一样的条目，
+     * 而它们写进 {@code target} 的值完全相同。
      * <p>
      * 静态、且不碰译名数据与 Bukkit：这样它可以被单独测试（见 {@code MaterialCatalogTest}）。
      */
@@ -143,21 +145,26 @@ public class MaterialCatalog {
         if (customContent == null || customContent.isEmpty()) {
             return List.of();
         }
-        List<Map<String, Object>> entries = new ArrayList<>();
+        Map<String, Map<String, Object>> entries = new LinkedHashMap<>();
         for (String id : customContent.blockIds()) {
-            entries.add(customEntry(id, "block"));
+            entries.putIfAbsent(id, customEntry(id, "block"));
         }
         for (String id : customContent.itemIds()) {
-            entries.add(customEntry(id, "item"));
+            entries.putIfAbsent(id, customEntry(id, "item"));
         }
-        return entries;
+        return List.copyOf(entries.values());
     }
 
+    /**
+     * 单条自定义内容：{@code id} 是写进 {@code target} 的值（带插件前缀），
+     * 显示名去掉重复的前缀（{@code craftengine:default:torch} → {@code CraftEngine: default:torch}）。
+     */
     private static Map<String, Object> customEntry(String id, String category) {
-        String plugin = CustomContentHooks.pluginOf(prefixOf(id));
+        String prefix = prefixOf(id);
+        String plugin = CustomContentHooks.pluginOf(prefix);
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("id", id);
-        entry.put("en", (plugin == null ? "" : plugin + ": ") + id);
+        entry.put("en", (plugin == null ? "" : plugin + ": ") + id.substring(prefix.length()));
         entry.put("zh", "");
         entry.put("category", category);
         return entry;

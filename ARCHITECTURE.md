@@ -338,6 +338,19 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 `/api/schema` 对**目标类型**也开始下发 `available` / `unavailableReason`
 （与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
 
+> **素材目录的三个来源缺一不可**：`MaterialCatalog` 由（原版枚举、MythicMobs、
+> ItemsAdder/CraftEngine）三份拼成，构造器刻意<b>不</b>提供省略参数的版本。
+> 曾经有过 `MaterialCatalog(langFiles, mythicMobs)` 这种便捷构造器，它把第三份当成空实现，
+> 于是「装了 CraftEngine 也选不到它的方块」——编译期、运行期都不报错，
+> 只有管理员发现列表里没自己的东西（真机实测：装 CraftEngine 时目录 0 条自定义内容）。
+
+> **MythicMobs 的怪物管理器必须延迟解析**：它的 plugin.yml 是 `load: POSTWORLD`，
+> 启用得比本插件晚（实测同一秒：本插件 20:01:33 启用完，它才开始启用），
+> 而 `getMobManager()` 是它在自己的 onEnable 里创建的。因此 `MythicMobs5Hook`
+> 只在创建时取 `MythicBukkit.inst()`，管理器在第一次用到时解析并缓存。
+> 早先「创建时读一次并存下来」的写法在真机上的结果就是：装了 MythicMobs 也永远接不上，
+> 只有启动日志一行 warn，玩家侧 `mythic:` 目标永远不涨进度。
+
 > 家具（furniture）不在支持范围内：那是实体而不是方块，需要各自的交互事件与持久化，
 > 与「方块/物品目标」不是同一类需求。
 
