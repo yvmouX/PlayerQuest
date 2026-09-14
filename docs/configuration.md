@@ -145,9 +145,9 @@ objectives:
       target: STONE
       amount: 64
 rewards:
-  - type: exp
+  - type: command
     properties:
-      amount: 300
+      command: give %player% experience_bottle 3
 ```
 
 约定：

@@ -102,9 +102,9 @@ objectives:
       target: COBBLESTONE
       amount: 64
 rewards:
-  - type: exp
+  - type: command
     properties:
-      amount: 300
+      command: give %player% cooked_beef 8
 ```
 
 几条约定：

@@ -193,8 +193,14 @@ public interface RewardType extends ConfigurableType {
 }
 ```
 
-内置：`money` 金币（经 Vault 的 `Economy` 服务）、`points` 点券(PlayerPoints)、`exp` 经验（原版，总是可用）、
-`item` 物品、`command` 自定义命令。
+内置三种：`money` 金币（经 Vault 的 `Economy` 服务）、`points` 点券(PlayerPoints)、
+`command` 自定义命令（控制台执行，支持 `%player%`）。
+
+**为什么没有「物品」与「经验」奖励**：这两样用命令奖励就够了（`give %player% diamond 3`、
+`xp add %player% 200 points`），做成插件自己的类型则要把 `material` / `amount` / `name` / `lore`
+（以及将来的附魔、组件、模型数据……）在插件里重做一遍，而 `/give` 早就做完了；命令还能顺带
+用上别的插件的发放入口。经验<b>仍</b>作为刷新费用的兜底货币存在，但那是扣费不是发放——
+实现是 `ExpCurrency`（原版公式见 `ExpUtil`），不是 `RewardType`。
 
 ### 3.3 进度事件 `ProgressContext`（api，唯一与 Bukkit 事件耦合处）
 
@@ -821,7 +827,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 2 | 构建配置：依赖、shadow 重定位、`-parameters` | ✅ 完成 |
 | 3 | `core` 存储层（SQLite/MySQL + 方言 + 仓储） | ✅ 完成（15 项 SQLite 集成测试） |
 | 4 | 引擎：`ProgressService` + 14 种目标类型 + 5 个监听器 | ✅ 完成（12 项引擎单元测试） |
-| 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成 |
+| 5 | 奖励类型 + 发放（金币/点券/经验/物品/命令） | ✅ 完成（阶段 37 收敛为金币/点券/命令） |
 | 6 | 多语言（YLib 消息服务，文本渲染内置于 YLib） | ✅ 完成 |
 | 7 | 每日任务（全局池 + 确定性抽取 + 刷新扣费 + 跨天） | ✅ 完成（10 项抽取不变量测试；阶段 30 扩成四种周期） |
 | 8 | 内置网页编辑器（REST + 静态资源 + 令牌校验） | ✅ 完成 |
@@ -853,6 +859,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 34 | **字段值域**：`ValueKind` + 每个目标类型逐一声明 `kinds`；选择器只列该值域、服务端按同一份声明校验「永远不可能命中」的值；`FieldType` 收敛为 `PICKER` | ✅ 完成（见 4.5.1，+9 项值域测试 + 11 项目标值域一致性测试 + 2 项校验接入测试） |
 | 35 | `EditorServices` 改由 `PluginEditorServices` 适配器实现（主类不再承担 web 层契约，`presets()` 与 `describeStorage()` 两个「只有编辑器用」的 getter 随之删除） | ✅ 完成（见 7，+2 项转交测试） |
 | 36 | 编辑器里能**真正建立**预设引用：弹层点预设 = 引用（另给「复制一份」）；**移除覆盖项机制**（引用只认 `preset`，多写的字段报校验问题并在保存时清掉） | ✅ 完成（见 4.7，+2 项 PresetRefs 测试 + 1 项 HTTP 契约测试 + 1 项真库往返测试） |
+| 37 | 奖励类型收敛为**金币 / 点券 / 命令**三种：删掉 `exp` 与 `item`（发物品/经验交给命令），经验降为刷新费用的兜底货币 `ExpCurrency` | ✅ 完成（见 3.2；示例任务与预设改用 `give` / `xp` 命令） |
 
 **测试总量：282 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
 存储 19（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
@@ -900,7 +907,7 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 [playerTaskX] 已载入 1 个任务
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（1 个任务，14 种目标，5 种奖励）
+[playerTaskX] PlayerTaskX 已启用（1 个任务，14 种目标，3 种奖励）
 [io.javalin.Javalin] Started Server@… @13862ms
 ```
 
@@ -928,7 +935,7 @@ player_quest / period_state / preset）；
 （`meta` 表已随一次性迁移代码删除，见文末「删除一次性迁移代码」。）
 
 **插件联动的真机冒烟（同一台测试服，未安装 MythicMobs / CustomFishing）**：
-启动日志为「已启用（12 个任务，**15 种目标**，5 种奖励）」，没有任何异常，
+启动日志为「已启用（12 个任务，**15 种目标**，5 种奖励）」（当时奖励还是 5 种；现已收敛为 3 种），没有任何异常，
 也没有出现接入失败日志——即两个软依赖缺失时行为与从前完全一致；
 `GET /api/schema` 的 `objectives.custom_fish` 如实下发 `available: false` /
 `unavailableReason: 未安装 CustomFishing`，`kill` 为可用；
@@ -969,7 +976,7 @@ player_quest / period_state / preset）；
 [playerTaskX] quests/ 是空的，已写入 12 个示例任务文件（只读来源，可自由删改）
 [playerTaskX] presets/ 是空的，已写入 11 个示例预设文件（只读来源，可自由删改）
 [PlayerTaskX] 已载入 24 个任务
-[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，5 种奖励）
+[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，3 种奖励）
 ```
 
 接口侧：`/api/quests` 24 条（12 条 `source=database` + 12 条 `source=file`）、

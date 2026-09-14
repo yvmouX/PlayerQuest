@@ -81,7 +81,7 @@
 |---|---|
 | `money` | 任一经济插件（EssentialsX / CMI 等）经 Vault / VaultUnlocked 注册的经济服务 |
 | `points` | PlayerPoints |
-| `exp` / `item` / `command` | 无依赖 |
+| `command` | 无依赖（发物品与经验也走它：`give` / `xp`） |
 
 **2. 任务完成了但领取失败？**
 

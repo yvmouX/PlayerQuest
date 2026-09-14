@@ -36,7 +36,7 @@ plugins/playerTaskX/
 [playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db（任务定义、预设与玩家数据在同一库）
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，5 种奖励）
+[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，3 种奖励）
 ```
 
 示例一共有两套，**都不影响正常使用，可随时清掉**：
@@ -57,7 +57,7 @@ plugins/playerTaskX/
 
 | 日志提示 | 含义 | 处理 |
 |---|---|---|
-| `奖励类型 money 当前不可用: 没有可用的经济服务` | 金币奖励发不出去（刷新费用会自动改用点券/经验，不受影响） | 装一个经济插件（Vault / VaultUnlocked + EssentialsX / CMI 等），或改用物品/命令/经验奖励 |
+| `奖励类型 money 当前不可用: 没有可用的经济服务` | 金币奖励发不出去（刷新费用会自动改用点券/经验，不受影响） | 装一个经济插件（Vault / VaultUnlocked + EssentialsX / CMI 等），或改用命令奖励（`give` / `xp` 发物品与经验） |
 | `奖励类型 points 当前不可用: 未安装 PlayerPoints` | 点券奖励发不出去 | 安装 PlayerPoints |
 | `目标类型 custom_fish 不可用（未安装 CustomFishing）` | 「自定义钓鱼」目标不会涨进度 | 安装 [CustomFishing](https://www.spigotmc.org/resources/100088/)，或改用原版 `fish` 目标 |
 | `目标 mythic:xxx 需要 MythicMobs 5.x` | 击杀自定义怪的目标永远命中不了 | 安装 MythicMobs 5.x（4.x 不支持 1.21+），或改用原版实体名 |
@@ -76,7 +76,7 @@ plugins/playerTaskX/
 2. 点「新建任务」，填写 id、名称、图标、分类
 3. 选类型 `DAILY`（每日任务）
 4. 在「目标」区点「添加目标」，选择「挖掘方块」，填入 `target` 与数量
-5. 在「奖励」区添加一个「金币」奖励（需要经济插件；没有时可用「经验」「物品」或「自定义命令」）
+5. 在「奖励」区添加一个「金币」奖励（需要经济插件；没有时用「自定义命令」，例如 `give %player% diamond 3`）
 6. 保存
 
 若在服务器本机操作，可直接执行 `/ptxa editor` 拿到地址与令牌。
@@ -142,7 +142,7 @@ plugins/playerTaskX/
 
 - [命令](commands)：完整的命令清单
 - [任务目标](objectives)：15 种目标类型与配置字段
-- [任务奖励](rewards)：5 种奖励类型
+- [任务奖励](rewards)：3 种奖励类型与刷新费用的货币
 - [网页编辑器](editor)：批量管理与导入导出
 - [变量](placeholders)：在计分板、菜单里展示任务信息
 - [常见问题](faq)：任务不涨进度 / 奖励拿不到怎么办

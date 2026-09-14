@@ -69,6 +69,12 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     早期文档里出现过「`preset` + `properties` 覆盖」的写法，`quests/*.yml` 里会真实存在。
     编辑器里建立引用的入口是「添加目标/奖励」弹层点条目（条目右侧的「复制」才是插入副本），
     YAML 与导出只写 `preset:`（写 type/properties 就是一份会过期的副本）。
+  - **奖励只留三种：金币 / 点券 / 命令**（见 ARCHITECTURE 3.2）。物品与经验<b>不要</b>再加回奖励类型：
+    发它们用命令奖励就够了（`give %player% diamond 3`、`xp add %player% 200 points`），
+    自己做则要把 `material`/`name`/`lore`/附魔/组件一路重做，而 `/give` 早就做完了；
+    命令还能顺带用上别的插件的发放入口。经验仍作为**刷新费用的兜底货币**存在
+    （`ExpCurrency` + `ExpUtil`），那是扣费不是发放——别把它当成 `RewardType` 注册回去。
+    语言文件相应只有 `reward.money` / `reward.points` / `reward.command` 三个键。
   - **每个目标字段要声明「值域」**（见 ARCHITECTURE 4.5.1）：`ConfigField.kinds`（`ValueKind`）
     说明这个字段能填哪一类值，`FieldType` 只管渲染成什么控件。选择器列出什么、任务图标怎么推、
     服务端标红什么，三处都读这一份声明——分开写必然漂移，而漂移的表现是

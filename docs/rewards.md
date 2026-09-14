@@ -13,13 +13,31 @@
 |---|---|---|---|
 | `money` | 金币 | 任一经济插件（EssentialsX、CMI 等，经 Vault 的 `Economy` 服务） | `amount` |
 | `points` | 点券 | PlayerPoints | `amount` |
-| `exp` | 经验 | 无（原版） | `amount` |
-| `item` | 物品 | 无 | `material` `amount` `name` `lore` |
 | `command` | 自定义命令 | 无 | `command` `as-player` |
 
 > 依赖缺失时该奖励类型会被标记为「不可用」：启动日志会警告，
 > 管理员界面与网页编辑器里都会显示具体原因，不会静默失效。
 > 注意这只影响**奖励**；刷新费用的货币是自动兜底的（见下），不受影响。
+
+## 为什么没有「物品」与「经验」奖励
+
+这两样用**命令奖励**就够了，而且更灵活：
+
+```yaml
+type: command
+command: "give %player% diamond 3"        # 物品
+```
+
+```yaml
+type: command
+command: "xp add %player% 200 points"     # 经验点
+```
+
+做成插件自己的奖励类型，就得把 `material` / `amount` / `name` / `lore`（以及将来的附魔、
+NBT、自定义模型……）在插件里重做一遍，而 `/give` 早就把这些做完了；命令还能顺手用上其它
+插件的东西（点券、钥匙、称号）。因此奖励只保留三种，物品与经验的发放交给命令。
+
+> 经验仍是**刷新费用**的兜底货币（见下）——那是扣费而不是发放，与奖励无关。
 
 ---
 
@@ -47,49 +65,7 @@ amount: 100
 
 经 PlayerPoints 发放，只接受整数。
 
----
-
-## `exp` 经验
-
-```yaml
-type: exp
-amount: 100
-```
-
-发放经验**点数**（不是等级），内部用 `giveExp` 处理，因此跨级、升级特效都正常。
-
-- 无需任何依赖，原版资源
-- 同时是刷新费用的**最终兜底货币**：服务器既没装 Vault 也没装 PlayerPoints 时，
-  刷新费用从经验里扣（扣除逻辑与原版一致：先降当前等级，不足再从上一级扣）
-- 经验余额按原版公式从「等级 + 级内进度」算，不用 `getTotalExperience()`：它并没有被废弃，
-  但它是服务端的另一个计数器，只有原版「获得经验」的路径会维护它，`setLevel` / `setExp`
-  （扣费就是这两个方法）不会——拿它当余额会与玩家看到的等级、进度条对不上
-
----
-
-## `item` 物品
-
-```yaml
-type: item
-material: DIAMOND
-amount: 5
-name: ""                              # 留空 = 用物品默认名
-lore: ""                              # 多行用 | 分隔
-```
-
-- `material` 用 Bukkit 材质名（如 `DIAMOND` `GOLDEN_APPLE` `NETHERITE_INGOT`）
-- `name` 与 `lore` 支持 MiniMessage 标签与 `&` 颜色码（两者可混排，见 [配置](configuration)）
-- 背包放不下时，多出的物品会**掉落在玩家脚下**，而不是凭空消失
-
-示例：带名称与描述的奖励物品
-
-```yaml
-type: item
-material: NETHERITE_SWORD
-amount: 1
-name: "<gold>勇者之剑"
-lore: "<gray>完成每日任务的证明|<yellow>攻击力 +10"
-```
+它同样是刷新费用的候选货币之一。
 
 ---
 
@@ -119,27 +95,24 @@ as-player: false
 
 ## 组合示例
 
-**简单的每日奖励**：金币 + 一点物品
+**简单的每日奖励**：金币 + 3 个经验瓶
 
 ```yaml
 rewards:
   - type: money
     amount: 500
-  - type: item
-    material: EXPERIENCE_BOTTLE
-    amount: 3
+  - type: command
+    command: "give %player% experience_bottle 3"
 ```
 
-**稀有任务奖励**：特殊物品 + 点券 + 全服公告
+**稀有任务奖励**：点券 + 一把带名字的剑 + 全服公告
 
 ```yaml
 rewards:
-  - type: item
-    material: NETHERITE_INGOT
-    amount: 1
-    name: "<aqua>每周之星"
   - type: points
     amount: 500
+  - type: command
+    command: "give %player% netherite_ingot 1"
   - type: command
     command: "broadcast <yellow>%player%</yellow> 完成了每周挑战！"
     as-player: false
@@ -147,6 +120,25 @@ rewards:
 
 > 公告类命令里的颜色标签由**被执行的那个插件**解析，因此写法取决于目标插件，
 > 上面的 `<yellow>` 是 MiniMessage 写法；若目标插件只认 `&`，就写 `&e`。
+>
+> 要给物品加名字、描述、附魔，直接写在 `give` 命令里（`/give` 支持组件参数），
+> 或换成 `item` 系命令型插件（如 `crate give`、`items give`）——这些都只是命令奖励的参数。
+
+---
+
+## 刷新费用的货币
+
+刷新周期任务要花钱，钱从哪三种来源扣由 `refresh-currency` 决定（默认「金币 → 点券 → 经验」）：
+
+| 值 | 货币 | 可用性 |
+|---|---|---|
+| `MONEY` | 金币 | 需要任一经济插件在册 |
+| `POINTS` | 点券 | 需要 PlayerPoints |
+| `EXP` | 经验 | **总是可用**（原版资源，无需任何插件） |
+
+没装经济插件的服务器会自动落到经验扣费，因此刷新功能在任何服务端上都可用。
+经验的余额按原版公式从「等级 + 级内进度」算，扣除逻辑也是原版那套（先降当前等级，
+不足再从上一级扣）——细节见 [配置](configuration#refresh-currency货币顺序)。
 
 ---
 
