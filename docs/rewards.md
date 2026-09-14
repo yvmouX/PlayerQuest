@@ -11,7 +11,7 @@
 
 | id | 显示名 | 依赖 | 主要配置 |
 |---|---|---|---|
-| `money` | 金币 | Vault + 经济插件 | `amount` |
+| `money` | 金币 | 任一经济插件（EssentialsX、CMI 等，经 Vault 的 `Economy` 服务） | `amount` |
 | `points` | 点券 | PlayerPoints | `amount` |
 | `exp` | 经验 | 无（原版） | `amount` |
 | `item` | 物品 | 无 | `material` `amount` `name` `lore` |
@@ -30,7 +30,7 @@ type: money
 amount: 1000
 ```
 
-经 Vault 发放，需要服务器装有 Vault 与任一经济插件（EssentialsX、CMI 等）。
+经 Vault 的 `Economy` 服务发放：光装 Vault（接口层）不够，还要有一个经济插件在册（EssentialsX、CMI 等）。判据是服务注册，不是插件名。
 金额支持小数。
 
 它也是刷新周期任务的**首选**费用来源（见 `refresh-currency`）：

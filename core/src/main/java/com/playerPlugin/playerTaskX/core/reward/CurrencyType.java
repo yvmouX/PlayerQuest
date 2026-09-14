@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * 服务器未必装经济插件，但「刷新任务」这个功能不该因此直接不可用。
  * 因此按 <b>金币 → 点券 → 经验</b> 的顺序自动挑一个可用的：
  * <ul>
- *   <li><b>MONEY</b>：Vault + 任一经济插件（大多数服务器都有）</li>
+ *   <li><b>MONEY</b>：任一经济插件（经 Vault 注册的 {@code Economy} 服务；Vault、VaultUnlocked 都算）</li>
  *   <li><b>POINTS</b>：PlayerPoints（很多服务器用它做第二货币）</li>
  *   <li><b>EXP</b>：原版经验，任何服务端都有，因此这条兜底永远成立</li>
  * </ul>

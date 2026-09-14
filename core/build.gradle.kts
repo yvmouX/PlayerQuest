@@ -4,6 +4,10 @@ dependencies {
 
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("org.black_ixx:playerpoints:3.3.4-SNAPSHOT")
+    // 测试也要 VaultAPI：金币的可用性判据是「有没有注册 Economy 服务」而不是插件名
+    // （VaultUnlocked 之类的分支不叫 Vault），这条判据只能靠 mock 服务注册来钉住；
+    // 少了它测试类路径上没有 Economy 这个类，连 mock 都写不出来
+    testImplementation("com.github.MilkBowl:VaultAPI:1.7")
 
     // 软依赖（游戏内容插件）的接入 API：只在安装了对应插件的服务端上被加载。
     // CustomFishing 的 API 是自包含的，因此直接 compileOnly；

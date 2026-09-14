@@ -38,7 +38,7 @@ PlayerTaskX/
 | `HikariCP` | MySQL 连接池 | implementation |
 | `javalin` | 内置网页编辑器 HTTP 服务 | implementation |
 | `snakeyaml`（服务端自带，随 `spigot-api` 编译期可见） | `quests/` / `presets/` 只读 YAML 定义（4.6）；**不打包**，服务端本来就有 | 服务端提供 |
-| `VaultAPI` / `playerpoints` | 金币 / 点券 | compileOnly（软依赖） |
+| `VaultAPI` / `playerpoints` | 金币 / 点券 | compileOnly（软依赖；VaultAPI 另有一份 testImplementation，见 8） |
 | `placeholderapi` | 变量 | compileOnly（软依赖） |
 
 **JSON 编解码统一走 `JsonCodec` 的单个 `ObjectMapper`**（jackson-databind，见
@@ -170,7 +170,7 @@ public interface RewardType extends ConfigurableType {
 }
 ```
 
-内置：`money` 金币(Vault)、`points` 点券(PlayerPoints)、`exp` 经验（原版，总是可用）、
+内置：`money` 金币（经 Vault 的 `Economy` 服务）、`points` 点券(PlayerPoints)、`exp` 经验（原版，总是可用）、
 `item` 物品、`command` 自定义命令。
 
 ### 3.3 进度事件 `ProgressContext`（api，唯一与 Bukkit 事件耦合处）
@@ -745,9 +745,10 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 28 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
 | 29 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.7，7 项 PresetRefs 测试 + 2 项服务级测试） |
 | 30 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
-| 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 2 项目录测试） |
+| 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 5 项目录测试） |
+| 32 | 真机装上 CraftEngine / MythicMobs / Vault 后暴露的三处接入问题：素材目录没拿到自定义内容、MythicMobs 因 `POSTWORLD` 永远接不上、金币按插件名判 Vault 而非按经济服务在册判 | ✅ 完成（见 4.5，+2 项目录测试 + 4 项经济服务测试） |
 
-**测试总量：249 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+**测试总量：255 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
 存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
@@ -755,7 +756,7 @@ YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepos
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 任务管理 12（`QuestAdminServiceTest`）+
-素材 11（`MaterialCatalogTest`）+ 奖励 17（`CurrencyTypeTest` 8 + `ExpUtilTest` 9）+
+素材 13（`MaterialCatalogTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
 示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
@@ -764,10 +765,10 @@ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（30 个 XML），不是靠日志里的汇总行。
+逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 976 行 + `core/src/main` 13458 行
-＝ **14434 行 / 106 个 java 文件**；测试 `core/src/test` **6064 行 / 33 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 976 行 + `core/src/main` 13517 行
+＝ **14493 行 / 106 个 java 文件**；测试 `core/src/test` **6224 行 / 34 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **5961 行 `.vue` + 2000 行 `.ts`/`.js` ＝ 7961 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
@@ -954,7 +955,11 @@ player_quest / period_state / preset）；
 - **actionbar 兼容**：Spigot 的 `Player` 既无 Adventure 也无 `sendActionBar`，
   `PlayerNotifier` 运行时探测 Paper 原生 API，失败退回 `sendTitle("", text, …)` 方案。
 - **软依赖**：Vault / PlayerPoints 均以运行时探测方式使用（缺失时对应奖励类型标记为不可用并在启动日志提示），
-  避免 `NoClassDefFoundError` 让插件整体无法加载。
+  避免 `NoClassDefFoundError` 让插件整体无法加载。金币的判据是**经济服务注册**而不是插件名：
+  Vault 只提供 API、钱由经济插件实现，因此「有没有经济插件」只有服务管理器答得上来——
+  只装 Vault（或 VaultUnlocked）而没有任何经济插件时，插件名查得到、服务却是空的。
+  `MoneyReward.economy()` 直接查服务，失败措辞也从「未安装 Vault 或没有经济插件」改成
+  「未检测到经济插件」（原措辞把两种情形混在一起，真机排查时正是它把人带偏）。
 - **依赖只留用得上的**：`fastjson2`、`javalin-openapi` / swagger / redoc、`jackson-dataformat-yaml`
   从未被引用过，已从构建脚本删除；JSON 编解码全项目只有 `JsonCodec` 一个 `ObjectMapper`
   （编辑器曾自带第二个）。

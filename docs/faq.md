@@ -75,11 +75,11 @@
 /ptxa list
 ```
 
-若显示「奖励类型 money 不可用（未安装 Vault 或没有经济插件）」，说明依赖缺失：
+若显示「奖励类型 money 不可用（没有可用的经济服务）」，说明依赖缺失：
 
 | 奖励类型 | 需要的插件 |
 |---|---|
-| `money` | Vault + 任一经济插件（EssentialsX / CMI 等） |
+| `money` | 任一经济插件（EssentialsX / CMI 等）经 Vault / VaultUnlocked 注册的经济服务 |
 | `points` | PlayerPoints |
 | `exp` / `item` / `command` | 无依赖 |
 

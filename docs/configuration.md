@@ -293,7 +293,7 @@ periodic:
 
 | 取值 | 货币 | 何时可用 |
 |---|---|---|
-| `MONEY` | 金币 | 装了 Vault + 任一经济插件（EssentialsX、CMI 等） |
+| `MONEY` | 金币 | 有经济插件在册（EssentialsX、CMI 等；Vault / VaultUnlocked 只是接口层） |
 | `POINTS` | 点券 | 装了 PlayerPoints |
 | `EXP` | 经验 | **总是可用**（原版资源，无需任何插件） |
 
@@ -310,7 +310,7 @@ refresh-currency: [EXP]
 ```
 
 ```yaml
-# 列表里没写的货币视为禁用，因此这里只会扣金币；没装 Vault 时退回默认顺序
+# 列表里没写的货币视为禁用，因此这里只会扣金币；没有可用经济服务时退回默认顺序
 refresh-currency: [MONEY]
 ```
 

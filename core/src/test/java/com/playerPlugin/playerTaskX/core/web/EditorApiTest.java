@@ -420,8 +420,8 @@ class EditorApiTest {
         JsonNode money = schema.get("rewards").get("money");
         assertFalse(money.get("available").asBoolean(),
                 "单测环境没有 Vault，金币奖励必须如实报「不可用」而不是假装可用");
-        assertTrue(money.get("unavailableReason").asText().contains("Vault"));
-
+        assertTrue(money.get("unavailableReason").asText().contains("经济插件"),
+                "原因要说清缺的是经济插件，而不是含糊的「不可用」");
         // 目标类型同样要报可用性：没装 CustomFishing 时「自定义钓鱼」配了也不会涨进度
         JsonNode customFish = schema.get("objectives").get("custom_fish");
         assertNotNull(customFish, "内置目标类型必须出现在 schema 里");
