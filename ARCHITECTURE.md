@@ -45,6 +45,52 @@ PlayerTaskX/
 `build.gradle.kts`）：`properties` / `progress` 列与编辑器 HTTP 传输都用它，
 不再出现「一份模型两套序列化」。
 
+### 包边界与约定
+
+这几条原先写在各自的 `package-info.java` 里。Javadoc-only 的文件编译产物是个空的
+`package-info.class`、没有任何东西引用，因此把它们搬到这里、删掉文件——
+约定仍然有效，只是不再随包一起走。
+
+**`core/storage/`（根包 = 契约与装配入口）**
+
+- 根包放契约与装配入口：`Database`、`QuestRepository`、`PlayerQuestRepository`、
+  `StorageException`；`Dialect` 与 `RowMapper` 虽是实现味很浓的名字，但它们出现在
+  `Database` 的方法签名上，属于契约的一部分，因此也留在根包；以及唯一的装配点
+  `DatabaseFactory`。**包外代码只需要 import 这些。**
+- `jdbc` 子包是实现细节，**包外不得 import**：实际 import 它的只有父包里的装配点
+  `DatabaseFactory` 与做真机 SQL 验证的 `StorageIntegrationTest`
+  （`DailyService` 读 DailyState 曾是业务层的唯一例外，周期任务改成走
+  `PlayerQuestRepository` 接口后这个例外没了）。
+- **SQL 字符串只允许出现在本包（含子包）内**，且列名一律经方言转义。
+- 未知存储类型回退 SQLite 而不是启动失败——写错一个单词不该让插件起不来。
+- 不要在服务端运行期间用外部工具改 SQLite 文件：WAL 会回滚外部连接的 DDL，
+  得出的结论是错的（踩过）。
+
+**`core/storage/jdbc/`（JDBC 实现细节）**
+
+- **连接策略是刻意的两种**：SQLite 写入全局串行，用连接池反而制造 `SQLITE_BUSY`，
+  因此走单连接长驻 + WAL；MySQL 走 HikariCP 池化，连接用完必须归还。两种策略都在
+  `JdbcDatabase` 的两个工厂里，执行逻辑只有一份。
+- **方言**：`Dialect`（根包，契约的一部分——`Database.dialect()` 暴露它）集中消化语法差异
+  （upsert、标识符转义）；`Schema` 是建表 DDL 的唯一来源，所有语句经方言生成，
+  同一份定义在两种库上都成立。
+- **容错**：`JsonCodec` 对库里脏数据一律降级为空集合而不是抛异常——存储层的容错
+  优先级高于严格性；`Sql` 收敛 JDBC 参数绑定样板。
+
+**`core/listener/`（事件监听层）**
+
+- 监听器只做一件事：把 Bukkit 事件翻译成 `ProgressContext` 投递给引擎。
+  **判定逻辑不写在这里**：不允许出现针对具体目标类型的分支（见 `ProgressListener`）。
+- **按事件域分组，而不是一个动作一个类**：动作语义已经组织在
+  `core/objective/` 的各 ObjectiveType 里，编辑器与 GUI 的表单也由它的 schema 自动生成；
+  监听器再按动作拆一套就会出现两套平行的结构要同步维护。分组与 `org.bukkit.event`
+  的包分类一致：`BlockListener`（挖掘/放置/交互）、`EntityListener`（击杀/垂钓/剪切/繁殖/驯服/交互）、
+  `ItemListener`（合成/消耗/附魔）、`TextListener`（发言/执行命令）、
+  `PlayerListener`（会话生命周期，不推进度）。
+- 每个动作的 handler 必须带 javadoc，写清动作语义与该事件特有的坑（异步、双触发、
+  数量口径之类）——这是移植与排查时的第一手资料。
+- 新增动作先按事件域归位，确实没有归属再新建域类，而不是默认新建动作类。
+
 ---
 
 ## 2. 数据模型（扁平：任务 = 多目标 + 多奖励）
