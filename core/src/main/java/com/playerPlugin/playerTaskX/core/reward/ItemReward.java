@@ -35,7 +35,7 @@ public final class ItemReward implements RewardType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.material("material", "物品", "DIAMOND"),
+                ConfigField.items("material", "物品", "DIAMOND"),
                 ConfigField.integer("amount", "数量", 1, "发放数量"),
                 ConfigField.text("name", "显示名", "", "留空则用物品默认名，支持 MiniMessage 与 & 颜色码"),
                 ConfigField.text("lore", "描述", "", "多行用 | 分隔，支持颜色码")

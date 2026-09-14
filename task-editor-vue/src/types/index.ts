@@ -33,18 +33,19 @@ export function isPeriodicType(type: string): boolean {
   return type !== 'NORMAL'
 }
 
-/** schema 里字段的输入类型，决定渲染什么控件（后端 FieldType）。 */
+/**
+ * schema 里字段的输入类型：决定渲染成什么控件（后端 FieldType）。
+ *
+ * <p>「这个控件里能填什么值」不在这一层，而在 {@link FieldSchema.kinds}——
+ * 加一个值域（只有可剪毛的生物）不需要动这里，也不需要动任何组件。
+ */
 export type FieldType =
   | 'STRING'
   | 'INTEGER'
   | 'DECIMAL'
   | 'BOOLEAN'
-  | 'MATERIAL'
-  | 'ENTITY'
-  /** 方块或实体类型名皆可（后端 FieldType.TARGET） */
-  | 'TARGET'
-  /** CustomFishing 的战利品 id（后端 FieldType.FISH）：编辑器列出它注册表里的那些 */
-  | 'FISH'
+  /** 选择器：候选来自素材目录，值域见 {@link FieldSchema.kinds} */
+  | 'PICKER'
   | 'ENUM'
 
 /** properties 里允许的取值：JSON 能表达的基础类型。 */
@@ -59,7 +60,7 @@ export interface FieldSchema {
   key: string
   /** 显示名 */
   label: string
-  /** 输入类型 */
+  /** 控件类型 */
   type: FieldType
   /** 是否必填（仅用于界面提示，是否强制由后端决定） */
   required: boolean
@@ -69,6 +70,13 @@ export interface FieldSchema {
   options: string[]
   /** 帮助文本 */
   hint: string
+  /**
+   * PICKER 的取值域（后端 `ValueKind` 的小写 id，多个之间是「或」）。
+   *
+   * <p>选择器只列满足这些值域的候选：`["block"]` 只列方块、`["shearable"]` 只列羊与蘑菇牛。
+   * 同一份声明也是服务端校验的依据，因此「选不到」与「会标红」永远一致。
+   */
+  kinds?: string[]
 }
 
 /** 一种目标或奖励类型的描述（后端 ObjectiveType / RewardType）。 */
@@ -198,8 +206,15 @@ export interface CatalogEntry {
   en: string
   /** 中文显示名，可能为空串 */
   zh: string
-  /** 分类（block / item / food / fish）；实体没有这个字段 */
+  /** 分类（block / item / food / fish / entity / enchantment） */
   category?: string
+  /**
+   * 值域：这条候选项属于哪几类值（后端 `ValueKind` 的小写 id，如 `["block","placeable"]`）。
+   *
+   * <p>选择器按字段声明的值域过滤，因此「挖掘方块」不会列出苹果、
+   * 「剪切」不会列出猪。后端没给时按所在列表粗判（见 catalog.ts 的 fallbackKinds）。
+   */
+  kinds?: string[]
   /**
    * 来源：`minecraft` / `mythicmobs` / `itemsadder` / `craftengine` / `customfishing`。
    *
@@ -225,6 +240,8 @@ export interface MaterialCatalog {
    * 命中不了，而那正是最难排查的一类错配。没装 CustomFishing 时是空数组。
    */
   fish: CatalogEntry[]
+  /** 原版附魔（「附魔」字段用）：id 是 Bukkit 附魔名，如 SHARPNESS */
+  enchantments: CatalogEntry[]
   /** 分类展示顺序，界面按它排列分组，不要在前端硬编码 */
   categories: string[]
   /** 本次真的有内容的来源，顺序由后端定；界面按它渲染筛选标签 */

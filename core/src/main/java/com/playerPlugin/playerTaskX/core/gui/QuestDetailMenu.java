@@ -11,7 +11,7 @@ import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
-import com.playerPlugin.playerTaskX.api.schema.FieldType;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -213,10 +213,13 @@ public final class QuestDetailMenu extends Menu {
     }
 
     /**
-     * 目标图标：优先取配置里 MATERIAL 字段的目标（挖钻石矿就直接显示钻石矿），
-     * 其次把 ENTITY 字段当刷怪蛋用（击杀僵尸 → 僵尸刷怪蛋），都没有才退回纸。
+     * 目标图标：按字段声明的值域推导——方块/物品值域直接用那个材质（挖钻石矿就显示钻石矿），
+     * 实体值域当刷怪蛋用（击杀僵尸 → 僵尸刷怪蛋），附魔给附魔书、自定义鱼给生鳕鱼，
+     * 都推不出来才退回纸。
      * <p>
-     * 这样任何新增的目标类型都能自动得到一个像样的图标，界面不必认识每一种类型 id。
+     * 这样任何新增的目标类型都能自动得到一个像样的图标，界面不必认识每一种类型 id；
+     * 值域是同一个字段声明的（见 {@link ConfigField#kinds()}），因此图标与选择器列出的
+     * 候选永远一致——不会再出现「选择器里是方块、图标却是苹果」这种各说各话。
      */
     static Material objectiveIcon(ObjectiveRegistry objectiveTypes, QuestObjective objective) {
         ObjectiveType type = objectiveTypes.find(objective.type()).orElse(null);
@@ -225,25 +228,29 @@ public final class QuestDetailMenu extends Menu {
         }
         String entity = null;
         for (ConfigField field : type.schema()) {
-            if (field.type() == FieldType.MATERIAL) {
-                Material material = match(objective.string(field.key(), ""));
+            List<ValueKind> kinds = field.kinds();
+            if (kinds.isEmpty()) {
+                continue;
+            }
+            String value = objective.string(field.key(), "");
+            if (kinds.contains(ValueKind.BLOCK) || kinds.contains(ValueKind.ITEM)) {
+                Material material = match(value);
                 if (material != null) {
                     return material;
                 }
-            } else if (field.type() == FieldType.ENTITY && entity == null) {
-                entity = objective.string(field.key(), "");
-            } else if (field.type() == FieldType.TARGET && entity == null) {
-                // TARGET 是「方块或实体皆可」：先当材质试（复用上面的优先级），
-                // 试不出来再留给下面的刷怪蛋分支，例如交互目标写 VILLAGER
-                Material material = match(objective.string(field.key(), ""));
-                if (material != null) {
-                    return material;
-                }
-                entity = objective.string(field.key(), "");
+            }
+            if (kinds.contains(ValueKind.ENCHANTMENT)) {
+                return Material.ENCHANTED_BOOK;
+            }
+            if (kinds.contains(ValueKind.FISH)) {
+                return Material.COD;
+            }
+            if (entity == null && (kinds.contains(ValueKind.ENTITY) || kinds.contains(ValueKind.LIVING))) {
+                entity = value;
             }
         }
         if (entity != null && !entity.isBlank() && !"*".equals(entity.trim())) {
-            // ENTITY / TARGET 允许逗号分隔多值，取第一个当示意
+            // 实体字段允许逗号分隔多值，取第一个当示意
             Material egg = match(entity.split(",")[0].trim() + "_SPAWN_EGG");
             if (egg != null) {
                 return egg;
@@ -252,12 +259,12 @@ public final class QuestDetailMenu extends Menu {
         return Material.PAPER;
     }
 
-    /** 奖励图标：有 MATERIAL 字段就用它（物品奖励直接显示会发的东西），否则用箱子示意「奖励」。 */
+    /** 奖励图标：有物品值域就用它（物品奖励直接显示会发的东西），否则用箱子示意「奖励」。 */
     private static Material rewardIcon(RewardRegistry rewardTypes, QuestReward reward) {
         RewardType type = rewardTypes.find(reward.type()).orElse(null);
         if (type != null) {
             for (ConfigField field : type.schema()) {
-                if (field.type() != FieldType.MATERIAL) {
+                if (!field.kinds().contains(ValueKind.ITEM)) {
                     continue;
                 }
                 Material material = match(reward.string(field.key(), ""));

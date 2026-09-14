@@ -3,6 +3,7 @@ package com.playerPlugin.playerTaskX.core.gui;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.FieldType;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,14 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 目标字段「语义类型」的约束测试。
+ * 目标字段的「控件类型 + 取值域」约束测试。
  *
- * <p>把「材质名」声明成 {@code STRING} 不会编译报错、也不会让任何断言变红，
- * 唯一后果是编辑器只能给管理员一个纯文本框，逼他去查 Bukkit 枚举名——
- * 钓鱼、繁殖、剪毛、交互四处原本就是这样，属于「不报错的错误」。</p>
+ * <p>这两件事写错的后果都是静默的：把「材质名」声明成 {@code STRING} 只会让编辑器给一个
+ * 纯文本框，逼管理员去查 Bukkit 枚举名；而值域写宽了（例如挖掘方块的 target 只声明成
+ * 「物品」）会让选择器把苹果、面包一并列出来——配出来的任务**永远不会命中**，
+ * 玩家只会来问「我挖了怎么不涨」。两者编译期都看不出来，因此在这里逐个钉住。
  *
- * <p>因此这里把「哪个字段该是什么类型」显式钉住。新增目标类型时若把材质/实体
- * 字段写成 {@code STRING}，本测试会失败并指出具体字段。</p>
+ * <p>新增目标类型时若把材质/实体字段写成 {@code STRING}、或忘了声明值域，
+ * 本测试会失败并指出具体字段。
  */
 class ObjectiveFieldTypeConsistencyTest {
 
@@ -33,7 +35,7 @@ class ObjectiveFieldTypeConsistencyTest {
         return BuiltIns.objectives();
     }
 
-    private static FieldType typeOf(String typeId, String fieldKey) {
+    private static ConfigField fieldOf(String typeId, String fieldKey) {
         ObjectiveType type = builtInObjectives().stream()
                 .filter(candidate -> candidate.id().equals(typeId))
                 .findFirst()
@@ -44,44 +46,76 @@ class ObjectiveFieldTypeConsistencyTest {
                 .findFirst()
                 .orElse(null);
         assertNotNull(field, typeId + " 缺少字段 " + fieldKey);
-        return field.type();
+        return field;
+    }
+
+    private static FieldType typeOf(String typeId, String fieldKey) {
+        return fieldOf(typeId, fieldKey).type();
+    }
+
+    /** 断言某个字段的取值域恰好是给定的这几个（顺序无关，语义是「或」）。 */
+    private static void assertKinds(String typeId, String fieldKey, ValueKind... expected) {
+        ConfigField field = fieldOf(typeId, fieldKey);
+        assertEquals(FieldType.PICKER, field.type(),
+                typeId + "." + fieldKey + " 应该是选择器（PICKER），否则编辑器不会给候选列表");
+        assertEquals(Set.of(expected), Set.copyOf(field.kinds()),
+                typeId + "." + fieldKey + " 的取值域不对：选择器会列出不该出现的东西，"
+                        + "而服务端校验也会因此放过永远命中不了的值");
     }
 
     @Test
-    @DisplayName("取材质名的字段都声明成 MATERIAL，编辑器才会给选择器")
-    void materialFieldsUseMaterialType() {
-        assertEquals(FieldType.MATERIAL, typeOf("break_block", "target"));
-        assertEquals(FieldType.MATERIAL, typeOf("place_block", "target"));
-        assertEquals(FieldType.MATERIAL, typeOf("craft", "target"));
-        assertEquals(FieldType.MATERIAL, typeOf("consume", "target"));
-        assertEquals(FieldType.MATERIAL, typeOf("submit", "target"));
+    @DisplayName("挖掘方块只声明「方块」：食物虽然也是材质，但永远不可能被挖到")
+    void breakBlockAcceptsBlocksOnly() {
+        assertKinds("break_block", "target", ValueKind.BLOCK);
+    }
+
+    @Test
+    @DisplayName("放置方块声明「可放置」：基岩、刷怪笼这类没有物品形态的方块放不下去")
+    void placeBlockAcceptsPlaceableOnly() {
+        assertKinds("place_block", "target", ValueKind.PLACEABLE);
+    }
+
+    @Test
+    @DisplayName("合成 / 消耗 / 提交 / 垂钓声明「物品」")
+    void itemFieldsAcceptItems() {
+        assertKinds("craft", "target", ValueKind.ITEM);
+        assertKinds("consume", "target", ValueKind.ITEM);
+        assertKinds("submit", "target", ValueKind.ITEM);
         // 钓获物是物品材质（COD / SALMON），曾经被误声明为纯文本
-        assertEquals(FieldType.MATERIAL, typeOf("fish", "target"));
+        assertKinds("fish", "target", ValueKind.ITEM);
     }
 
     @Test
-    @DisplayName("取实体名的字段都声明成 ENTITY")
-    void entityFieldsUseEntityType() {
-        assertEquals(FieldType.ENTITY, typeOf("kill", "target"));
-        assertEquals(FieldType.ENTITY, typeOf("tame", "target"));
-        // 繁殖出的幼崽与被剪的羊都是实体，曾经被误声明为纯文本
-        assertEquals(FieldType.ENTITY, typeOf("breed", "target"));
-        assertEquals(FieldType.ENTITY, typeOf("shear", "target"));
+    @DisplayName("击杀声明「活体」；剪毛 / 繁殖 / 驯服各自声明对应的生物能力")
+    void entityFieldsDeclareTheirCapability() {
+        assertKinds("kill", "target", ValueKind.LIVING);
+        // 猪不能剪毛、僵尸不能繁殖：值域写宽了，选择器就会给出这些永远不成立的组合
+        assertKinds("shear", "target", ValueKind.SHEARABLE);
+        assertKinds("breed", "target", ValueKind.BREEDABLE);
+        assertKinds("tame", "target", ValueKind.TAMEABLE);
     }
 
     @Test
-    @DisplayName("方块或实体皆可的字段声明成 TARGET")
-    void blockOrEntityFieldsUseTargetType() {
-        assertEquals(FieldType.TARGET, typeOf("interact", "target"));
+    @DisplayName("交互声明「方块或实体」：右键的对象两种都可能是")
+    void interactAcceptsBlocksAndEntities() {
+        assertKinds("interact", "target", ValueKind.BLOCK, ValueKind.ENTITY);
     }
 
     @Test
-    @DisplayName("真正自由的文本字段仍保持 STRING（不该被上面的规则误伤）")
+    @DisplayName("附魔声明「附魔」，自定义钓鱼声明「鱼」")
+    void specialDomainsAreDeclared() {
+        assertKinds("enchant", "target", ValueKind.ENCHANTMENT);
+        assertKinds("custom_fish", "target", ValueKind.FISH);
+    }
+
+    @Test
+    @DisplayName("真正自由的文本字段仍保持 STRING，且不该声明值域")
     void freeTextFieldsStayString() {
-        // 这些是关键词、附魔名、命令名——开放式输入，没有候选清单可选
+        // 关键词与命令名是开放式输入，没有候选清单可选
         assertEquals(FieldType.STRING, typeOf("chat", "target"));
-        assertEquals(FieldType.STRING, typeOf("enchant", "target"));
         assertEquals(FieldType.STRING, typeOf("command", "target"));
+        assertTrue(fieldOf("chat", "target").kinds().isEmpty());
+        assertTrue(fieldOf("command", "target").kinds().isEmpty());
     }
 
     @Test
@@ -119,7 +153,7 @@ class ObjectiveFieldTypeConsistencyTest {
             }
         }
         assertTrue(offenders.isEmpty(),
-                "以下字段应使用 optionalMaterial / optionalEntity / optionalBlockOrEntity：\n  "
+                "以下字段应使用允许留空的工厂方法（optionalItems / optionalEntities…）：\n  "
                         + String.join("\n  ", offenders));
     }
 

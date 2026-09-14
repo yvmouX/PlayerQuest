@@ -157,10 +157,9 @@ import {
   CATEGORY_ALL,
   SOURCE_ALL,
   SOURCE_MINECRAFT,
-  type CatalogScope,
   categoryLabel,
   categoryTabs,
-  entriesForScope,
+  entriesForKinds,
   entryLabel,
   entrySubLabel,
   joinMaterialValue,
@@ -177,18 +176,23 @@ import {
 
 const props = withDefaults(
   defineProps<{
-    /** 逗号分隔的原始文本；MATERIAL 多值时形如 "STONE,DIRT" */
+    /** 逗号分隔的原始文本；多选字段形如 "STONE,DIRT" */
     modelValue: string
-    /** 选择范围：材质 / 实体 / 两者 */
-    scope?: CatalogScope
-    /** 是否允许多选（MATERIAL 字段为真） */
+    /**
+     * 取值域（后端 ValueKind 的小写 id，多个之间是「或」）。
+     *
+     * <p>决定这个选择器列出什么：`['block']` 只列方块、`['shearable']` 只列羊与蘑菇牛。
+     * 传空数组表示不限制；默认按物品列（任务图标这类字段只可能填物品）。
+     */
+    kinds?: string[]
+    /** 是否允许多选（方块/物品这类字段为真） */
     multi?: boolean
     placeholder?: string
     /** 是否提示「留空表示任意」 */
     emptyHint?: boolean
   }>(),
   {
-    scope: 'material',
+    kinds: () => ['item'],
     multi: false,
     placeholder: '留空或点击右侧展开列表',
     emptyHint: false
@@ -213,9 +217,10 @@ const catalog = ref(peekCatalog())
 
 const text = computed(() => props.modelValue ?? '')
 const ariaLabel = computed(() => (props.multi ? '选择材质，可多选' : '选择条目'))
-const pool = computed(() => entriesForScope(catalog.value, props.scope))
-const tabs = computed(() => categoryTabs(catalog.value, props.scope))
-const sources = computed(() => sourceTabs(catalog.value, props.scope))
+const kinds = computed(() => props.kinds ?? [])
+const pool = computed(() => entriesForKinds(catalog.value, kinds.value))
+const tabs = computed(() => categoryTabs(catalog.value, kinds.value))
+const sources = computed(() => sourceTabs(catalog.value, kinds.value))
 const visible = computed(() =>
   visibleEntries(pool.value, keyword.value, category.value, source.value)
 )
@@ -223,19 +228,23 @@ const chips = computed(() =>
   props.multi ? resolveValueText(text.value, pool.value) : []
 )
 
-/** 切换范围/分类/来源时把高亮项收敛回第一条，否则回车可能选中看不见的项。 */
-watch([() => props.scope, category, source, keyword], () => {
+/** 切换值域/分类/来源时把高亮项收敛回第一条，否则回车可能选中看不见的项。 */
+watch([kinds, category, source, keyword], () => {
   activeIndex.value = 0
 })
 
 /**
- * 范围变化时把来源收窄回「全部」：从材质切到实体时留着 craftengine，
+ * 值域变化时把来源与分类收窄回「全部」：从方块切到实体时留着 craftengine 或「食物」，
  * 列表会直接空掉，看起来像「这里什么都没有」。
  */
-watch(() => props.scope, () => {
-  const available = sources.value.map(tab => tab.value)
-  if (source.value !== SOURCE_ALL && !available.includes(source.value)) {
+watch(kinds, () => {
+  const availableSources = sources.value.map(tab => tab.value)
+  if (source.value !== SOURCE_ALL && !availableSources.includes(source.value)) {
     source.value = SOURCE_ALL
+  }
+  const availableCategories = tabs.value.map(tab => tab.value)
+  if (category.value !== CATEGORY_ALL && !availableCategories.includes(category.value)) {
+    category.value = CATEGORY_ALL
   }
 })
 

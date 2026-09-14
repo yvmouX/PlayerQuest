@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.objective.CustomFishObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
@@ -38,33 +39,40 @@ public final class BuiltIns {
     /** 全部内置目标类型，按登记顺序排列（注册表按序展示）。 */
     public static List<ObjectiveType> objectives() {
         return List.of(
+                // 每个 target 字段的值域都在这里定下：选择器只列该值域里的东西，
+                // 服务端也按同一份声明校验「配了却永远不会命中」的值（见 ValueKind / ValueKinds）
                 new TargetObjective("break_block", "挖掘方块", Trigger.BREAK_BLOCK,
-                        ConfigField.material("target", "目标方块", "DIAMOND_ORE"), 64),
+                        ConfigField.blocks("target", "目标方块", "DIAMOND_ORE"), 64),
                 new TargetObjective("place_block", "放置方块", Trigger.PLACE_BLOCK,
-                        ConfigField.material("target", "目标方块", "STONE"), 64),
+                        ConfigField.picker("target", "目标方块", "STONE", true,
+                                "方块名，如 STONE；只有能拿在手里放下的方块才算",
+                                ValueKind.PLACEABLE), 64),
                 new TargetObjective("craft", "合成物品", Trigger.CRAFT,
-                        ConfigField.material("target", "目标物品", "DIAMOND"), 1),
+                        ConfigField.items("target", "目标物品", "DIAMOND"), 1),
                 new TargetObjective("fish", "垂钓", Trigger.FISH,
-                        ConfigField.optionalMaterial("target", "钓获物", ""), 1),
+                        ConfigField.optionalItems("target", "钓获物", ""), 1),
                 // CustomFishing 的自定义鱼：单独一个动作，因为原版垂钓事件看不到那些掉落
                 new CustomFishObjective(),
                 new TargetObjective("kill", "击杀生物", Trigger.KILL,
-                        ConfigField.optionalEntity("target", "生物类型", "ZOMBIE",
+                        ConfigField.optionalEntities("target", "生物类型", "ZOMBIE",
                                 "实体类型名，如 ZOMBIE；装了 MythicMobs 5.x 时也可写 mythic:<怪物id>；"
-                                        + "留空或 * 表示任意"), 1),
+                                        + "留空或 * 表示任意", ValueKind.LIVING), 1),
                 new TargetObjective("consume", "消耗物品", Trigger.CONSUME,
-                        ConfigField.material("target", "目标物品", "BREAD"), 1),
+                        ConfigField.items("target", "目标物品", "BREAD"), 1),
                 new TargetObjective("enchant", "附魔", Trigger.ENCHANT,
-                        ConfigField.optionalText("target", "附魔", "",
+                        ConfigField.optionalEnchantments("target", "附魔", "",
                                 "附魔名，如 SHARPNESS、EFFICIENCY；留空或 * 表示任意附魔"), 1),
                 new TargetObjective("shear", "剪切", Trigger.SHEAR,
-                        ConfigField.optionalEntity("target", "被剪实体", ""), 1),
+                        ConfigField.optionalEntities("target", "被剪实体", "",
+                                "能剪毛的生物，如 SHEEP；留空或 * 表示任意", ValueKind.SHEARABLE), 1),
                 new TargetObjective("breed", "繁殖", Trigger.BREED,
-                        ConfigField.optionalEntity("target", "幼崽实体", ""), 1),
+                        ConfigField.optionalEntities("target", "幼崽实体", "",
+                                "能繁殖的动物，如 COW；留空或 * 表示任意", ValueKind.BREEDABLE), 1),
                 new TargetObjective("tame", "驯服", Trigger.TAME,
-                        ConfigField.optionalEntity("target", "生物类型", "WOLF"), 1),
+                        ConfigField.optionalEntities("target", "生物类型", "WOLF",
+                                "能驯服的生物，如 WOLF、CAT；留空或 * 表示任意", ValueKind.TAMEABLE), 1),
                 new TargetObjective("submit", "提交物品", Trigger.SUBMIT,
-                        ConfigField.material("target", "提交物品", "DIAMOND"), 1),
+                        ConfigField.items("target", "提交物品", "DIAMOND"), 1),
                 new TargetObjective("command", "执行命令", Trigger.COMMAND,
                         ConfigField.optionalText("target", "命令名", "home",
                                 "不带前导斜杠的命令名，如 home；留空或 * 表示任意命令"), 1),

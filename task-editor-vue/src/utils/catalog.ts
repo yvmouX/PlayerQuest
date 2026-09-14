@@ -20,13 +20,24 @@
 import { CatalogApi } from '../services/api'
 import type { CatalogEntry, CatalogSource, MaterialCatalog } from '../types'
 
-/** 选择器要展示的条目范围。 */
-export type CatalogScope = 'material' | 'entity' | 'both' | 'fish'
+/**
+ * 值域（后端 {@code ValueKind} 的小写 id）：字段能填哪一类值。
+ *
+ * <p>这里只列前端需要认识的那几个——过滤时只做包含判断，因此新加值域不必改前端；
+ * 需要界面文案（分类栏、图标等）时才在这里补一条。
+ */
+export const KIND_BLOCK = 'block'
+export const KIND_ITEM = 'item'
+export const KIND_FOOD = 'food'
+export const KIND_ENTITY = 'entity'
+export const KIND_FISH = 'fish'
+export const KIND_ENCHANTMENT = 'enchantment'
 
-/** 分类筛选值：'ALL' 或 catalog.categories 里的某个分类；实体、鱼各用一栏。 */
+/** 分类筛选值：'ALL' 或 catalog.categories 里的某个分类；实体、鱼各占一栏。 */
 export const CATEGORY_ALL = 'ALL'
 export const CATEGORY_ENTITY = 'entity'
 export const CATEGORY_FISH = 'fish'
+export const CATEGORY_ENCHANTMENT = 'enchantment'
 
 /** 来源筛选值：'ALL' 或 catalog.sources 里的某个来源 id。 */
 export const SOURCE_ALL = 'ALL'
@@ -96,17 +107,19 @@ export function normalizeCatalog(raw: MaterialCatalog | null | undefined): Mater
   const materials = Array.isArray(raw?.materials) ? raw!.materials : []
   const entities = Array.isArray(raw?.entities) ? raw!.entities : []
   const fish = Array.isArray(raw?.fish) ? raw!.fish : []
+  const enchantments = Array.isArray(raw?.enchantments) ? raw!.enchantments : []
   const categories = Array.isArray(raw?.categories) && raw!.categories.length
     ? raw!.categories
     // 后端没给顺序时给一份可用的默认顺序，保证分类栏仍然出现
     : ['block', 'item', 'food']
   const sources = Array.isArray(raw?.sources) && raw!.sources.length
     ? raw!.sources.filter(isSource)
-    : sourcesFromEntries(materials.concat(entities, fish))
+    : sourcesFromEntries(materials.concat(entities, fish, enchantments))
   return {
     materials: materials.filter(isEntry),
     entities: entities.filter(isEntry),
     fish: fish.filter(isEntry),
+    enchantments: enchantments.filter(isEntry),
     categories,
     sources,
     serverVersion: typeof raw?.serverVersion === 'string' ? raw!.serverVersion : '',
@@ -347,68 +360,80 @@ export function resolveValueText(value: string, entries: CatalogEntry[]): Catalo
   return splitMaterialValue(value).map(raw => resolveValue(raw, entries))
 }
 
-/** 一个字段类型对应的选择范围。 */
-export function scopeForFieldType(type: string): CatalogScope {
-  if (type === 'ENTITY') {
-    return 'entity'
+/**
+ * 条目是否满足字段声明的值域。
+ *
+ * <p>语义是「或」：条目只要属于其中任意一个值域就能被选（后端 {@code ValueKind} 同义）。
+ * 后端没给条目的 {@code kinds} 时（旧版后端）退回原来的粗粒度判断：材质列表里的都算
+ * 方块/物品，实体列表里的都算实体——宁可放宽，也不要让选择器空掉。
+ */
+export function matchesKinds(entry: CatalogEntry, kinds: readonly string[]): boolean {
+  if (!kinds.length) {
+    return true
   }
-  if (type === 'TARGET') {
-    return 'both'
-  }
-  if (type === 'FISH') {
-    return 'fish'
-  }
-  return 'material'
+  const entryKinds = entry.kinds?.length ? entry.kinds : fallbackKinds(entry)
+  return kinds.some(kind => entryKinds.includes(kind))
 }
 
-/** 按范围取出条目：TARGET 需要同时列出方块材质与实体；FISH 只看 CustomFishing 的战利品。 */
-export function entriesForScope(catalog: MaterialCatalog | null, scope: CatalogScope): CatalogEntry[] {
+/** 旧版后端（条目没有 kinds）时的兜底值域：按它所在的列表猜。 */
+function fallbackKinds(entry: CatalogEntry): string[] {
+  switch (entry.category) {
+    case CATEGORY_ENTITY:
+      return [KIND_ENTITY]
+    case CATEGORY_FISH:
+      return [KIND_FISH]
+    case CATEGORY_ENCHANTMENT:
+      return [KIND_ENCHANTMENT]
+    case 'food':
+      return [KIND_ITEM, KIND_FOOD]
+    case 'block':
+      return [KIND_BLOCK, KIND_ITEM]
+    default:
+      return entry.category ? [KIND_ITEM] : [KIND_ENTITY]
+  }
+}
+
+/** 按字段声明的值域取出候选条目（实体的分类补成「实体」，好让分类栏与徽标一致）。 */
+export function entriesForKinds(catalog: MaterialCatalog | null, kinds: readonly string[]): CatalogEntry[] {
   if (!catalog) {
     return []
   }
-  const materials = catalog.materials
-  const entities = catalog.entities
-  const fish = catalog.fish.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_FISH }))
-  if (scope === 'material') {
-    return materials
-  }
-  if (scope === 'entity') {
-    return entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY }))
-  }
-  if (scope === 'fish') {
-    return fish
-  }
-  return materials
-    .concat(entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY })))
-    .concat(fish)
+  const pool = catalog.materials
+    .concat(catalog.entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY })))
+    .concat(catalog.fish.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_FISH })))
+    .concat(catalog.enchantments.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENCHANTMENT })))
+  return pool.filter(entry => matchesKinds(entry, kinds))
 }
 
 /**
  * 选择器顶部的分类标签。
  *
- * <p>顺序来自 {@code catalog.categories}（不硬编码），实体与鱼各作为单独一栏，
- * 且只在选择范围包含它们时出现。
+ * <p>顺序来自 {@code catalog.categories}（不硬编码），实体、鱼、附魔各作为单独一栏，
+ * 且只在当前值域真的含它们时出现——在方块字段里给一个「鱼」分类栏毫无意义。
  */
-export function categoryTabs(catalog: MaterialCatalog | null, scope: CatalogScope): { value: string; label: string }[] {
+export function categoryTabs(catalog: MaterialCatalog | null, kinds: readonly string[]): { value: string; label: string }[] {
   const tabs: { value: string; label: string }[] = [{ value: CATEGORY_ALL, label: '全部' }]
   if (!catalog) {
     return tabs
   }
-  if (scope === 'fish') {
-    tabs.push({ value: CATEGORY_FISH, label: '鱼' })
-    return tabs
-  }
-  if (scope !== 'entity') {
-    for (const category of catalog.categories) {
-      // 鱼是独立范围，混进材质分类栏只会让人在方块目标里选到鱼
-      if (category === CATEGORY_FISH) {
-        continue
-      }
+  const pool = entriesForKinds(catalog, kinds)
+  const present = new Set(pool.map(entry => entry.category ?? CATEGORY_ENTITY))
+  for (const category of catalog.categories) {
+    if (category === CATEGORY_FISH || category === CATEGORY_ENCHANTMENT) {
+      continue
+    }
+    if (present.has(category)) {
       tabs.push({ value: category, label: categoryLabel(category) })
     }
   }
-  if (scope !== 'material') {
-    tabs.push({ value: CATEGORY_ENTITY, label: '实体' })
+  if (present.has(CATEGORY_ENTITY)) {
+    tabs.push({ value: CATEGORY_ENTITY, label: categoryLabel(CATEGORY_ENTITY) })
+  }
+  if (present.has(CATEGORY_FISH)) {
+    tabs.push({ value: CATEGORY_FISH, label: categoryLabel(CATEGORY_FISH) })
+  }
+  if (present.has(CATEGORY_ENCHANTMENT)) {
+    tabs.push({ value: CATEGORY_ENCHANTMENT, label: categoryLabel(CATEGORY_ENCHANTMENT) })
   }
   return tabs
 }
@@ -416,12 +441,12 @@ export function categoryTabs(catalog: MaterialCatalog | null, scope: CatalogScop
 /**
  * 选择器顶部的来源（插件）标签。
  *
- * <p>只列出**当前范围里真的有条目**的来源：在「实体」范围里塞一个 ItemsAdder 标签，
- * 点进去只会是空列表。范围里只有一个来源时返回空数组——没什么可筛的，
- * 那一排标签只会占地方（原版材质字段正是这种情况）。
+ * <p>只列出**当前值域里真的有条目**的来源：在实体字段里塞一个 ItemsAdder 标签，
+ * 点进去只会是空列表。只有一个来源时返回空数组——没什么可筛的，
+ * 那一排标签只会占地方（原版方块字段正是这种情况）。
  */
-export function sourceTabs(catalog: MaterialCatalog | null, scope: CatalogScope): { value: string; label: string }[] {
-  const entries = entriesForScope(catalog, scope)
+export function sourceTabs(catalog: MaterialCatalog | null, kinds: readonly string[]): { value: string; label: string }[] {
+  const entries = entriesForKinds(catalog, kinds)
   if (!entries.length) {
     return []
   }
@@ -456,6 +481,8 @@ export function categoryLabel(category: string): string {
       return '实体'
     case CATEGORY_FISH:
       return '鱼'
+    case CATEGORY_ENCHANTMENT:
+      return '附魔'
     default:
       return category
   }

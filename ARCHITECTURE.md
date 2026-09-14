@@ -341,7 +341,8 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 （与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
 
 **目录里的每条都带 `source`（`minecraft` / `mythicmobs` / `itemsadder` / `craftengine` /
-`customfishing`），响应另给一份 `sources`**：编辑器据此渲染「按插件筛选」的那一排标签。
+`customfishing`）与 `kinds`（值域），响应另给一份 `sources`**：编辑器据此渲染「按插件筛选」
+那一排标签，并按字段声明的值域筛候选。
 两条约束写在这里，因为它们都是「不报错但会让人找不到东西」的类型：
 
 1. **`sources` 只列这次真的有内容的来源**，顺序固定（原版 → MythicMobs → ItemsAdder →
@@ -371,6 +372,37 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 
 > 家具（furniture）不在支持范围内：那是实体而不是方块，需要各自的交互事件与持久化，
 > 与「方块/物品目标」不是同一类需求。
+#### 4.5.1 字段值域（`ValueKind`）：选择器列什么 = 校验放行什么
+
+**问题**：`FieldType` 曾经既表示「渲染成什么控件」又表示「列哪一份清单」
+（`MATERIAL` / `ENTITY` / `TARGET` / `FISH`）。于是「挖掘方块只能选方块」这件事没有地方可写：
+选择器把全部材质端上来，管理员点得出「挖 64 个苹果」，而这类配置**永远不会命中**、
+也不会有任何报错——正是本项目最想根除的那类问题。
+
+**做法**：把值域从控件类型里拆出来，变成字段上的一份声明（`ConfigField.kinds`），
+`FieldType` 只剩 `PICKER` 等控件语义。三层各司其职：
+
+| 层 | 位置 | 职责 |
+|---|---|---|
+| 值域枚举 | `api/schema/ValueKind` | 声明「哪一类值」：`BLOCK` / `PLACEABLE` / `ITEM` / `FOOD` / `ENTITY` / `LIVING` / `BREEDABLE` / `TAMEABLE` / `SHEARABLE` / `FISH` / `ENCHANTMENT`。多个之间是**或**；需要「且」的场合另立一个值域（`PLACEABLE` = 是方块且拿得在手里） |
+| 运行期判定 | `core/schema/ValueKinds` | 某个候选值属于哪些值域（`Material.isBlock()`、`EntityType.getEntityClass()` 是不是 `Animals`/`Shearable`…），以及一个配置值能不能命中 |
+| 声明点 | 各目标类型的 `schema()` | 一行一个字段：`ConfigField.blocks(...)` / `.items(...)` / `.optionalEntities(..., ValueKind.SHEARABLE)` / `.optionalEnchantments(...)` |
+
+由此三件事天然一致，不会再各说各话：**编辑器选择器列出什么**（按 `kinds` 过滤目录条目）、
+**图标怎么推**（`QuestDetailMenu.objectiveIcon` 读同一份 `kinds`）、
+**服务端标红什么**（`QuestAdminService.valueProblems` 用 `ValueKinds.check`）。
+`ObjectiveFieldTypeConsistencyTest` 把 15 个目标类型的值域逐个钉住——
+新增目标类型时忘了声明值域会直接测试失败。
+
+**判断不了 ≠ 不满足**：`Material.isItem()` 与 `Enchantment.values()` 要读服务端注册表，
+插件引导阶段与单元测试里会抛异常。那时结论是 `UNKNOWN` → **放行**；
+把「我判断不了」当成「你写错了」会让校验在半个环境下满屏误报。
+因此材质/附魔的值域只有真机能验，单测覆盖的是生物能力、CustomFishing 清单与各种放行规则。
+
+**目录条目也带 `kinds`**：一次下发、按值域过滤，不做「一个值域一份切片」——
+后者会把同一个材质在多个切片里重复塞一遍（流量翻倍），而过滤是纯前端的事。
+顺带放宽一处旧限制：材质列表过去只列 `isItem()`，于是**只有方块形态、没有物品形态的材质**
+在挖掘目标里选不到；现在列的是「方块 ∪ 物品」，由 `kinds` 决定谁能出现在哪个字段。
 
 ### 4.6 只读 YAML 定义来源（`quests/` 与 `presets/`）
 
@@ -765,32 +797,33 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 30 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
 | 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 5 项目录测试） |
 | 32 | 真机装上 CraftEngine / MythicMobs / Vault 后暴露的三处接入问题：素材目录没拿到自定义内容、MythicMobs 因 `POSTWORLD` 永远接不上、金币按插件名判 Vault 而非按经济服务在册判 | ✅ 完成（见 4.5，+2 项目录测试 + 4 项经济服务测试） |
-| 33 | 编辑器素材目录按**插件来源**筛选：每条带 `source`、响应带 `sources`；CustomFishing 战利品进独立 `fish` 栏（`FieldType.FISH` 选择器） | ✅ 完成（见 4.5，+5 项目录测试 + 1 个前端自检脚本 9 项） |
+| 33 | 编辑器素材目录按**插件来源**筛选：每条带 `source`、响应带 `sources`；CustomFishing 战利品进独立 `fish` 栏 | ✅ 完成（见 4.5，+5 项目录测试 + 1 个前端自检脚本） |
+| 34 | **字段值域**：`ValueKind` + 每个目标类型逐一声明 `kinds`；选择器只列该值域、服务端按同一份声明校验「永远不可能命中」的值；`FieldType` 收敛为 `PICKER` | ✅ 完成（见 4.5.1，+9 项值域测试 + 11 项目标值域一致性测试 + 2 项校验接入测试） |
 
-**测试总量：260 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+**测试总量：275 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
 存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
 预设引用 7（`PresetRefsTest`）+ 示例文件 5（`ExampleFilesTest`）+
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-任务管理 12（`QuestAdminServiceTest`）+
-素材 18（`MaterialCatalogTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
+任务管理 14（`QuestAdminServiceTest`）+
+素材 19（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
-字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
+字段值域一致性 11（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
 示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
 示例预设 5（`ExamplePresetsTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（31 个 XML），不是靠日志里的汇总行。
+逐套件累加（32 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 990 行 + `core/src/main` 13763 行
-＝ **14753 行 / 108 个 java 文件**；测试 `core/src/test` **6301 行 / 34 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1071 行 + `core/src/main` 14164 行
+＝ **15235 行 / 110 个 java 文件**；测试 `core/src/test` **6525 行 / 35 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6013 行 `.vue` + 2149 行 `.ts`/`.js` ＝ 8162 行 / 31 个文件**
-（另有 `scripts/` 下三个构建期自检脚本：YAML 往返 14 项、素材目录筛选 9 项、4 个视图 SSR 渲染，不计入 src）。
+前端 `task-editor-vue/src` **6021 行 `.vue` + 2193 行 `.ts`/`.js` ＝ 8214 行 / 31 个文件**
+（另有 `scripts/` 下三个构建期自检脚本：YAML 往返 14 项、素材目录筛选 13 项、4 个视图 SSR 渲染，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：

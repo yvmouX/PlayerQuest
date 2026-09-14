@@ -197,7 +197,9 @@ public class LangFileStore {
                 return;
             }
             String group = key.substring(0, namespaceEnd);
-            if (!"item".equals(group) && !"block".equals(group) && !"entity".equals(group)) {
+            // enchantment 也要：编辑器里的「附魔」字段是下拉选择，中文名同样来自语言文件
+            if (!"item".equals(group) && !"block".equals(group) && !"entity".equals(group)
+                    && !"enchantment".equals(group)) {
                 return;
             }
             String name = key.substring(namespaceEnd + ".minecraft.".length());

@@ -404,11 +404,12 @@ class EditorApiTest {
         assertFalse(breakBlock.get("displayName").asText().isBlank(), "类型要有人看的名字");
 
         JsonNode target = fieldOf(breakBlock, "target");
-        assertEquals("MATERIAL", target.get("type").asText());
+        assertEquals("PICKER", target.get("type").asText(), "要弹选择器，而不是让管理员手打枚举名");
+        assertEquals(List.of("block"), kindsOf(target), "挖掘方块只能选方块——值域写宽了选择器就会列出苹果");
         assertTrue(target.get("required").asBoolean());
         assertFalse(target.get("defaultValue").isNull(), "编辑器新建任务时要预填默认值");
-        // 七个键一个都不能少：前端是逐键读取的，少一个就是静默的空控件
-        for (String key : List.of("key", "label", "type", "required", "defaultValue", "options", "hint")) {
+        // 八个键一个都不能少：前端是逐键读取的，少一个就是静默的空控件
+        for (String key : List.of("key", "label", "type", "required", "defaultValue", "options", "hint", "kinds")) {
             assertTrue(target.has(key), "字段描述缺 " + key + ": " + target);
         }
         assertEquals("INTEGER", fieldOf(breakBlock, "amount").get("type").asText(),
@@ -664,6 +665,15 @@ class EditorApiTest {
             }
         }
         throw new AssertionError("类型 " + typeSchema.get("id") + " 缺字段 " + key);
+    }
+
+    /** 字段声明的值域（小写 id 列表）——编辑器据此决定选择器里列什么。 */
+    private static List<String> kindsOf(JsonNode field) {
+        List<String> kinds = new ArrayList<>();
+        for (JsonNode kind : field.get("kinds")) {
+            kinds.add(kind.asText());
+        }
+        return kinds;
     }
 
     private static String problemsText(JsonNode quest) {

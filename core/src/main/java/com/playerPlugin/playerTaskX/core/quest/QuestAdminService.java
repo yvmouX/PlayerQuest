@@ -2,13 +2,19 @@ package com.playerPlugin.playerTaskX.core.quest;
 
 import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.Quest;
+import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
+import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
+import com.playerPlugin.playerTaskX.core.integration.FishLoot;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.schema.ValueKinds;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import org.bukkit.Bukkit;
 
@@ -136,6 +142,11 @@ public final class QuestAdminService {
                 problems.add("未知目标类型 " + objective.type());
             } else if (!type.available()) {
                 problems.add("目标类型 " + objective.type() + " 不可用（" + type.unavailableReason() + "）");
+            } else {
+                // 字段值域：配了「永远不可能命中」的值必须报出来（挖苹果、剪猪毛…）。
+                // 判据与编辑器选择器列出的候选是同一份声明（见 ValueKind / ValueKinds），
+                // 因此「选择器里选不到」与「校验会标红」天然一致
+                problems.addAll(valueProblems(type, objective));
             }
         }
         // target 里写了 mythic:<怪物id> 但服务端没有 MythicMobs：这些目标永远命中不了
@@ -145,6 +156,46 @@ public final class QuestAdminService {
         // itemsadder: / craftengine: 目标在没装对应插件（或接入失败）时永远命中不了
         problems.addAll(customContent.get().problems(quest));
         problems.addAll(rewardService.validate(quest));
+        return problems;
+    }
+
+    /**
+     * 字段值域校验：目标里写了「这个字段不可能接受的值」时逐条报出来。
+     *
+     * <p>为什么必须有这一层：值可以手打、可以来自 {@code quests/*.yml}、可以来自导入的 zip，
+     * 前端选择器拦不住任何一条。而这类错误的表现是「配了却永远不涨进度」——管理员只会看到
+     * 玩家来问「我挖了怎么不涨」，正是本项目最想根除的一类问题。
+     *
+     * <p>CustomFishing 的战利品清单只在这里读一次（装了才有清单）：鱼 id 是裸字符串，
+     * 没有清单就只能放行。
+     */
+    private List<String> valueProblems(ObjectiveType type, QuestObjective objective) {
+        List<ValueKind> allKinds = new ArrayList<>();
+        boolean needsFish = false;
+        for (ConfigField field : type.schema()) {
+            if (field.kinds().isEmpty()) {
+                continue;
+            }
+            allKinds.addAll(field.kinds());
+            needsFish = needsFish || field.kinds().contains(ValueKind.FISH);
+        }
+        if (allKinds.isEmpty()) {
+            return List.of();
+        }
+        List<String> fishLoot = needsFish && CustomFishingHook.supported()
+                ? CustomFishingHook.loot().stream().map(FishLoot::id).toList()
+                : null;
+
+        List<String> problems = new ArrayList<>();
+        for (ConfigField field : type.schema()) {
+            if (field.kinds().isEmpty()) {
+                continue;
+            }
+            String problem = ValueKinds.check(field.kinds(), objective.string(field.key(), ""), fishLoot);
+            if (problem != null) {
+                problems.add(problem);
+            }
+        }
         return problems;
     }
 

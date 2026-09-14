@@ -64,6 +64,14 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     落库/导出只写 `authored`，引擎只读 `properties`，展开统一走 `PresetRefs.resolve`
     （由 `QuestAdminService` 的 reload/save 调用）。少任何一份都会出静默错误：只留生效值 →
     保存一次就把预设的值复制成显式覆盖、改预设再也不生效；只留作者那份 → 引擎拿到空配置。
+  - **每个目标字段要声明「值域」**（见 ARCHITECTURE 4.5.1）：`ConfigField.kinds`（`ValueKind`）
+    说明这个字段能填哪一类值，`FieldType` 只管渲染成什么控件。选择器列出什么、任务图标怎么推、
+    服务端标红什么，三处都读这一份声明——分开写必然漂移，而漂移的表现是
+    「选择器里能选、配了却永远不命中」且无人报警（挖掘方块的 target 只声明成「物品」时，
+    编辑器就会把苹果端上来）。值域成员资格一律由**服务端当前**的枚举与接口算
+    （`Material.isBlock()`、`EntityType.getEntityClass()` 是不是 `Shearable`…），
+    **不要写会过期的允许清单**；判断不了时（注册表还没起来、单测环境）结论是「放行」而不是「报错」。
+    新增目标类型时忘了声明值域，`ObjectiveFieldTypeConsistencyTest` 会直接失败。
 - 关于前端产物输出：
   - 产物输出到 `core/src/main/resources/web/`（vite outDir），不是`dist/`；该目录已加入 gitignore，属于构建临时文件，不要提交。
   - `task-editor-vue` 的 `npm run build` 会先跑 `vue-tsc` 类型检查，因此类型错误会让整个 Gradle build 失败。

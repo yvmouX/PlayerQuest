@@ -84,6 +84,19 @@ class MaterialCatalogTest {
     }
 
     @Test
+    @DisplayName("附魔译名也收录：编辑器的「附魔」字段是选择器，中文名同样来自语言文件")
+    void enchantmentNamesAreCollected() throws Exception {
+        Map<String, String> names = parse("""
+                {
+                  "enchantment.minecraft.sharpness": "锋利",
+                  "enchantment.minecraft.efficiency": "效率"
+                }
+                """);
+        assertEquals("锋利", names.get("sharpness"));
+        assertEquals("效率", names.get("efficiency"));
+    }
+
+    @Test
     @DisplayName("键统一转小写，便于与枚举名小写化后对齐")
     void keysAreLowerCase() throws Exception {
         Map<String, String> names = parse("""

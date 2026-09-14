@@ -41,12 +41,12 @@
         @input="onNumber"
       />
 
-      <!-- MATERIAL / ENTITY / TARGET：素材选择器（仍允许手打原文） -->
+      <!-- PICKER：素材选择器（值域决定列出什么，仍允许手打原文） -->
       <MaterialPicker
-        v-else-if="pickerScope"
+        v-else-if="field.type === 'PICKER'"
         :model-value="text"
-        :scope="pickerScope"
-        :multi="field.type === 'MATERIAL'"
+        :kinds="field.kinds ?? []"
+        :multi="allowMulti"
         :empty-hint="allowsEmpty"
         @update:model-value="onPickerValue"
       />
@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { FieldSchema, PropertyValue } from '../types'
-import { scopeForFieldType } from '../utils/catalog'
+import { KIND_BLOCK, KIND_ITEM } from '../utils/catalog'
 import { parseNumberInput, toInputText } from '../utils/schema'
 import MaterialPicker from './MaterialPicker.vue'
 
@@ -81,18 +81,17 @@ const isNumber = computed(
   () => props.field.type === 'INTEGER' || props.field.type === 'DECIMAL'
 )
 
-/** 需要用选择器的字段类型；其余返回空串（模板里当布尔用）。 */
-const pickerScope = computed(() => {
-  switch (props.field.type) {
-    case 'MATERIAL':
-    case 'ENTITY':
-    case 'TARGET':
-    case 'FISH':
-      return scopeForFieldType(props.field.type)
-    default:
-      return ''
-  }
+/**
+ * 是否允许多选（逗号分隔）。
+ *
+ * <p>由值域决定：方块与物品类的字段天然可以写多个（「挖钻石矿或深层钻石矿」），
+ * 而实体、鱼、附魔这类是「一个具体对象」，多选只会让人写出更绕的配置。
+ */
+const allowMulti = computed(() => {
+  const kinds = props.field.kinds ?? []
+  return kinds.includes(KIND_BLOCK) || kinds.includes(KIND_ITEM)
 })
+
 
 /**
  * 字段是否允许留空。

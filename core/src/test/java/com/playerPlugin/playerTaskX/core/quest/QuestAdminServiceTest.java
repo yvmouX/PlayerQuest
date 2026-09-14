@@ -75,6 +75,9 @@ class QuestAdminServiceTest {
         objectiveTypes.register(BuiltIns.objective("break_block"));
         // 「自定义钓鱼」依赖 CustomFishing（单测环境没有），用于验证「类型可用性」也被校验到
         objectiveTypes.register(BuiltIns.objective("custom_fish"));
+        // 值域校验的用例要用的两个：剪毛（实体能力）与击杀（放行 mythic: 前缀）
+        objectiveTypes.register(BuiltIns.objective("shear"));
+        objectiveTypes.register(BuiltIns.objective("kill"));
         RewardRegistryImpl rewardTypes = new RewardRegistryImpl();
         // 只登记恒可用的类型：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
         rewardTypes.register(new ExpReward());
@@ -227,6 +230,45 @@ class QuestAdminServiceTest {
     }
 
     @Test
+    @DisplayName("值域校验接进了统一出口：给猪剪毛要报出来")
+    void validateReportsImpossibleTargets() {
+        // 剪毛的值域在实体侧，能离线判断，因此这条断言与真机一致
+        Quest shearPig = questWithObjective("q2",
+                QuestObjective.of("shear", Map.of("target", "PIG", "amount", 1)));
+        assertTrue(service.validate(shearPig).stream().anyMatch(problem -> problem.contains("PIG")),
+                "给猪剪毛永远不会命中，编辑器与 /ptxa list 都必须看到这条，实际: "
+                        + service.validate(shearPig));
+
+        // 认不出来的名字同样是死配置
+        Quest shearGhost = questWithObjective("q3",
+                QuestObjective.of("shear", Map.of("target", "NOT_A_MOB", "amount", 1)));
+        assertTrue(service.validate(shearGhost).stream().anyMatch(problem -> problem.contains("NOT_A_MOB")));
+
+        // 合法的照样没有额外问题（SHEEP 能剪毛、留空与 * 表示任意）
+        assertTrue(service.validate(questWithObjective("q4",
+                QuestObjective.of("shear", Map.of("target", "SHEEP", "amount", 1)))).isEmpty());
+        assertTrue(service.validate(questWithObjective("q5",
+                QuestObjective.of("shear", Map.of("target", "", "amount", 1)))).isEmpty());
+        assertTrue(service.validate(questWithObjective("q6",
+                QuestObjective.of("shear", Map.of("target", "*", "amount", 1)))).isEmpty());
+    }
+
+    @Test
+    @DisplayName("值域校验放行别家插件的 id：该报的是「插件没装」，不是「值不可能命中」")
+    void validateAllowsForeignIds() {
+        for (String target : new String[]{"mythic:SkeletalKnight", "craftengine:default:torch"}) {
+            Quest quest = questWithObjective("q7", QuestObjective.of("kill",
+                    Map.of("target", target, "amount", 1)));
+            List<String> problems = service.validate(quest);
+
+            assertTrue(problems.stream().noneMatch(problem -> problem.contains("不是「")),
+                    target + " 是别家插件的 id，离线判断不了，不该被值域校验判成非法，实际: " + problems);
+            assertTrue(problems.stream().anyMatch(problem -> problem.contains("未安装")),
+                    "该报的是「没装那个插件」（另有专门的检查），实际: " + problems);
+        }
+    }
+
+    @Test
     @DisplayName("空库时写入全部示例任务，且走统一的保存入口（三处同步）")
     void seedWritesAllExamplesWhenEmpty() {
         service.seedIfEmpty(List.of(quest("example_a"), quest("example_b")));
@@ -256,6 +298,11 @@ class QuestAdminServiceTest {
         return questWithAmount(id, 1);
     }
 
+    /** 指定目标的单目标任务：用于值域校验这类「配置里写了什么」的用例。 */
+    private static Quest questWithObjective(String id, QuestObjective objective) {
+        return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL,
+                List.of(objective), List.of(QuestReward.of("exp", Map.of("amount", 100))), 0.0, true);
+    }
     private static Quest questWithAmount(String id, int amount) {
         return new Quest(id, "任务", List.of(), "PAPER", null, QuestType.NORMAL,
                 List.of(QuestObjective.of("break_block", Map.of("target", "STONE", "amount", amount))),

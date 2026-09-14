@@ -1,18 +1,23 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.FishLoot;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
+import com.playerPlugin.playerTaskX.core.schema.ValueKinds;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -100,10 +105,13 @@ public class MaterialCatalog {
 
         List<Map<String, Object>> materials = new ArrayList<>();
         for (Material material : Material.values()) {
-            if (!material.isItem()) {
+            // 方块与物品的并集：只列 isItem 会漏掉「能挖但没有物品形态」的方块（刷怪笼、耕地…），
+            // 而挖掘目标恰恰要能选到它们；值域由每条的 kinds 决定，选择器不会再列错
+            if (!material.isItem() && !material.isBlock()) {
                 continue;
             }
-            materials.add(entry(material.name(), english, chinese, categoryOf(material), SOURCE_MINECRAFT));
+            materials.add(entry(material.name(), english, chinese, categoryOf(material), SOURCE_MINECRAFT,
+                    ValueKinds.of(material)));
         }
         // 自定义物品与自定义方块混进材质列表、id 带插件前缀：写入 target 的值天然就是我们要的语法
         // （与下面 MythicMobs 的处理同一套思路），前端也不用新增一种选择器
@@ -116,7 +124,7 @@ public class MaterialCatalog {
                 // 纯技术实体，永远不会出现在任务里
                 continue;
             }
-            entities.add(entry(type.name(), english, chinese, null, SOURCE_MINECRAFT));
+            entities.add(entry(type.name(), english, chinese, null, SOURCE_MINECRAFT, ValueKinds.of(type)));
         }
         // MythicMobs 的怪物不是 EntityType，编辑器原本无从选起（只能手打 mythic:<id>）。
         // 直接混进实体列表、id 带 mythic: 前缀：写入 target 的值天然就是我们要的语法，
@@ -130,13 +138,17 @@ public class MaterialCatalog {
         List<Map<String, Object>> fish = new ArrayList<>(fishEntries(fishLoot.get()));
         fish.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
 
+        // 附魔同样自成一份清单：它不是材质，也与实体无关
+        List<Map<String, Object>> enchantments = enchantmentEntries(english, chinese);
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("materials", materials);
         result.put("entities", entities);
         result.put("fish", fish);
+        result.put("enchantments", enchantments);
         result.put("categories", CATEGORY_ORDER);
         // 来源清单只列「这次真的有东西」的那些：没装 CraftEngine 的服务器上不该出现它的筛选标签
-        result.put("sources", sourcesOf(materials, entities, fish));
+        result.put("sources", sourcesOf(materials, entities, fish, enchantments));
         String version = Bukkit.getBukkitVersion();
         result.put("serverVersion", version == null ? "" : version);
         result.put("hasChinese", langFiles.hasChinese());
@@ -208,6 +220,8 @@ public class MaterialCatalog {
             entry.put("en", "MythicMobs: " + mobId);
             entry.put("zh", "");
             entry.put("source", SOURCE_MYTHICMOBS);
+            // MythicMobs 的怪是活体：既能当击杀目标（LIVING），也能当交互对象（ENTITY）
+            entry.put("kinds", kindsJson(ValueKinds.mythicMob()));
             entries.add(entry);
         }
         return entries;
@@ -237,6 +251,7 @@ public class MaterialCatalog {
             entry.put("zh", "");
             entry.put("category", "fish");
             entry.put("source", SOURCE_CUSTOMFISHING);
+            entry.put("kinds", kindsJson(ValueKinds.fish()));
             entries.add(entry);
         }
         return entries;
@@ -281,7 +296,39 @@ public class MaterialCatalog {
         entry.put("category", category);
         // 来源就是前缀本身（itemsadder / craftengine），去掉冒号与前缀语义无关
         entry.put("source", prefix.isEmpty() ? SOURCE_MINECRAFT : prefix.substring(0, prefix.length() - 1));
+        // 自定义内容的值域按它自己声明的那一类给：方块家的 id 只有 BLOCK/PLACEABLE，
+        // 物品家的只有 ITEM。离线判断不了它在游戏里到底是不是方块，因此以插件自己的分类为准
+        entry.put("kinds", kindsJson("block".equals(category)
+                ? EnumSet.of(ValueKind.BLOCK, ValueKind.PLACEABLE)
+                : EnumSet.of(ValueKind.ITEM)));
         return entry;
+    }
+
+    /** 附魔条目：id 就是 Bukkit 的附魔名（{@code SHARPNESS}），也是写进 target 的值。 */
+    static List<Map<String, Object>> enchantmentEntries(Map<String, String> english,
+                                                        Map<String, String> chinese) {
+        List<Map<String, Object>> entries = new ArrayList<>();
+        for (Enchantment enchantment : ValueKinds.enchantments()) {
+            String id = enchantment.getKey().getKey().toUpperCase(Locale.ROOT);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", id);
+            entry.put("en", english.getOrDefault(id.toLowerCase(Locale.ROOT), pretty(id)));
+            entry.put("zh", chinese.getOrDefault(id.toLowerCase(Locale.ROOT), ""));
+            entry.put("source", SOURCE_MINECRAFT);
+            entry.put("kinds", kindsJson(ValueKinds.enchantment()));
+            entries.add(entry);
+        }
+        entries.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
+        return entries;
+    }
+
+    /** 值域集合 → JSON 数组（按枚举声明顺序，前端只做包含判断）。 */
+    static List<String> kindsJson(Set<ValueKind> kinds) {
+        List<String> ids = new ArrayList<>(kinds.size());
+        for (ValueKind kind : kinds) {
+            ids.add(kind.name().toLowerCase(Locale.ROOT));
+        }
+        return ids;
     }
 
     /** 取 {@code itemsadder:xxx} 里的 {@code itemsadder:} 部分；没有前缀时返回空串。 */
@@ -292,7 +339,8 @@ public class MaterialCatalog {
     }
 
     private static Map<String, Object> entry(String id, Map<String, String> english,
-                                             Map<String, String> chinese, String category, String source) {
+                                             Map<String, String> chinese, String category, String source,
+                                             Set<ValueKind> kinds) {
         String key = id.toLowerCase(Locale.ROOT);
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("id", id);
@@ -303,6 +351,7 @@ public class MaterialCatalog {
             entry.put("category", category);
         }
         entry.put("source", source);
+        entry.put("kinds", kindsJson(kinds));
         return entry;
     }
 

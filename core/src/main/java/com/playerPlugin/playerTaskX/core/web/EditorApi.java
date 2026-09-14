@@ -330,6 +330,8 @@ final class EditorApi {
         json.put("defaultValue", field.defaultValue());
         json.put("options", field.options());
         json.put("hint", field.hint());
+        // 值域：编辑器据此决定选择器里列什么，也让「这个字段能填哪类值」在界面上可解释
+        json.put("kinds", field.kinds().stream().map(kind -> kind.name().toLowerCase(java.util.Locale.ROOT)).toList());
         return json;
     }
 
