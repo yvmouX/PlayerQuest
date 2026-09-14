@@ -45,11 +45,13 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     注意 `JsonCodec` 与 `QuestJson` **要留着**：前者是 `properties` / `progress` 列与
     编辑器 HTTP 传输的编解码，后者是编辑器与库之间的任务 JSON 映射，两者都还在用。
   - **只读的 `quests/` + `presets/` YAML 目录不是那个后端回来了**（见 ARCHITECTURE 4.6）：
-    它是**只读**来源，玩家数据完全不涉及；插件唯一的写入是「目录空着时铺一次示例」
-    （`example_file_*`，与库里的 `example_*` 两套并存）。改动这一层时守住四条：
-    定义写入永远只落库（只读判定放合并仓储里，别只靠前端禁用按钮）、同 id 冲突必须告警一次、
-    示例只在**空目录**里铺且绝不覆盖、出厂示例的播种判定看 `databaseEmpty()` 而不是 `count()`
-    （后者是合并视图，会让库里那套示例永远不出现）。
+    它是**只读**来源，玩家数据完全不涉及；插件唯一的写入是「目录空着时铺一次示例」。
+    改动这一层时守住四条：定义写入永远只落库（只读判定放合并仓储里，别只靠前端禁用按钮）、
+    同 id 冲突必须告警一次、示例只在**空目录**里铺且绝不覆盖、示例内容只来自
+    `core/src/main/resources/{quests,presets}/` 下的资源文件（`ExampleDefinitions` 负责读出来铺过去）。
+  - **库里不再播种任何示例**：不要恢复 `seedIfEmpty` / `databaseEmpty` 那一套——示例只有文件这一套，
+    它是「开箱有个参照 + 文件格式的活文档」，测试 `ExampleDefinitionsTest` 直接读这些资源校验，
+    因此改示例文件就等于改示例，不需要再同步一份 Java 代码。新增/删除示例文件时同步该测试里的数量常量。
   - **我们自己定格式的地方一律 JSON 不用 YAML**：YAML 1.1 会把 `target: NO`（合法方块材质名）
     解析成布尔 false、把 `1.20` 解析成浮点。干净解法（YAML 1.2 风格 resolver）在 Jackson 2.15.2
     上挂不上去（`YAMLFactoryBuilder` 不暴露 resolver）。只有用户手写的配置文件、语言文件

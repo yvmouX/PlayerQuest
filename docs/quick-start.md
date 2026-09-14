@@ -31,23 +31,22 @@ plugins/playerTaskX/
 启动日志里应能看到：
 
 ```
-[playerTaskX] quests/ 是空的，已写入 12 个示例任务文件（只读来源，可自由删改）
-[playerTaskX] presets/ 是空的，已写入 11 个示例预设文件（只读来源，可自由删改）
+[playerTaskX] quests/ 是空的，已铺入 12 个示例任务文件（只读来源，可自由删改）
+[playerTaskX] presets/ 是空的，已铺入 11 个示例预设文件（只读来源，可自由删改）
 [playerTaskX] 存储已就绪: SQLite: data/playerTaskX.db（任务定义、预设与玩家数据在同一库）
 [playerTaskX] Registered command: playertaskx
 [playerTaskX] Registered command: playertaskxadmin
-[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，3 种奖励）
+[playerTaskX] PlayerTaskX 已启用（12 个任务，15 种目标，3 种奖励）
 ```
 
-示例一共有两套，**都不影响正常使用，可随时清掉**：
+示例只有**一套**，随插件发布（`quests/` 里 12 个任务 + `presets/` 里 11 个预设，`example_` 前缀），
+**不影响正常使用，可随时清掉**：
 
-- **数据库里 12 个**（6 个每日 + 6 个常驻，`example_` 前缀）：可以在编辑器里随便改，
-  也可以在游戏里用 `/ptxa disable example_daily_mine` 之类的命令关掉；
-- **`quests/` 里 12 个 + `presets/` 里 11 个**（`example_file_` 前缀）：用来对照文件格式，
-  只读、改文件才生效；删掉就不会再补（目录非空即不再铺）。
+- 它们是**只读**的：改用文件 + `/ptxa reload` 生效，编辑器与游戏内命令只改数据库里的定义；
+- 删掉就不会再补（目录非空即不再铺）；整个目录清空则下次启动重新铺一份。
 
-两套覆盖了大部分目标类型的写法。每日任务默认每次抽 3 个，登录 `/ptx` 就能玩；
-常驻任务在编辑器或 `/ptxa list` 里查看。
+示例覆盖了大部分目标类型的写法。每日任务默认每次抽 3 个，登录 `/ptx` 就能玩；
+常驻任务在编辑器或 `/ptxa list` 里查看。数据库里不再播种任何示例。
 
 ---
 

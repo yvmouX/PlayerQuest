@@ -456,7 +456,7 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 | `YamlDefinitions` | 模型 ⇄ 文档映射、部分/整份导出与导入 |
 | `MergedSources<T>` | **合并规则**：库优先、冲突告警一次、只读判定 |
 | `MergedQuestRepository` / `MergedPresetRepository` | 把上面的规则包成 `QuestRepository` / `PresetRepository` |
-| `ExampleFiles`（`core/seed/`） | 出厂示例 ⇄ 文件：id 前缀改写、注释头（见下面「示例文件」一段） |
+| `ExampleDefinitions` | 出厂示例：从 classpath 资源读出 `quests/` + `presets/`，空目录时铺一份（见下面「示例定义」一段） |
 
 **与已删除的 JSON 文件后端的边界**（4.1 末尾那条禁令依然有效，这里不是把它加回来）：
 
@@ -480,20 +480,20 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 打印原因为什么改不了。判定写在所有写入路径的共同入口上，因此绕过界面直接调接口也无效。
 前端只是把结论显示出来（列表「文件」徽标、禁用开关/删除、编辑页黄色提示条）。
 
-**示例文件**（`core/seed/ExampleFiles`）：目录里一个 YAML 都没有时，把出厂示例铺成
-`quests/*.yml` + `presets/*.yml`（12 + 11 个，带注释头）。三个要点：
+**示例定义**（`core/storage/yaml/ExampleDefinitions`）：目录里一个 YAML 都没有时，把随插件发布的
+示例铺过去（`quests/*.yml` + `presets/*.yml`，12 + 11 个，带注释头）。三个要点：
 
-- **id 必须与库里那套不同**（`example_file_*` vs `example_*`）：同 id 会立刻撞上「库优先」，
-  整套文件变成「被忽略的重复定义」还刷一屏告警。因此文件那套把 `file_` 插在 `example_` 之后，
-  两套并存；漏改 id 会让文件里那套指向库里的定义；
+- **示例是资源文件，不是代码**：早期有两套（代码里生成一套写进数据库、同一份内容再生成 YAML 铺到目录，
+  靠 `example_file_` / `example_` 两个前缀避免同 id 冲突）。现在只有文件这一套，它同时是
+  「开箱有个参照」与「文件格式的活文档」，测试直接读这些文件校验（`ExampleDefinitionsTest`）——
+  所见即所得，也不会出现两套示例不一致；
 - **只在空目录里铺**：管理员删掉几个示例、或放了自己的定义，重启时不该把它们变回来。
   代价是「整个目录清空后重启会重新铺一份」，这是刻意的（空目录 = 没配过）；
 - **文件名即 id，正文不写 `id`**：复制文件改个名就是一个新任务，示例本身就该示范这一点。
 
-由此带来一处**播种口径的修正**：出厂示例写不写，问的是 `DefinitionRepository.databaseEmpty()`
-（只看库）而不是 `count()`（合并视图）。否则铺过一次示例文件之后，库里那套示例就永远不出现了
-——而库里那套才是编辑器里能改、能禁用的那一套。`count()` 仍然是「插件实际能用多少」，
-列表与统计照旧看它。
+读取要认两种环境：开发/单测时资源是磁盘上的目录，生产时在插件 jar 内（jar 里有目录条目，
+因此 `getResources("quests")` 找得到；`getJarFile()` 返回的是类加载器共享的那个 jar，不能关，
+要自己开一份）。库里**不再**播种示例，因此也没有「库为空才写」这类判空逻辑。
 
 **为什么 YAML 在这里可以破例**：4.2 那条「自己定格式一律 JSON」管的是
 **存储列的编码**与**编辑器 HTTP 传输**（机器之间交换、不该有人手写）；`quests/*.yml`
@@ -772,11 +772,8 @@ GET    /api/stats              统计          POST   /api/reload         重载
 **预设不是引擎概念**：预设只是编辑器的便利设施，运行时引擎完全不认识它。
 预设与任务定义同库（`preset` 表），不存在单独一份预设文件需要备份或同步。
 
-出厂默认预设（`core/seed/ExamplePresets`，7 个目标 + 4 个奖励）在 `preset` 表为空时写入一次，
-与示例任务同一时机（`PlayerTaskX` 启用流程里的 `guard`）。它原先藏在文件后端的 `load()` 里，
-后端删除后必须显式接上——否则不报任何错，只是编辑器打开时预设列表变成空的。
-判空看的是**数据库**（`databaseEmpty()`，见 4.6）：`presets/` 目录里那份示例与库里这份是
-并存的两套，拿合并数量判断会让库里这套永远不出现。
+示例预设与示例任务同一来源：`presets/` 目录空着时从插件自带的资源铺一份（见 4.6），
+它们是**只读**的；`preset` 表里不再播种任何默认预设。
 
 ---
 
@@ -848,7 +845,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 22 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试；阶段 31 又加了 ItemsAdder / CraftEngine） |
 | 23 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
 | 24 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.6） |
-| 25 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（5 项测试） |
+| 25 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（5 项测试；阶段 39 改为从 jar 内资源铺，库里不再播种） |
 | 26 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
 | 27 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
 | 28 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
@@ -862,31 +859,31 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 36 | 编辑器里能**真正建立**预设引用：弹层点预设 = 引用（另给「复制一份」）；**移除覆盖项机制**（引用只认 `preset`，多写的字段报校验问题并在保存时清掉） | ✅ 完成（见 4.7，+2 项 PresetRefs 测试 + 1 项 HTTP 契约测试 + 1 项真库往返测试） |
 | 37 | 奖励类型收敛为**金币 / 点券 / 命令**三种：删掉 `exp` 与 `item`（发物品/经验交给命令） | ✅ 完成（见 3.2；示例任务与预设改用 `give` / `xp` 命令） |
 | 38 | 刷新费用的货币收敛为**金币 / 点券**：删掉 `EXP`（`ExpCurrency` / `ExpUtil` / `ExpUtilTest`）、`CurrencyType.select` 可返回 null，两种货币都没有时刷新明确提示不可用 | ✅ 完成（见 6，-9 项 ExpUtil 测试 + 2 项货币选择测试改写） |
+| 39 | 出厂示例改为**只从 jar 内资源铺**：删掉库里的示例播种与 `core/seed` 包（`ExampleQuests` / `ExamplePresets` / `ExampleFiles`），新增 `ExampleDefinitions`，示例 id 去掉 `_file_` 前缀 | ✅ 完成（见 4.6，4 项 `ExampleDefinitionsTest` 直接校验资源文件；jar 内读取路径已实测） |
 
-**测试总量：271 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
-存储 19（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
+**测试总量：254 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+存储 18（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
-YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
-预设引用 9（`PresetRefsTest`）+ 示例文件 5（`ExampleFilesTest`）+
+YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 5（`MergedDefinitionRepositoryTest`）+
+预设引用 9（`PresetRefsTest`）+ 示例定义 4（`ExampleDefinitionsTest`）+
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-任务管理 14（`QuestAdminServiceTest`）+
-素材 19（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 10（`CurrencyTypeTest` 6 + `MoneyRewardTest` 4）+
+任务管理 12（`QuestAdminServiceTest`）+
+素材 20（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 10（`CurrencyTypeTest` 6 + `MoneyRewardTest` 4）+
 编辑器宿主转交 2（`PluginEditorServicesTest`）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段值域一致性 11（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
-示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
-GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
-示例预设 5（`ExamplePresetsTest`）+ 进度渲染 5（`ProgressDisplayRenderTest`）+
+监听器 6（`ItemListenerCraftAmountTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
+进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（33 个 XML），不是靠日志里的汇总行。
+逐套件累加（30 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1071 行 + `core/src/main` 14276 行
-＝ **15347 行 / 111 个 java 文件**；测试 `core/src/test` **6614 行 / 36 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1075 行 + `core/src/main` 13701 行
+＝ **14776 行 / 106 个 java 文件**；测试 `core/src/test` **6290 行 / 33 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6021 行 `.vue` + 2193 行 `.ts`/`.js` ＝ 8214 行 / 31 个文件**
+前端 `task-editor-vue/src` **8299 行 / 31 个文件**
 （另有 `scripts/` 下三个构建期自检脚本：YAML 往返与提交形态 15 项、素材目录筛选 15 项、4 个视图 SSR 渲染，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
@@ -972,28 +969,29 @@ player_quest / period_state / preset）；
 探针文件与导入的任务随后已清理。
 
 **铺示例文件的真机冒烟（同一台测试服，先清空 `quests/` 与 `presets/`）**：启动时两个目录
-各被铺了一份，日志如实报数：
+各被铺了一份，日志如实报数（那一轮示例还是「代码生成 + 写库」两套，因此任务数是 24；
+现在只有文件这一套，清空目录后是 12 个）：
 
 ```
-[playerTaskX] quests/ 是空的，已写入 12 个示例任务文件（只读来源，可自由删改）
-[playerTaskX] presets/ 是空的，已写入 11 个示例预设文件（只读来源，可自由删改）
-[PlayerTaskX] 已载入 24 个任务
-[playerTaskX] PlayerTaskX 已启用（24 个任务，15 种目标，3 种奖励）
+[playerTaskX] quests/ 是空的，已铺入 12 个示例任务文件（只读来源，可自由删改）
+[playerTaskX] presets/ 是空的，已铺入 11 个示例预设文件（只读来源，可自由删改）
+[PlayerTaskX] 已载入 12 个任务
+[playerTaskX] PlayerTaskX 已启用（12 个任务，15 种目标，3 种奖励）
 ```
 
-接口侧：`/api/quests` 24 条（12 条 `source=database` + 12 条 `source=file`）、
+接口侧当时是 `/api/quests` 24 条（12 条 `source=database` + 12 条 `source=file`）、
 `/api/presets` 14 目标 + 8 奖励（库与文件各一半），**没有一条「库优先」冲突告警**——
-两套 id 前缀不同正是为此。
+两套 id 前缀不同正是为此；现在库里不再有示例，因此只剩 `source=file` 那些。
 
-再验一次「不重复补」：删掉 `quests/example_file_daily_torch.yml` 后重启，
-日志里没有「已写入」、任务数 23、该文件没有被重新创建；把它放回去再 `POST /api/reload`，
-任务数回到 24——即「只铺一次、之后尊重目录现状」与「reload 会重读文件」都成立。
+再验一次「不重复补」：删掉 `quests/example_daily_torch.yml` 后重启，
+日志里没有「已铺入」、任务数减 1、该文件没有被重新创建；把它放回去再 `POST /api/reload`，
+任务数回到原值——即「只铺一次、之后尊重目录现状」与「reload 会重读文件」都成立。
 
 **预设引用的真机冒烟（同一台测试服）**：导入一个引用预设的任务，`GET /api/quests/<id>` 如实给出
 类型与生效值。这一轮冒烟做在「引用 + 覆盖项」还是合法写法的版本上，当时记录的形状是：
 
 ```json
-{"preset":"example_file_mine-stone","type":"break_block",
+{"preset":"example_mine-stone","type":"break_block",
  "properties":{"amount":128},"resolved":{"amount":128,"target":"STONE"}}
 ```
 
@@ -1038,7 +1036,7 @@ player_quest / period_state / preset）；
   「构建 + 类型检查 + YAML 往返断言 + SSR 渲染各视图各一遍」，浏览器里的实际手感与排版仍未人工确认。
 - **YAML 定义文件的边界情况只由单测覆盖**：递归子目录、`presets/rewards/` 目录兜底 `kind`、
   坏文件跳过、只读 id 被批量操作跳过、写坏的目录（只读权限）等分支都有测试，
-  真机只走了主路径（铺示例、`example_file_*` 只读、缺文件不补、reload 重读）。
+  真机只走了主路径（铺示例、`example_*` 只读、缺文件不补、reload 重读）。
 - **未安装 Vault / PlayerPoints 的服务器**：刷新会明确提示不可用（单元测试覆盖了
   「两种货币都不可用时 `select` 返回 null」与失败文案），但没有在缺少经济插件的真机上跑过全流程。
 - **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有周期任务一条来源
@@ -1088,11 +1086,13 @@ player_quest / period_state / preset）；
   （`QuestJson` / `PresetJson`），因此 `quests/x.yml`、导出的清单、编辑器的 YAML 视图
   三者可以互相粘贴，新增目标类型时这里一行都不用改。它只决定「写哪些键、按什么顺序、
   省略哪些空值」（空字符串与空列表不写出去：手写文件里堆一串 `category: ''` 只会让人以为必须填）。
-- **出厂示例有两套，且刻意不同前缀**：库里 `example_*`（可编辑，编辑器里改）、
-  文件里 `example_file_*`（只读，编辑器里对照格式）。`ExampleFilesTest` 钉住「两套只差前缀、
-  内容等价」，`ExampleFiles` 只在目录为空时写一次——这几条都是
-  「不报错但会让人困惑很久」的类型（id 撞库→整套被忽略、
-  反复补文件→删了又回来）。
+- **出厂示例只有一套，且是资源文件**：`example_*` 既是「开箱有个参照」也是「文件格式的活文档」，
+  随插件发布在 `core/src/main/resources/{quests,presets}/` 下，目录空着时由 `ExampleDefinitions`
+  复制一份过去（只此一次，绝不覆盖）。`ExampleDefinitionsTest` 直接读这些资源校验（数量、类型已注册、
+  材质/实体真实、奖励参数有效），因此改示例 = 改文件，不需要再同步一份 Java 代码——
+  早期那套「代码生成一份写库 + 再生成一份铺文件」正是因为要维持两套一致才变得复杂，
+  两个 id 前缀也只是为了不撞在一起。这几条属于「不报错但会让人困惑很久」的类型
+  （示例没进包→新服一个任务都没有、反复补文件→删了又回来）。
 - **包归位**：三个类型/任务注册表实现同处 `core/registry`（`api.registry` 也是这么分组的），
   `core/quest` 只留 `QuestAdminService` 这一处「任务定义维护入口」。
 - **两个数据库类合成一个**：`JdbcDatabase` 同时是「执行 SQL 的引擎」与「打开 SQLite 文件 /
