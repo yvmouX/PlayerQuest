@@ -171,7 +171,8 @@ editor:
 
 | 提示 | 原因 |
 |---|---|
-| `金币不足，需要 xxx` / `点券不足，需要 xxx` / `经验不足，需要 xxx（当前 yyy）` | 对应货币的余额不够（`periodic.<类型>.refresh-cost`）。提示里会写明实际扣的是哪种货币 |
+| `金币不足，需要 xxx` / `点券不足，需要 xxx（当前 yyy）` | 对应货币的余额不够（`periodic.<类型>.refresh-cost`）。提示里会写明实际扣的是哪种货币 |
+| `刷新失败：本服务器没有可用的货币（需要经济插件或 PlayerPoints）` | 既没装经济插件也没装 PlayerPoints，而 `refresh-cost` 大于 0：刷新用不了。装一个经济插件/PlayerPoints，或把 `refresh-cost` 设为 `0` |
 | `今日刷新次数已用完（上限 N 次）` | `periodic.<类型>.refresh-limit` 限制 |
 
 想让刷新免费：把对应周期的 `refresh-cost` 设为 `0`。

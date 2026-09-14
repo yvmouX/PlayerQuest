@@ -72,9 +72,12 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
   - **奖励只留三种：金币 / 点券 / 命令**（见 ARCHITECTURE 3.2）。物品与经验<b>不要</b>再加回奖励类型：
     发它们用命令奖励就够了（`give %player% diamond 3`、`xp add %player% 200 points`），
     自己做则要把 `material`/`name`/`lore`/附魔/组件一路重做，而 `/give` 早就做完了；
-    命令还能顺带用上别的插件的发放入口。经验仍作为**刷新费用的兜底货币**存在
-    （`ExpCurrency` + `ExpUtil`），那是扣费不是发放——别把它当成 `RewardType` 注册回去。
-    语言文件相应只有 `reward.money` / `reward.points` / `reward.command` 三个键。
+    命令还能顺带用上别的插件的发放入口。语言文件相应只有 `reward.money` / `reward.points` /
+    `reward.command` 三个键。
+  - **刷新费用的货币也只有金币 / 点券**：`CurrencyType.select(...)` 在两种都不可用时返回
+    <b>null</b>（不是某个兜底货币），调用方必须给出「刷新不可用」的明确提示——**不要**改成
+    白送刷新（配错的 `refresh-cost` 就永远看不出来了），也不要再加「扣经验」这种需要维护
+    玩家等级与经验进度的兜底。经验相关的 `ExpCurrency` / `ExpUtil` 已删除，别再引入。
   - **每个目标字段要声明「值域」**（见 ARCHITECTURE 4.5.1）：`ConfigField.kinds`（`ValueKind`）
     说明这个字段能填哪一类值，`FieldType` 只管渲染成什么控件。选择器列出什么、任务图标怎么推、
     服务端标红什么，三处都读这一份声明——分开写必然漂移，而漂移的表现是

@@ -57,7 +57,7 @@ plugins/playerTaskX/
 
 | 日志提示 | 含义 | 处理 |
 |---|---|---|
-| `奖励类型 money 当前不可用: 没有可用的经济服务` | 金币奖励发不出去（刷新费用会自动改用点券/经验，不受影响） | 装一个经济插件（Vault / VaultUnlocked + EssentialsX / CMI 等），或改用命令奖励（`give` / `xp` 发物品与经验） |
+| `奖励类型 money 当前不可用: 没有可用的经济服务` | 金币奖励发不出去（刷新费用会自动改用点券；连 PlayerPoints 也没有时刷新会提示不可用） | 装一个经济插件（Vault / VaultUnlocked + EssentialsX / CMI 等），或改用命令奖励（`give` / `xp` 发物品与经验） |
 | `奖励类型 points 当前不可用: 未安装 PlayerPoints` | 点券奖励发不出去 | 安装 PlayerPoints |
 | `目标类型 custom_fish 不可用（未安装 CustomFishing）` | 「自定义钓鱼」目标不会涨进度 | 安装 [CustomFishing](https://www.spigotmc.org/resources/100088/)，或改用原版 `fish` 目标 |
 | `目标 mythic:xxx 需要 MythicMobs 5.x` | 击杀自定义怪的目标永远命中不了 | 安装 MythicMobs 5.x（4.x 不支持 1.21+），或改用原版实体名 |

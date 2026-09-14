@@ -224,7 +224,7 @@ rewards:
 objectives:
   - preset: mine-stone        # 类型与字段全部来自预设
 rewards:
-  - preset: reward-exp        # 奖励同理
+  - preset: reward-points     # 奖励同理
 ```
 
 - 引用写在 `quests/*.yml`、编辑器的 YAML 视图、导入的文件里都可以；

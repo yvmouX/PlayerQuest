@@ -199,8 +199,9 @@ public interface RewardType extends ConfigurableType {
 **为什么没有「物品」与「经验」奖励**：这两样用命令奖励就够了（`give %player% diamond 3`、
 `xp add %player% 200 points`），做成插件自己的类型则要把 `material` / `amount` / `name` / `lore`
 （以及将来的附魔、组件、模型数据……）在插件里重做一遍，而 `/give` 早就做完了；命令还能顺带
-用上别的插件的发放入口。经验<b>仍</b>作为刷新费用的兜底货币存在，但那是扣费不是发放——
-实现是 `ExpCurrency`（原版公式见 `ExpUtil`），不是 `RewardType`。
+用上别的插件的发放入口。经验与物品<b>既不是</b>奖励类型，<b>也不是</b>刷新费用的货币：
+扣费只认金币与点券（见 6），两者都不可用时刷新直接不可用并明确提示——不留「免费刷新」或
+「扣经验」的兜底，前者会让配错的 `refresh-cost` 看不出来，后者要把玩家的等级与经验进度当余额维护。
 
 ### 3.3 进度事件 `ProgressContext`（api，唯一与 Bukkit 事件耦合处）
 
@@ -658,7 +659,7 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 - **发放规则**：全局池（或配置的 `pool`）+ 按玩家抽取，种子 = `hash(playerId, 周期, 刷新次数)`，
   保证同一周期内重登结果一致、刷新后换一批。四种周期各自独立发放，一个玩家可以同时有每日与每周任务。
 - **刷新**：`/ptx refresh [类型]`，按 `refresh-currency` 的顺序消耗第一种可用货币
-  （金币 / 点券 / 经验，经验是永远可用的兜底），**只重抽该玩家这一种周期**，
+  （金币 / 点券，取第一个可用的），**只重抽该玩家这一种周期**，
   消耗与次数记录在 `period_state`，上限与费用按该周期的配置。不给类型就刷新所有已启用的周期
   （各自扣费、各自提示）；管理员用 `/ptxa resetperiod <玩家> [类型]`，不扣费也不消耗次数。
 - **跨期检测**：登录时与定时任务（每 5 分钟）检查 `period_state.period`，不是当前周期就重抽。
@@ -859,9 +860,10 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 34 | **字段值域**：`ValueKind` + 每个目标类型逐一声明 `kinds`；选择器只列该值域、服务端按同一份声明校验「永远不可能命中」的值；`FieldType` 收敛为 `PICKER` | ✅ 完成（见 4.5.1，+9 项值域测试 + 11 项目标值域一致性测试 + 2 项校验接入测试） |
 | 35 | `EditorServices` 改由 `PluginEditorServices` 适配器实现（主类不再承担 web 层契约，`presets()` 与 `describeStorage()` 两个「只有编辑器用」的 getter 随之删除） | ✅ 完成（见 7，+2 项转交测试） |
 | 36 | 编辑器里能**真正建立**预设引用：弹层点预设 = 引用（另给「复制一份」）；**移除覆盖项机制**（引用只认 `preset`，多写的字段报校验问题并在保存时清掉） | ✅ 完成（见 4.7，+2 项 PresetRefs 测试 + 1 项 HTTP 契约测试 + 1 项真库往返测试） |
-| 37 | 奖励类型收敛为**金币 / 点券 / 命令**三种：删掉 `exp` 与 `item`（发物品/经验交给命令），经验降为刷新费用的兜底货币 `ExpCurrency` | ✅ 完成（见 3.2；示例任务与预设改用 `give` / `xp` 命令） |
+| 37 | 奖励类型收敛为**金币 / 点券 / 命令**三种：删掉 `exp` 与 `item`（发物品/经验交给命令） | ✅ 完成（见 3.2；示例任务与预设改用 `give` / `xp` 命令） |
+| 38 | 刷新费用的货币收敛为**金币 / 点券**：删掉 `EXP`（`ExpCurrency` / `ExpUtil` / `ExpUtilTest`）、`CurrencyType.select` 可返回 null，两种货币都没有时刷新明确提示不可用 | ✅ 完成（见 6，-9 项 ExpUtil 测试 + 2 项货币选择测试改写） |
 
-**测试总量：282 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
+**测试总量：271 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
 存储 19（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
@@ -869,7 +871,7 @@ YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepos
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 任务管理 14（`QuestAdminServiceTest`）+
-素材 19（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
+素材 19（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 10（`CurrencyTypeTest` 6 + `MoneyRewardTest` 4）+
 编辑器宿主转交 2（`PluginEditorServicesTest`）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段值域一致性 11（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
@@ -1037,8 +1039,8 @@ player_quest / period_state / preset）；
 - **YAML 定义文件的边界情况只由单测覆盖**：递归子目录、`presets/rewards/` 目录兜底 `kind`、
   坏文件跳过、只读 id 被批量操作跳过、写坏的目录（只读权限）等分支都有测试，
   真机只走了主路径（铺示例、`example_file_*` 只读、缺文件不补、reload 重读）。
-- **未安装 Vault / PlayerPoints 的服务器**：刷新费用会按「金币 → 点券 → 经验」自动
-  兜底到经验；该回退路径有单元测试覆盖，但没有在缺少经济插件的真机上跑过全流程。
+- **未安装 Vault / PlayerPoints 的服务器**：刷新会明确提示不可用（单元测试覆盖了
+  「两种货币都不可用时 `select` 返回 null」与失败文案），但没有在缺少经济插件的真机上跑过全流程。
 - **`NORMAL` 任务目前没有发放入口**：玩家拿到的任务只有周期任务一条来源
   （`PeriodicService` 直接写 `player_quest`，`ProgressService.assign` 在生产代码里无人调用）。
   普通任务因此只存在于定义与编辑器里，缺的是「接取常驻任务」这一步。
