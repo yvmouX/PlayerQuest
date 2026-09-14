@@ -67,7 +67,6 @@ PlayerTaskX/
   得出的结论是错的（踩过）。
 
 **`core/storage/jdbc/`（JDBC 实现细节）**
-
 - **连接策略是刻意的两种**：SQLite 写入全局串行，用连接池反而制造 `SQLITE_BUSY`，
   因此走单连接长驻 + WAL；MySQL 走 HikariCP 池化，连接用完必须归还。两种策略都在
   `JdbcDatabase` 的两个工厂里，执行逻辑只有一份。
@@ -76,6 +75,30 @@ PlayerTaskX/
   同一份定义在两种库上都成立。
 - **容错**：`JsonCodec` 对库里脏数据一律降级为空集合而不是抛异常——存储层的容错
   优先级高于严格性；`Sql` 收敛 JDBC 参数绑定样板。
+
+**`api/schema/`（类型自描述：字段的「声明」）**
+
+- 这里是「一种目标/奖励类型长什么样」的声明，四个文件各管一件事：
+  `ConfigurableType`（`id` + 显示名 + 字段表，目标与奖励共有的形状）、
+  `ConfigField`（单个字段：键、控件、必填、默认值、说明、**值域**）、
+  `FieldType`（渲染成什么控件：文本 / 数字 / 开关 / **选择器** / 下拉）、
+  `ValueKind`（值域词汇表：方块、可放置、物品、食物、实体、活体、可繁殖、可驯服、可剪毛、鱼、附魔）。
+- 编辑器与 GUI **据此自动生成表单**：新增一种目标类型 = 写一个类 + 一行 schema，界面代码一行不改。
+- **这个包不 import 任何 `org.bukkit` 类型**（`api` 里只有 `ProgressContext`、`RewardType`
+  碰 Bukkit）：字段声明与版本无关，是给扩展点作者看的契约。
+  「这个材质算不算方块」这类只有运行期能回答的问题不放这里，见下。
+
+**`core/schema/`（同一份 schema 的「运行期语义」）**
+
+- 目前只有 `ValueKinds`：把 `ValueKind` 落到**当前服务端**的枚举与接口上——
+  某个候选项属于哪些值域（`Material.isBlock()`、`EntityType.getEntityClass()` 是不是
+  `Animals` / `Tameable` / `Shearable`…），以及某个配置值能不能命中（编辑器标红的那条校验）。
+  它要读 Bukkit 注册表，因此进不了 `api`；而它有两个方向的消费者——编辑器目录
+  （`web/MaterialCatalog` 给候选打 `kinds` 标签）与定义校验（`quest/QuestAdminService`），
+  塞进任一侧都会让另一侧反向依赖（`quest` 不该依赖 `web`），所以单开一个中立包。
+- 这个包**故意只有薄薄一层**：它不持有状态、不装配任何东西，只回答两个纯问题
+  「这个值属于哪些值域」「这个值能不能命中」。以后若还有「schema 的运行期语义」
+  （字段值解析、默认值填充之类）也归这里。
 
 **`core/listener/`（事件监听层）**
 
