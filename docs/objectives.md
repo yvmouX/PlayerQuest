@@ -79,7 +79,7 @@ target: itemsadder:myitems:ruby_block    # 前缀 + 插件里的命名空间 id
 amount: 64
 ```
 
-- 前缀是 **`itemsadder:`** 与 **`craftengine:`**，后面跟插件自己的 `命名空间:id`；
+- 支持的**前缀**是 `itemsadder:` 与 `craftengine:`，后面跟插件自己的 `命名空间:id`；
 - **裸 id 也能写**（`target: myitems:ruby_block`）：它会与两家比对，命中任意一家都算——
   同一个 id 被两家都定义时不必纠结写哪个前缀；
 - 一个 `target` 里可以混写，例如 `target: DIAMOND_ORE,itemsadder:myitems:ruby_block`；

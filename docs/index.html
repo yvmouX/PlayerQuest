@@ -7,29 +7,184 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
   <style>
-    /* 深色主题：与插件编辑器的观感保持一致 */
+    /*
+      深色主题：与插件编辑器同一套配色（见 task-editor-vue/src/assets/main.css 的 :root）。
+
+      为什么这里要写这么长：docsify 的 vue 主题把颜色**写死**在规则里而不是变量里
+      （正文 #34495e、标题 #2c3e50、侧边栏链接 #505d6b、表格边框 #ddd…），
+      只改 --text-color 之类的变量根本改不动它们——深色底上就成了「深灰字压深灰底」，
+      看着像没渲染出来。因此下面逐条覆盖，并且：
+        · 正文/标题/链接/表格/代码/搜索框各自给出对比度足够的颜色（正文 ≈13:1，链接 ≈6:1）；
+        · 搜索框的样式由 search 插件在**运行时注入**（晚于本文件），选择器要比它更具体；
+    */
     :root {
-      --theme-color: #4fc3f7;
-      --base-color: #1e2128;
-      --text-color: #d6dae2;
-      --sidebar-background: #16181d;
-      --sidebar-nav-link-color: #b9c0cc;
-      --sidebar-nav-link-color--active: #4fc3f7;
+      /* 与编辑器一致的一套配色 */
+      --bg: #14161a;
+      --bg-elevated: #1b1f26;
+      --bg-input: #101317;
+      --bg-hover: #242a33;
+      --bg-stripe: #191d24;
+      --border: #2b313b;
+      --border-soft: #232831;
+      --text: #e6e9ef;
+      --text-dim: #98a2b3;
+      --accent: #5b9dff;
+      --accent-soft: #1d2a3f;
+      --ok: #45c07a;
+      --danger: #e5544b;
+      --radius: 8px;
+
+      /* docsify 主题变量：能生效的那部分（标题等写死的颜色见下面的逐条覆盖） */
+      --theme-color: var(--accent);
+      --base-color: var(--bg);
+      --text-color: var(--text);
+      --heading-color: #f2f5fa;
+      --sidebar-background: var(--bg-input);
+      --sidebar-nav-link-color: #c6cdd9;
+      --sidebar-nav-link-color--active: var(--accent);
       --sidebar-nav-link-font-weight--active: 600;
-      --code-theme-background: #22252c;
-      --blockquote-border-color: #4fc3f7;
-      --table-row-odd-background: #22252c;
-      --hr-border: #2c3038;
+      --code-theme-background: var(--bg-input);
+      --blockquote-border-color: var(--accent);
+      --table-row-odd-background: var(--bg-stripe);
+      --hr-border: var(--border);
     }
-    body { background: var(--base-color); }
-    .sidebar { border-right: 1px solid #2c3038; }
-    .sidebar-toggle { background-color: #16181d; }
-    .markdown-section { max-width: 900px; }
+
+    /* ---------- 骨架 ---------- */
+    body { background: var(--bg); color: var(--text); }
+    div#app { color: var(--text-dim); }
+    .progress { background-color: var(--accent); }
+
+    /* ---------- 侧边栏 ---------- */
+    .sidebar {
+      background: var(--bg-input);
+      border-right: 1px solid var(--border);
+      color: #c6cdd9;
+    }
+    .sidebar > h1, .sidebar .app-name-link { color: var(--text); }
+    /* vue 主题把侧边栏链接写死成 #505d6b：深色底上几乎看不见 */
+    .sidebar ul li a { color: #c6cdd9; }
+    .sidebar ul li a:hover, .sidebar ul li a:focus { color: #fff; text-decoration: none; }
+    .sidebar ul li.active > a { color: var(--accent); border-right: 2px solid var(--accent); }
+    .sidebar li > p { color: var(--text); }
+    .sidebar-toggle { background-color: var(--bg-input); }
+    .sidebar-toggle span { background-color: var(--accent); }
+
+    /* ---------- 正文 ---------- */
+    .markdown-section { max-width: 900px; color: var(--text); }
+    .markdown-section h1, .markdown-section h2, .markdown-section h3,
+    .markdown-section h4, .markdown-section h5, .markdown-section h6,
+    .markdown-section strong { color: var(--heading-color); }
     .markdown-section h1 { font-size: 1.9rem; }
-    .markdown-section code { border-radius: 4px; }
-    /* 表格在窄屏下允许横向滚动，避免挤成一团 */
-    .markdown-section table { display: block; overflow-x: auto; width: 100%; }
+    .markdown-section h6 { color: var(--text-dim); }
+    .markdown-section a { color: var(--accent); font-weight: 600; }
+    .markdown-section a:hover { color: #8bbcff; }
+    .anchor span { color: inherit; }
+    .markdown-section em { color: var(--text-dim); }
+    .markdown-section blockquote {
+      background: var(--bg-elevated);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #c6cdd9;
+      padding: 0.2rem 1rem;
+    }
+    .markdown-section hr { border-bottom: 1px solid var(--border); }
+    .markdown-section p.warn { background: var(--accent-soft); color: var(--text); }
+
+    /* ---------- 表格 ---------- */
+    /* 窄屏下允许横向滚动，避免挤成一团（display:block 是 docsify 主题本来就要的） */
+    .markdown-section table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; }
+    .markdown-section th { background: var(--bg-elevated); color: var(--heading-color); }
+    .markdown-section th, .markdown-section td { border: 1px solid var(--border); }
+    .markdown-section tr { border-top: 1px solid var(--border); background: transparent; }
+    .markdown-section tr:nth-child(2n) { background-color: var(--bg-stripe); }
+
+    /* ---------- 代码 ---------- */
+    .markdown-section code {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: 4px;
+      color: #ffb86b;
+    }
+    .markdown-section pre {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .markdown-section pre > code { background: transparent; border: 0; color: #d6dae2; }
+    .markdown-section pre:after, .markdown-section output:after { color: var(--text-dim); }
+    /* Prism 词法着色：主题那套是按亮色背景挑的，深色底上普遍偏暗 */
+    .markdown-section .token.comment, .markdown-section .token.prolog,
+    .markdown-section .token.doctype, .markdown-section .token.cdata { color: #7d8799; }
+    .markdown-section .token.punctuation { color: #a8b3c4; }
+    .markdown-section .token.string, .markdown-section .token.attr-value,
+    .markdown-section .token.inserted { color: #86dc9f; }
+    .markdown-section .token.keyword, .markdown-section .token.function { color: #c792ea; }
+    .markdown-section .token.number, .markdown-section .token.boolean { color: #f2a06a; }
+    .markdown-section .token.property, .markdown-section .token.attr-name,
+    .markdown-section .token.tag { color: #7fb2ff; }
+    .markdown-section .token.selector, .markdown-section .token.variable { color: #82d2e8; }
+    /* 复制按钮由插件在运行时注入样式，选择器要比它更具体 */
+    .markdown-section .docsify-copy-code-button {
+      background: var(--bg-hover);
+      border-radius: 0 var(--radius) 0 var(--radius);
+      color: var(--text-dim);
+    }
+    .markdown-section .docsify-copy-code-button.success { background: #2c5c42; color: #d8f5e3; }
+    .markdown-section .docsify-copy-code-button.error { background: #5c2c2c; color: #f7dcdc; }
+
+    /* ---------- 搜索框 ---------- */
+    /*
+      search 插件在运行时注入自己的样式（无背景色 → 浏览器默认白底黑字），
+      那份样式晚于本文件，因此这里的选择器一律多加一层 .sidebar 提高优先级。
+    */
+    .sidebar .search { border-bottom: 1px solid var(--border); }
+    .sidebar .search input {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+    }
+    .sidebar .search input::placeholder { color: var(--text-dim); }
+    .sidebar .search input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+    .sidebar .search .results-panel {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0 0.6rem;
+    }
+    .sidebar .search .matching-post { border-bottom: 1px solid var(--border-soft); }
+    .sidebar .search .matching-post h2 { color: var(--heading-color); }
+    .sidebar .search .matching-post p, .sidebar .search p.empty { color: var(--text-dim); }
+    .sidebar .search .clear-button svg circle { fill: var(--text-dim); }
+    .sidebar .search .search-keyword { color: var(--accent); }
+
     .app-name-link { font-weight: 600; }
+
+    /* ---------- 浅色偏好 ---------- */
+    /* 系统偏好浅色时不硬塞深色：这里给出同一套配色的亮色版 */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fa;
+        --bg-elevated: #ffffff;
+        --bg-input: #ffffff;
+        --bg-hover: #eceef2;
+        --bg-stripe: #f2f4f7;
+        --border: #d7dbe3;
+        --border-soft: #e6e9ee;
+        --text: #1f2430;
+        --text-dim: #5b6472;
+        --accent: #1f6feb;
+        --accent-soft: #e3edff;
+        --heading-color: #11151c;
+      }
+      .markdown-section code { color: #b25000; }
+      .markdown-section pre > code { color: #24292f; }
+      .sidebar ul li a { color: #333b48; }
+      .sidebar ul li a:hover, .sidebar ul li a:focus { color: #000; }
+    }
   </style>
 </head>
 <body>

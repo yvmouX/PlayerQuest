@@ -4,7 +4,7 @@
 
 把 `playerTaskX-<版本>-all.jar` 放进 `plugins/` 目录，重启服务器。
 
-> **务必使用 `-all.jar`**（shadowJar 产物）。同目录下还有一个体积为 0 的普通 jar 是空壳，
+> **务必使用** `-all.jar`（shadowJar 产物）。同目录下还有一个体积为 0 的普通 jar 是空壳，
 > 装它会导致插件无法加载。
 
 首次启动会生成：

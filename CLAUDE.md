@@ -75,6 +75,13 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
 - 关于前端产物输出：
   - 产物输出到 `core/src/main/resources/web/`（vite outDir），不是`dist/`；该目录已加入 gitignore，属于构建临时文件，不要提交。
   - `task-editor-vue` 的 `npm run build` 会先跑 `vue-tsc` 类型检查，因此类型错误会让整个 Gradle build 失败。
+- 关于文档站（`docs/`，docsify + 深色主题）
+  - 配色在 `docs/index.html` 的 `<style>` 里**逐条覆盖**：docsify 的 vue 主题把颜色**写死**在规则里
+    （正文 `#34495e`、标题 `#2c3e50`、侧边栏链接 `#505d6b`），只改 CSS 变量改不动它们——
+    深色底上就成了「深灰字压深灰底」（实测对比度 1.5~2.6:1，现在 ≥ 6:1）。加颜色时顺手跑一遍对比度计算。
+  - **粗体不要以行内代码结尾**：`**务必使用 `-all.jar`**（…）` 里的星号会**原样显示**出来
+    （收尾的 `**` 前面是标点、后面紧跟标点时，docsify 那版 marked 不认它闭合）。
+    写成 `**务必使用** `-all.jar`（…）` 就好——粗体只包住文字，行内代码留在外面。
 - 关于源码级别（**本项目与 YLib 恰好相反，别搞混**）：
   - **本项目的 `api/`、`core/` 都是 Java 21**：根 `build.gradle.kts` 的 `allprojects` 里
     `val targetJavaVersion = 21`，`api/build.gradle.kts` 是空的、不覆盖它，因此 record、
