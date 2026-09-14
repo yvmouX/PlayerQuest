@@ -200,24 +200,6 @@ public final class QuestAdminService {
     }
 
     /**
-     * 空库时写入一批出厂示例任务（清单见 {@code ExampleQuests}）。
-     * <p>
-     * 问的是<b>库</b>是否为空（{@link QuestRepository#databaseEmpty()}），不是合并后的数量：
-     * {@code quests/} 里那套示例（{@code ExampleFiles} 铺的，id 前缀不同）是可并存的另一份，
-     * 拿总数判断会让库里这套永远写不进去。绝不覆盖已有数据；示例统一用 {@code example_} 前缀，
-     * 可随时删除。
-     */
-    public void seedIfEmpty(List<Quest> examples) {
-        if (!repository.databaseEmpty() || examples.isEmpty()) {
-            return;
-        }
-        for (Quest example : examples) {
-            save(example);
-        }
-        log(Level.INFO, "数据库为空，已写入 " + examples.size() + " 个示例任务（可自由删除或修改）");
-    }
-
-    /**
      * 保存任务（新增或覆盖）并同步三处状态。
      * <p>
      * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生：

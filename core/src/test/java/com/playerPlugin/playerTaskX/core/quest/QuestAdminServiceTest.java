@@ -61,7 +61,7 @@ class QuestAdminServiceTest {
 
     @BeforeAll
     static void initBukkitLogger() {
-        // reload/seedIfEmpty 会写日志（Bukkit.getLogger()），单测环境没有 server，桩一个
+        // reload 会写日志（Bukkit.getLogger()），单测环境没有 server，桩一个
         Server server = mock(Server.class);
         org.mockito.Mockito.when(server.getLogger()).thenReturn(Logger.getLogger("PlayerTaskXTest"));
         Bukkit.setServer(server);
@@ -267,29 +267,6 @@ class QuestAdminServiceTest {
         }
     }
 
-    @Test
-    @DisplayName("空库时写入全部示例任务，且走统一的保存入口（三处同步）")
-    void seedWritesAllExamplesWhenEmpty() {
-        service.seedIfEmpty(List.of(quest("example_a"), quest("example_b")));
-
-        assertEquals(2, repository.count());
-        assertTrue(quests.find("example_a").isPresent());
-        assertTrue(quests.find("example_b").isPresent());
-        verify(progress, times(2)).rebuildIndex(PLAYER);
-    }
-
-    @Test
-    @DisplayName("库非空时不写入示例，绝不覆盖已有数据")
-    void seedSkipsWhenDatabaseNotEmpty() {
-        service.save(quest("user_quest"));
-        clearInvocations(progress);
-
-        service.seedIfEmpty(List.of(quest("example_a")));
-
-        assertEquals(1, repository.count(), "已有数据不该被动");
-        assertFalse(repository.exists("example_a"));
-        verify(progress, never()).rebuildIndex(any());
-    }
 
     // ---------- 辅助方法 ----------
 

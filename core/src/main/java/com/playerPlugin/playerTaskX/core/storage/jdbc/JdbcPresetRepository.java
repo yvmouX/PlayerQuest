@@ -81,18 +81,6 @@ public final class JdbcPresetRepository implements PresetRepository {
         return database.count("SELECT COUNT(*) FROM preset");
     }
 
-    @Override
-    public void seedIfEmpty(List<Preset> defaults) {
-        if (count() > 0 || defaults == null || defaults.isEmpty()) {
-            return;
-        }
-        database.transaction(() -> {
-            for (Preset preset : defaults) {
-                save(preset);
-            }
-        });
-    }
-
     /** 便于日志与编辑器展示的后端描述。 */
     @Override
     public String toString() {

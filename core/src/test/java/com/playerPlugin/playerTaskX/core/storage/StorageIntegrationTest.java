@@ -6,9 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
-import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPlayerQuestRepository;
-import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcPresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.Schema;
 import com.playerPlugin.playerTaskX.core.storage.jdbc.JdbcDatabase;
@@ -329,22 +327,6 @@ class StorageIntegrationTest {
         assertTrue(playerQuestRepository.findByPlayer(PLAYER).isEmpty());
     }
 
-    @Test
-    @DisplayName("默认预设只在库为空时写入一次，之后再启动不会把管理员删掉的塞回来")
-    void presetSeedOnlyWhenEmpty() {
-        JdbcPresetRepository presets = new JdbcPresetRepository(database);
-        assertEquals(0, presets.count());
-
-        presets.seedIfEmpty(ExamplePresets.all());
-        assertEquals(ExamplePresets.all().size(), presets.count(), "空库应写入全部默认预设");
-        assertTrue(presets.findById("mine-stone").isPresent());
-
-        // 管理员删掉一条后重启插件：库非空，就不该补写——否则删掉的预设会自己回来
-        assertTrue(presets.delete("mine-stone"));
-        presets.seedIfEmpty(ExamplePresets.all());
-        assertFalse(presets.findById("mine-stone").isPresent(), "库非空时不该补写默认预设");
-        assertEquals(ExamplePresets.all().size() - 1, presets.count());
-    }
 
     @Test
     @DisplayName("玩家计数按 DISTINCT 玩家")

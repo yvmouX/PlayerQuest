@@ -5,7 +5,6 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
-import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
@@ -28,14 +27,12 @@ import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.RewardService;
-import com.playerPlugin.playerTaskX.core.seed.ExampleFiles;
-import com.playerPlugin.playerTaskX.core.seed.ExamplePresets;
-import com.playerPlugin.playerTaskX.core.seed.ExampleQuests;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.DefinitionFolder;
+import com.playerPlugin.playerTaskX.core.storage.yaml.ExampleDefinitions;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedPresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
@@ -179,10 +176,6 @@ public final class PlayerTaskX extends JavaPlugin {
                 this::customContent);
 
         // ---------- 任务数据 ----------
-        // 读库/写示例任务都可能因磁盘或连接问题失败，单独守护，
-        // 让插件以「零任务」状态启动而不是直接崩掉
-        guard("示例任务写入", () -> questAdmin.seedIfEmpty(ExampleQuests.all(config.periodic(QuestType.DAILY).refreshCost())));
-        guard("默认预设写入", () -> presets.seedIfEmpty(ExamplePresets.all()));
         guard("任务载入", questAdmin::reload);
 
         // ---------- 软依赖接入（游戏内容插件） ----------
@@ -227,19 +220,19 @@ public final class PlayerTaskX extends JavaPlugin {
     }
 
     /**
-     * 目录空着时铺一份示例定义（见 {@link ExampleFiles}）。
+     * 目录空着时铺一份示例定义（示例随插件发布，见 {@link ExampleDefinitions}）。
      * <p>
      * 只在目录完全为空时动手：管理员删掉某几个示例、或放了自己的定义之后，
      * 重启时不该把它们变回来。
      */
     private void seedExampleFiles(DefinitionFolder questFolder, DefinitionFolder presetFolder) {
-        int quests = ExampleFiles.writeQuests(questFolder, ExampleQuests.all(config.periodic(QuestType.DAILY).refreshCost()));
-        int presetsWritten = ExampleFiles.writePresets(presetFolder, ExamplePresets.all());
+        int quests = ExampleDefinitions.seedQuests(questFolder);
+        int presetsWritten = ExampleDefinitions.seedPresets(presetFolder);
         if (quests > 0) {
-            log.info("quests/ 是空的，已写入 {} 个示例任务文件（只读来源，可自由删改）", quests);
+            log.info("quests/ 是空的，已铺入 {} 个示例任务文件（只读来源，可自由删改）", quests);
         }
         if (presetsWritten > 0) {
-            log.info("presets/ 是空的，已写入 {} 个示例预设文件（只读来源，可自由删改）", presetsWritten);
+            log.info("presets/ 是空的，已铺入 {} 个示例预设文件（只读来源，可自由删改）", presetsWritten);
         }
     }
 

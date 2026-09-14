@@ -97,39 +97,6 @@ class MergedDefinitionRepositoryTest {
         assertEquals(1, merged.count(), "文件里的定义也算「能用」，列表与统计看的是这个数");
     }
 
-    @Test
-    @DisplayName("播种看的是库而不是合并视图：文件里有定义也不影响库里那套示例")
-    void seedingLooksAtDatabaseOnly(@TempDir Path dir) throws IOException {
-        write(dir.resolve("example_file_x.yml"), questYaml("文件里的示例"));
-        InMemoryQuestRepository database = new InMemoryQuestRepository();
-        MergedQuestRepository merged = merged(dir, database);
-
-        assertTrue(merged.databaseEmpty(), "库确实还是空的");
-        assertEquals(1, merged.count(), "但合并视图里已经有文件那份");
-
-        database.save(quest("in_db", "库里的"));
-        assertFalse(merged.databaseEmpty(), "库里有记录之后就不再是空库");
-    }
-
-    @Test
-    @DisplayName("预设：文件里有定义时，库里那套出厂预设照样播种（两套并存）")
-    void presetSeedingIgnoresFiles(@TempDir Path dir) throws IOException {
-        write(dir.resolve("money.yml"), """
-                kind: rewards
-                type: money
-                properties: { amount: 100 }
-                """);
-        InMemoryPresetRepository database = new InMemoryPresetRepository();
-        YamlSources<Preset> files = YamlDefinitions.presetSources(
-                new DefinitionFolder(dir, "presets", warnings::add));
-        MergedPresetRepository merged = new MergedPresetRepository(database, files, warnings::add);
-
-        merged.seedIfEmpty(List.of(new Preset(Preset.OBJECTIVES, "default", "默认", "chat", Map.of(), "")));
-
-        assertEquals(2, merged.findAll().size(), "库里的示例与文件里的预设并存");
-        assertEquals(1, database.findAll().size(), "库里那套照样写进去（编辑器里能改、能禁用的就是它）");
-        assertFalse(merged.databaseEmpty(), "库里已经有记录了");
-    }
 
     @Test
     @DisplayName("预设：文件定义只读、库定义可写")
@@ -239,13 +206,6 @@ class MergedDefinitionRepositoryTest {
         @Override
         public long count() {
             return data.size();
-        }
-
-        @Override
-        public void seedIfEmpty(List<Preset> defaults) {
-            if (data.isEmpty()) {
-                defaults.forEach(this::save);
-            }
         }
     }
 }

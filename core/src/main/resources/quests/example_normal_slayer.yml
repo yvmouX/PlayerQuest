@@ -1,0 +1,26 @@
+# 示例任务：随插件发布（jar 内的 quests/），只在 quests/ 目录空着时铺一份到这里，之后插件不再动它。
+# 文件名（去掉扩展名）就是 id，因此这里不必再写 id；改完执行 /ptxa reload 生效。
+# 文件里的定义是只读的：编辑器与游戏内命令只改数据库里的定义；要在这里改就改文件，
+# 想搬进数据库就用编辑器的「导出 / 导入 YAML」。不需要就删掉——目录非空时不会再补。
+
+name: <gold>亡灵猎人
+description:
+- <gray>击杀 64 只僵尸
+- <gray>完成后可领取 3 颗钻石与 500 经验
+icon: DIAMOND_SWORD
+category: 常驻
+type: NORMAL
+refreshCost: 0
+enabled: true
+objectives:
+- type: kill
+  properties:
+    amount: 64
+    target: ZOMBIE
+rewards:
+- type: command
+  properties:
+    command: give %player% diamond 3
+- type: command
+  properties:
+    command: xp add %player% 500 points

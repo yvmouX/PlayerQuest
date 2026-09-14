@@ -1,0 +1,12 @@
+# 示例预设：随插件发布（jar 内的 presets/），只在 presets/ 目录空着时铺一份到这里，之后插件不再动它。
+# 文件名（去掉扩展名）就是 id，kind 决定它是目标预设还是奖励预设。
+# 预设只是编辑器的便利设施，引擎不认识它，删掉不影响任何已建好的任务；
+# 不需要就删掉——目录非空时不会再补。
+
+kind: objectives
+name: 挖 64 个石头
+type: break_block
+description: 最基础的挖掘目标
+properties:
+  amount: 64
+  target: STONE
