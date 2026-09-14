@@ -43,14 +43,13 @@ public class MaterialCatalog {
     /** 自定义内容来源（ItemsAdder / CraftEngine）；空实现表示两家都没装。 */
     private final CustomContentHooks customContent;
 
-    public MaterialCatalog(LangFileStore langFiles) {
-        this(langFiles, null, CustomContentHooks.empty());
-    }
-
-    public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs) {
-        this(langFiles, mythicMobs, CustomContentHooks.empty());
-    }
-
+    /**
+     * 三个来源<b>都</b>由调用方传入，且刻意不提供「省略某个来源」的便捷构造器。
+     * <p>
+     * 曾经的 {@code MaterialCatalog(langFiles, mythicMobs)} 会把自定义内容悄悄当成空实现，
+     * 于是「编辑器里选不到 ItemsAdder / CraftEngine 的物品与方块」这种错配编译期看不出来、
+     * 运行期也不报错——只有管理员发现东西不在列表里。少一个参数就该编译不过。
+     */
     public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs,
                            CustomContentHooks customContent) {
         this.langFiles = langFiles;
