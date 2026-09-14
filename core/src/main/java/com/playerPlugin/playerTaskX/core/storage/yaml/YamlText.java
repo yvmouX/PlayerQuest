@@ -180,47 +180,18 @@ public final class YamlText {
     }
 
     /**
-     * 解析「一份或多份定义」的通用形状，三种写法都接受：
-     * <ul>
-     *   <li>顶层是列表 → 多项（导出的整份清单就是这个形状）；</li>
-     *   <li>顶层是映射且含 {@code wrapperKey}（如 {@code quests:}）→ 取它的列表；</li>
-     *   <li>顶层是映射且不含 wrapperKey → 当成单项（<b>一个文件一个定义</b>就是这个形状）。</li>
-     * </ul>
-     * 宽松是刻意的：管理员手写时不该先记住「导入要列表、单文件要映射」。
+     * 顶层是否是「键: 值」形状（一个文件一份定义）。
+     * <p>
+     * 目录扫描与导入都按「一个文件一份定义」办事，因此需要把「顶层写了列表」
+     * 与「文件是空的 / 只有注释」区分开：前者要告警（多半是旧的多任务清单），
+     * 后者是合理用法（留个空文件写笔记），静默跳过。
      */
-    public static List<Map<String, Object>> readDocuments(String text, String wrapperKey) {
-        Object loaded = read(text);
-        if (loaded instanceof Map<?, ?> map) {
-            Map<String, Object> asMap = stringKeyed(map);
-            if (asMap.containsKey(wrapperKey)) {
-                Object wrapped = asMap.get(wrapperKey);
-                if (!(wrapped instanceof List<?> list)) {
-                    // 「有 wrapper 键但不是列表」几乎一定是写错了，明确报出来比当成单条定义强
-                    throw new IllegalArgumentException(wrapperKey + " 必须是一个列表");
-                }
-                return mapEntries(list);
-            }
-            return List.of(asMap);
-        }
-        if (loaded instanceof List<?> list) {
-            return mapEntries(list);
-        }
-        return List.of();
-    }
-
-    /** 列表里非映射的项直接跳过（注释、分隔线之类不该让整份导入失败）。 */
-    private static List<Map<String, Object>> mapEntries(List<?> list) {
-        java.util.List<Map<String, Object>> result = new java.util.ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Map<?, ?> entry) {
-                result.add(stringKeyed(entry));
-            }
-        }
-        return result;
+    public static boolean isMapping(String text) {
+        return read(text) instanceof Map<?, ?>;
     }
 
     /** 键统一成字符串：YAML 里裸写 {@code 1: x} 之类会得到非字符串键，映射阶段才好处理。 */
-    private static Map<String, Object> stringKeyed(Map<?, ?> map) {
+    static Map<String, Object> stringKeyed(Map<?, ?> map) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             result.put(String.valueOf(entry.getKey()), entry.getValue());

@@ -167,6 +167,18 @@ public final class DefinitionFolder {
         }
         Map<String, Object> values;
         try {
+            if (!YamlText.isMapping(text)) {
+                if (isBlankOrComments(text)) {
+                    // 只有注释、或内容为空：不告警。留一个空文件写笔记是合理用法，
+                    // 每次启动都刷一条警告只会教人忽略警告
+                    return null;
+                }
+                // 顶层是列表（旧的多任务清单）或一个标量：这不是一份定义，必须说出来，
+                // 否则文件放错地方的表现就是「什么都没发生」
+                warner.accept(relative(file) + " 顶层不是「键: 值」，已跳过："
+                        + "一个文件只能放一个定义，多个定义请拆成多个文件");
+                return null;
+            }
             values = YamlText.readMap(text);
         } catch (RuntimeException e) {
             // 语法错误（缩进、缺失引号…）：只说清是哪个文件，具体位置交给 SnakeYAML 的消息
@@ -174,8 +186,6 @@ public final class DefinitionFolder {
             return null;
         }
         if (values == null || values.isEmpty()) {
-            // 只有注释、或内容为空：不告警。留一个空文件写笔记是合理用法，
-            // 每次启动都刷一条警告只会教人忽略警告
             return null;
         }
         Map<String, Object> copy = new LinkedHashMap<>(values);
@@ -185,8 +195,12 @@ public final class DefinitionFolder {
         return new Document(relative(file), fileId, copy, parentName(file));
     }
 
-    /** 直接父目录名；预设用它兜底判断类别（{@code presets/rewards/x.yml}）。 */
-    private static String parentName(Path file) {
+    /** 空文件或只有注释（留个空文件写笔记是合理用法，不该刷告警）。 */
+    private static boolean isBlankOrComments(String text) {
+        return text.lines().allMatch(line -> line.isBlank() || line.stripLeading().startsWith("#"));
+    }
+
+    /** 直接父目录名；预设用它兜底判断类别（{@code presets/rewards/x.yml}）。 */    private static String parentName(Path file) {
         Path parent = file.getParent();
         return parent == null || parent.getFileName() == null ? "" : parent.getFileName().toString();
     }

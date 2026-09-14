@@ -17,15 +17,23 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.bukkit.Bukkit;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * 网页编辑器的业务接口（{@code /api/*}）。
@@ -93,56 +101,67 @@ final class EditorApi {
             ctx.result(json(list));
         });
 
-        // 导出：整份清单的 YAML。顶层是列表，一个文件就够；要拆成 quests/<id>.yml 逐条粘贴也行
+        // 导出：一个任务一个 yml（导出的形状与 quests/<id>.yml 一致，可以直接放进去用）；
+        // 选中多个或导出全部时打包成 zip —— 一个文件里塞十几条任务，导入时既不好 diff 也不好挑
         app.get("/api/quests/export", ctx -> {
-            List<Quest> sorted = new ArrayList<>(services.quests().all());
-            sorted.sort(Comparator.comparing(Quest::id));
-            ctx.contentType(YAML_CONTENT_TYPE)
-                    .header("Content-Disposition", "attachment; filename=\"playerTaskX-quests.yml\"")
-                    .result(YamlDefinitions.writeQuests(sorted));
-        });
-
-        app.post("/api/quests/import", ctx -> withTextBody(ctx, body -> {
-            boolean replace = ctx.queryParam("replace") != null
-                    && Boolean.parseBoolean(ctx.queryParam("replace"));
-            List<Quest> parsed;
-            try {
-                parsed = YamlDefinitions.readQuests(body);
-            } catch (RuntimeException e) {
-                badRequest(ctx, "YAML 解析失败: " + e.getMessage());
+            List<Quest> picked = pickQuests(ctx);
+            if (picked == null) {
                 return;
             }
-            if (parsed.isEmpty()) {
-                badRequest(ctx, "没有解析出任何任务（顶层应当是任务列表，或单个任务的「键: 值」）");
+            Map<String, String> files = new LinkedHashMap<>();
+            for (Quest quest : picked) {
+                files.put(quest.id(), YamlDefinitions.writeQuest(quest));
+            }
+            writeDownload(ctx, picked.size() == 1 ? safeFileName(picked.get(0).id()) : "playerTaskX-quests", files);
+        });
+
+        app.post("/api/quests/import", ctx -> {
+            boolean replace = ctx.queryParam("replace") != null
+                    && Boolean.parseBoolean(ctx.queryParam("replace"));
+            // zip 与单文件走同一个入口：浏览器给 zip 的 MIME 五花八门（application/zip、
+            // x-zip-compressed、甚至 octet-stream），因此认魔数而不是 Content-Type
+            List<ImportEntry> entries = readImportEntries(ctx);
+            if (entries == null) {
+                return;
+            }
+            if (entries.isEmpty()) {
+                badRequest(ctx, "压缩包里没有 .yml / .yaml 文件");
                 return;
             }
             if (replace) {
-                for (Quest existing : services.quests().all()) {
-                    try {
-                        services.questAdmin().delete(existing.id());
-                    } catch (DefinitionReadOnlyException ignored) {
-                        // 只读定义（YAML 文件里的）不在替换范围内：replace 只清数据库
-                    }
-                }
+                clearDatabase(services.quests().all(), Quest::id, services.questAdmin()::delete);
             }
             int imported = 0;
             List<String> skipped = new ArrayList<>();
-            for (Quest quest : parsed) {
+            for (ImportEntry entry : entries) {
+                Quest quest;
+                try {
+                    quest = YamlDefinitions.readQuest(entry.text());
+                } catch (RuntimeException e) {
+                    if (entry.file() == null) {
+                        // 单文件导入：直接告诉用户哪里错了，而不是回一个「跳过了 1 条」的 200
+                        badRequest(ctx, "解析失败: " + e.getMessage());
+                        return;
+                    }
+                    // 压缩包里某一个文件写坏了不该让整包导入失败，逐条报告
+                    skipped.add(describe(entry.file(), e.getMessage()));
+                    continue;
+                }
                 if (quest.id() == null || quest.id().isBlank()) {
-                    skipped.add("(缺少 id)");
+                    skipped.add(describe(entry.file(), "缺少 id"));
                     continue;
                 }
                 try {
                     services.questAdmin().save(quest);
                     imported++;
                 } catch (DefinitionReadOnlyException e) {
-                    // 导入的文件里含有「由 YAML 定义」的 id：不打断整份导入，逐条报告原因
+                    // 只读定义（YAML 文件里的）不能被导入覆盖，逐条报告原因
                     skipped.add(quest.id() + "（" + e.getMessage() + "）");
                 }
             }
             ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
                     "total", services.quests().all().size())));
-        }));
+        });
 
         app.get("/api/quests/{id}", ctx -> {
             Quest quest = services.quests().find(ctx.pathParam("id")).orElse(null);
@@ -320,43 +339,49 @@ final class EditorApi {
     private void presetRoutes(Javalin app) {
         app.get("/api/presets", ctx -> ctx.result(json(presetGroups())));
 
-        // 导出：整份预设清单的 YAML（每项带 kind，可逐条拆成 presets/<id>.yml）
+        // 导出：一条预设一个 yml；选中多条或导出全部时打包成 zip（与任务导出同一套规则）
         app.get("/api/presets/export", ctx -> {
-            List<Preset> sorted = new ArrayList<>(services.presets().findAll());
-            sorted.sort(Comparator.comparing(Preset::id));
-            ctx.contentType(YAML_CONTENT_TYPE)
-                    .header("Content-Disposition", "attachment; filename=\"playerTaskX-presets.yml\"")
-                    .result(YamlDefinitions.writePresets(sorted));
+            List<Preset> picked = pickPresets(ctx);
+            if (picked == null) {
+                return;
+            }
+            Map<String, String> files = new LinkedHashMap<>();
+            for (Preset preset : picked) {
+                files.put(preset.id(), YamlDefinitions.writePreset(preset));
+            }
+            writeDownload(ctx, picked.size() == 1 ? safeFileName(picked.get(0).id()) : "playerTaskX-presets", files);
         });
 
-        app.post("/api/presets/import", ctx -> withTextBody(ctx, body -> {
-            // kind 只是「文件里没写 kind 时」的兜底，导出文件本身带着 kind
+        app.post("/api/presets/import", ctx -> {
+            // kind 只是「文件里没写 kind 时」的兜底，导出的文件本身带着 kind
             String defaultKind = ctx.queryParam("kind") == null ? Preset.OBJECTIVES : ctx.queryParam("kind");
             boolean replace = ctx.queryParam("replace") != null
                     && Boolean.parseBoolean(ctx.queryParam("replace"));
-            List<Preset> parsed;
-            try {
-                parsed = YamlDefinitions.readPresets(body, defaultKind);
-            } catch (RuntimeException e) {
-                badRequest(ctx, "YAML 解析失败: " + e.getMessage());
+            List<ImportEntry> entries = readImportEntries(ctx);
+            if (entries == null) {
                 return;
             }
-            if (parsed.isEmpty()) {
-                badRequest(ctx, "没有解析出任何预设（每项至少要有 type）");
+            if (entries.isEmpty()) {
+                badRequest(ctx, "压缩包里没有 .yml / .yaml 文件");
                 return;
             }
             if (replace) {
-                for (Preset existing : services.presets().findAll()) {
-                    try {
-                        services.presets().delete(existing.id());
-                    } catch (DefinitionReadOnlyException ignored) {
-                        // 只读定义（YAML 文件里的）不在替换范围内
-                    }
-                }
+                clearDatabase(services.presets().findAll(), Preset::id, services.presets()::delete);
             }
             int imported = 0;
             List<String> skipped = new ArrayList<>();
-            for (Preset preset : parsed) {
+            for (ImportEntry entry : entries) {
+                Preset preset;
+                try {
+                    preset = YamlDefinitions.readPreset(entry.text(), defaultKind);
+                } catch (RuntimeException e) {
+                    if (entry.file() == null) {
+                        badRequest(ctx, "解析失败: " + e.getMessage());
+                        return;
+                    }
+                    skipped.add(describe(entry.file(), e.getMessage()));
+                    continue;
+                }
                 try {
                     services.presets().save(preset);
                     imported++;
@@ -366,7 +391,7 @@ final class EditorApi {
             }
             ctx.result(json(Map.of("ok", true, "imported", imported, "skipped", skipped,
                     "total", services.presets().findAll().size())));
-        }));
+        });
 
         app.post("/api/presets/{kind}", ctx -> withBody(ctx, body -> {
             Preset preset = PresetJson.fromJson(ctx.pathParam("kind"), body);
@@ -429,6 +454,177 @@ final class EditorApi {
             services.questAdmin().reload();
             ctx.result(json(Map.of("ok", true, "quests", services.quests().all().size())));
         });
+    }
+
+    // ------------------------------------------------------------------
+    // 导出 / 导入的公共部分
+    // ------------------------------------------------------------------
+
+    /**
+     * {@code ids=a,b,c} 指定要导出的任务；缺省表示全部。
+     *
+     * @return 要导出的任务；某个 id 不存在时已经写了 404 并返回 {@code null}
+     */
+    private List<Quest> pickQuests(Context ctx) {
+        String raw = ctx.queryParam("ids");
+        if (raw == null || raw.isBlank()) {
+            List<Quest> all = new ArrayList<>(services.quests().all());
+            all.sort(Comparator.comparing(Quest::id));
+            return all;
+        }
+        List<Quest> picked = new ArrayList<>();
+        for (String raw_id : raw.split(",")) {
+            String id = raw_id.trim();
+            if (id.isEmpty()) {
+                continue;
+            }
+            Quest quest = services.quests().find(id).orElse(null);
+            if (quest == null) {
+                notFound(ctx, "任务不存在: " + id);
+                return null;
+            }
+            picked.add(quest);
+        }
+        return picked;
+    }
+
+    /** 预设版的 {@link #pickQuests(Context)}。 */
+    private List<Preset> pickPresets(Context ctx) {
+        String raw = ctx.queryParam("ids");
+        if (raw == null || raw.isBlank()) {
+            List<Preset> all = new ArrayList<>(services.presets().findAll());
+            all.sort(Comparator.comparing(Preset::id));
+            return all;
+        }
+        List<Preset> picked = new ArrayList<>();
+        for (String raw_id : raw.split(",")) {
+            String id = raw_id.trim();
+            if (id.isEmpty()) {
+                continue;
+            }
+            Preset preset = services.presets().findById(id).orElse(null);
+            if (preset == null) {
+                notFound(ctx, "预设不存在: " + id);
+                return null;
+            }
+            picked.add(preset);
+        }
+        return picked;
+    }
+
+    /**
+     * 写下载响应：一条定义给 {@code <名字>.yml}，多条打包成 {@code <名字>.zip}。
+     * <p>
+     * 「一个文件一条定义」是刻意的：导出的文件可以直接丢进 {@code quests/} 用，
+     * 也能一眼看出改了哪一条；把十几条塞进一个文件时，diff 与挑选都变得很难受。
+     *
+     * @param fileName 单条时用它的 id，多条时用一个固定前缀（后缀由这里补）
+     */
+    private static void writeDownload(Context ctx, String fileName, Map<String, String> files) {
+        if (files.size() == 1) {
+            ctx.contentType(YAML_CONTENT_TYPE)
+                    .header("Content-Disposition", "attachment; filename=\"" + fileName + ".yml\"")
+                    .result(files.values().iterator().next());
+            return;
+        }
+        ctx.contentType("application/zip")
+                .header("Content-Disposition", "attachment; filename=\"" + fileName + ".zip\"")
+                .result(zip(files));
+    }
+
+    /** 一条待导入的定义；{@code file} 为 {@code null} 表示整个请求体就是这一条。 */
+    private record ImportEntry(String file, String text) {
+    }
+
+    /**
+     * 读导入请求体：zip 里一个文件一条定义，否则整个请求体就是一条定义。
+     * <p>
+     * 认 zip 的<b>魔数</b>而不是 {@code Content-Type}：浏览器给 zip 的类型五花八门
+     * （{@code application/zip}、{@code x-zip-compressed}、甚至 {@code octet-stream}）。
+     *
+     * @return 待导入的条目；请求体为空或压缩包读不出来时已经写了 400 并返回 {@code null}
+     */
+    private static List<ImportEntry> readImportEntries(Context ctx) {
+        byte[] body = ctx.bodyAsBytes();
+        if (body == null || body.length == 0) {
+            badRequest(ctx, "请求体为空");
+            return null;
+        }
+        if (isZip(body)) {
+            try {
+                return unzip(body);
+            } catch (IOException e) {
+                badRequest(ctx, "读取压缩包失败: " + e.getMessage());
+                return null;
+            }
+        }
+        return List.of(new ImportEntry(null, new String(body, StandardCharsets.UTF_8)));
+    }
+
+    private static boolean isZip(byte[] body) {
+        return body.length > 3 && body[0] == 'P' && body[1] == 'K';
+    }
+
+    /** 只取压缩包里的 .yml / .yaml 条目；子目录结构忽略（导入只看内容）。 */
+    private static List<ImportEntry> unzip(byte[] body) throws IOException {
+        List<ImportEntry> entries = new ArrayList<>();
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(body), StandardCharsets.UTF_8)) {
+            ZipEntry entry;
+            while ((entry = in.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (entry.isDirectory() || !isYamlName(name)) {
+                    continue;
+                }
+                entries.add(new ImportEntry(name, new String(in.readAllBytes(), StandardCharsets.UTF_8)));
+            }
+        }
+        return entries;
+    }
+
+    private static boolean isYamlName(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".yml") || lower.endsWith(".yaml");
+    }
+
+    private static byte[] zip(Map<String, String> files) {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (ZipOutputStream out = new ZipOutputStream(buffer, StandardCharsets.UTF_8)) {
+            for (Map.Entry<String, String> file : files.entrySet()) {
+                out.putNextEntry(new ZipEntry(safeFileName(file.getKey()) + ".yml"));
+                out.write(file.getValue().getBytes(StandardCharsets.UTF_8));
+                out.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("打包失败: " + e.getMessage(), e);
+        }
+        return buffer.toByteArray();
+    }
+
+    /** id 是管理员填的，可能带路径分隔符或 Windows 不接受的字符，当文件名前先中和掉。 */
+    private static String safeFileName(String id) {
+        return id.replaceAll("[\\\\/:*?\"<>|\\s]", "_");
+    }
+
+    /**
+     * 「替换」导入前清空数据库里的定义。
+     * <p>
+     * 只读的 YAML 定义<B>不在替换范围内</B>：它们在文件里，删不掉也不该删——
+     * 否则一次「替换导入」就会把 quests/ 里的定义从视图里抹掉（下次重载又回来，更迷惑）。
+     */
+    private static <T> void clearDatabase(Collection<T> existing, Function<T, String> idOf,
+                                          Consumer<String> delete) {
+        for (T item : existing) {
+            try {
+                delete.accept(idOf.apply(item));
+            } catch (DefinitionReadOnlyException ignored) {
+                // 文件里的定义删不掉：跳过，导入照常继续
+            }
+        }
+    }
+
+    /** 压缩包条目出错时的措辞：带上文件名，否则不知道是哪一个坏了。 */
+    private static String describe(String file, String reason) {
+        return file == null ? reason : file + "（" + reason + "）";
     }
 
     // ------------------------------------------------------------------

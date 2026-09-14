@@ -21,11 +21,19 @@
         <button class="btn" type="button" :disabled="loading || busy" @click="refresh">
           {{ loading ? '加载中…' : '刷新' }}
         </button>
-        <button class="btn" type="button" :disabled="loading || busy || exporting" @click="exportQuests">
-          {{ exporting ? '导出中…' : '导出 YAML' }}
+        <button
+          class="btn"
+          type="button"
+          :disabled="loading || busy || exporting"
+          :title="selected.size
+            ? `导出选中的 ${selected.size} 个任务（一个任务一个 yml，打包成 zip）`
+            : '导出全部任务：一个任务一个 yml，打包成 zip'"
+          @click="exportQuests"
+        >
+          {{ exporting ? '导出中…' : selected.size ? `导出选中（${selected.size}）` : '导出全部' }}
         </button>
         <button class="btn" type="button" :disabled="loading || busy || importing" @click="pickImportFile">
-          {{ importing ? '导入中…' : '导入 YAML' }}
+          {{ importing ? '导入中…' : '导入 YAML / ZIP' }}
         </button>
         <RouterLink class="btn btn-primary" :to="{ name: 'quest-new' }">新建任务</RouterLink>
       </div>
@@ -291,12 +299,12 @@
       </template>
     </div>
 
-    <!-- 隐藏的文件选择框：只接受 yml -->
+    <!-- 隐藏的文件选择框：yml 一条任务，zip 多条（每个文件一条） -->
     <input
       ref="fileInput"
       class="hidden-file"
       type="file"
-      accept=".yml,.yaml,application/x-yaml,text/yaml"
+      accept=".yml,.yaml,.zip,application/x-yaml,text/yaml,application/zip"
       @change="onFilePicked"
     />
   </section>
@@ -319,6 +327,7 @@ import type {
   TableColumn
 } from '../types'
 import { plainIfDifferent } from '../utils/text'
+import { decodeBytes, downloadBytes, isZipBytes } from '../utils/files'
 import { previewQuestImport } from '../utils/yaml'
 
 const toast = useToast()
@@ -730,35 +739,53 @@ async function openEditor(id: string): Promise<void> {
 /* ---------------- 导出 / 导入 ---------------- */
 
 const fileInput = ref<HTMLInputElement | null>(null)
-const pendingImport = ref<{ yaml: string; count: number; fileName: string } | null>(null)
+/** 待确认的导入：原始字节（yml 或 zip）+ 本地预检出的条数 + 文件名。 */
+const pendingImport = ref<{ bytes: ArrayBuffer; count: number; fileName: string; zip: boolean } | null>(null)
 const importResult = ref<QuestImportResult | null>(null)
 /** 导入方式：默认「合并」（保留现有任务），勾选后为「替换」（先清空）。 */
 const replaceMode = ref(false)
 
 const importMessage = computed(() => {
-  if (!pendingImport.value) {
+  const pending = pendingImport.value
+  if (!pending) {
     return ''
   }
-  return `文件「${pendingImport.value.fileName}」中解析出 ${pendingImport.value.count} 条任务定义，`
-    + '请确认导入方式。'
+  if (pending.zip) {
+    return `压缩包「${pending.fileName}」里每个文件一条任务定义（具体条数以后端导入结果为准），`
+      + '请确认导入方式。'
+  }
+  return `文件「${pending.fileName}」中解析出 ${pending.count} 条任务定义，请确认导入方式。`
 })
 
 /**
- * 导出：后端直接给 YAML 文本，浏览器存成 .yml。
+ * 导出：选中若干条就导这几条，没选就导全部。
  *
- * <p>不在这里把任务对象转 YAML：字段映射只有后端那一份，前端再实现一次迟早会漂移；
- * 而且导出的文件要能直接放进 `quests/` 目录当定义用。
+ * <p>一条定义存成 `<id>.yml`（可以直接放进 `quests/` 目录用），多条打包成 zip
+ * ——一个文件里塞十几条任务，diff 与挑选都很难受。
+ * 不在这里把任务对象转 YAML：字段映射只有后端那一份，前端再实现一次迟早会漂移。
  */
 async function exportQuests(): Promise<void> {
   if (exporting.value) {
     return
   }
+  const ids = [...selected.value]
+  if (!ids.length && !quests.value.length) {
+    toast.info('没有可导出的任务')
+    return
+  }
   exporting.value = true
   error.value = ''
   try {
-    const yaml = await QuestApi.exportYaml()
-    download(new Blob([yaml], { type: 'application/x-yaml;charset=utf-8' }), 'playerTaskX-quests.yml')
-    toast.success(`已导出 ${quests.value.length} 个任务到 playerTaskX-quests.yml`)
+    const bytes = await QuestApi.exportYaml(ids)
+    const count = ids.length || quests.value.length
+    if (isZipBytes(bytes)) {
+      downloadBytes(bytes, 'playerTaskX-quests.zip', 'application/zip')
+    } else {
+      // 非 zip 只有一种情况：这次导出的就是一条任务
+      const single = ids.length ? ids[0] : quests.value[0]?.id ?? 'quest'
+      downloadBytes(bytes, `${single}.yml`, 'application/x-yaml;charset=utf-8')
+    }
+    toast.success(`已导出 ${count} 个任务`)
   } catch (e) {
     const message = `导出失败：${errorMessage(e)}`
     error.value = message
@@ -767,18 +794,6 @@ async function exportQuests(): Promise<void> {
   } finally {
     exporting.value = false
   }
-}
-
-/** 触发浏览器下载；立即 revoke 在部分浏览器上会得到空文件，因此延后释放。 */
-function download(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function pickImportFile(): void {
@@ -790,6 +805,8 @@ function pickImportFile(): void {
  *
  * <p>真正的字段校验与入库都在后端（映射只有一份），这里只为让确认框能说清「要导入几条」
  * ——「替换」是破坏性操作，值得在动手前把数字摆在眼前，也能立刻发现选错了文件。
+ * <p>zip 不在这里拆包（浏览器端没有 unzip 能力，为它引一个库不值得）：条数交给后端结果，
+ * 确认框里改成说明「每个文件一条」。
  */
 async function onFilePicked(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement | null
@@ -803,8 +820,13 @@ async function onFilePicked(event: Event): Promise<void> {
   }
   error.value = ''
   try {
-    const text = await file.text()
-    const preview = previewQuestImport(text)
+    const bytes = await file.arrayBuffer()
+    if (isZipBytes(bytes)) {
+      replaceMode.value = false
+      pendingImport.value = { bytes, count: 0, fileName: file.name, zip: true }
+      return
+    }
+    const preview = previewQuestImport(decodeBytes(bytes))
     if (preview.error) {
       error.value = `导入失败：${preview.error}`
       toast.error('导入失败：YAML 解析错误')
@@ -816,12 +838,14 @@ async function onFilePicked(event: Event): Promise<void> {
       return
     }
     replaceMode.value = false
-    pendingImport.value = { yaml: text, count: preview.count, fileName: file.name }
+    pendingImport.value = { bytes, count: preview.count, fileName: file.name, zip: false }
   } catch (e) {
     error.value = `导入失败：无法读取文件（${e instanceof Error ? e.message : String(e)}）`
     toast.error('导入失败：读取文件出错')
   }
-}function cancelImport(): void {
+}
+
+function cancelImport(): void {
   pendingImport.value = null
   replaceMode.value = false
 }
@@ -842,7 +866,7 @@ async function confirmImport(): Promise<void> {
   importing.value = true
   error.value = ''
   try {
-    const result = await QuestApi.importYaml(payload.yaml, replace)
+    const result = await QuestApi.importYaml(payload.bytes, replace)
     importResult.value = result
     await refresh()
     if (result.skipped.length) {

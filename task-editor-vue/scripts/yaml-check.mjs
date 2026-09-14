@@ -223,6 +223,23 @@ try {
     assert.equal(yaml.presetFromYaml('type: exp\nproperties:\n  amount: 10\n').value.id, '')
   })
 
+  // ------------------------------------------------------- 导入预检（一个文件一条）
+  check('导入预检：一个文件只能放一条定义，列表 / 包一层都被拦下并指出该用 zip', () => {
+    const single = 'id: q\nobjectives:\n  - type: chat\n    properties: {}\n'
+    assert.equal(yaml.previewQuestImport(single).count, 1, '单条定义应当通过预检')
+
+    for (const list of [`- ${single.replace(/\n/g, '\n  ')}`, `quests:\n  - ${single.replace(/\n/g, '\n    ')}`]) {
+      const result = yaml.previewQuestImport(list)
+      assert.equal(result.count, 0, '列表形状不该被当成「可以导入」')
+      assert.ok(result.error.includes('zip'), result.error)
+    }
+
+    // 预设同一套规则：列表拦下，单条通过（缺 type 的不算数）
+    assert.equal(yaml.previewPresetImport('type: exp\nproperties: { amount: 1 }\n').count, 1)
+    assert.ok(yaml.previewPresetImport('- type: exp\n- type: exp\n').error.includes('zip'))
+    assert.equal(yaml.previewPresetImport('name: 缺 type\n').count, 0)
+  })
+
   process.stdout.write(`YAML 往返自检通过（${checks} 项）\n`)
 } finally {
   await cleanup()

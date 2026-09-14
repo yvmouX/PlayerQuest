@@ -44,7 +44,7 @@
       ref="fileInput"
       class="hidden-file-input"
       type="file"
-      accept=".yml,.yaml,text/yaml,application/x-yaml"
+      accept=".yml,.yaml,.zip,text/yaml,application/x-yaml,application/zip"
       @change="onFilePicked"
     />
 
@@ -317,6 +317,7 @@ import {
   upsertPreset
 } from '../utils/presets'
 import { defaultProperties, schemaOptions, withDefaults } from '../utils/schema'
+import { decodeBytes, downloadBytes, isZipBytes } from '../utils/files'
 import { presetFromYaml, presetToYaml, previewPresetImport } from '../utils/yaml'
 
 const toast = useToast()
@@ -649,18 +650,22 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const exporting = ref(false)
 const importing = ref(false)
 /** 待确认的导入：文件内容 + 预检出的条数 + 文件名。 */
-const pendingImport = ref<{ text: string; count: number; fileName: string } | null>(null)
+const pendingImport = ref<{ bytes: ArrayBuffer; count: number; fileName: string; zip: boolean } | null>(null)
 /** 导入方式：默认「合并」（保留现有预设），勾选后为「替换」（先清空数据库里的）。 */
 const replaceMode = ref(false)
 
 const importMessage = computed(() => {
-  if (!pendingImport.value) {
+  const pending = pendingImport.value
+  if (!pending) {
     return ''
   }
-  return `文件「${pendingImport.value.fileName}」中解析出 ${pendingImport.value.count} 条预设定义，请确认导入方式。`
+  if (pending.zip) {
+    return `压缩包「${pending.fileName}」里每个文件一条预设定义（具体条数以后端导入结果为准），请确认导入方式。`
+  }
+  return `文件「${pending.fileName}」中解析出 ${pending.count} 条预设定义，请确认导入方式。`
 })
 
-/** 导出全部预设（两类一起）：后端给 YAML，浏览器存成 .yml。 */
+/** 导出：一条预设给 yml，多条打包成 zip（与任务导出一致，避免一个文件塞十几条）。 */
 async function exportPresets(): Promise<void> {
   if (exporting.value) {
     return
@@ -668,17 +673,14 @@ async function exportPresets(): Promise<void> {
   exporting.value = true
   error.value = ''
   try {
-    const yaml = await PresetApi.exportYaml()
-    const blob = new Blob([yaml], { type: 'application/x-yaml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'playerTaskX-presets.yml'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast.success(`已导出 ${totalCount.value} 条预设到 playerTaskX-presets.yml`)
+    const bytes = await PresetApi.exportYaml()
+    if (isZipBytes(bytes)) {
+      downloadBytes(bytes, 'playerTaskX-presets.zip', 'application/zip')
+    } else {
+      const only = activeGroup.value.items[0]?.preset.id ?? 'preset'
+      downloadBytes(bytes, `${only}.yml`, 'application/x-yaml;charset=utf-8')
+    }
+    toast.success(`已导出 ${totalCount.value} 条预设`)
   } catch (e) {
     const message = `导出失败：${errorMessage(e)}`
     error.value = message
@@ -710,8 +712,13 @@ async function onFilePicked(event: Event): Promise<void> {
   }
   error.value = ''
   try {
-    const text = await file.text()
-    const preview = previewPresetImport(text)
+    const bytes = await file.arrayBuffer()
+    if (isZipBytes(bytes)) {
+      replaceMode.value = false
+      pendingImport.value = { bytes, count: 0, fileName: file.name, zip: true }
+      return
+    }
+    const preview = previewPresetImport(decodeBytes(bytes))
     if (preview.error) {
       error.value = `导入失败：${preview.error}`
       toast.error('导入失败：YAML 解析错误')
@@ -723,7 +730,7 @@ async function onFilePicked(event: Event): Promise<void> {
       return
     }
     replaceMode.value = false
-    pendingImport.value = { text, count: preview.count, fileName: file.name }
+    pendingImport.value = { bytes, count: preview.count, fileName: file.name, zip: false }
   } catch (e) {
     error.value = `导入失败：无法读取文件（${e instanceof Error ? e.message : String(e)}）`
     toast.error('导入失败：读取文件出错')
@@ -745,8 +752,8 @@ async function confirmImport(): Promise<void> {
   importing.value = true
   error.value = ''
   try {
-    // kind 只在文件里没写 kind 时兜底；导出文件本身每项都带 kind
-    const result = await PresetApi.importYaml(payload.text, 'objectives', replace)
+    // kind 只在文件里没写 kind 时兜底；导出的文件本身每条都带 kind
+    const result = await PresetApi.importYaml(payload.bytes, 'objectives', replace)
     await refresh()
     if (result.skipped.length) {
       toast.info(`已导入 ${result.imported} 条预设，跳过 ${result.skipped.length} 条`)

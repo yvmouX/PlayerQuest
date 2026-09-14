@@ -154,44 +154,44 @@ function normalizePreset(raw: Record<string, unknown>): Preset | null {
 // ---------------------------------------------------------------------------
 
 /**
- * 导入前的预检：数出文件里有几条任务定义，并报告 YAML 语法错误。
+ * 导入前的预检：确认文件里是<b>一条</b>任务定义，并报告 YAML 语法错误。
  *
  * <p>真正的字段校验与入库都在后端（字段映射只有一份），这里只为让确认框能说清
  * 「要导入几条」——「替换」是破坏性操作，值得在动手前把数字摆在眼前。
+ * <p>与后端同一条规矩：一个文件只能放一条定义，多条要打包成 zip。前端提前拦一道，
+ * 省掉一次「传上去才被拒」。
  *
  * @return {@code count} 为 0 且 {@code error} 为空表示文件能读但没有定义
  */
 export function previewQuestImport(text: string): { count: number; error: string } {
-  if (!text.trim()) {
-    return { count: 0, error: '文件是空的' }
-  }
-  let loaded: unknown
-  try {
-    loaded = load(text, LOAD_OPTIONS)
-  } catch (e) {
-    return { count: 0, error: e instanceof Error ? e.message : String(e) }
-  }
-  if (Array.isArray(loaded)) {
-    return { count: loaded.filter(entry => entry && typeof entry === 'object').length, error: '' }
-  }
-  if (loaded && typeof loaded === 'object') {
-    const wrapped = (loaded as Record<string, unknown>).quests
-    if (Array.isArray(wrapped)) {
-      return { count: wrapped.filter(entry => entry && typeof entry === 'object').length, error: '' }
-    }
-    // 单个任务：与后端一致，缺 id 的不算数
-    return { count: typeof (loaded as { id?: unknown }).id === 'string' ? 1 : 0, error: '' }
-  }
-  return { count: 0, error: '顶层应当是任务列表，或单个任务的「键: 值」' }
+  return previewSingleImport(text, '任务', 'quests', entry =>
+    typeof (entry as { id?: unknown }).id === 'string'
+  )
 }
 
 /**
- * 预设导入前的预检：数出文件里有几条定义（每项至少要有 type），并报告 YAML 语法错误。
- *
- * <p>与 {@link previewQuestImport} 同一套理由：真正的字段校验与入库在后端，
- * 这里只为让确认框说清条数、并立刻发现选错了文件。
+ * 预设导入前的预检：与 {@link previewQuestImport} 同一套规则（一条定义 + 可用性判定）。
  */
 export function previewPresetImport(text: string): { count: number; error: string } {
+  return previewSingleImport(text, '预设', 'presets', entry => {
+    const type = (entry as { type?: unknown }).type
+    return typeof type === 'string' && type.trim() !== ''
+  })
+}
+
+/**
+ * 「一个文件一条定义」的预检。
+ *
+ * @param label  报错措辞里的名字：任务 / 预设
+ * @param folder 该放哪个目录（提示出路）
+ * @param usable 这条定义算不算数（缺 id / 缺 type 的不算）
+ */
+function previewSingleImport(
+  text: string,
+  label: string,
+  folder: string,
+  usable: (entry: Record<string, unknown>) => boolean
+): { count: number; error: string } {
   if (!text.trim()) {
     return { count: 0, error: '文件是空的' }
   }
@@ -201,24 +201,24 @@ export function previewPresetImport(text: string): { count: number; error: strin
   } catch (e) {
     return { count: 0, error: e instanceof Error ? e.message : String(e) }
   }
-  const usable = (entry: unknown): boolean => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      return false
-    }
-    const type = (entry as { type?: unknown }).type
-    return typeof type === 'string' && type.trim() !== ''
-  }
   if (Array.isArray(loaded)) {
-    return { count: loaded.filter(usable).length, error: '' }
+    return {
+      count: 0,
+      error: `一个文件只能放一个${label}，这里是一个列表：多个${label}请打包成 zip（每个文件一个），`
+        + `或把文件放进 ${folder}/ 目录`
+    }
   }
   if (loaded && typeof loaded === 'object') {
-    const wrapped = (loaded as Record<string, unknown>).presets
-    if (Array.isArray(wrapped)) {
-      return { count: wrapped.filter(usable).length, error: '' }
+    const entry = loaded as Record<string, unknown>
+    if (Array.isArray(entry.quests) || Array.isArray(entry.presets)) {
+      return {
+        count: 0,
+        error: `一个文件只能放一个${label}；多个${label}请打包成 zip（每个文件一个）`
+      }
     }
-    return { count: usable(loaded) ? 1 : 0, error: '' }
+    return { count: usable(entry) ? 1 : 0, error: '' }
   }
-  return { count: 0, error: '顶层应当是预设列表，或单个预设的「键: 值」' }
+  return { count: 0, error: `顶层应当是一条${label}的「键: 值」` }
 }
 
 // ---------------------------------------------------------------------------

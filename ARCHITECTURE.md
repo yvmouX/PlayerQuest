@@ -378,10 +378,13 @@ CustomFishing 的 API jar 自包含，直接编译进来更清晰。
 `round-trip` 与「`NO` 仍是字符串」都进了构建自检。已知的一处**刻意分歧**：
 `.inf` / `.nan` 在后端保持字符串（前端 js-yaml 会解析成数值），因为它们不会出现在任何字段里。
 
-导入/导出复用同一份文档映射：`/api/quests/export` 给顶层列表的 YAML（按 id 排序，
-`Content-Disposition: playerTaskX-quests.yml`），`/api/quests/import?replace=` 接受
-列表 / `quests:` 包一层 / 单个定义三种形状，逐条报告跳过的原因（缺 id、只读 id）。
-`replace` 只清数据库，**不碰文件**。预设同理（`presets:`、`kind` 兜底）。
+导入/导出：**一个文件一条定义**。`/api/quests/export?ids=a,b` 给一条时回 `<id>.yml`、
+给多条或全部时回 zip（一个定义一个文件）；`/api/quests/import` 按<b>魔数</b>区分 zip 与单文件，
+zip 里逐条目解析、坏的那条只跳过它自己，单文件解析失败直接 400。
+顶层是列表的整份清单被明确拒绝——宽松接受会让「导入一个文件却多出十几条任务」变成静默行为
+（同一形状的宽松读取器 `YamlText.readDocuments` 与它上面两个包装已随之删除；
+目录扫描那边改成「顶层不是映射就告警」：把列表文件放进 `quests/` 不再表现为「什么都没发生」）。
+`replace` 只清数据库，**不碰文件**。预设同理（`kind` 兜底）。
 
 ---
 
@@ -629,10 +632,11 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 26 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（6 项测试） |
 | 27 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
 | 28 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
+| 29 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
 
-**测试总量：258 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
-存储 20（`StorageIntegrationTest`）+ 编辑器接口 19（`EditorApiTest`）+
-YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 11（`YamlDefinitionsTest`）+
+**测试总量：254 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+存储 20（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
+YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
 示例文件 6（`ExampleFilesTest`）+ 引擎 12（`ProgressServiceTest`）+
 命令帮助 12（`YLibCommandHelpTest`）+ 前置判定 12（`PrerequisiteServiceTest`）+
@@ -649,10 +653,10 @@ MythicMobs 目标 5（`MythicMobsHookTest`）+ 击杀监听 5（`EntityListenerT
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
 逐套件累加（30 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 12391 行
-＝ **13314 行 / 105 个 java 文件**；测试 `core/src/test` **6156 行 / 33 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 923 行 + `core/src/main` 12460 行
+＝ **13383 行 / 105 个 java 文件**；测试 `core/src/test` **6156 行 / 33 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **6048 行 `.vue` + 1864 行 `.ts`/`.js` ＝ 7912 行 / 31 个文件**
+前端 `task-editor-vue/src` **6012 行 `.vue` + 1935 行 `.ts`/`.js` ＝ 7947 行 / 31 个文件**
 （另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =

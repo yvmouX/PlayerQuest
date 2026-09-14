@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * YAML 导出/导入与「引号安全」的测试。
+ * YAML 导出/导入（一个文件一个定义）与「引号安全」的测试。
  *
  * <p>要防的错误全是静默的：字符串被写成裸量（{@code NO} 变成布尔、{@code 1.20} 变成浮点、
  * 空串变成 null）、长描述被折行、导出与导入的形状对不上导致「导出再导入就少东西」。</p>
@@ -35,11 +35,8 @@ class YamlDefinitionsTest {
                 List.of(QuestReward.of("exp", Map.of("amount", 200))),
                 1000.0, false);
 
-        String yaml = YamlDefinitions.writeQuests(List.of(quest));
-        List<Quest> back = YamlDefinitions.readQuests(yaml);
+        Quest loaded = YamlDefinitions.readQuest(YamlDefinitions.writeQuest(quest));
 
-        assertEquals(1, back.size());
-        Quest loaded = back.get(0);
         assertEquals(quest.id(), loaded.id());
         assertEquals(quest.name(), loaded.name(), "颜色标签要原样保留");
         assertEquals(quest.description(), loaded.description(), "描述按行存，不能折行或丢行");
@@ -58,20 +55,16 @@ class YamlDefinitionsTest {
         List<String> tricky = List.of("yes", "no", "on", "off", "NO", "y", "n", "true", "false",
                 "1.20", "123", "0x10", "012", "*", "~", "null", ".inf", "", "带 空格", "冒号: 后面");
 
-        List<Quest> quests = new java.util.ArrayList<>();
-        for (int i = 0; i < tricky.size(); i++) {
-            quests.add(new Quest("q" + i, "任务" + i, List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
-                    List.of(QuestObjective.of("chat", Map.of("target", tricky.get(i), "amount", 1))),
-                    List.of(), 0.0, true));
-        }
+        for (String value : tricky) {
+            Quest quest = new Quest("q", "任务", List.of(), "PAPER", null, QuestType.NORMAL, List.of(),
+                    List.of(QuestObjective.of("chat", Map.of("target", value, "amount", 1))),
+                    List.of(), 0.0, true);
 
-        List<Quest> back = YamlDefinitions.readQuests(YamlDefinitions.writeQuests(quests));
+            Object loaded = YamlDefinitions.readQuest(YamlDefinitions.writeQuest(quest))
+                    .objectives().get(0).properties().get("target");
 
-        assertEquals(tricky.size(), back.size());
-        for (int i = 0; i < tricky.size(); i++) {
-            Object value = back.get(i).objectives().get(0).properties().get("target");
-            assertEquals(tricky.get(i), value, "「" + tricky.get(i) + "」往返后变了值");
-            assertEquals(String.class, value.getClass(), "「" + tricky.get(i) + "」不再是字符串");
+            assertEquals(value, loaded, "「" + value + "」往返后变了值");
+            assertEquals(String.class, loaded.getClass(), "「" + value + "」不再是字符串");
         }
     }
 
@@ -83,8 +76,8 @@ class YamlDefinitionsTest {
                         Map.of("amount", 64, "ratio", 1.5, "flag", true))),
                 List.of(), 0.0, true);
 
-        Map<String, Object> properties = YamlDefinitions.readQuests(YamlDefinitions.writeQuests(List.of(quest)))
-                .get(0).objectives().get(0).properties();
+        Map<String, Object> properties = YamlDefinitions.readQuest(YamlDefinitions.writeQuest(quest))
+                .objectives().get(0).properties();
 
         assertEquals(64, properties.get("amount"));
         assertEquals(1.5, properties.get("ratio"));
@@ -98,7 +91,7 @@ class YamlDefinitionsTest {
                 List.of(QuestObjective.of("chat", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
 
-        String yaml = YamlDefinitions.writeQuests(List.of(quest));
+        String yaml = YamlDefinitions.writeQuest(quest);
 
         assertFalse(yaml.contains("description:"), yaml);
         assertFalse(yaml.contains("category:"), yaml);
@@ -115,14 +108,14 @@ class YamlDefinitionsTest {
                 List.of(QuestObjective.of("chat", Map.of("target", "", "amount", 1))),
                 List.of(), 0.0, true);
 
-        List<Quest> back = YamlDefinitions.readQuests(YamlDefinitions.writeQuests(List.of(quest)));
+        Quest back = YamlDefinitions.readQuest(YamlDefinitions.writeQuest(quest));
 
-        assertEquals(List.of(longLine), back.get(0).description());
+        assertEquals(List.of(longLine), back.description());
     }
 
     @Test
-    @DisplayName("导入接受三种形状：列表 / quests: 包一层 / 单个定义")
-    void importAcceptsThreeShapes() {
+    @DisplayName("导入只接受一个定义：顶层是列表 / 标量 / 空文件都明确报错并指出该用 zip")
+    void importAcceptsOneDefinitionOnly() {
         String single = """
                 id: one
                 name: 单个
@@ -130,56 +123,19 @@ class YamlDefinitionsTest {
                   - type: chat
                     properties: { target: "", amount: 1 }
                 """;
-        String list = """
-                - id: one
-                  name: 单个
-                  objectives:
-                    - type: chat
-                      properties: { target: "", amount: 1 }
-                """;
-        String wrapped = """
-                quests:
-                  - id: one
-                    name: 单个
-                    objectives:
-                      - type: chat
-                        properties: { target: "", amount: 1 }
-                """;
+        assertEquals("one", YamlDefinitions.readQuest(single).id());
 
-        for (String shape : List.of(single, list, wrapped)) {
-            List<Quest> quests = YamlDefinitions.readQuests(shape);
-            assertEquals(1, quests.size(), "这个形状没被识别:\n" + shape);
-            assertEquals("one", quests.get(0).id());
-        }
-    }
+        // 顶层是列表（旧的多任务清单）：报错文案要指出出路，而不是静默只取第一条
+        IllegalArgumentException listed = assertThrows(IllegalArgumentException.class,
+                () -> YamlDefinitions.readQuest("- " + single.replace("\n", "\n  ")));
+        assertTrue(listed.getMessage().contains("zip"), listed.getMessage());
+        assertTrue(listed.getMessage().contains("quests/"), listed.getMessage());
 
-    @Test
-    @DisplayName("wrapper 键写了但不是列表：明确报错，而不是当成一条奇怪的任务")
-    void wrapperMustBeAList() {
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> YamlDefinitions.readQuests("quests: 1"));
-        assertTrue(failure.getMessage().contains("quests"), failure.getMessage());
-    }
-
-    @Test
-    @DisplayName("语法错误的 YAML：抛异常，由调用方回 400")
-    void brokenYamlThrows() {
-        assertThrows(RuntimeException.class, () -> YamlDefinitions.readQuests("id: [ 未闭合\n"));
-    }
-
-    @Test
-    @DisplayName("缺 id 的条目照样返回，交给导入流程列进「跳过了哪些」")
-    void missingIdIsReportedByCaller() {
-        List<Quest> quests = YamlDefinitions.readQuests("""
-                - name: 没有 id
-                - id: ok
-                  objectives:
-                    - type: chat
-                      properties: { target: "", amount: 1 }
-                """);
-
-        assertEquals(2, quests.size(), "这里不能提前丢掉，否则用户以为全导入了");
-        assertTrue(quests.get(0).id() == null || quests.get(0).id().isBlank());
+        // 标量与空文件同样拒绝
+        assertThrows(IllegalArgumentException.class, () -> YamlDefinitions.readQuest("就一句话"));
+        assertThrows(IllegalArgumentException.class, () -> YamlDefinitions.readQuest(""));
+        // 语法错误：抛异常，由调用方回 400
+        assertThrows(RuntimeException.class, () -> YamlDefinitions.readQuest("id: [ 未闭合\n"));
     }
 
     @Test
@@ -188,25 +144,25 @@ class YamlDefinitionsTest {
         Preset preset = new Preset(Preset.REWARDS, "exp_100", "100 经验", "exp",
                 Map.of("amount", 100), "常用");
 
-        String yaml = YamlDefinitions.writePresets(List.of(preset));
-        List<Preset> back = YamlDefinitions.readPresets(yaml, Preset.OBJECTIVES);
+        String yaml = YamlDefinitions.writePreset(preset);
+        Preset back = YamlDefinitions.readPreset(yaml, Preset.OBJECTIVES);
 
         assertTrue(yaml.contains("kind: rewards"), yaml);
-        assertEquals(1, back.size());
-        assertEquals(preset.id(), back.get(0).id());
-        assertTrue(back.get(0).isReward(), "导出的 kind 必须被读回来");
-        assertEquals(100, back.get(0).properties().get("amount"));
+        assertEquals(preset.id(), back.id());
+        assertTrue(back.isReward(), "导出的 kind 必须被读回来");
+        assertEquals(100, back.properties().get("amount"));
     }
 
     @Test
-    @DisplayName("预设导入：文件里没写 kind 时按调用方给的类别兜底")
+    @DisplayName("预设导入：文件里没写 kind 时按调用方给的类别兜底；缺 type 明确报错")
     void presetImportUsesDefaultKind() {
-        List<Preset> back = YamlDefinitions.readPresets("""
+        Preset back = YamlDefinitions.readPreset("""
                 type: exp
                 properties: { amount: 100 }
                 """, Preset.REWARDS);
 
-        assertEquals(1, back.size());
-        assertTrue(back.get(0).isReward());
+        assertTrue(back.isReward());
+        assertThrows(IllegalArgumentException.class,
+                () -> YamlDefinitions.readPreset("name: 只有名字\n", Preset.OBJECTIVES));
     }
 }

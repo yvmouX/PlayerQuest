@@ -9,6 +9,7 @@
  */
 import axios, { AxiosError } from 'axios'
 import type { AxiosRequestConfig } from 'axios'
+import { isZipBytes } from '../utils/files'
 import type {
   DeletePresetResult,
   DeleteQuestResult,
@@ -86,10 +87,23 @@ export function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<unknown>
     const data = axiosError.response?.data
-    if (typeof data === 'string' && data.trim()) {
-      return data.trim()
+    // 导出/导入用 arraybuffer 收响应，错误体也是一串字节：先解码成文本再走同一套判定
+    const text = payloadText(data)
+    if (text && text.trim() && !text.trim().startsWith('{')) {
+      return text.trim()
     }
-    if (data && typeof data === 'object') {
+    const parsed = parseJsonObject(text)
+    if (parsed) {
+      for (const key of ['error', 'message', 'detail', 'title']) {
+        const value = parsed[key]
+        if (typeof value === 'string' && value.trim()) {
+          return value === 'Internal Server Error'
+            ? `后端内部错误（HTTP ${axiosError.response?.status ?? 500}），具体原因见服务端日志`
+            : value
+        }
+      }
+    }
+    if (data && typeof data === 'object' && !(data instanceof ArrayBuffer)) {
       const record = data as Record<string, unknown>
       for (const key of ['error', 'message', 'detail', 'title']) {
         const value = record[key]
@@ -112,6 +126,33 @@ export function errorMessage(error: unknown): string {
     return error.message
   }
   return String(error)
+}
+
+/** 错误体的字节/字符串形态统一成文本；其它类型返回 null。 */
+function payloadText(data: unknown): string | null {
+  if (typeof data === 'string') {
+    return data
+  }
+  if (data instanceof ArrayBuffer) {
+    try {
+      return new TextDecoder().decode(data)
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+function parseJsonObject(text: string | null): Record<string, unknown> | null {
+  if (!text) {
+    return null
+  }
+  try {
+    const parsed: unknown = JSON.parse(text)
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -204,21 +245,36 @@ export const QuestApi = {
     url: `/quests/${encodeURIComponent(id)}`,
     method: 'delete'
   }),
-  /** 导出全部任务：后端直接给 YAML 文本，浏览器存成 .yml。 */
-  exportYaml: () => request<string>({ url: '/quests/export', method: 'get', responseType: 'text' }),
   /**
-   * 导入 YAML。
+   * 导出定义：`ids` 为空表示全部。
    *
-   * <p>解析在后端做（字段映射只有一份），前端只负责把文本送过去；
-   * `replace` 只影响数据库里的定义，`quests/` 下的只读定义不在替换范围内。
+   * <p>回来的字节有两种形态——一条定义是 `yml` 文本，多条是 `zip`（一个任务一个文件）；
+   * 调用方用 {@code isZipBytes} 判魔数决定存成哪个后缀。
    */
-  importYaml: (yaml: string, replace: boolean) =>
+  exportYaml: (ids: string[] = []) => request<ArrayBuffer>({
+    url: '/quests/export',
+    method: 'get',
+    params: ids.length ? { ids: ids.join(',') } : undefined,
+    responseType: 'arraybuffer'
+  }),
+  /**
+   * 导入定义：请求体是 `yml` 文本或 `zip` 字节，后端按魔数区分。
+   *
+   * <p>解析在后端做（字段映射只有一份）；`replace` 只影响数据库里的定义，
+   * `quests/` 下的只读定义不在替换范围内。
+   */
+  importYaml: (content: ArrayBuffer, replace: boolean) =>
     request<QuestImportResult>({
       url: `/quests/import?replace=${replace ? 'true' : 'false'}`,
       method: 'post',
-      data: yaml,
-      headers: { 'Content-Type': 'application/x-yaml; charset=utf-8' }
+      data: content,
+      headers: { 'Content-Type': yamlOrZipContentType(content) }
     })
+}
+
+/** 上传时的 Content-Type：zip 给 zip，其余按 YAML 文本（后端只看魔数，这里只是说实话）。 */
+function yamlOrZipContentType(content: ArrayBuffer): string {
+  return isZipBytes(content) ? 'application/zip' : 'application/x-yaml; charset=utf-8'
 }
 
 /** 目标与奖励类型定义——表单完全由它驱动。 */
@@ -254,15 +310,20 @@ export const PresetApi = {
     url: `/presets/${kind}/${encodeURIComponent(id)}`,
     method: 'delete'
   }),
-  /** 导出全部预设（两类一起）：YAML 文本，每项带 kind。 */
-  exportYaml: () => request<string>({ url: '/presets/export', method: 'get', responseType: 'text' }),
-  /** 导入 YAML；`kind` 只在文件里没写 kind 时兜底。 */
-  importYaml: (yaml: string, kind: PresetKind, replace: boolean) =>
+  /** 导出预设：`ids` 为空表示全部；一条给 yml，多条给 zip（与任务导出同一套规则）。 */
+  exportYaml: (ids: string[] = []) => request<ArrayBuffer>({
+    url: '/presets/export',
+    method: 'get',
+    params: ids.length ? { ids: ids.join(',') } : undefined,
+    responseType: 'arraybuffer'
+  }),
+  /** 导入预设；`kind` 只在文件里没写 kind 时兜底。 */
+  importYaml: (content: ArrayBuffer, kind: PresetKind, replace: boolean) =>
     request<QuestImportResult>({
       url: `/presets/import?kind=${kind}&replace=${replace ? 'true' : 'false'}`,
       method: 'post',
-      data: yaml,
-      headers: { 'Content-Type': 'application/x-yaml; charset=utf-8' }
+      data: content,
+      headers: { 'Content-Type': yamlOrZipContentType(content) }
     })
 }
 

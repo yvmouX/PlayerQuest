@@ -35,6 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,6 +56,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -292,49 +296,113 @@ class EditorApiTest {
     }
 
     @Test
-    @DisplayName("GET /api/quests/export 优先于 /api/quests/{id} 匹配（路由顺序的坑），且导出 YAML")
+    @DisplayName("GET /api/quests/export 优先于 /api/quests/{id} 匹配，且单个任务导出成一份 yml")
     void exportRouteWinsOverIdRoute() throws Exception {
         services.seed(quest("q1"));
 
-        HttpResponse<String> response = send("GET", "/api/quests/export", null);
+        HttpResponse<String> response = send("GET", "/api/quests/export?ids=q1", null);
 
         assertEquals(200, response.statusCode(),
                 "若 export 被当成「id 为 export 的任务」就会 404，备份导出随之失效");
+        // 文件名单条时用任务 id：下载下来就是一个能直接放进 quests/ 的文件
+        assertTrue(response.headers().firstValue("Content-Disposition").orElse("").contains("q1.yml"),
+                "单条导出应当是一个以 id 命名的 yml");
         String yaml = response.body();
         assertTrue(yaml.contains("id: q1"), "导出的应当是 YAML，实际: " + yaml);
         assertFalse(yaml.contains("problems"), "导出不含派生信息 problems（导入时会重新算）");
         // 能被自己的导入解析回来：导出格式与导入格式必须是一份
-        assertEquals("q1", YamlDefinitions.readQuests(yaml).get(0).id());
+        assertEquals("q1", YamlDefinitions.readQuest(yaml).id());
     }
 
     @Test
-    @DisplayName("POST /api/quests/import：坏条目跳过并列出原因，其余照常导入（YAML）")
-    void importSkipsEntriesWithoutId() throws Exception {
-        String body = """
-                - id: imported
-                  objectives:
-                    - type: break_block
-                      properties:
-                        amount: 1
-                - name: 没有 id
-                """;
+    @DisplayName("导出多个 / 全部任务：打包成 zip，一个任务一个文件")
+    void exportMultiplePacksZip() throws Exception {
+        services.seed(quest("q1"), quest("q2"), quest("q3"));
 
-        JsonNode result = json(send("POST", "/api/quests/import", body));
+        HttpResponse<byte[]> all = sendBytes("GET", "/api/quests/export", null);
+        assertEquals(200, all.statusCode());
+        assertTrue(all.headers().firstValue("Content-Type").orElse("").contains("zip"));
+        Map<String, String> files = unzip(all.body());
+        assertEquals(Set.of("q1.yml", "q2.yml", "q3.yml"), files.keySet(),
+                "一个任务一个文件，文件名是 id");
+        assertEquals("q1", YamlDefinitions.readQuest(files.get("q1.yml")).id());
 
-        assertTrue(result.get("ok").asBoolean());
-        assertEquals(1, result.get("imported").asInt());
-        assertEquals(1, result.get("skipped").size(), "跳过的条目必须列出来，否则用户以为全导入了");
-        assertEquals(1, result.get("total").asInt());
+        // 只选两条：仍然打包（不是把两条塞进一个 yml）
+        Map<String, String> picked = unzip(sendBytes("GET", "/api/quests/export?ids=q1,q3", null).body());
+        assertEquals(Set.of("q1.yml", "q3.yml"), picked.keySet());
+
+        // 单条：直接给 yml，不是装着一个文件的 zip
+        HttpResponse<byte[]> single = sendBytes("GET", "/api/quests/export?ids=q2", null);
+        assertFalse(single.headers().firstValue("Content-Type").orElse("").contains("zip"));
+        assertEquals("q2", YamlDefinitions.readQuest(new String(single.body(), StandardCharsets.UTF_8)).id());
+
+        // 不存在的 id：404 且说明是哪一个
+        HttpResponse<String> missing = send("GET", "/api/quests/export?ids=nope", null);
+        assertEquals(404, missing.statusCode());
+        assertTrue(error(missing, 404).contains("nope"), error(missing, 404));
+    }
+
+    @Test
+    @DisplayName("POST /api/quests/import：接受单个任务的 yml 与 zip；顶层是列表则明确拒绝")
+    void importAcceptsSingleFileAndZip() throws Exception {
+        // 单个任务的 yml（带 id）
+        JsonNode single = json(send("POST", "/api/quests/import", """
+                id: imported
+                name: 导入的
+                objectives:
+                  - type: break_block
+                    properties: { amount: 1 }
+                """));
+        assertTrue(single.get("ok").asBoolean());
+        assertEquals(1, single.get("imported").asInt());
         assertTrue(services.quests().find("imported").isPresent());
 
-        // wrapper 键写了但不是列表：明确 400，而不是当成一条奇怪的任务
-        assertEquals(400, send("POST", "/api/quests/import", "quests: 1").statusCode());
-        // 语法错误的 YAML：400 且说明是 YAML 的问题
+        // zip：两个文件两条任务，文件名与内容 id 不一致时以内容为准
+        HttpResponse<String> zipped = sendBytesAs("POST", "/api/quests/import",
+                zipOf(Map.of("a.yml", """
+                        id: from_zip_a
+                        objectives:
+                          - type: break_block
+                            properties: { amount: 1 }
+                        """, "b.yml", """
+                        id: from_zip_b
+                        objectives:
+                          - type: break_block
+                            properties: { amount: 1 }
+                        """)));
+        assertEquals(200, zipped.statusCode(), zipped.body());
+        assertEquals(2, json(zipped).get("imported").asInt());
+        assertTrue(services.quests().find("from_zip_a").isPresent());
+        assertTrue(services.quests().find("from_zip_b").isPresent());
+
+        // 压缩包里坏掉的那个只跳过它自己，其余照常导入
+        HttpResponse<String> partial = sendBytesAs("POST", "/api/quests/import",
+                zipOf(Map.of("good.yml", """
+                        id: good_one
+                        objectives:
+                          - type: break_block
+                            properties: { amount: 1 }
+                        """, "bad.yml", "id: [\n")));
+        assertEquals(1, json(partial).get("imported").asInt());
+        assertEquals(1, json(partial).get("skipped").size());
+        assertTrue(json(partial).get("skipped").get(0).asText().contains("bad.yml"),
+                "跳过的原因要说清是压缩包里哪个文件: " + json(partial).get("skipped"));
+
+        // 顶层是列表（旧的多任务清单）：明确 400 并指出该用 zip —— 一个文件只能放一个任务
+        HttpResponse<String> listed = send("POST", "/api/quests/import", """
+                - id: oops
+                  objectives:
+                    - type: break_block
+                      properties: { amount: 1 }
+                """);
+        assertEquals(400, listed.statusCode());
+        assertTrue(error(listed, 400).contains("zip"), error(listed, 400));
+
+        // 语法错误、空体、非映射顶层
         HttpResponse<String> broken = send("POST", "/api/quests/import", "id: [");
         assertEquals(400, broken.statusCode());
-        assertTrue(error(broken, 400).contains("YAML"), error(broken, 400));
-        // 空体同样拒绝
         assertEquals(400, send("POST", "/api/quests/import", "").statusCode());
+        assertEquals(400, send("POST", "/api/quests/import", "就一句话").statusCode());
     }
 
     @Test
@@ -344,11 +412,10 @@ class EditorApiTest {
         services.markReadOnly("file_quest");
 
         JsonNode result = json(send("POST", "/api/quests/import?replace=true", """
-                - id: fresh
-                  objectives:
-                    - type: break_block
-                      properties:
-                        amount: 1
+                id: fresh
+                objectives:
+                  - type: break_block
+                    properties: { amount: 1 }
                 """));
 
         assertEquals(1, result.get("imported").asInt());
@@ -588,6 +655,50 @@ class EditorApiTest {
     private String error(HttpResponse<String> response, int expectedStatus) throws Exception {
         assertEquals(expectedStatus, response.statusCode(), () -> "响应体: " + response.body());
         return JSON.readTree(response.body()).get("error").asText();
+    }
+
+    /** 收字节的请求：导出 zip 时响应体不是文本，必须按字节收。 */
+    private HttpResponse<byte[]> sendBytes(String method, String path, String body) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(base + path));
+        if (body == null) {
+            request.method(method, HttpRequest.BodyPublishers.noBody());
+        } else {
+            request.method(method, HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+        }
+        return http.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    /** 发字节请求体、按文本收响应：导入 zip 走这条。 */
+    private HttpResponse<String> sendBytesAs(String method, String path, byte[] body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(base + path))
+                .header("Content-Type", "application/zip")
+                .method(method, HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+        return http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    /** 把响应体当 zip 解开：文件名 → 内容。 */
+    private static Map<String, String> unzip(byte[] archive) throws IOException {
+        Map<String, String> files = new LinkedHashMap<>();
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(archive), StandardCharsets.UTF_8)) {
+            ZipEntry entry;
+            while ((entry = in.getNextEntry()) != null) {
+                files.put(entry.getName(), new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            }
+        }
+        return files;
+    }
+
+    private static byte[] zipOf(Map<String, String> files) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (ZipOutputStream out = new ZipOutputStream(buffer, StandardCharsets.UTF_8)) {
+            for (Map.Entry<String, String> file : files.entrySet()) {
+                out.putNextEntry(new ZipEntry(file.getKey()));
+                out.write(file.getValue().getBytes(StandardCharsets.UTF_8));
+                out.closeEntry();
+            }
+        }
+        return buffer.toByteArray();
     }
 
     private static JsonNode itemById(JsonNode array, String id) {

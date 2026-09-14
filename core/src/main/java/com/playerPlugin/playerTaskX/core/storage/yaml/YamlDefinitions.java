@@ -142,51 +142,56 @@ public final class YamlDefinitions {
     // 导出 / 导入
     // ------------------------------------------------------------------
 
-    /** 任务清单 → YAML 文本（顶层是列表）。 */
-    public static String writeQuests(List<Quest> quests) {
-        List<Map<String, Object>> documents = new ArrayList<>(quests.size());
-        for (Quest quest : quests) {
-            documents.add(questDocument(quest));
-        }
-        return YamlText.write(documents);
+    /**
+     * 单个任务 → YAML 文本（顶层是「键: 值」，也就是 {@code quests/<id>.yml} 的形状）。
+     * <p>
+     * <b>保留 {@code id} 字段</b>：导入接口拿到的是文本、看不到文件名，
+     * 靠它才知道要覆盖哪一条；文件名与它一致时也不冲突（文件名只是默认值）。
+     */
+    public static String writeQuest(Quest quest) {
+        return YamlText.write(questDocument(quest));
     }
 
-    /** 预设清单 → YAML 文本（顶层是列表，每项带 {@code kind}）。 */
-    public static String writePresets(List<Preset> presets) {
-        List<Map<String, Object>> documents = new ArrayList<>(presets.size());
-        for (Preset preset : presets) {
-            documents.add(presetDocument(preset));
-        }
-        return YamlText.write(documents);
+    /** 单个预设 → YAML 文本（每项带 {@code kind}，否则只能靠目录名判断类别）。 */
+    public static String writePreset(Preset preset) {
+        return YamlText.write(presetDocument(preset));
     }
 
     /**
-     * YAML 文本 → 任务清单（含缺 id 的条目）。
+     * 单任务 YAML 文本 → 任务。
      * <p>
-     * 接受三种形状（列表 / {@code quests:} 包一层 / 单个定义）。缺 id 的条目<b>不在这里丢掉</b>：
-     * 调用方（导入接口）要把它列进「跳过了哪些」，否则用户会以为自己全导进去了。
+     * 只接受「一个文件一个任务」：顶层是列表时明确报错并指出该用 zip。
+     * 宽松地接受列表会让「导入了一个文件却多出十几条任务」变成静默行为。
      */
-    public static List<Quest> readQuests(String yaml) {
-        List<Quest> quests = new ArrayList<>();
-        for (Map<String, Object> document : YamlText.readDocuments(yaml, "quests")) {
-            quests.add(QuestJson.fromJson(document));
-        }
-        return quests;
+    public static Quest readQuest(String yaml) {
+        return QuestJson.fromJson(singleDocument(yaml, "任务", "quests"));
     }
 
-    /** YAML 文本 → 预设清单；缺 {@code kind} 时按 {@code defaultKind} 处理（导入界面已按类别分组）。 */
-    public static List<Preset> readPresets(String yaml, String defaultKind) {
-        List<Preset> presets = new ArrayList<>();
-        for (Map<String, Object> document : YamlText.readDocuments(yaml, "presets")) {
-            Map<String, Object> copy = new LinkedHashMap<>(document);
-            if (JsonCodec.text(copy.get("kind")).isBlank()) {
-                copy.put("kind", defaultKind);
-            }
-            Preset preset = PresetJson.fromJson(JsonCodec.text(copy.get("kind")), copy);
-            if (preset != null) {
-                presets.add(preset);
-            }
+    /** 单预设 YAML 文本 → 预设；缺 {@code kind} 时按 {@code defaultKind} 处理。 */
+    public static Preset readPreset(String yaml, String defaultKind) {
+        Map<String, Object> document = new LinkedHashMap<>(singleDocument(yaml, "预设", "presets"));
+        if (JsonCodec.text(document.get("kind")).isBlank()) {
+            document.put("kind", defaultKind);
         }
-        return presets;
+        Preset preset = PresetJson.fromJson(JsonCodec.text(document.get("kind")), document);
+        if (preset == null) {
+            throw new IllegalArgumentException("预设缺少 type");
+        }
+        return preset;
+    }
+
+    /**
+     * 顶层必须是一个映射（一个定义）。列表、标量、空文件都报错。
+     *
+     * @param label  报错措辞里的名字：任务 / 预设
+     * @param folder 该放哪个目录（报错时给出出路）
+     */
+    private static Map<String, Object> singleDocument(String yaml, String label, String folder) {
+        Map<String, Object> document = YamlText.readMap(yaml);
+        if (document == null || document.isEmpty()) {
+            throw new IllegalArgumentException("一个文件只能放一个" + label + "（顶层是「键: 值」）；"
+                    + "多个" + label + "请打包成 zip（每个文件一个），或把文件放进 " + folder + "/ 目录");
+        }
+        return document;
     }
 }
