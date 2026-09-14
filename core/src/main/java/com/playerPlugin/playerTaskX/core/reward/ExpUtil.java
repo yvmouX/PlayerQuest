@@ -3,11 +3,18 @@ package com.playerPlugin.playerTaskX.core.reward;
 /**
  * 原版经验值的换算。
  *
- * <h2>为什么需要它</h2>
- * Bukkit 的 {@code getTotalExperience()} 是废弃 API：现代服务端上它只在被显式设置过时才有值，
- * 否则返回 0，直接用它判断余额会误判成「没有经验」。
- * Paper/Folia 提供了 {@code calculateTotalExperiencePoints()}，但那是 Paper 专有 API，
- * 不在 spigot-api 中，因此这里实现原版公式作为通用回退。
+ * <h2>为什么不用 {@code Player#getTotalExperience()}</h2>
+ * 它不是废弃 API（spigot-api 1.21.8 与 paper-api 26.2 都没有标 {@code @Deprecated}），
+ * 但它是<b>另一个计数器</b>：CraftPlayer 直接返回 {@code ServerPlayer.totalExperience} 这个字段，
+ * 而该字段只有原版的「获得经验」路径会维护（{@code giveExperiencePoints}、
+ * {@code giveExperienceLevels}、附魔），Bukkit 的 {@code setLevel(int)} / {@code setExp(float)}
+ * 只写等级与级内进度、不碰它——我们扣费正是用这两个方法写的。
+ * 拿它当余额会立刻与玩家看到的等级/进度条不一致，而「判断用一个来源、写入改另一个来源」
+ * 的误差只会累积。
+ *
+ * <p>因此余额一律从「等级 + 级内进度」算（本类就是这条公式），扣完之后的等级与进度再从总量反推。
+ * 反推没有现成 API 可用（Paper 的 {@code calculateTotalExperiencePoints()} 只是把同一个公式正算一遍），
+ * 只能自己实现。
  *
  * <p>公式（与原版一致）：从 0 级升到 {@code L} 级所需经验为
  * <ul>

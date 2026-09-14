@@ -5,7 +5,6 @@ import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -18,10 +17,6 @@ import java.util.List;
 public final class ExpReward implements RewardType {
 
     public static final String ID = "exp";
-
-    /** Paper 的原生总经验方法；解析一次后缓存，null 表示不可用。 */
-    private static Method calculateMethod;
-    private static boolean calculateResolved;
 
     @Override
     public String id() {
@@ -64,19 +59,16 @@ public final class ExpReward implements RewardType {
         return true;
     }
 
-    /** 玩家当前的总经验（跨等级累计）。 */
+    /**
+     * 玩家当前的总经验（跨等级累计）。
+     * <p>
+     * 刻意不读 {@code Player#getTotalExperience()}：那是与服务端「获得经验」路径绑定的独立计数器，
+     * {@code setLevel()} / {@code setExp()}（{@link #take} 就是用它扣的）不会更新它，
+     * 拿它算余额会与玩家看到的等级/进度对不上。Paper 的
+     * {@code calculateTotalExperiencePoints()} 是同一个公式的正算，多留一条路径只会多一种
+     * 可能不一致的来源，因此也不用（详见 {@link ExpUtil}）。
+     */
     public static int totalExperience(Player player) {
-        Method method = resolveCalculate();
-        if (method != null) {
-            try {
-                Object result = method.invoke(player);
-                if (result instanceof Number number) {
-                    return Math.max(0, number.intValue());
-                }
-            } catch (ReflectiveOperationException ignored) {
-                // 反射失败则退回原版公式
-            }
-        }
         return ExpUtil.totalExperience(player.getLevel(), player.getExp());
     }
 
@@ -98,20 +90,5 @@ public final class ExpReward implements RewardType {
         player.setLevel(after[0]);
         player.setExp(ExpUtil.expProgress(after[1], after[0]));
         return true;
-    }
-
-    /** 解析 Paper 的 {@code calculateTotalExperiencePoints()}，失败返回 null。 */
-    private static Method resolveCalculate() {
-        if (calculateResolved) {
-            return calculateMethod;
-        }
-        calculateResolved = true;
-        try {
-            calculateMethod = Player.class.getMethod("calculateTotalExperiencePoints");
-        } catch (NoSuchMethodException e) {
-            // 非 Paper 系服务端：使用原版公式，结果一致
-            calculateMethod = null;
-        }
-        return calculateMethod;
     }
 }
