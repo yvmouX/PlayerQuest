@@ -5,8 +5,8 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
+import com.playerPlugin.playerTaskX.core.storage.PresetJson;
 import com.playerPlugin.playerTaskX.core.storage.QuestJson;
-import com.playerPlugin.playerTaskX.core.web.PresetJson;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

@@ -10,6 +10,7 @@ import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
+import com.playerPlugin.playerTaskX.core.storage.PresetJson;
 import com.playerPlugin.playerTaskX.core.storage.QuestJson;
 import com.playerPlugin.playerTaskX.core.storage.StorageException;
 import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;

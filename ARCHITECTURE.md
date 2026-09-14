@@ -57,6 +57,10 @@ PlayerTaskX/
   `StorageException`；`Dialect` 与 `RowMapper` 虽是实现味很浓的名字，但它们出现在
   `Database` 的方法签名上，属于契约的一部分，因此也留在根包；以及唯一的装配点
   `DatabaseFactory`。**包外代码只需要 import 这些。**
+- 根包还放**文档映射**：`QuestJson`（任务）与 `PresetJson`（预设）——它们是「模型 ⇄ 文档」
+  的唯一形状来源，网页编辑器的 HTTP、`quests/*.yml` / `presets/*.yml` 与导出文件三处共用。
+  它们**不放 `web/`**：两者的读取方一侧在 web、一侧在 storage（`YamlDefinitions` 读文件定义），
+  放 web 里会让存储层反向依赖 web 包，「删掉网页编辑器」就删不干净。
 - `jdbc` 子包是实现细节，**包外不得 import**：实际 import 它的只有父包里的装配点
   `DatabaseFactory` 与做真机 SQL 验证的 `StorageIntegrationTest`
   （`PeriodicService` 读 DailyState 曾是业务层的唯一例外，周期任务改成走
@@ -689,6 +693,12 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 管理 GUI **不提供**目标/奖励编辑——那部分由网页编辑器承担，避免两套表单实现各自漂移。
 
 ### 7.3 网页编辑器
+
+**包边界**：编辑器专属的类**全部**在 `core/web/` 里（`EditorServer` 服务本身、`EditorApi` 路由与
+请求/响应约定、`EditorServices` + `PluginEditorServices` 窄接口与适配器、`MaterialCatalog`、
+`LangFileStore`、`HttpText`）。领域包**不得**依赖 `web`——`core.web.*` 被包外 import 只有三处：
+`PlayerTaskX` 的装配、`AdminCommand` 的 `/ptxa editor` 子命令。想做到「删掉编辑器 = 删一个包 + 前端目录」，
+就别把映射层之类的东西放进 `web`（`PresetJson` 曾在这里，现已归位到 `core/storage/`，见第 1 节的包约定）。
 
 Javalin 提供 REST + 静态资源（`/` 返回 Vite 构建产物）：
 

@@ -1,7 +1,6 @@
-package com.playerPlugin.playerTaskX.core.web;
+package com.playerPlugin.playerTaskX.core.storage;
 
 import com.playerPlugin.playerTaskX.api.model.Preset;
-import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -9,14 +8,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 预设 ↔ 网页编辑器 JSON 的映射。
+ * 预设 ⇄ 文档（普通 {@code Map}）的映射：网页编辑器的预设 JSON 与 {@code presets/*.yml} 共用这一份字段定义。
  *
  * <h2>为什么不直接把 {@link Preset} 序列化出去</h2>
- * 编辑器（含已发布的前端）依赖既有契约：<b>按类别分组</b>的
- * {@code {objectives:[...], rewards:[...]}}，以及保存时的单项回显 {@code {ok, preset}}。
- * 引入 {@link PresetRepository} 时把接口形状换掉会连带改前端，而这次改动的目的是
- * 「换存储后端」，不该顺手破坏前端契约。因此在这里做一层薄映射，
- * 让存储层可以自由换实现、编辑器侧接口保持不变。
+ * 模型是 record（不可变、构造器即契约），而编辑器需要「字段齐全、缺省友好」的对象，
+ * 混在一起会让模型被迫迁就前端。另外已发布的前端依赖既有形状——按类别分组的
+ * {@code {objectives:[...], rewards:[...]}} 与保存时的单项回显 {@code {ok, preset}}，
+ * 有这一层薄映射，存储实现怎么换都不会牵动前端。
+ *
+ * <h2>为什么它在 storage 而不是 web</h2>
+ * 两个调用方各在一侧：web 的 {@code EditorApi} 用它处理预设接口，storage 的
+ * {@link com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions} 用它读 {@code presets/*.yml}。
+ * 放在 web 里会让存储层反过来依赖 web 包，「删掉网页编辑器」就删不干净；
+ * 与同为「文档映射」的 {@link QuestJson} 并排放在这里，两者的角色也一致。
  */
 public final class PresetJson {
 
@@ -48,10 +52,10 @@ public final class PresetJson {
     }
 
     /**
-     * 编辑器请求体 → 预设。
+     * 编辑器请求体（或 YAML 文件的内容）→ 预设。
      *
-     * @param kind 类别，来自 URL 路径（{@code objectives} / {@code rewards}）
-     * @return 预设；缺少 {@code type} 时返回 null（调用方回 400）
+     * @param kind 类别，来自 URL 路径（{@code objectives} / {@code rewards}）或文件里的 {@code kind}
+     * @return 预设；缺少 {@code type} 时返回 null（HTTP 侧回 400，文件侧跳过并告警）
      */
     public static Preset fromJson(String kind, Map<String, Object> body) {
         if (body == null) {
