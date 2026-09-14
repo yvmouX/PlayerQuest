@@ -8,10 +8,6 @@ import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
-import java.io.File;
-import java.io.InputStream;
-import java.util.List;
-
 /**
  * {@link EditorApi} 需要的宿主能力——<b>为了能脱离服务端测这一层</b>，不是为了抽象而抽象。
  *
@@ -69,18 +65,6 @@ public interface EditorServices {
     /** 奖励类型清单；除字段结构外还要给出「当前是否可用」。 */
     RewardRegistryImpl rewardTypes();
 
-    /** 可用语言代码列表，{@code /api/langs} 逐个读取。 */
-    List<String> availableLanguages();
-
-    /** 重载语言文件：编辑器写完语言文件后必须让新内容立刻生效。 */
-    void reloadMessages();
-
     /** 存储描述，供 {@code /api/stats} 展示当前用的后端。 */
     String describeStorage();
-
-    /** 插件数据目录：语言文件读写都落在它下面。 */
-    File dataFolder();
-
-    /** 读取插件内置资源（数据目录里没有语言文件时的兜底）；取不到返回 {@code null}。 */
-    InputStream resource(String path);
 }

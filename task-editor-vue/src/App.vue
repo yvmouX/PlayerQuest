@@ -1,5 +1,5 @@
 <!--
-  整体布局：左侧导航（概览 / 任务 / 玩家 / 语言）+ 右侧内容区 + 访问令牌输入。
+  整体布局：左侧导航（概览 / 任务 / 预设 / 玩家）+ 右侧内容区 + 访问令牌输入。
 
   令牌输入放在侧栏底部常驻：任何接口返回 401 时，管理员都能立刻在这里补上。
 -->
@@ -17,9 +17,6 @@
         <RouterLink to="/quests">任务列表</RouterLink>
         <RouterLink to="/presets">预设管理</RouterLink>
         <RouterLink to="/players">玩家进度</RouterLink>
-
-        <span class="nav-group">其它</span>
-        <RouterLink to="/langs">语言文件</RouterLink>
       </nav>
 
       <div class="sidebar-foot">

@@ -474,41 +474,8 @@ class EditorApiTest {
     }
 
     // ------------------------------------------------------------------
-    // 语言文件与重载
+    // 重载
     // ------------------------------------------------------------------
-
-    @Test
-    @DisplayName("GET /api/langs：数据目录里的文件优先，缺失时从插件内置资源取")
-    void langsPreferDataFolderThenJarResource() throws Exception {
-        services.putResource("lang/zh_CN.yml", "prefix: '<gray>[任务]'");
-        Path langDir = tempDir.resolve("lang");
-        Files.createDirectories(langDir);
-        Files.writeString(langDir.resolve("en.yml"), "prefix: '[Quest]'", StandardCharsets.UTF_8);
-
-        JsonNode langs = json(send("GET", "/api/langs", null));
-
-        assertEquals("prefix: '<gray>[任务]'", langs.get("zh_CN").asText(), "jar 内资源是兜底");
-        assertEquals("prefix: '[Quest]'", langs.get("en").asText(), "磁盘上的文件必须优先");
-    }
-
-    @Test
-    @DisplayName("PUT /api/langs/{code}：校验 YAML 后落盘并重载消息")
-    void putLangWritesFileAndReloads() throws Exception {
-        HttpResponse<String> response = send("PUT", "/api/langs/zh_CN", "{\"content\":\"prefix: '你好'\"}");
-
-        assertEquals(200, response.statusCode(), "合法 YAML 应写入，实际: " + response.body());
-        assertEquals("zh_CN", json(response).get("code").asText());
-        File written = tempDir.resolve("lang").resolve("zh_CN.yml").toFile();
-        assertTrue(written.isFile(), "语言文件应落到数据目录的 lang/ 下");
-        assertEquals("prefix: '你好'", Files.readString(written.toPath(), StandardCharsets.UTF_8));
-        assertEquals(1, services.messageReloads(), "写完之后必须重载，否则玩家看到的还是旧文案");
-
-        // 一次手滑的缩进错误不该让玩家看到「Missing message」，因此在落盘前就拦掉
-        HttpResponse<String> broken = send("PUT", "/api/langs/en", "{\"content\":\"a: [1, 2\"}");
-        assertTrue(error(broken, 400).contains("YAML"));
-        assertFalse(tempDir.resolve("lang").resolve("en.yml").toFile().isFile(),
-                "校验没过就不能落盘");
-    }
 
     @Test
     @DisplayName("POST /api/reload：重新读库，新任务随即出现在列表里")
@@ -699,14 +666,9 @@ class EditorApiTest {
         private final FakePresetRepository presets = new FakePresetRepository();
         private final EmptyPlayerQuestRepository playerQuests = new EmptyPlayerQuestRepository();
         private final InMemoryQuestClaimRepository claims = new InMemoryQuestClaimRepository();
-        private final Map<String, String> builtinResources = new LinkedHashMap<>();
-        private final List<String> languages = new ArrayList<>(List.of("zh_CN", "en"));
-        private final File dataFolder;
         private final QuestAdminService questAdmin;
-        private int messageReloads;
 
         FakeEditorServices(File dataFolder) {
-            this.dataFolder = dataFolder;
             BuiltIns.objectives().forEach(objectiveTypes::register);
             BuiltIns.rewards().forEach(rewardTypes::register);
 
@@ -736,14 +698,6 @@ class EditorApiTest {
         /** 只写存储、不进注册表：用于验证重载确实重新读库。 */
         void storeOnly(Quest quest) {
             stored.save(quest);
-        }
-
-        void putResource(String path, String content) {
-            builtinResources.put(path, content);
-        }
-
-        int messageReloads() {
-            return messageReloads;
         }
 
         @Override
@@ -788,29 +742,8 @@ class EditorApiTest {
         }
 
         @Override
-        public List<String> availableLanguages() {
-            return List.copyOf(languages);
-        }
-
-        @Override
-        public void reloadMessages() {
-            messageReloads++;
-        }
-
-        @Override
         public String describeStorage() {
             return STORAGE_DESCRIPTION;
-        }
-
-        @Override
-        public File dataFolder() {
-            return dataFolder;
-        }
-
-        @Override
-        public InputStream resource(String path) {
-            String content = builtinResources.get(path);
-            return content == null ? null : new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         }
     }
 

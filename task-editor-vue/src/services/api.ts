@@ -12,7 +12,6 @@ import type { AxiosRequestConfig } from 'axios'
 import type {
   DeletePresetResult,
   DeleteQuestResult,
-  LangMap,
   MaterialCatalog,
   PlayerDetail,
   PlayerSummary,
@@ -23,7 +22,6 @@ import type {
   Quest,
   QuestImportResult,
   ReloadResult,
-  SaveLangResult,
   SavePresetResult,
   SaveQuestResult,
   SchemaResponse,
@@ -266,16 +264,6 @@ export const PresetApi = {
       data: yaml,
       headers: { 'Content-Type': 'application/x-yaml; charset=utf-8' }
     })
-}
-
-/** 语言文件读写。 */
-export const LangApi = {
-  list: () => request<LangMap>({ url: '/langs', method: 'get' }),
-  save: (code: string, content: string) => request<SaveLangResult>({
-    url: `/langs/${encodeURIComponent(code)}`,
-    method: 'put',
-    data: { content }
-  })
 }
 
 /** 统计与重载。 */

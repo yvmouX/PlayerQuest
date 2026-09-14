@@ -500,10 +500,12 @@ GET    /api/presets/export     导出两类预设为 YAML
 POST   /api/presets/import     导入 YAML（kind 只作兜底）
 POST   /api/presets/{kind}     保存预设，kind ∈ {objectives, rewards}
 DELETE /api/presets/{kind}/{id} 删除预设
-GET    /api/langs              读取可用的语言文件
-PUT    /api/langs/{code}       写入某种语言（先校验 YAML 合法性）
 GET    /api/stats              统计          POST   /api/reload         重载任务定义
 ```
+
+> 语言文件不再有 HTTP 接口（`/api/langs` 已随编辑器里的语言页面一起删除）：
+> 文案改动直接编辑 `plugins/playerTaskX/lang/<语言>.yml` + `/ptxa reload`，
+> 少一条能改文件的远端写入口。
 
 前端：任务列表 + 表单式编辑器（由 schema 动态渲染目标与奖励配置），
 替代原先的「拖节点连线」图谱编辑器。
@@ -535,7 +537,7 @@ GET    /api/stats              统计          POST   /api/reload         重载
 **`EditorApi` 只依赖窄接口 `EditorServices`，不依赖插件单例**：它原先持有 `PlayerTaskX`，
 于是每条路由都要求「插件已启用 + 服务端在跑」，14 条路由一条也进不了单测——这一层过去
 六轮改动全靠手工起服打请求验证。接口只声明它真正调用到的能力（任务注册表、任务维护入口、
-预设与玩家仓储、两个类型注册表、语言文件的读写位置、消息重载、存储描述），由 `PlayerTaskX`
+定义仓储、预设与玩家仓储、两个类型注册表、存储描述），由 `PlayerTaskX`
 **直接实现**（不做适配器类）。
 例外只有两条：`/api/players` 要 Bukkit 的离线玩家名与在线状态、`/api/catalog` 要枚举服务端
 的 `Material`/`EntityType`，两者都没有可注入的余地，因此它们的**响应形状**没有自动化覆盖
@@ -625,6 +627,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 24 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
 | 25 | 只读 YAML 定义来源：`quests/` + `presets/` 目录、库优先合并、YAML 1.2-core 语义、导入/导出改 YAML | ✅ 完成（见 4.7） |
 | 26 | 目录空着时铺一份示例文件（`example_file_*`，与库里那套并存）；播种口径改为只看数据库 | ✅ 完成（6 项测试） |
+| 27 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
 
 **测试总量：258 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
 存储 20（`StorageIntegrationTest`）+ 编辑器接口 19（`EditorApiTest`）+
@@ -659,7 +662,7 @@ MythicMobs 目标 5（`MythicMobsHookTest`）+ 击杀监听 5（`EntityListenerT
 
 **编辑器接口的端到端验证（含写路径）**：`GET /api/quests`（13 条，校验问题如实下发）、
 `GET /api/quests/{id}`、`GET /api/schema`（14 目标 / 5 奖励）、`GET /api/catalog`
-（1506 材质 + 157 实体）、`GET /api/presets`、`GET /api/langs`、`POST /api/reload` 全部正常；
+（1506 材质 + 157 实体）、`GET /api/presets`、`POST /api/reload` 全部正常；
 写路径亦已跑通：`POST /api/presets/objectives` → 读回（8→9）→ `DELETE` 恢复；
 `POST /api/quests`（存副本）→ 列表变 14 → `DELETE` → 回到 13。
 软依赖缺失的提示也确实穿到了编辑器的 `problems` 字段。全程控制台无异常。

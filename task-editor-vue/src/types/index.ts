@@ -129,15 +129,6 @@ export interface DeleteQuestResult {
   id: string
 }
 
-/** GET /api/langs：语言代码 → YAML 文本。 */
-export type LangMap = Record<string, string>
-
-/** PUT /api/langs/{code} 的响应。 */
-export interface SaveLangResult {
-  ok: boolean
-  code: string
-}
-
 /** GET /api/stats 的响应。 */
 export interface Stats {
   quests: number

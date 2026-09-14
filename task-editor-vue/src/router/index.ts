@@ -5,7 +5,6 @@
  * history 模式下直接访问 {@code /quests} 会 404。
  */
 import { createRouter, createWebHashHistory } from 'vue-router'
-import LangView from '../views/LangView.vue'
 import OverviewView from '../views/OverviewView.vue'
 import PlayerProgressView from '../views/PlayerProgressView.vue'
 import PresetView from '../views/PresetView.vue'
@@ -24,7 +23,6 @@ const router = createRouter({
     { path: '/presets', name: 'presets', component: PresetView },
     { path: '/players', name: 'players', component: PlayerProgressView },
     { path: '/players/:uuid', name: 'player-detail', component: PlayerProgressView, props: true },
-    { path: '/langs', name: 'langs', component: LangView },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })

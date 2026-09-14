@@ -16,12 +16,7 @@ import cn.yvmou.ylib.text.TextRenderer;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -75,7 +70,6 @@ final class EditorApi {
         playerRoutes(app);
         schemaRoutes(app);
         presetRoutes(app);
-        langRoutes(app);
         miscRoutes(app);
 
         app.exception(IllegalArgumentException.class, (e, ctx) ->
@@ -412,73 +406,6 @@ final class EditorApi {
 
     private String presetSource(String id) {
         return services.presets().isReadOnly(id) ? "file" : "database";
-    }
-
-    // ------------------------------------------------------------------
-    // 语言文件
-    // ------------------------------------------------------------------
-
-    private void langRoutes(Javalin app) {
-        app.get("/api/langs", ctx -> {
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (String code : services.availableLanguages()) {
-                result.put(code, readLang(code));
-            }
-            ctx.result(json(result));
-        });
-
-        app.put("/api/langs/{code}", ctx -> withBody(ctx, body -> {
-            String code = ctx.pathParam("code");
-            Object content = body.get("content");
-            writeLang(code, content == null ? "" : String.valueOf(content));
-            services.reloadMessages();
-            ctx.result(json(Map.of("ok", true, "code", code)));
-        }));
-    }
-
-    private String readLang(String code) {
-        File file = langFile(code);
-        if (file.isFile()) {
-            try {
-                return Files.readString(file.toPath(), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                return "";
-            }
-        }
-        try (var stream = services.resource("lang/" + code + ".yml")) {
-            return stream == null ? "" : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    /**
-     * 写入语言文件。
-     * <p>
-     * 先校验能解析成 YAML 再落盘：编辑器里一次手滑的缩进错误不应该让玩家看到
-     * 「Missing message」。
-     */
-    private void writeLang(String code, String content) {
-        YamlConfiguration configuration = new YamlConfiguration();
-        try {
-            configuration.loadFromString(content);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("语言文件不是合法的 YAML: " + e.getMessage(), e);
-        }
-        File file = langFile(code);
-        File parent = file.getParentFile();
-        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
-            throw new IllegalStateException("无法创建语言目录: " + parent);
-        }
-        try {
-            Files.writeString(file.toPath(), content, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("写入语言文件失败: " + e.getMessage(), e);
-        }
-    }
-
-    private File langFile(String code) {
-        return new File(services.dataFolder(), "lang/" + code + ".yml");
     }
 
     // ------------------------------------------------------------------

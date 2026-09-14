@@ -45,10 +45,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.InputStream;
-import java.util.List;
-
 
 /**
  * 插件入口，只做三件事：
@@ -426,30 +422,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
 
     // ---------- EditorServices：只有编辑器会用到的那几个值 ----------
     // 它们不是「子系统访问点」，而是把子系统里的具体取值抽出来，免得编辑器直接摸 config / jar 资源
-
-    /** 可用语言代码；编辑器据此逐个读取语言文件。 */
-    @Override
-    public List<String> availableLanguages() {
-        return config.getLanguageAvailable();
-    }
-
-    /** 语言文件写完后调用：新内容必须立刻对玩家生效，而不是等下次重启。 */
-    @Override
-    public void reloadMessages() {
-        messages.reload();
-    }
-
-    /** 插件数据目录；编辑器的语言文件读写落在它下面的 lang/。 */
-    @Override
-    public File dataFolder() {
-        return getDataFolder();
-    }
-
-    /** 插件内置资源；数据目录里没有语言文件时用它兜底。 */
-    @Override
-    public InputStream resource(String path) {
-        return getResource(path);
-    }
 
     /** 网页编辑器实例；未启用或启动失败时为 null。 */
     public EditorServer editorServer() {
