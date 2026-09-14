@@ -190,6 +190,25 @@ export function presetExists(id: string): boolean {
   return [...(map.objectives ?? []), ...(map.rewards ?? [])].some(preset => preset.id === id)
 }
 
+/**
+ * 引用预设的条目该用哪个类型：预设自己的 {@code type}。
+ *
+ * <p>定义里「只写 {@code preset: <id>}」是标准写法（类型由预设提供），但表单要靠类型
+ * 画出字段、填类型下拉框，所以装载这种条目时得从这里补上；查不到就返回空串，
+ * 由界面按「预设不存在」处理。
+ */
+export function presetTypeOf(id: string | null | undefined): string {
+  if (!id) {
+    return ''
+  }
+  const map = peekPresets()
+  if (!map) {
+    return ''
+  }
+  const found = [...(map.objectives ?? []), ...(map.rewards ?? [])].find(preset => preset.id === id)
+  return found?.type ?? ''
+}
+
 /** 让缓存失效，下次读取会重新请求。写操作后必须调用。 */
 export function invalidatePresets(): void {
   presetCache = null

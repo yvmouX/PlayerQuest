@@ -18,8 +18,8 @@
           <div>
             <h3>{{ title }}</h3>
             <p class="hint">
-              点击预设即按它的类型与属性插入一条{{ kind === 'objectives' ? '目标' : '奖励' }}；
-              也可以从空白新建。
+              点击预设即<b>引用</b>它：类型与字段由预设提供，以后改预设，引用它的任务一起变。
+              要一份不跟随的副本，用条目右侧的「复制」。
             </p>
           </div>
           <button class="btn btn-small" type="button" @click="close">关闭</button>
@@ -54,8 +54,8 @@
                 :key="view.preset.id || view.preset.name"
                 class="preset-item"
                 :class="{ invalid: !view.valid }"
-                :title="view.valid ? '点击使用该预设' : view.invalidReason"
-                @click="pick(view)"
+                :title="view.valid ? '点击引用该预设' : view.invalidReason"
+                @click="use(view, 'reference')"
               >
                 <div class="preset-item-head">
                   <strong>{{ view.preset.name }}</strong>
@@ -63,9 +63,16 @@
                   <span
                     v-if="view.preset.source === 'file'"
                     class="badge badge-gray"
-                    title="预设本身来自 presets/ 下的 YAML 文件（只读），但套用到任务里不受影响"
+                    title="预设本身来自 presets/ 下的 YAML 文件（只读），但引用它不受影响"
                   >只读 · YAML</span>
                   <span v-if="!view.valid" class="badge badge-warn">无效</span>
+                  <button
+                    v-if="view.valid"
+                    class="btn btn-small preset-copy"
+                    type="button"
+                    title="插入一份独立副本：之后改预设不再影响它"
+                    @click.stop="use(view, 'copy')"
+                  >复制</button>
                 </div>
                 <code class="mono preset-item-type">{{ view.preset.type }}</code>
                 <p class="hint">{{ view.summary }}</p>
@@ -78,7 +85,7 @@
 
         <footer class="preset-foot">
           <span class="hint">
-            <template v-if="blankAvailable">从空白新建：先选类型，再填字段。</template>
+            <template v-if="blankAvailable">引用 = 跟随预设；复制 = 独立配置，可以随意改。也可以从空白新建。</template>
             <template v-else>后端没有注册任何类型，无法新建。</template>
           </span>
           <div class="preset-foot-actions">
@@ -112,8 +119,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** 选中一个有效预设 */
+  /** 引用一个有效预设（写 preset 键，字段由预设提供） */
   pick: [preset: Preset]
+  /** 插入一份独立副本（把预设当前的字段值复制过来，之后与预设无关） */
+  copy: [preset: Preset]
   /** 用户选择「从空白新建」 */
   blank: []
   cancel: []
@@ -172,15 +181,19 @@ async function ensureLoaded(): Promise<void> {
   }
 }
 
-/** 无效预设不可选用：套用后只会得到一个后端不认识的目标。 */
-function pick(view: PresetView): void {
+/** 无效预设不可选用：引用或复制后只会得到一个后端不认识的目标。 */
+function use(view: PresetView, mode: 'reference' | 'copy'): void {
   if (!view.valid) {
     // 用 toast 而不是往弹层里塞错误行：无效原因已经标在该条目上了，
     // 再插一行提示会把它往下顶，反而更难看清
     toast.error(`无法使用预设「${view.preset.name}」：${view.invalidReason}`)
     return
   }
-  emit('pick', view.preset)
+  if (mode === 'copy') {
+    emit('copy', view.preset)
+  } else {
+    emit('pick', view.preset)
+  }
 }
 
 function openPresetManage(): void {
@@ -258,6 +271,11 @@ function close(): void {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* 复制按钮推到行尾：条目本体是「引用」，这个按钮是另一条路径，别混在一起点 */
+.preset-copy {
+  margin-left: auto;
 }
 
 .preset-item-type {

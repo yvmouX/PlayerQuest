@@ -200,8 +200,8 @@
           </p>
           <p v-if="noObjectiveTypes" class="warn-line">后端没有注册任何目标类型，请检查插件依赖。</p>
           <p v-else-if="!objectiveRows.length" class="guide-line">
-            还没有目标。点击右上角「添加目标」：可以直接套用一个预设，也可以从空白新建。
-            没有目标的任务在加载时会被跳过。
+            还没有目标。点击右上角「添加目标」：可以引用一个预设（改预设时这条跟着变），
+            也可以从空白新建。没有目标的任务在加载时会被跳过。
           </p>
           <div class="instance-list">
             <TypeInstanceEditor
@@ -315,6 +315,7 @@
       :kind="addKind ?? 'objectives'"
       :schemas="addKind === 'rewards' ? rewardSchemas : objectiveSchemas"
       @pick="addFromPreset"
+      @copy="addCopyOfPreset"
       @blank="addBlank"
       @cancel="addKind = null"
     />
@@ -350,7 +351,7 @@ import { PresetApi, QuestApi, SchemaApi, StatsApi, errorMessage, isUnauthorized 
 import type { Preset, PresetKind, Properties, Quest, QuestType, TypeSchema } from '../types'
 import { QUEST_TYPE_LABELS, isPeriodicType } from '../types'
 import { loadCatalog } from '../utils/catalog'
-import { invalidatePresets, loadPresets, presetExists, presetProperties, suggestPresetName } from '../utils/presets'
+import { invalidatePresets, loadPresets, presetExists, presetProperties, presetTypeOf, suggestPresetName } from '../utils/presets'
 import { defaultProperties, normalizeInstances, summarizeProperties, typeLabel, withDefaults } from '../utils/schema'
 import { stripTags } from '../utils/text'
 import { questFromYaml, questToYaml } from '../utils/yaml'
@@ -676,7 +677,12 @@ function toRows(
   instances: { type: string; properties: Properties }[],
   schemas: Record<string, TypeSchema>
 ): InstanceRow[] {
-  return normalizeInstances(instances, schemas).map(instance => ({ uid: ++uidSeq, ...instance }))
+  return normalizeInstances(instances, schemas).map(instance => ({
+    uid: ++uidSeq,
+    ...instance,
+    // 引用条目在定义里只写 preset，类型由预设提供；表单要靠它画字段与下拉框
+    type: instance.type || presetTypeOf(instance.preset)
+  }))
 }
 
 /** 显示与预览用的属性：引用预设时看生效值（resolved），否则就是作者写的那份。 */
@@ -745,9 +751,10 @@ function resetToNew(): void {
 /* ---------------- 目标 / 奖励编辑 ---------------- */
 
 /**
- * 添加流程：先弹预设列表（点一下直接套用），弹层里再给「从空白新建」。
+ * 添加流程：先弹预设列表（点条目 = 引用它，条目右侧的「复制」= 插入一份副本），
+ * 弹层里再给「从空白新建」。
  *
- * <p>addKind 同时决定弹层显示哪一组预设、以及套用时往哪个数组插入。
+ * <p>addKind 同时决定弹层显示哪一组预设、以及插入时往哪个数组插入。
  */
 const addKind = ref<PresetKind | null>(null)
 
@@ -776,13 +783,10 @@ function addBlank(): void {
 }
 
 /**
- * 套用预设。
+ * 引用预设：插入一条「类型与字段都由预设提供」的条目。
  *
- * <p>用 {@link presetProperties} 而不是直接复制 properties：预设可能是旧版本存的，
- * 缺字段时按 schema 补默认值，套用后立刻就是一条可编辑、可保存的完整配置。
- *
- * <p>仍然复查一次类型是否存在：弹层的判断用的是同一次 schema，但 schema 是异步
- * 加载的，多一道校验可以避免把无效类型塞进表单。
+ * <p>{@code resolved} 一并用预设的当前值填好，卡片立刻就能显示字段值，
+ * 不必等一次往返；它只是显示用的派生值，提交时后端会重新算（见 QuestJson）。
  */
 function addFromPreset(preset: Preset): void {
   const kind = addKind.value
@@ -791,7 +795,34 @@ function addFromPreset(preset: Preset): void {
   }
   const schemas = schemasOf(kind)
   if (!schemas[preset.type]) {
-    toast.error(`预设「${preset.name}」的类型 ${preset.type} 不存在，无法套用`)
+    toast.error(`预设「${preset.name}」的类型 ${preset.type} 不存在，无法引用`)
+    return
+  }
+  addKind.value = null
+  rowsOf(kind).push({
+    uid: ++uidSeq,
+    type: preset.type,
+    properties: {},
+    preset: preset.id,
+    resolved: presetProperties(preset, schemas[preset.type])
+  })
+  toast.success(`已引用预设「${preset.name}」：改预设时这条跟着变`)
+}
+
+/**
+ * 插入一份独立副本：把预设当前的字段值复制过来，之后与预设再无关系。
+ *
+ * <p>与引用的区别只在「以后改预设会不会跟着变」，所以两条路径都要留着：
+ * 想稍微改一改就用副本，想统一维护就用引用。
+ */
+function addCopyOfPreset(preset: Preset): void {
+  const kind = addKind.value
+  if (!kind) {
+    return
+  }
+  const schemas = schemasOf(kind)
+  if (!schemas[preset.type]) {
+    toast.error(`预设「${preset.name}」的类型 ${preset.type} 不存在，无法复制`)
     return
   }
   addKind.value = null
@@ -800,7 +831,7 @@ function addFromPreset(preset: Preset): void {
     type: preset.type,
     properties: presetProperties(preset, schemas[preset.type])
   })
-  toast.success(`已套用预设「${preset.name}」`)
+  toast.success(`已复制预设「${preset.name}」：这份是独立配置，改预设不会影响它`)
 }
 
 function removeObjective(index: number): void {
@@ -823,15 +854,19 @@ const presetSuggested = computed(() => {
     return { name: '', summary: '' }
   }
   const schema = schemasOf(target.kind)[target.row.type]
+  // 引用预设的条目字段值为空（都在预设里）：要另存的是它当前生效的那份
+  const properties = effectiveProperties(target.row)
   return {
-    name: suggestPresetName(schema, target.row.type, target.row.properties),
-    summary: summarizeProperties(target.row.properties, schema) || '（使用该类型的默认值）'
+    name: suggestPresetName(schema, target.row.type, properties),
+    summary: summarizeProperties(properties, schema) || '（使用该类型的默认值）'
   }
 })
 
 function askSavePreset(kind: PresetKind, row: InstanceRow): void {
   if (!row.type) {
-    toast.error('请先为该条目选择类型')
+    toast.error(row.preset
+      ? '引用的预设不存在，没法另存：先修好引用，或点「展开为独立配置」'
+      : '请先为该条目选择类型')
     return
   }
   presetTarget.value = { kind, row }
@@ -855,7 +890,7 @@ async function savePreset(name: string): Promise<void> {
       name: name.trim(),
       type: target.row.type,
       description: '',
-      properties: withDefaults(schemasOf(target.kind)[target.row.type], target.row.properties)
+      properties: withDefaults(schemasOf(target.kind)[target.row.type], effectiveProperties(target.row))
     }
     await PresetApi.save(target.kind, preset)
     // 预设列表变了：让缓存失效，下次打开「添加」弹层才会看到刚存的这条

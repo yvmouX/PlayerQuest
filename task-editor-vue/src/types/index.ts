@@ -102,13 +102,13 @@ export interface SchemaResponse {
 /**
  * 一条「目标 / 奖励」配置。
  *
- * <p>引用预设时三样东西同时存在，缺一不可：
+ * <p>引用预设时两样东西同时存在：
  * <ul>
- *   <li>{@code preset} = 引用的预设 id；</li>
- *   <li>{@code properties} = <b>任务自己写的那份</b>（覆盖项），保存与导出都按它写回；</li>
- *   <li>{@code resolved} = 预设 ⊕ 覆盖算出来的 <b>生效值</b>，界面直接显示它。</li>
+ *   <li>{@code preset} = 引用的预设 id（定义里只写它，类型与字段都由预设提供）；</li>
+ *   <li>{@code resolved} = 预设给的 <b>生效值</b>，界面直接显示它。</li>
  * </ul>
- * 只留生效值会让编辑器一保存就把继承来的字段写死成覆盖项，之后改预设再也不影响这个任务。
+ * 这种条目的 {@code properties} 一定是空的：引用不带覆盖项，要单独调值先「展开为独立配置」。
+ * 独立配置的条目则相反：{@code properties} 有值、没有 {@code preset}。
  */
 export interface QuestObjective {
   type: string

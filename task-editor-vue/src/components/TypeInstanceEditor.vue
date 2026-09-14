@@ -22,7 +22,10 @@
       <select
         class="instance-type"
         :value="type"
-        :title="'切换类型会按新类型重置字段，原字段值不会保留'"
+        :disabled="!!preset"
+        :title="preset
+          ? '引用预设时类型由预设决定；要换成别的类型，先点「展开为独立配置」'
+          : '切换类型会按新类型重置字段，原字段值不会保留'"
         @change="onTypeChange"
       >
         <option
@@ -74,12 +77,13 @@
     <p v-if="unavailableReason" class="warn-line">
       ⚠ 该{{ reward ? '奖励' : '目标' }}类型当前不可用：{{ unavailableReason }}
     </p>
-    <p v-else-if="!schema" class="warn-line">
+    <!-- 预设不存在的提示在下面的引用行里，这里不再补一句「类型（空）」——同一件事说两遍 -->
+    <p v-else-if="!schema && !presetMissing" class="warn-line">
       ⚠ 后端不认识类型「{{ type || '（空）' }}」，保存后会被标记为校验问题。
     </p>
 
-    <!-- 引用预设：字段值由预设提供，这里只展示（改预设即改所有引用它的任务）。
-         要单独调数值就走 YAML 视图写覆盖项，或点「展开」把它变成独立配置 -->
+    <!-- 引用预设：类型与字段全部由预设提供，这里只展示生效值（改预设即改所有引用它的任务）。
+         要单独调值先点「展开」把它变成独立配置——引用不带覆盖项 -->
     <p v-if="preset" class="preset-ref-line">
       <span class="badge badge-blue">引用预设</span>
       <code class="mono">{{ preset }}</code>
@@ -90,7 +94,7 @@
     </p>
 
     <div v-if="expanded" class="instance-body">
-      <!-- 引用预设时字段只读：这里写的任何值都会被当成覆盖项，容易与「改预设」混淆 -->
+      <!-- 引用预设时字段只读：值由预设提供，能改的话就等于又出现了一份覆盖项 -->
       <fieldset class="readonly-block" :disabled="!!preset">
       <div v-if="fields.length" class="fields-grid">
         <SchemaFieldInput
@@ -103,7 +107,7 @@
       </div>
       <p v-else-if="schema" class="hint">该类型没有可配置字段。</p>
       <p v-if="preset" class="hint">
-        上面显示的是预设给的生效值。要在本任务里改某个字段，到 YAML 视图的 properties 里写覆盖项。
+        上面是预设给的生效值。要单独调值，先点「展开为独立配置」——这条就与预设脱钩了。
       </p>
       </fieldset>
     </div>

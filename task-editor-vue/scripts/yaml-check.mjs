@@ -21,8 +21,8 @@ import { pathToFileURL } from 'node:url'
 import { build } from 'vite'
 
 /** 把 TS 工具打成临时 ESM 并载入，这样断言的对象就是真正跑在浏览器里的那份代码。 */
-async function loadYamlModule() {
-  const outDir = await mkdtemp(path.join(tmpdir(), 'ptx-yaml-check-'))
+async function loadModule(entry, fileName) {
+  const outDir = await mkdtemp(path.join(tmpdir(), `ptx-${fileName}-check-`))
   await build({
     configFile: false,
     logLevel: 'silent',
@@ -30,14 +30,15 @@ async function loadYamlModule() {
       outDir,
       emptyOutDir: true,
       minify: false,
-      lib: { entry: path.resolve('src/utils/yaml.ts'), formats: ['es'], fileName: () => 'yaml.mjs' }
+      lib: { entry: path.resolve(entry), formats: ['es'], fileName: () => `${fileName}.mjs` }
     }
   })
-  const module = await import(pathToFileURL(path.join(outDir, 'yaml.mjs')).href)
+  const module = await import(pathToFileURL(path.join(outDir, `${fileName}.mjs`)).href)
   return { module, cleanup: () => rm(outDir, { recursive: true, force: true }) }
 }
 
-const { module: yaml, cleanup } = await loadYamlModule()
+const { module: yaml, cleanup } = await loadModule('src/utils/yaml.ts', 'yaml')
+const { module: schema, cleanup: cleanupSchema } = await loadModule('src/utils/schema.ts', 'schema')
 
 /** 断言计数：至少让人知道这个脚本真的跑了东西。 */
 let checks = 0
@@ -219,7 +220,7 @@ try {
   })
 
   // ------------------------------------------------------- 预设引用
-  check('预设引用：YAML 视图保留 preset（不把生效值写回去，否则以后改预设就不再跟随）', () => {
+  check('预设引用：YAML 视图只写 preset（类型与字段都由预设提供，写出来就是一份会过期的副本）', () => {
     const quest = {
       id: 'q',
       name: '引用预设的任务',
@@ -230,23 +231,31 @@ try {
       objectives: [{
         type: 'break_block',
         preset: 'mine-stone',
-        properties: { amount: 128 },
-        resolved: { target: 'STONE', amount: 128 }
+        properties: {},
+        resolved: { target: 'STONE', amount: 64 }
       }],
-      rewards: [],
+      rewards: [{
+        type: 'exp',
+        properties: { amount: 100 }
+      }],
       refreshCost: 0,
       enabled: true
     }
 
     const text = yaml.questToYaml(quest)
     assert.ok(text.includes('preset: mine-stone'), text)
-    assert.ok(text.includes('amount: 128'), text)
     assert.ok(!text.includes('resolved'), `生效值是派生数据，不该出现在 YAML 里：\n${text}`)
+    assert.ok(!text.includes('STONE'), `引用条目不该写下字段值（改预设后它就是错的）：\n${text}`)
+    // 独立配置的那条照常写 type + properties
+    assert.ok(text.includes('type: exp'), text)
+    assert.ok(text.includes('amount: 100'), text)
 
     const back = yaml.questFromYaml(text, 'q')
     assert.equal(back.error, '')
     assert.equal(back.value.objectives[0].preset, 'mine-stone', '往返不能把引用降级成独立配置')
-    assert.deepEqual(back.value.objectives[0].properties, { amount: 128 }, '覆盖项要原样保留')
+    assert.equal(back.value.objectives[0].type, '', '类型由预设提供，引用条目不需要在文件里写')
+    assert.deepEqual(back.value.objectives[0].properties, {}, '引用条目没有覆盖项')
+    assert.deepEqual(back.value.rewards[0].properties, { amount: 100 }, '独立配置的字段照常往返')
   })
 
   // ------------------------------------------------------- 导入预检（一个文件一条）
@@ -266,7 +275,34 @@ try {
     assert.equal(yaml.previewPresetImport('name: 缺 type\n').count, 0)
   })
 
+  // ------------------------------------------------------- 提交形态
+  check('提交形态：引用条目只带 preset（补默认值等于给每条引用凭空造出字段）', () => {
+    const schemas = {
+      chat: {
+        id: 'chat',
+        displayName: '发言',
+        fields: [
+          { key: 'target', label: '关键词', type: 'STRING', kinds: [], defaultValue: '' },
+          { key: 'amount', label: '数量', type: 'INTEGER', kinds: [], defaultValue: 1 }
+        ]
+      }
+    }
+
+    const [reference] = schema.normalizeInstances(
+      [{ type: 'chat', properties: {}, preset: 'say-hi', resolved: { target: '你好', amount: 1 } }],
+      schemas
+    )
+    assert.equal(reference.preset, 'say-hi', '引用必须原样提交，否则保存一次就退化成副本')
+    assert.deepEqual(reference.properties, {}, '引用条目没有字段，补默认值会让后端报「不能再写字段」')
+    assert.equal(reference.type, 'chat')
+
+    // 独立配置照旧补默认值：缺字段的旧数据要能直接提交
+    const [plain] = schema.normalizeInstances([{ type: 'chat', properties: { target: '你好' } }], schemas)
+    assert.deepEqual(plain.properties, { target: '你好', amount: 1 })
+  })
+
   process.stdout.write(`YAML 往返自检通过（${checks} 项）\n`)
 } finally {
   await cleanup()
+  await cleanupSchema()
 }

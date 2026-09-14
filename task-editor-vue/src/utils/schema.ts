@@ -73,8 +73,8 @@ export function normalizeInstances(
   schemas: Record<string, TypeSchema>
 ): QuestObjective[] {
   return instances.map(instance => {
-    // 引用预设的那条：properties 是「任务自己写的覆盖项」，补默认值等于把没写的字段写死，
-    // 之后改预设这些字段就再也不跟着变了（生效值看 resolved，由后端算）
+    // 引用预设的那条：类型与字段全部由预设提供，properties 一定是空的。
+    // 补默认值等于凭空造出一份「独立配置」（后端还会把它当成多余的字段报出来），所以只做拷贝
     const properties = instance.preset
       ? { ...instance.properties }
       : withDefaults(schemas[instance.type], instance.properties)
