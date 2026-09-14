@@ -540,11 +540,9 @@ class EditorApiTest {
         when(config.getEditorToken()).thenReturn(TOKEN);
         when(plugin.config()).thenReturn(config);
         when(plugin.messages()).thenReturn(mock(MessageService.class));
-        // EditorServer 把插件实例当 EditorServices 用，因此这里转接到同一份假实现
-        when(plugin.quests()).thenReturn(services.quests());
-        when(plugin.questAdmin()).thenReturn(services.questAdmin());
 
-        EditorServer server = new EditorServer(plugin);
+        // 业务层与服务层分开拿：EditorServer 用插件实例做端口/令牌/资源，用 EditorServices 做 /api/*
+        EditorServer server = new EditorServer(plugin, services);
         // start() 会向控制台发一条「编辑器已启动」的消息，这要 Bukkit 单例；而单测里装不了
         // （详见 FakeEditorServices），于是只在启动这一瞬间把它静态桩掉。静态桩是线程局部的，
         // 处理请求的线程不受影响——那条路径本来也不碰 Bukkit。

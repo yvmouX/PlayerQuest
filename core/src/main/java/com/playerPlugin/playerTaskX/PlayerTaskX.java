@@ -40,7 +40,7 @@ import com.playerPlugin.playerTaskX.core.storage.yaml.MergedPresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
 import com.playerPlugin.playerTaskX.core.web.EditorServer;
-import com.playerPlugin.playerTaskX.core.web.EditorServices;
+import com.playerPlugin.playerTaskX.core.web.PluginEditorServices;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -56,11 +56,14 @@ import org.bukkit.plugin.java.JavaPlugin;
  * 业务逻辑不住在这里：周期任务逻辑在 PeriodicService，任务维护在 QuestAdminService，
  * 事件翻译在 listener 包，类型清单在 BuiltIns。往本类加方法前先想想它属于哪个子系统。
  *
- * <h2>为什么 implements {@link EditorServices}</h2>
- * 网页编辑器后台只认那个窄接口（这样它能脱离服务端单测），而它需要的子系统恰好都由本类持有，
- * 因此由本类直接实现：转调一行，比再包一层适配器少一处要同步维护的地方。
+ * <h2>本类不实现 {@code EditorServices}</h2>
+ * 网页编辑器后台只认那个窄接口（这样它能脱离服务端单测），但装配它的是
+ * {@link PluginEditorServices}，不是本类：接口一旦挂到本类上，「编辑器需要什么」就变成了
+ * 本类公开契约的一部分——当初正是为了喂饱它，本类多了 {@code presets()} 与
+ * {@code describeStorage()} 两个只有 web 层会用的 getter。现在这两个值在
+ * {@link #startEditor()} 里注入给适配器，本类只回答「游戏内功能需要什么」。
  */
-public final class PlayerTaskX extends JavaPlugin implements EditorServices {
+public final class PlayerTaskX extends JavaPlugin {
 
     private static PlayerTaskX instance;
     private static Logger log;
@@ -327,7 +330,11 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
     private void startEditor() {
         // 译名准备与「编辑器是否启用」无关：中文语言文件是磁盘上的缓存，
         // 这次没开编辑器时先取好，下次打开就能直接用。
-        editorServer = new EditorServer(this);
+        // 编辑器后台要的那几样在这里一次交出去：主类因此不必为它多开公开 getter
+        // （预设仓储与存储描述此前就是「只给编辑器用」的两个例外）
+        editorServer = new EditorServer(this, new PluginEditorServices(quests, questDefinitions, questAdmin,
+                presets, playerQuestRepository, objectiveTypes, rewardTypes,
+                () -> database == null ? null : database.description()));
         editorServer.prepareCatalog();
         if (!config.isEditorEnabled()) {
             return;
@@ -383,10 +390,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return questAdmin;
     }
 
-    /** 目标/奖励预设仓储；与任务定义、玩家数据同一个库。 */
-    public PresetRepository presets() {
-        return presets;
-    }
 
     /**
      * 任务定义仓储（数据库 + 可选的 YAML 只读来源）。
@@ -394,7 +397,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
      * 编辑器用它问 {@code isReadOnly(id)}——文件里的定义在界面上是只读的；
      * 写操作仍然走 {@link #questAdmin()}。
      */
-    @Override
     public QuestRepository questDefinitions() {
         return questDefinitions;
     }
@@ -412,13 +414,6 @@ public final class PlayerTaskX extends JavaPlugin implements EditorServices {
         return mythicMobs;
     }
 
-    /** 存储描述，供编辑器与命令展示。 */
-    public String describeStorage() {
-        return database == null ? "未连接" : database.description();
-    }
-
-    // ---------- EditorServices：只有编辑器会用到的那几个值 ----------
-    // 它们不是「子系统访问点」，而是把子系统里的具体取值抽出来，免得编辑器直接摸 config / jar 资源
 
     /** 网页编辑器实例；未启用或启动失败时为 null。 */
     public EditorServer editorServer() {

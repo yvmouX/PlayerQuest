@@ -708,11 +708,29 @@ GET    /api/stats              统计          POST   /api/reload         重载
 **`EditorApi` 只依赖窄接口 `EditorServices`，不依赖插件单例**：它原先持有 `PlayerTaskX`，
 于是每条路由都要求「插件已启用 + 服务端在跑」，14 条路由一条也进不了单测——这一层过去
 六轮改动全靠手工起服打请求验证。接口只声明它真正调用到的能力（任务注册表、任务维护入口、
-定义仓储、预设与玩家仓储、两个类型注册表、存储描述），由 `PlayerTaskX`
-**直接实现**（不做适配器类）。
+定义仓储、预设与玩家仓储、两个类型注册表、存储描述）。
 例外只有两条：`/api/players` 要 Bukkit 的离线玩家名与在线状态、`/api/catalog` 要枚举服务端
 的 `Material`/`EntityType`，两者都没有可注入的余地，因此它们的**响应形状**没有自动化覆盖
 （路由本身未变，仍由真机验证）。
+
+**谁实现这个接口：`PluginEditorServices`，不是主类**。主类曾经直接 `implements EditorServices`，
+代价是「编辑器需要什么」成了主类公开契约的一部分——为了让编辑器拿到预设仓储与存储描述，
+主类上多了 `presets()` 与 `describeStorage()` 两个只有 web 层会用的 getter。现在这两样由
+`startEditor()` 在构造适配器时注入（主类里它们仍是私有字段），主类的公开面只回答
+「游戏内功能（命令 / GUI / 变量）需要什么」。适配器的构造参数类型两两不同，
+因此「装配时传错顺序」这种事编译期就会失败。
+
+由此形成两层，各有各的理由：
+
+| 类 | 拿到什么 | 为什么 |
+|---|---|---|
+| `EditorServer`（端口、启停、静态资源、令牌、日志） | **具体插件类** `PlayerTaskX` | 这些都是宿主/生命周期相关的东西，只存在于插件实例上 |
+| `EditorApi`（`/api/*` 业务路由） | **窄接口** `EditorServices` | 只碰仓储与数据，因此能脱离服务端回归（`EditorApiTest` 用内存假身真起 Javalin 打 HTTP） |
+
+> 代价如实记一笔：编辑器要新能力时，得同时改接口与适配器的构造参数（两个文件）。
+> 换来的是主类不再承担 web 层的需求，以及「编辑器能拿到什么」被收在一个文件里看得见。
+> 反过来（拿插件实例再转调它的 getter）少一个类，却把公开面又还了回去，因此没那么做。
+
 
 > 早期版本内置过一份手工中文表（约 175 行，材质覆盖率仅约两成），
 > 已随本方案删除。实测替换后材质与实体的中文覆盖率均为 100%。
@@ -791,7 +809,7 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 17 | 存储后端：SQLite / MySQL 共用一个库（`storage.type` 一处决定） | ✅ 完成 |
 | 18 | 删除 JSON 文件后端（定义侧 + 玩家侧三个实现类），只留数据库 | ✅ 完成 |
 | 19 | 目标结构指纹：定义变化导致进度错位时重置并告警 | ✅ 完成（8 项测试） |
-| 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试） |
+| 20 | 编辑器 REST 层解耦（`EditorServices`）+ 接口级测试 | ✅ 完成（16 项 HTTP 测试；阶段 35 把实现方换成适配器） |
 | 21 | 语言键 `common.yes` / `common.no` 被 YAML 布尔语义改名：加引号 + 钉住键的测试 | ✅ 完成（3 项测试） |
 | 22 | 游戏内容插件联动：MythicMobs（`mythic:` 击杀目标）+ CustomFishing（`custom_fish` 目标） | ✅ 完成（34 项测试；阶段 31 又加了 ItemsAdder / CraftEngine） |
 | 23 | 编辑器：可视化 / **YAML 文本**双视图（任务与预设），YAML 往返与组件渲染进构建自检 | ✅ 完成（12 项 YAML 往返 + 4 个视图渲染） |
@@ -806,8 +824,9 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 32 | 真机装上 CraftEngine / MythicMobs / Vault 后暴露的三处接入问题：素材目录没拿到自定义内容、MythicMobs 因 `POSTWORLD` 永远接不上、金币按插件名判 Vault 而非按经济服务在册判 | ✅ 完成（见 4.5，+2 项目录测试 + 4 项经济服务测试） |
 | 33 | 编辑器素材目录按**插件来源**筛选：每条带 `source`、响应带 `sources`；CustomFishing 战利品进独立 `fish` 栏 | ✅ 完成（见 4.5，+5 项目录测试 + 1 个前端自检脚本） |
 | 34 | **字段值域**：`ValueKind` + 每个目标类型逐一声明 `kinds`；选择器只列该值域、服务端按同一份声明校验「永远不可能命中」的值；`FieldType` 收敛为 `PICKER` | ✅ 完成（见 4.5.1，+9 项值域测试 + 11 项目标值域一致性测试 + 2 项校验接入测试） |
+| 35 | `EditorServices` 改由 `PluginEditorServices` 适配器实现（主类不再承担 web 层契约，`presets()` 与 `describeStorage()` 两个「只有编辑器用」的 getter 随之删除） | ✅ 完成（见 7，+2 项转交测试） |
 
-**测试总量：275 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
+**测试总量：278 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
 存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
@@ -816,6 +835,7 @@ YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepos
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 任务管理 14（`QuestAdminServiceTest`）+
 素材 19（`MaterialCatalogTest`）+ 值域 9（`ValueKindsTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
+编辑器宿主转交 2（`PluginEditorServicesTest`）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段值域一致性 11（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
 示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
@@ -824,10 +844,10 @@ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（32 个 XML），不是靠日志里的汇总行。
+逐套件累加（33 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1071 行 + `core/src/main` 14164 行
-＝ **15235 行 / 110 个 java 文件**；测试 `core/src/test` **6525 行 / 35 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 1071 行 + `core/src/main` 14276 行
+＝ **15347 行 / 111 个 java 文件**；测试 `core/src/test` **6614 行 / 36 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **6021 行 `.vue` + 2193 行 `.ts`/`.js` ＝ 8214 行 / 31 个文件**
 （另有 `scripts/` 下三个构建期自检脚本：YAML 往返 14 项、素材目录筛选 13 项、4 个视图 SSR 渲染，不计入 src）。

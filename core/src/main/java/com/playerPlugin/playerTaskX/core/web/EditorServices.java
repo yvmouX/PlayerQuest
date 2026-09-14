@@ -29,8 +29,13 @@ import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
  * 由 {@code Bukkit} 静态取用，没有可注入的余地（见 {@link EditorApi} 类注释）。
  *
  * <h2>谁实现</h2>
- * 插件主类 {@code PlayerTaskX} <b>直接</b>实现它，不做适配器类：那几个子系统本来就由它持有，
- * 转调一行即可；多一层包装只会多一处要同步维护的地方。
+ * 生产环境是 {@link PluginEditorServices}：它由插件主类在装配时构造，把那几个子系统与
+ * 「存储描述」的取值函数一并注入。主类<b>不</b>实现本接口——否则「编辑器需要什么」就成了
+ * 主类公开契约的一部分（当初正是为了这两个值，主类上多了 {@code presets()} 与
+ * {@code describeStorage()} 两个只有 web 层会用的 getter）。
+ * <p>
+ * 测试环境是 {@code EditorApiTest} 里的内存假身；两条路径都只依赖本接口，
+ * 因此 REST 层的回归不依赖服务端。
  */
 public interface EditorServices {
 

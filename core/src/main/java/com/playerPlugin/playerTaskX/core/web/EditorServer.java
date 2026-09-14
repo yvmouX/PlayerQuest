@@ -34,13 +34,17 @@ public final class EditorServer {
     /** 首选端口被占用时，依次 +1 尝试的端口个数上限。 */
     private static final int PORT_ATTEMPTS = 10;
 
+    /** 装配层：端口、令牌、静态资源、日志都只能从具体插件类上拿。 */
     private final PlayerTaskX plugin;
+    /** 业务层：{@code /api/*} 只认这个窄接口（见 EditorServices 的类注释）。 */
+    private final EditorServices services;
     private final LangFileStore langFiles;
     private Javalin app;
     private int port = -1;
 
-    public EditorServer(PlayerTaskX plugin) {
+    public EditorServer(PlayerTaskX plugin, EditorServices services) {
         this.plugin = plugin;
+        this.services = services;
         // 译名来源：英文读服务端自带的语言文件，中文必要时下载（见 LangFileStore）
         this.langFiles = new LangFileStore(plugin);
     }
@@ -155,7 +159,7 @@ public final class EditorServer {
         // 素材目录要把三个来源都带上：原版材质/实体（枚举）、MythicMobs 自定义怪、
         // ItemsAdder / CraftEngine 的自定义物品与方块。少传一个，选择器里就少一整类东西，
         // 而且只在「装了那个插件」的服务器上才看得出来（构造器因此不提供省略参数的版本）
-        new EditorApi(plugin, new MaterialCatalog(langFiles, plugin.mythicMobs(), plugin.customContent(),
+        new EditorApi(services, new MaterialCatalog(langFiles, plugin.mythicMobs(), plugin.customContent(),
                 CustomFishingHook::loot)).register(app);
 
         // 令牌被拒时 checkToken 已写好响应体，这里只需保持 401
