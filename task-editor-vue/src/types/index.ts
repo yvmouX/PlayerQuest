@@ -43,6 +43,8 @@ export type FieldType =
   | 'ENTITY'
   /** 方块或实体类型名皆可（后端 FieldType.TARGET） */
   | 'TARGET'
+  /** CustomFishing 的战利品 id（后端 FieldType.FISH）：编辑器列出它注册表里的那些 */
+  | 'FISH'
   | 'ENUM'
 
 /** properties 里允许的取值：JSON 能表达的基础类型。 */
@@ -190,22 +192,43 @@ export interface ReloadResult {
  * 搜索也必须仍然能按 id 或英文名命中——否则会出现「搜到了却看不见」。
  */
 export interface CatalogEntry {
-  /** Bukkit 枚举名，例如 DIAMOND_ORE */
+  /** Bukkit 枚举名，例如 DIAMOND_ORE（自定义内容则是带前缀的 id，如 craftengine:default:bench） */
   id: string
   /** 英文显示名，例如 Diamond Ore；来自服务端自带语言文件，永不依赖它为空的兜底 */
   en: string
   /** 中文显示名，可能为空串 */
   zh: string
-  /** 分类（block / item / food）；实体没有这个字段 */
+  /** 分类（block / item / food / fish）；实体没有这个字段 */
   category?: string
+  /**
+   * 来源：`minecraft` / `mythicmobs` / `itemsadder` / `craftengine` / `customfishing`。
+   *
+   * <p>后端没给这个字段时按 `minecraft` 处理（旧版后端），否则按插件筛选会整片空白。
+   */
+  source?: string
+}
+
+/** 目录里出现过的来源（界面用来做「按插件筛选」的标签）。 */
+export interface CatalogSource {
+  id: string
+  label: string
 }
 
 /** GET /api/catalog 的响应；一次性返回全部条目，由前端本地搜索。 */
 export interface MaterialCatalog {
   materials: CatalogEntry[]
   entities: CatalogEntry[]
+  /**
+   * CustomFishing 的战利品 id（「鱼 id」字段用）。
+   *
+   * <p>它与材质、实体互不相通，因此单独一栏：把鱼 id 填进方块目标的 `target` 只会永远
+   * 命中不了，而那正是最难排查的一类错配。没装 CustomFishing 时是空数组。
+   */
+  fish: CatalogEntry[]
   /** 分类展示顺序，界面按它排列分组，不要在前端硬编码 */
   categories: string[]
+  /** 本次真的有内容的来源，顺序由后端定；界面按它渲染筛选标签 */
+  sources: CatalogSource[]
   serverVersion: string
   /** 后端是否拿到了中文译名；为 false 时可在界面上说明「当前显示英文名」 */
   hasChinese?: boolean

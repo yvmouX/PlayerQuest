@@ -72,6 +72,18 @@
     </div>
 
     <div v-if="open" ref="panelRef" class="picker-panel">
+      <!-- 来源（插件）筛选：装了哪些插件就出现哪些标签，只有一个来源时整排不显示 -->
+      <div v-if="sources.length" class="picker-tabs picker-tabs-source">
+        <button
+          v-for="tab in sources"
+          :key="tab.value"
+          class="picker-tab"
+          :class="{ active: source === tab.value }"
+          type="button"
+          @click="selectSource(tab.value)"
+        >{{ tab.label }}</button>
+      </div>
+
       <div class="picker-tabs">
         <button
           v-for="tab in tabs"
@@ -116,6 +128,10 @@
           <span class="picker-label">{{ entryLabel(item) }}</span>
           <span v-if="entrySubLabel(item)" class="picker-sub">{{ entrySubLabel(item) }}</span>
           <span v-if="item.category" class="badge badge-gray">{{ categoryLabel(item.category) }}</span>
+          <!-- 非原版条目额外标出来源：同一个列表里混着原版与几家插件的内容，一眼要能分辨 -->
+          <span v-if="sourceOf(item) !== SOURCE_MINECRAFT" class="badge badge-source">
+            {{ sourceLabel(sourceOf(item), catalog) }}
+          </span>
         </li>
       </ul>
 
@@ -139,6 +155,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { CatalogEntry } from '../types'
 import {
   CATEGORY_ALL,
+  SOURCE_ALL,
+  SOURCE_MINECRAFT,
   type CatalogScope,
   categoryLabel,
   categoryTabs,
@@ -150,6 +168,9 @@ import {
   normalizeCatalog,
   peekCatalog,
   resolveValueText,
+  sourceLabel,
+  sourceOf,
+  sourceTabs,
   splitMaterialValue,
   visibleEntries
 } from '../utils/catalog'
@@ -185,6 +206,7 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const keyword = ref('')
 const category = ref(CATEGORY_ALL)
+const source = ref(SOURCE_ALL)
 const activeIndex = ref(0)
 /** 目录数据；预加载已完成时直接取缓存，避免展开时闪一下「加载中」。 */
 const catalog = ref(peekCatalog())
@@ -193,14 +215,28 @@ const text = computed(() => props.modelValue ?? '')
 const ariaLabel = computed(() => (props.multi ? '选择材质，可多选' : '选择条目'))
 const pool = computed(() => entriesForScope(catalog.value, props.scope))
 const tabs = computed(() => categoryTabs(catalog.value, props.scope))
-const visible = computed(() => visibleEntries(pool.value, keyword.value, category.value))
+const sources = computed(() => sourceTabs(catalog.value, props.scope))
+const visible = computed(() =>
+  visibleEntries(pool.value, keyword.value, category.value, source.value)
+)
 const chips = computed(() =>
   props.multi ? resolveValueText(text.value, pool.value) : []
 )
 
-/** 切换范围/分类时把高亮项收敛回第一条，否则回车可能选中看不见的项。 */
-watch([() => props.scope, category, keyword], () => {
+/** 切换范围/分类/来源时把高亮项收敛回第一条，否则回车可能选中看不见的项。 */
+watch([() => props.scope, category, source, keyword], () => {
   activeIndex.value = 0
+})
+
+/**
+ * 范围变化时把来源收窄回「全部」：从材质切到实体时留着 craftengine，
+ * 列表会直接空掉，看起来像「这里什么都没有」。
+ */
+watch(() => props.scope, () => {
+  const available = sources.value.map(tab => tab.value)
+  if (source.value !== SOURCE_ALL && !available.includes(source.value)) {
+    source.value = SOURCE_ALL
+  }
 })
 
 onMounted(() => {
@@ -317,6 +353,10 @@ function clearAll(): void {
 
 function selectCategory(value: string): void {
   category.value = value
+}
+
+function selectSource(value: string): void {
+  source.value = value
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -481,6 +521,17 @@ function scrollActiveIntoView(): void {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+/* 来源那一排与分类视觉上分开：上面是「哪个插件」，下面是「哪一类东西」 */
+.picker-tabs-source {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.badge-source {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .picker-tab {

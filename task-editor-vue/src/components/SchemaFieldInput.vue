@@ -4,10 +4,10 @@
   完全由 FieldSchema 决定渲染什么：这里没有、也不允许有任何
   针对具体目标/奖励类型的硬编码分支。
 
-  <h2>MATERIAL / ENTITY / TARGET 用选择器</h2>
-  枚举名（DEEPSLATE_DIAMOND_ORE 这种）靠人记忆不现实，因此这三类字段渲染
-  MaterialPicker。选择器内部仍然是文本框，逗号分隔的原文照旧可手打，
-  只是多了一个可按中文/英文/枚举名搜索的浮层。
+  <h2>MATERIAL / ENTITY / TARGET / FISH 用选择器</h2>
+  枚举名（DEEPSLATE_DIAMOND_ORE 这种）靠人记忆不现实，因此这几类字段渲染
+  MaterialPicker。MATERIAL 还能多选（逗号分隔）。选择器内部仍然是文本框，
+  原文照旧可手打，只是多了一个可按中文/英文/枚举名搜索、按插件来源筛选的浮层。
 
   <h2>布局</h2>
   标签左对齐固定宽度、控件占满剩余空间、hint 作为次要文字挂在控件下方
@@ -87,6 +87,7 @@ const pickerScope = computed(() => {
     case 'MATERIAL':
     case 'ENTITY':
     case 'TARGET':
+    case 'FISH':
       return scopeForFieldType(props.field.type)
     default:
       return ''

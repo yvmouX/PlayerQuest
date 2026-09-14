@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.FishLoot;
 import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -12,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * 可供网页编辑器选择的物品与实体清单。
@@ -33,7 +35,27 @@ import java.util.Map;
 public class MaterialCatalog {
 
     /** 分类展示顺序，前端按此顺序排列分组。 */
-    private static final List<String> CATEGORY_ORDER = List.of("block", "item", "food");
+    private static final List<String> CATEGORY_ORDER = List.of("block", "item", "food", "fish");
+
+    /** 来源 id：原版枚举。 */
+    static final String SOURCE_MINECRAFT = "minecraft";
+    /** 来源 id：MythicMobs 自定义怪（实体栏）。 */
+    static final String SOURCE_MYTHICMOBS = "mythicmobs";
+    /** 来源 id：CustomFishing 战利品（鱼 id 栏）。 */
+    static final String SOURCE_CUSTOMFISHING = "customfishing";
+
+    /**
+     * 来源展示顺序与显示名。
+     * <p>
+     * 顺序固定（原版在最前，其余按接入的历史顺序），前端只按 id 过滤、按 label 显示，
+     * 不自己维护一份名字表——两份表迟早会漂移。
+     */
+    private static final List<Map.Entry<String, String>> SOURCE_LABELS = List.of(
+            Map.entry(SOURCE_MINECRAFT, "原版"),
+            Map.entry(SOURCE_MYTHICMOBS, "MythicMobs"),
+            Map.entry("itemsadder", "ItemsAdder"),
+            Map.entry("craftengine", "CraftEngine"),
+            Map.entry(SOURCE_CUSTOMFISHING, "CustomFishing"));
 
     private final LangFileStore langFiles;
 
@@ -44,17 +66,26 @@ public class MaterialCatalog {
     private final CustomContentHooks customContent;
 
     /**
-     * 三个来源<b>都</b>由调用方传入，且刻意不提供「省略某个来源」的便捷构造器。
+     * CustomFishing 战利品清单。
+     * <p>
+     * 是 supplier 而不是现成列表：CustomFishing {@code reload} 之后注册表会被换掉，
+     * 而本目录每次请求都重新算一遍，拿到的就该是当时的那份。
+     */
+    private final Supplier<List<FishLoot>> fishLoot;
+
+    /**
+     * 四个来源<b>都</b>由调用方传入，且刻意不提供「省略某个来源」的便捷构造器。
      * <p>
      * 曾经的 {@code MaterialCatalog(langFiles, mythicMobs)} 会把自定义内容悄悄当成空实现，
      * 于是「编辑器里选不到 ItemsAdder / CraftEngine 的物品与方块」这种错配编译期看不出来、
      * 运行期也不报错——只有管理员发现东西不在列表里。少一个参数就该编译不过。
      */
     public MaterialCatalog(LangFileStore langFiles, MythicMobsHook mythicMobs,
-                           CustomContentHooks customContent) {
+                           CustomContentHooks customContent, Supplier<List<FishLoot>> fishLoot) {
         this.langFiles = langFiles;
         this.mythicMobs = mythicMobs;
         this.customContent = customContent == null ? CustomContentHooks.empty() : customContent;
+        this.fishLoot = fishLoot == null ? List::of : fishLoot;
     }
 
     /**
@@ -72,7 +103,7 @@ public class MaterialCatalog {
             if (!material.isItem()) {
                 continue;
             }
-            materials.add(entry(material.name(), english, chinese, categoryOf(material)));
+            materials.add(entry(material.name(), english, chinese, categoryOf(material), SOURCE_MINECRAFT));
         }
         // 自定义物品与自定义方块混进材质列表、id 带插件前缀：写入 target 的值天然就是我们要的语法
         // （与下面 MythicMobs 的处理同一套思路），前端也不用新增一种选择器
@@ -85,7 +116,7 @@ public class MaterialCatalog {
                 // 纯技术实体，永远不会出现在任务里
                 continue;
             }
-            entities.add(entry(type.name(), english, chinese, null));
+            entities.add(entry(type.name(), english, chinese, null, SOURCE_MINECRAFT));
         }
         // MythicMobs 的怪物不是 EntityType，编辑器原本无从选起（只能手打 mythic:<id>）。
         // 直接混进实体列表、id 带 mythic: 前缀：写入 target 的值天然就是我们要的语法，
@@ -93,14 +124,65 @@ public class MaterialCatalog {
         entities.addAll(mythicMobEntries(mythicMobs));
         entities.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
 
+        // 鱼 id 单独一栏：它不是材质也不是实体，混进材质列表会让人把它填进 break_block.target，
+        // 那样永远命中不了——正是本项目最想根除的「配了却不生效」。
+        // 必须包一层 ArrayList：没装 CustomFishing 时 fishEntries 返回的是不可变空表，直接 sort 会抛异常
+        List<Map<String, Object>> fish = new ArrayList<>(fishEntries(fishLoot.get()));
+        fish.sort(Comparator.comparing(entry -> String.valueOf(entry.get("id"))));
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("materials", materials);
         result.put("entities", entities);
+        result.put("fish", fish);
         result.put("categories", CATEGORY_ORDER);
+        // 来源清单只列「这次真的有东西」的那些：没装 CraftEngine 的服务器上不该出现它的筛选标签
+        result.put("sources", sourcesOf(materials, entities, fish));
         String version = Bukkit.getBukkitVersion();
         result.put("serverVersion", version == null ? "" : version);
         result.put("hasChinese", langFiles.hasChinese());
         return result;
+    }
+
+    /**
+     * 本次目录里出现过的来源，按 {@link #SOURCE_LABELS} 的固定顺序给出 {@code {id,label}}。
+     * <p>
+     * 由后端算而不是让前端自己从条目里推：显示名（ItemsAdder / CraftEngine…）属于后端的知识，
+     * 前端再抄一份就会与接入层漂移。静态、不碰 Bukkit，可单测。
+     */
+    @SafeVarargs
+    static List<Map<String, Object>> sourcesOf(List<Map<String, Object>>... groups) {
+        Map<String, Boolean> present = new LinkedHashMap<>();
+        for (List<Map<String, Object>> group : groups) {
+            if (group == null) {
+                continue;
+            }
+            for (Map<String, Object> entry : group) {
+                Object source = entry.get("source");
+                if (source != null) {
+                    present.putIfAbsent(String.valueOf(source), Boolean.TRUE);
+                }
+            }
+        }
+        List<Map<String, Object>> sources = new ArrayList<>();
+        for (Map.Entry<String, String> known : SOURCE_LABELS) {
+            if (!present.containsKey(known.getKey())) {
+                continue;
+            }
+            Map<String, Object> source = new LinkedHashMap<>();
+            source.put("id", known.getKey());
+            source.put("label", known.getValue());
+            sources.add(source);
+        }
+        // 兜底：接入了名字表里没有的新来源时也要能被筛出来，而不是从界面上消失
+        for (String id : present.keySet()) {
+            if (SOURCE_LABELS.stream().noneMatch(known -> known.getKey().equals(id))) {
+                Map<String, Object> source = new LinkedHashMap<>();
+                source.put("id", id);
+                source.put("label", id);
+                sources.add(source);
+            }
+        }
+        return sources;
     }
 
     /**
@@ -125,6 +207,36 @@ public class MaterialCatalog {
             entry.put("id", MythicMobsHook.PREFIX + mobId);
             entry.put("en", "MythicMobs: " + mobId);
             entry.put("zh", "");
+            entry.put("source", SOURCE_MYTHICMOBS);
+            entries.add(entry);
+        }
+        return entries;
+    }
+
+    /**
+     * CustomFishing 战利品条目：{@code id} 就是写进 {@code custom_fish} 的 {@code target} 的值
+     * （<b>不带前缀</b>——监听器推给进度引擎的战利品 id 是裸的）。
+     * <p>
+     * 分类固定为 {@code fish}：它既不是方块也不是物品，混进材质分类只会让人把它填错字段。
+     * 显示名用 CustomFishing 配置里的 {@code nick}，缺失时 {@link FishLoot} 已退回 id。
+     * <p>
+     * 静态、不碰 Bukkit：可以单独测试（见 {@code MaterialCatalogTest}）。
+     */
+    static List<Map<String, Object>> fishEntries(List<FishLoot> loot) {
+        if (loot == null || loot.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> entries = new ArrayList<>(loot.size());
+        for (FishLoot item : loot) {
+            if (item == null || item.id() == null || item.id().isBlank()) {
+                continue;
+            }
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", item.id());
+            entry.put("en", item.name());
+            entry.put("zh", "");
+            entry.put("category", "fish");
+            entry.put("source", SOURCE_CUSTOMFISHING);
             entries.add(entry);
         }
         return entries;
@@ -167,6 +279,8 @@ public class MaterialCatalog {
         entry.put("en", (plugin == null ? "" : plugin + ": ") + id.substring(prefix.length()));
         entry.put("zh", "");
         entry.put("category", category);
+        // 来源就是前缀本身（itemsadder / craftengine），去掉冒号与前缀语义无关
+        entry.put("source", prefix.isEmpty() ? SOURCE_MINECRAFT : prefix.substring(0, prefix.length() - 1));
         return entry;
     }
 
@@ -178,7 +292,7 @@ public class MaterialCatalog {
     }
 
     private static Map<String, Object> entry(String id, Map<String, String> english,
-                                             Map<String, String> chinese, String category) {
+                                             Map<String, String> chinese, String category, String source) {
         String key = id.toLowerCase(Locale.ROOT);
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("id", id);
@@ -188,6 +302,7 @@ public class MaterialCatalog {
         if (category != null) {
             entry.put("category", category);
         }
+        entry.put("source", source);
         return entry;
     }
 

@@ -2,6 +2,7 @@ package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.FakeMythicMobsHook;
+import com.playerPlugin.playerTaskX.core.integration.FishLoot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -187,6 +188,82 @@ class MaterialCatalogTest {
 
         assertEquals(1, entries.size(), "两条的 id 完全一样，写进 target 的值也完全一样");
         assertEquals("block", entries.get(0).get("category"), "方块优先：先看到的应该是能挖/能放的那类");
+    }
+
+    @Test
+    @DisplayName("每条自定义内容都带来源标记：编辑器据此按插件筛选")
+    void customContentCarriesItsSource() {
+        var entries = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("ItemsAdder", "itemsadder:",
+                        List.of("myitems:ruby"), List.of()),
+                FakeCustomContentHook.of("CraftEngine", "craftengine:",
+                        List.of("default:bench"), List.of())));
+
+        assertEquals("itemsadder", entries.get(0).get("source"), "来源取自 id 的前缀");
+        assertEquals("craftengine", entries.get(1).get("source"));
+        assertEquals("mythicmobs", MaterialCatalog.mythicMobEntries(
+                        FakeMythicMobsHook.ofMobIds("Boss")).get(0).get("source"),
+                "MythicMobs 的怪同样要带来源，否则按插件筛选时它们会无处可去");
+    }
+
+    @Test
+    @DisplayName("CustomFishing 战利品单独一栏：id 不带前缀，显示名用配置里的 nick")
+    void fishEntriesCarryBareIds() {
+        var entries = MaterialCatalog.fishEntries(List.of(
+                new FishLoot("my_custom_fish", "<yellow>大鱼"),
+                new FishLoot("no_nick_fish", "")));
+
+        assertEquals(2, entries.size());
+        assertEquals("my_custom_fish", entries.get(0).get("id"),
+                "监听器推给进度引擎的就是这个裸 id，加了前缀反而永远匹配不上");
+        assertEquals("<yellow>大鱼", entries.get(0).get("en"), "显示名用 CustomFishing 配置里的 nick");
+        assertEquals("fish", entries.get(0).get("category"));
+        assertEquals("customfishing", entries.get(0).get("source"));
+        assertEquals("no_nick_fish", entries.get(1).get("en"), "没有 nick 时退回 id，至少还能认出是哪条");
+    }
+
+    @Test
+    @DisplayName("没装 CustomFishing（清单为空）时不往目录里塞鱼")
+    void fishCatalogIsEmptyWithoutCustomFishing() {
+        assertTrue(MaterialCatalog.fishEntries(null).isEmpty());
+        assertTrue(MaterialCatalog.fishEntries(List.of()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("来源清单只列这次真的有东西的那些，且顺序固定（原版最前）")
+    void sourcesListOnlyContainsPresentSources() {
+        var materials = MaterialCatalog.customEntries(CustomContentHooks.of(
+                FakeCustomContentHook.of("CraftEngine", "craftengine:",
+                        List.of("default:bench"), List.of())));
+        var entities = MaterialCatalog.mythicMobEntries(FakeMythicMobsHook.ofMobIds("Boss"));
+        var fish = MaterialCatalog.fishEntries(List.of(new FishLoot("my_custom_fish", "")));
+
+        var sources = MaterialCatalog.sourcesOf(
+                List.of(Map.of("id", "STONE", "source", "minecraft")), entities, fish);
+        assertEquals(List.of("minecraft", "mythicmobs", "customfishing"), ids(sources),
+                "没接入的来源不该出现，否则界面上会多出一堆点了没结果的筛选标签");
+
+        var withCustomContent = MaterialCatalog.sourcesOf(
+                List.of(Map.of("id", "STONE", "source", "minecraft")), entities, materials);
+        assertEquals(List.of("minecraft", "mythicmobs", "craftengine"), ids(withCustomContent),
+                "顺序固定：原版 → MythicMobs → ItemsAdder → CraftEngine → CustomFishing，与接入历史一致");
+
+        assertEquals("CraftEngine", withCustomContent.get(2).get("label"),
+                "显示名由后端给（前端不抄第二份名字表）");
+    }
+
+    @Test
+    @DisplayName("来源清单兜底：名字表里没有的新来源也要能被筛出来，而不是从界面上消失")
+    void unknownSourceStillGetsATab() {
+        var sources = MaterialCatalog.sourcesOf(
+                List.of(Map.of("id", "x", "source", "somefutureplugin")), List.of(), List.of());
+
+        assertEquals(List.of("somefutureplugin"), ids(sources));
+        assertEquals("somefutureplugin", sources.get(0).get("label"), "认不出来就原样显示 id");
+    }
+
+    private static List<String> ids(List<Map<String, Object>> sources) {
+        return sources.stream().map(source -> String.valueOf(source.get("id"))).toList();
     }
 
     @Test

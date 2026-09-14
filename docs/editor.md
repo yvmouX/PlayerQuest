@@ -154,6 +154,11 @@ rewards:
 
 - 搜索框**同时匹配中文名、英文名和枚举名**——输入 `钻石`、`diamond`、
   `DIAMOND_ORE` 都能找到钻石矿石
+- **可按插件来源筛选**：装了哪些插件就出现哪些来源标签（`原版` / `MythicMobs` /
+  `ItemsAdder` / `CraftEngine` / `CustomFishing`），与「方块 / 物品 / 食物」分类、
+  搜索关键词三者叠加生效。只有**当前字段范围里真的有内容**的来源才出现
+  （实体字段不会冒出 ItemsAdder 标签，只有原版时整排标签不显示）；
+  非原版条目右侧还会标出来源，一眼能分辨它是谁家的
 - 按「方块 / 物品 / 食物」分类浏览，实体单独一栏
 - 列表只包含**当前服务端版本支持**的物品（能作为物品存在的那些），
   因此不会选到本版本没有的东西
@@ -164,8 +169,10 @@ rewards:
   选中后写入的就是 `mythic:<怪物id>` —— 也就是击杀任务要用的写法
 - 装了 **ItemsAdder** / **CraftEngine** 时，它们的**自定义方块与物品**会一并进材质列表
   （显示成 `CraftEngine: default:amethyst_torch`，写入 `target` 的值是带前缀的
-  `craftengine:default:amethyst_torch`）。两家的内容较多，直接搜 `itemsadder` 或
-  `craftengine` 一次筛出来最快；同一个 id 既是方块又是物品时只列一条，避免重复
+  `craftengine:default:amethyst_torch`）；同一个 id 既是方块又是物品时只列一条，避免重复
+- 装了 **CustomFishing** 时，「自定义钓鱼」目标的**「鱼 id」字段也变成选择器**，
+  列出它注册表里的战利品（显示 CustomFishing 配置里的 `nick`）。
+  鱼单独一栏、不混进材质列表：把鱼 id 填进方块目标的 `target` 只会永远命中不了
 - **缺软依赖的类型会被标灰**：没装 CustomFishing 时「自定义钓鱼」在下拉里显示「不可用」，
   没有可用经济服务（没装经济插件）时「金币」奖励同理；已经用了这类类型的任务会在右侧「后端校验问题」里列出原因
 

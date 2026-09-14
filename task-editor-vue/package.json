@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "test": "node scripts/yaml-check.mjs && node scripts/ssr-smoke.mjs",
-    "build": "node scripts/yaml-check.mjs && node scripts/ssr-smoke.mjs && vue-tsc --noEmit -p tsconfig.json && vite build",
+    "test": "node scripts/yaml-check.mjs && node scripts/catalog-check.mjs && node scripts/ssr-smoke.mjs",
+    "build": "node scripts/yaml-check.mjs && node scripts/catalog-check.mjs && node scripts/ssr-smoke.mjs && vue-tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

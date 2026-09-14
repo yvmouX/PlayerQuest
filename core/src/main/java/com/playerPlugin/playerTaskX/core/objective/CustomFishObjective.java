@@ -55,7 +55,9 @@ public final class CustomFishObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.optionalText("target", "鱼 id", "",
+                // FISH 而不是 STRING：编辑器据此列出 CustomFishing 注册表里的战利品 id
+                // （没装 CustomFishing 时列表为空，但输入框照旧可手打）
+                ConfigField.optionalFish("target", "鱼 id", "",
                         "CustomFishing 战利品表里的 id，如 my_custom_fish；留空或 * 表示任意自定义鱼"),
                 ConfigField.optionalDecimal(SIZE, "最小尺寸", 0.0,
                         "只统计尺寸不小于该值的钓获；0 表示不限（尺寸由 CustomFishing 提供）"),

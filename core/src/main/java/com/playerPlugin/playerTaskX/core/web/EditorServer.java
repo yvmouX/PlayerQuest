@@ -1,6 +1,7 @@
 package com.playerPlugin.playerTaskX.core.web;
 
 import com.playerPlugin.playerTaskX.PlayerTaskX;
+import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
 import cn.yvmou.ylib.message.MessageService;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -154,8 +155,8 @@ public final class EditorServer {
         // 素材目录要把三个来源都带上：原版材质/实体（枚举）、MythicMobs 自定义怪、
         // ItemsAdder / CraftEngine 的自定义物品与方块。少传一个，选择器里就少一整类东西，
         // 而且只在「装了那个插件」的服务器上才看得出来（构造器因此不提供省略参数的版本）
-        new EditorApi(plugin, new MaterialCatalog(langFiles, plugin.mythicMobs(), plugin.customContent()))
-                .register(app);
+        new EditorApi(plugin, new MaterialCatalog(langFiles, plugin.mythicMobs(), plugin.customContent(),
+                CustomFishingHook::loot)).register(app);
 
         // 令牌被拒时 checkToken 已写好响应体，这里只需保持 401
         app.exception(TokenRejected.class, (e, ctx) -> ctx.status(401));

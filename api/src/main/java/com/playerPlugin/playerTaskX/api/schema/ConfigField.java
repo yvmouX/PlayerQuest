@@ -107,6 +107,18 @@ public record ConfigField(
                 "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意");
     }
 
+    /**
+     * 允许留空的 CustomFishing 战利品字段。
+     * <p>
+     * 值就是 CustomFishing 配置里那条战利品的 id（不带任何前缀——监听器从
+     * {@code ContextKeys.ID} 拿到的就是它）。编辑器会把 CustomFishing 注册表里的
+     * id 列出来供选择，但输入框照旧可手打：没装 CustomFishing 的服务器上写下的值
+     * 在装上之后就能生效，不该因为「当时列不出来」而被拦住。
+     */
+    public static ConfigField optionalFish(String key, String label, String defaultValue, String hint) {
+        return new ConfigField(key, label, FieldType.FISH, false, defaultValue, List.of(), hint);
+    }
+
     public static ConfigField options(String key, String label, String defaultValue, List<String> options, String hint) {
         return new ConfigField(key, label, FieldType.ENUM, true, defaultValue, options, hint);
     }

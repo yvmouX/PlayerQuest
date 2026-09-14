@@ -334,9 +334,27 @@ IA/CE 的自定义方块在服务端仍是原版方块（靠方块状态与资�
 
 编辑器侧：MythicMobs 的怪物会被追加进 `/api/catalog` 的实体列表（id 形如
 `mythic:SkeletalKnight`，也就是要写进 `target` 的值本身）；IA/CE 的自定义方块与物品
-追加进**材质**列表（id 形如 `itemsadder:myitems:ruby_block`），因此不用新增选择器；
+追加进**材质**列表（id 形如 `itemsadder:myitems:ruby_block`）；CustomFishing 的战利品
+追加进**独立的 `fish` 列表**（id 是裸的战利品 id，`custom_fish` 的 `target` 字段因此
+从自由文本升级成 `FieldType.FISH` 选择器）。三者都不新增选择器组件，只多一份数据。
 `/api/schema` 对**目标类型**也开始下发 `available` / `unavailableReason`
 （与奖励同一套字段），缺 CustomFishing 时下拉里就选不了它。
+
+**目录里的每条都带 `source`（`minecraft` / `mythicmobs` / `itemsadder` / `craftengine` /
+`customfishing`），响应另给一份 `sources`**：编辑器据此渲染「按插件筛选」的那一排标签。
+两条约束写在这里，因为它们都是「不报错但会让人找不到东西」的类型：
+
+1. **`sources` 只列这次真的有内容的来源**，顺序固定（原版 → MythicMobs → ItemsAdder →
+   CraftEngine → CustomFishing），显示名由后端给：前端再抄一份名字表必然漂移，
+   而列了没内容的来源则会出现「点了没结果的标签」。
+2. **鱼单独一栏，绝不混进材质列表**：`custom_fish` 的 target 是战利品 id，
+   把它填进 `break_block.target` 只会永远命中不了——正是本项目最想根除的「配了却不生效」。
+   前端 `sourceTabs`/`entriesForScope` 按范围取条目，鱼只在 FISH（以及 TARGET 的并集）里出现。
+
+> **CustomFishing 的清单要反射读**：`CustomFishingCatalog` 引用了它的 API，被类加载时
+> 就会解析那些类型，因此只能由 `CustomFishingHook` 在确认插件存在后反射调用
+> （与监听器同一个模式）；返回的 `FishLoot` 本身不引用任何 CustomFishing 类型，
+> 这样素材目录在没装该插件的服务端上也能安全地处理它。
 
 > **素材目录的三个来源缺一不可**：`MaterialCatalog` 由（原版枚举、MythicMobs、
 > ItemsAdder/CraftEngine）三份拼成，构造器刻意<b>不</b>提供省略参数的版本。
@@ -747,8 +765,9 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 30 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
 | 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 5 项目录测试） |
 | 32 | 真机装上 CraftEngine / MythicMobs / Vault 后暴露的三处接入问题：素材目录没拿到自定义内容、MythicMobs 因 `POSTWORLD` 永远接不上、金币按插件名判 Vault 而非按经济服务在册判 | ✅ 完成（见 4.5，+2 项目录测试 + 4 项经济服务测试） |
+| 33 | 编辑器素材目录按**插件来源**筛选：每条带 `source`、响应带 `sources`；CustomFishing 战利品进独立 `fish` 栏（`FieldType.FISH` 选择器） | ✅ 完成（见 4.5，+5 项目录测试 + 1 个前端自检脚本 9 项） |
 
-**测试总量：255 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+**测试总量：260 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
 存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
@@ -756,7 +775,7 @@ YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepos
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 任务管理 12（`QuestAdminServiceTest`）+
-素材 13（`MaterialCatalogTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
+素材 18（`MaterialCatalogTest`）+ 奖励 21（`CurrencyTypeTest` 8 + `ExpUtilTest` 9 + `MoneyRewardTest` 4）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 8（`CustomContentHooksTest`）+ 结构指纹 8（`StructureFingerprintTest`）+
 字段一致性 8（`ObjectiveFieldTypeConsistencyTest`）+ 奖励领取 4（`RewardServiceTest`）+
 示例任务 6（`ExampleQuestsTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
@@ -767,11 +786,11 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
 逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 976 行 + `core/src/main` 13517 行
-＝ **14493 行 / 106 个 java 文件**；测试 `core/src/test` **6224 行 / 34 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 990 行 + `core/src/main` 13763 行
+＝ **14753 行 / 108 个 java 文件**；测试 `core/src/test` **6301 行 / 34 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
-前端 `task-editor-vue/src` **5961 行 `.vue` + 2000 行 `.ts`/`.js` ＝ 7961 行 / 31 个文件**
-（另有 `scripts/` 下两个构建期自检脚本，不计入 src）。
+前端 `task-editor-vue/src` **6013 行 `.vue` + 2149 行 `.ts`/`.js` ＝ 8162 行 / 31 个文件**
+（另有 `scripts/` 下三个构建期自检脚本：YAML 往返 14 项、素材目录筛选 9 项、4 个视图 SSR 渲染，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：

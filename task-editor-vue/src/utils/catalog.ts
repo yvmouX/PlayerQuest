@@ -18,14 +18,35 @@
  * <b>绝不会</b>因为 zh 为空就把条目漏掉。
  */
 import { CatalogApi } from '../services/api'
-import type { CatalogEntry, MaterialCatalog } from '../types'
+import type { CatalogEntry, CatalogSource, MaterialCatalog } from '../types'
 
 /** 选择器要展示的条目范围。 */
-export type CatalogScope = 'material' | 'entity' | 'both'
+export type CatalogScope = 'material' | 'entity' | 'both' | 'fish'
 
-/** 分类筛选值：'ALL' 或 catalog.categories 里的某个分类；实体用 'entity'。 */
+/** 分类筛选值：'ALL' 或 catalog.categories 里的某个分类；实体、鱼各用一栏。 */
 export const CATEGORY_ALL = 'ALL'
 export const CATEGORY_ENTITY = 'entity'
+export const CATEGORY_FISH = 'fish'
+
+/** 来源筛选值：'ALL' 或 catalog.sources 里的某个来源 id。 */
+export const SOURCE_ALL = 'ALL'
+
+/** 原版来源 id；后端没给 source 时的兜底。 */
+export const SOURCE_MINECRAFT = 'minecraft'
+
+/**
+ * 来源显示名的兜底表。
+ *
+ * <p>正常情况下来自后端（`catalog.sources`），这里只为「旧版后端没有 sources 字段」
+ * 兜一份，避免筛选标签显示成裸 id。
+ */
+const SOURCE_LABELS: Record<string, string> = {
+  [SOURCE_MINECRAFT]: '原版',
+  mythicmobs: 'MythicMobs',
+  itemsadder: 'ItemsAdder',
+  craftengine: 'CraftEngine',
+  customfishing: 'CustomFishing'
+}
 
 /** 单次最多渲染的条目数：1000+ 个 DOM 节点会让低配机器明显卡顿。 */
 export const MAX_VISIBLE_ITEMS = 200
@@ -65,20 +86,29 @@ export function peekCatalog(): MaterialCatalog | null {
 /**
  * 兜底一份形状正确的目录。
  *
- * <p>契约里四个字段总是存在，但缺字段会让选择器直接抛异常白屏，
+ * <p>契约里这些字段总是存在，但缺字段会让选择器直接抛异常白屏，
  * 这里补空数组比让管理员面对一个坏掉的页面划算。
+ *
+ * <p>{@code sources} 缺失时（旧版后端）从条目里现推一份：按插件筛选是纯前端行为，
+ * 后端没给元数据也不该让这一排标签整个消失。
  */
 export function normalizeCatalog(raw: MaterialCatalog | null | undefined): MaterialCatalog {
   const materials = Array.isArray(raw?.materials) ? raw!.materials : []
   const entities = Array.isArray(raw?.entities) ? raw!.entities : []
+  const fish = Array.isArray(raw?.fish) ? raw!.fish : []
   const categories = Array.isArray(raw?.categories) && raw!.categories.length
     ? raw!.categories
     // 后端没给顺序时给一份可用的默认顺序，保证分类栏仍然出现
     : ['block', 'item', 'food']
+  const sources = Array.isArray(raw?.sources) && raw!.sources.length
+    ? raw!.sources.filter(isSource)
+    : sourcesFromEntries(materials.concat(entities, fish))
   return {
     materials: materials.filter(isEntry),
     entities: entities.filter(isEntry),
+    fish: fish.filter(isEntry),
     categories,
+    sources,
     serverVersion: typeof raw?.serverVersion === 'string' ? raw!.serverVersion : '',
     // 后端未声明时按「有条目就算有中文」推断，避免旧后端让界面误报「只有英文」
     hasChinese: typeof raw?.hasChinese === 'boolean'
@@ -89,6 +119,44 @@ export function normalizeCatalog(raw: MaterialCatalog | null | undefined): Mater
 
 function isEntry(value: unknown): value is CatalogEntry {
   return !!value && typeof value === 'object' && typeof (value as CatalogEntry).id === 'string'
+}
+
+function isSource(value: unknown): value is CatalogSource {
+  return !!value && typeof value === 'object'
+    && typeof (value as CatalogSource).id === 'string'
+    && typeof (value as CatalogSource).label === 'string'
+}
+
+/** 从条目里推出出现过的来源（旧版后端的兜底）。保持首次出现的顺序。 */
+function sourcesFromEntries(entries: CatalogEntry[]): CatalogSource[] {
+  const seen = new Map<string, CatalogSource>()
+  for (const entry of entries) {
+    const id = sourceOf(entry)
+    if (!seen.has(id)) {
+      seen.set(id, { id, label: SOURCE_LABELS[id] ?? id })
+    }
+  }
+  return [...seen.values()]
+}
+
+/** 条目来源；后端没给时按原版处理（旧版目录里只有原版与带前缀的自定义内容）。 */
+export function sourceOf(entry: CatalogEntry): string {
+  const source = (entry.source ?? '').trim()
+  if (source) {
+    return source
+  }
+  // 带前缀的自定义内容（itemsadder:xxx / craftengine:xxx）即便后端没标来源，也能从前缀认出来
+  const colon = entry.id.indexOf(':')
+  return colon > 0 ? entry.id.slice(0, colon) : SOURCE_MINECRAFT
+}
+
+/** 来源显示名；未知来源原样返回 id。 */
+export function sourceLabel(source: string, catalog?: MaterialCatalog | null): string {
+  const known = catalog?.sources.find(item => item.id === source)
+  if (known) {
+    return known.label
+  }
+  return SOURCE_LABELS[source] ?? source
 }
 
 /* ------------------------------------------------------------------ *
@@ -178,8 +246,16 @@ export function filterByCategory(entries: CatalogEntry[], category: string): Cat
   return entries.filter(entry => (entry.category ?? CATEGORY_ENTITY) === category)
 }
 
+/** 按来源（插件）筛选；source 为 SOURCE_ALL 时原样返回。 */
+export function filterBySource(entries: CatalogEntry[], source: string): CatalogEntry[] {
+  if (!source || source === SOURCE_ALL) {
+    return [...entries]
+  }
+  return entries.filter(entry => sourceOf(entry) === source)
+}
+
 /**
- * 组装选择器要显示的列表：先按分类收窄，再搜索，再截断到 {@link MAX_VISIBLE_ITEMS}。
+ * 组装选择器要显示的列表：先按分类与来源收窄，再搜索，再截断到 {@link MAX_VISIBLE_ITEMS}。
  *
  * <p>返回 truncated 让界面提示「还有多少项未显示」，而不是静默吞掉结果——
  * 搜索 `_ORE` 这类宽泛关键词时命中几百条是正常的，管理员需要知道要细化搜索。
@@ -188,9 +264,10 @@ export function visibleEntries(
   entries: CatalogEntry[],
   keyword: string,
   category: string,
+  source: string = SOURCE_ALL,
   limit: number = MAX_VISIBLE_ITEMS
 ): { items: CatalogEntry[]; total: number; truncated: boolean } {
-  const matched = searchEntries(filterByCategory(entries, category), keyword)
+  const matched = searchEntries(filterBySource(filterByCategory(entries, category), source), keyword)
   const max = limit > 0 ? limit : matched.length
   return {
     items: matched.slice(0, max),
@@ -278,43 +355,90 @@ export function scopeForFieldType(type: string): CatalogScope {
   if (type === 'TARGET') {
     return 'both'
   }
+  if (type === 'FISH') {
+    return 'fish'
+  }
   return 'material'
 }
 
-/** 按范围取出条目：TARGET 需要同时列出方块材质与实体。 */
+/** 按范围取出条目：TARGET 需要同时列出方块材质与实体；FISH 只看 CustomFishing 的战利品。 */
 export function entriesForScope(catalog: MaterialCatalog | null, scope: CatalogScope): CatalogEntry[] {
   if (!catalog) {
     return []
   }
   const materials = catalog.materials
   const entities = catalog.entities
+  const fish = catalog.fish.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_FISH }))
   if (scope === 'material') {
     return materials
   }
   if (scope === 'entity') {
     return entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY }))
   }
-  return materials.concat(entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY })))
+  if (scope === 'fish') {
+    return fish
+  }
+  return materials
+    .concat(entities.map(entry => ({ ...entry, category: entry.category ?? CATEGORY_ENTITY })))
+    .concat(fish)
 }
 
 /**
  * 选择器顶部的分类标签。
  *
- * <p>顺序来自 {@code catalog.categories}（不硬编码），实体作为单独一栏，
- * 且只在选择范围包含实体时出现。
+ * <p>顺序来自 {@code catalog.categories}（不硬编码），实体与鱼各作为单独一栏，
+ * 且只在选择范围包含它们时出现。
  */
 export function categoryTabs(catalog: MaterialCatalog | null, scope: CatalogScope): { value: string; label: string }[] {
   const tabs: { value: string; label: string }[] = [{ value: CATEGORY_ALL, label: '全部' }]
   if (!catalog) {
     return tabs
   }
+  if (scope === 'fish') {
+    tabs.push({ value: CATEGORY_FISH, label: '鱼' })
+    return tabs
+  }
   if (scope !== 'entity') {
     for (const category of catalog.categories) {
+      // 鱼是独立范围，混进材质分类栏只会让人在方块目标里选到鱼
+      if (category === CATEGORY_FISH) {
+        continue
+      }
       tabs.push({ value: category, label: categoryLabel(category) })
     }
   }
   if (scope !== 'material') {
     tabs.push({ value: CATEGORY_ENTITY, label: '实体' })
+  }
+  return tabs
+}
+
+/**
+ * 选择器顶部的来源（插件）标签。
+ *
+ * <p>只列出**当前范围里真的有条目**的来源：在「实体」范围里塞一个 ItemsAdder 标签，
+ * 点进去只会是空列表。范围里只有一个来源时返回空数组——没什么可筛的，
+ * 那一排标签只会占地方（原版材质字段正是这种情况）。
+ */
+export function sourceTabs(catalog: MaterialCatalog | null, scope: CatalogScope): { value: string; label: string }[] {
+  const entries = entriesForScope(catalog, scope)
+  if (!entries.length) {
+    return []
+  }
+  const seen = new Set(entries.map(sourceOf))
+  if (seen.size < 2) {
+    return []
+  }
+  const tabs: { value: string; label: string }[] = [{ value: SOURCE_ALL, label: '全部来源' }]
+  // 顺序跟随后端给的 sources（原版在前的固定顺序），再补后端没提到的
+  const ordered = (catalog?.sources ?? []).map(source => source.id).filter(id => seen.has(id))
+  for (const id of seen) {
+    if (!ordered.includes(id)) {
+      ordered.push(id)
+    }
+  }
+  for (const id of ordered) {
+    tabs.push({ value: id, label: sourceLabel(id, catalog) })
   }
   return tabs
 }
@@ -330,6 +454,8 @@ export function categoryLabel(category: string): string {
       return '食物'
     case CATEGORY_ENTITY:
       return '实体'
+    case CATEGORY_FISH:
+      return '鱼'
     default:
       return category
   }

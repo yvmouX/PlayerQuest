@@ -6,6 +6,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -29,6 +31,13 @@ public final class CustomFishingHook {
 
     private static final String LISTENER_CLASS =
             "com.playerPlugin.playerTaskX.core.integration.CustomFishingListener";
+
+    /** 读取战利品清单的实现类；同样只在确认插件存在后才被加载。 */
+    private static final String CATALOG_CLASS =
+            "com.playerPlugin.playerTaskX.core.integration.CustomFishingCatalog";
+
+    /** 清单读取失败只记一次：素材目录是每次打开编辑器都要算的，不能每次刷一条 warn。 */
+    private static boolean catalogFailed;
 
     private CustomFishingHook() {
     }
@@ -61,6 +70,37 @@ public final class CustomFishingHook {
             // 版本不兼容（事件类被改名等）时只损失这一个目标类型，不影响插件启动
             log(Level.WARNING, "接入 CustomFishing 失败，「自定义钓鱼」目标将不可用: " + e);
             return false;
+        }
+    }
+
+    /**
+     * CustomFishing 已注册的战利品清单，供编辑器的「鱼 id」选择器列出。
+     * <p>
+     * 未安装、版本不兼容、或注册表还空着时返回空表（编辑器退化为手打，不报错）——
+     * 这只是编辑器的便利功能，任何意外都不该影响插件运行。
+     */
+    public static List<FishLoot> loot() {
+        if (!supported() || catalogFailed) {
+            return List.of();
+        }
+        try {
+            Class<?> catalogClass = Class.forName(CATALOG_CLASS, true, CustomFishingHook.class.getClassLoader());
+            Object result = catalogClass.getMethod("loot").invoke(null);
+            if (result instanceof List<?> list) {
+                List<FishLoot> loot = new ArrayList<>(list.size());
+                for (Object item : list) {
+                    if (item instanceof FishLoot entry) {
+                        loot.add(entry);
+                    }
+                }
+                return loot;
+            }
+            return List.of();
+        } catch (Throwable e) {
+            // 只记一次：这个出口每次打开编辑器都会被调用
+            catalogFailed = true;
+            log(Level.WARNING, "读取 CustomFishing 战利品清单失败，编辑器里「鱼 id」只能手打: " + e);
+            return List.of();
         }
     }
 

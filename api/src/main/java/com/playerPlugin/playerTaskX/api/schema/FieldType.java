@@ -18,6 +18,8 @@ public enum FieldType {
     ENTITY,
     /** 方块或实体类型名皆可（编辑器同时列出两者） */
     TARGET,
+    /** CustomFishing 的战利品 id（编辑器列出它注册表里的那些，可手打） */
+    FISH,
     /** 下拉选择，候选项见 {@link ConfigField#options()} */
     ENUM
 }
