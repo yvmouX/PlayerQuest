@@ -17,7 +17,7 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     .\gradlew.bat clean build            # 完整构建（含前端）
     .\gradlew.bat :core:compileJava -x :core:frontendBuild   # 只编译后端，跳过前端，几秒钟
     .\gradlew.bat :core:test             # 跑测试
-    .\gradlew.bat :core:test --tests '*DailyServiceTest*'    # 跑单个测试类
+    .\gradlew.bat :core:test --tests '*PeriodsTest*'         # 跑单个测试类
     .\start-folia.ps1                    # 构建 → 复制产物到 run/plugins → 启动测试服
     ```
 

@@ -861,6 +861,10 @@ quest_prerequisite / player_quest / period_state / quest_claim / preset）；
 - **MySQL 路径未做真机验证**：SQL 由 `Dialect` 统一生成、与 SQLite 共用同一套仓储代码，
   但 `ON DUPLICATE KEY UPDATE` 分支、HikariCP 连接与 `CREATE INDEX` 的容错路径
   只在代码与 SQLite 测试层面覆盖，没有连过真实 MySQL 实例。
+- **周期任务的发放/刷新只有单测覆盖**：四种周期的「换一批」判定由 `PeriodsTest` 钉住
+  （重置小时、跨周、跨月、跨年、自定义分桶），存储往返由 `StorageIntegrationTest` 在真实
+  SQLite 上跑；但本机没有可登录的客户端，因此「登录时发一批、跨周期换一批、扣费刷新」
+  这条链路只验证到接口与配置层（导入 WEEKLY/CUSTOM 任务、`/api/stats` 计数正确、启动无异常）。
 - **玩家实际游玩路径未验证**：需要真人进服（挖掘/合成/击杀等）才能确认进度累加、
   actionbar 推送、GUI 点击等表现层行为；本次只验证到「插件启用 + 命令注册 + HTTP 接口」。
 - **网页编辑器的界面操作未做浏览器端人工确认**：接口层已实测；纯前端的交互
