@@ -525,22 +525,25 @@ zip 里逐条目解析、坏的那条只跳过它自己，单文件解析失败�
 
 ```yaml
 objectives:
-  - preset: mine-stone      # 类型与字段来自预设
-    properties:
-      amount: 128           # 任务自己写的字段覆盖预设里的同名值
+  - preset: mine-stone      # 类型与字段全部来自预设
 ```
 
-三个设计点：
+四个设计点：
 
 1. **一条配置带两份 map**（`QuestObjective` / `QuestReward` 各加了第三个分量 `authored`）：
-   `properties` 是<b>生效值</b>（预设 ⊕ 覆盖，引擎与界面都用它），`authored` 是<b>作者写的那份</b>
-   （含 `preset` 键，落库与导出按它写回）。只留生效值 → 保存一次就把继承来的字段写死成覆盖项，
-   预设之后再也影响不到它；只留作者那份 → 引擎还得自己去查预设。
+   `properties` 是<b>生效值</b>（引用时就是预设给的值，引擎与界面都用它），`authored` 是
+   <b>作者写的那份</b>（引用时就是 `{preset: id}`，落库与导出按它写回）。只留生效值 → 保存一次
+   就把预设的值变成本任务的显式配置，预设之后再也影响不到它；只留作者那份 → 引擎还得自己去查预设。
 2. **展开只有一处**：`PresetRefs.resolve` 在 `QuestAdminService` 的 `reload()` 与 `save()` 里各调一次，
-   因此「什么最终生效」只有一个结论。`save()` 前先 `trim()`——编辑器回传的可能是展开过的值，
-   瘦身成「与预设不同的键」再落库（`trim→resolve` 是恒等变换，有测试钉住）。
+   因此「什么最终生效」只有一个结论。`save()` 前先 `trim()` 把引用清成只有 `preset` 键
+   （导入的文件、手工改库都可能多带字段），再 `resolve()` 进注册表。
    存储层只搬运 `authored`（DB 的 `properties` 列、`quests/*.yml` 都是它），不认识预设。
-3. **悬空引用不静默**：预设被删/改名后，展开时类型留空、保留作者写的覆盖项，并报一条校验问题
+3. **引用不带覆盖项**：字段全由预设提供，要偏离去「展开为独立配置」（显式解除引用、把当前生效值
+   变成任务自己的配置）。曾经允许 `preset` 与 `properties` 并存（覆盖项赢过预设），代价是同一个
+   字段有两个来源：「这个任务实际在做什么」要心算一遍预设 ⊕ 覆盖，表单既没法安全编辑覆盖项，
+   也说不清哪些字段被改过。现在引用条目上多写的字段会被校验报出来、并在保存时被清掉——
+   报错而不是静默忽略，因为这类写法在早期文档里出现过，会真实存在于 `quests/*.yml` 中。
+4. **悬空引用不静默**：预设被删/改名后，展开时类型留空、生效值为空，并报一条校验问题
    （`引用的预设 x 不存在…`）；同一情形下不再额外报「未知目标类型 」（空名字）——
    两条问题讲同一件事时，管理员只该看到说得清楚的那条。校验信息进编辑器、`/ptxa list`
    与启动日志，和软依赖的校验同一处出口。
@@ -549,10 +552,11 @@ objectives:
 进度索引，因为展开可能改变目标类型、进而改变结构指纹）；文件里的预设仍走 `/ptxa reload`。
 预设改动是低频操作，全量重载比维护「谁引用了它」的反向索引更简单，也不会漏。
 
-编辑器契约（`QuestJson`）因此给目标/奖励节点三样东西：`preset`（引用）、`properties`
-（覆盖项，保存按它落库）、`resolved`（生效值，界面直接显示）。只给 `resolved` 会让
-「保存一次 = 把预设复制一份」。前端把引用预设的条目显示成「引用预设 xxx」的只读卡片，
-要单独调数值就写覆盖项、或点「展开为独立配置」（显式解除引用）。
+编辑器契约（`QuestJson`）因此给引用节点 `preset`、`type` 与 `resolved`（生效值，界面直接显示），
+**不给** `properties`——引用条目没有「任务自己写的字段」，送一个空表过去只会让人以为那里可以填。
+`YamlDefinitions` 与前端 YAML 视图同样只写 `preset:`（类型与字段写出来就是一份会过期的副本）。
+前端把引用条目显示成「引用预设 xxx」的只读卡片，类型下拉也锁住，出口只有一个：
+「展开为独立配置」。
 
 ---
 
@@ -841,19 +845,20 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 26 | 移除编辑器语言文件页面（前端页面/路由/导航 + 后端 `/api/langs` 与相关 4 个 `EditorServices` 方法） | ✅ 完成（删 2 项 HTTP 测试，文案改走文件 + `/ptxa reload`） |
 | 27 | 编辑器只读体验：只读定义整行 / 整块压暗、表单用 `<fieldset disabled>` 整体停用；预设页改标签页 + 搜索 + 列表自滚 | ✅ 完成（构建期 SSR 渲染通过） |
 | 28 | 导入/导出改为「一条定义一个 yml，多条打包 zip」；列表形状被拒；死掉的宽松读取器一并删除 | ✅ 完成（4 项 HTTP 测试 + 1 项前端预检自检） |
-| 29 | 预设可被引用：定义里写 `preset:` + 覆盖项，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.7，7 项 PresetRefs 测试 + 2 项服务级测试） |
+| 29 | 预设可被引用：定义里写 `preset:`，载入时展开；改预设自动重算引用它的任务 | ✅ 完成（见 4.7，9 项 PresetRefs 测试 + 2 项服务级测试 + 1 项 HTTP 契约测试；覆盖项机制见 36 已移除） |
 | 30 | 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自配置与状态；命令、GUI、变量、编辑器全部按类型区分 | ✅ 完成（见 6，12 项周期算法测试） |
 | 31 | 自定义内容联动：ItemsAdder + CraftEngine 的物品/方块可作 `target`（别名机制）、进编辑器选择器、缺失时校验报出 | ✅ 完成（见 4.5，8 项接入层测试 + 5 项目录测试） |
 | 32 | 真机装上 CraftEngine / MythicMobs / Vault 后暴露的三处接入问题：素材目录没拿到自定义内容、MythicMobs 因 `POSTWORLD` 永远接不上、金币按插件名判 Vault 而非按经济服务在册判 | ✅ 完成（见 4.5，+2 项目录测试 + 4 项经济服务测试） |
 | 33 | 编辑器素材目录按**插件来源**筛选：每条带 `source`、响应带 `sources`；CustomFishing 战利品进独立 `fish` 栏 | ✅ 完成（见 4.5，+5 项目录测试 + 1 个前端自检脚本） |
 | 34 | **字段值域**：`ValueKind` + 每个目标类型逐一声明 `kinds`；选择器只列该值域、服务端按同一份声明校验「永远不可能命中」的值；`FieldType` 收敛为 `PICKER` | ✅ 完成（见 4.5.1，+9 项值域测试 + 11 项目标值域一致性测试 + 2 项校验接入测试） |
 | 35 | `EditorServices` 改由 `PluginEditorServices` 适配器实现（主类不再承担 web 层契约，`presets()` 与 `describeStorage()` 两个「只有编辑器用」的 getter 随之删除） | ✅ 完成（见 7，+2 项转交测试） |
+| 36 | 编辑器里能**真正建立**预设引用：弹层点预设 = 引用（另给「复制一份」）；**移除覆盖项机制**（引用只认 `preset`，多写的字段报校验问题并在保存时清掉） | ✅ 完成（见 4.7，+2 项 PresetRefs 测试 + 1 项 HTTP 契约测试 + 1 项真库往返测试） |
 
-**测试总量：278 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
-存储 18（`StorageIntegrationTest`）+ 编辑器接口 17（`EditorApiTest`）+
+**测试总量：282 项全部通过**（33 个测试类，全部 failures=0 / errors=0）：
+存储 19（`StorageIntegrationTest`）+ 编辑器接口 18（`EditorApiTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 文档映射 8（`YamlDefinitionsTest`）+
 YAML 类型语义 8（`YamlTextTest`）+ 合并仓储 7（`MergedDefinitionRepositoryTest`）+
-预设引用 7（`PresetRefsTest`）+ 示例文件 5（`ExampleFilesTest`）+
+预设引用 9（`PresetRefsTest`）+ 示例文件 5（`ExampleFilesTest`）+
 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
 任务管理 14（`QuestAdminServiceTest`）+
@@ -873,7 +878,7 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 ＝ **15347 行 / 111 个 java 文件**；测试 `core/src/test` **6614 行 / 36 个文件**
 （`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）；
 前端 `task-editor-vue/src` **6021 行 `.vue` + 2193 行 `.ts`/`.js` ＝ 8214 行 / 31 个文件**
-（另有 `scripts/` 下三个构建期自检脚本：YAML 往返 14 项、素材目录筛选 13 项、4 个视图 SSR 渲染，不计入 src）。
+（另有 `scripts/` 下三个构建期自检脚本：YAML 往返与提交形态 15 项、素材目录筛选 15 项、4 个视图 SSR 渲染，不计入 src）。
 
 文本渲染的测试**不在本插件**，而在 YLib 侧（`YLib/core/src/test`，15 项 =
 `TextRendererTest` 11 + `RealWorldMessageTest` 4）：
@@ -975,21 +980,26 @@ player_quest / period_state / preset）；
 日志里没有「已写入」、任务数 23、该文件没有被重新创建；把它放回去再 `POST /api/reload`，
 任务数回到 24——即「只铺一次、之后尊重目录现状」与「reload 会重读文件」都成立。
 
-**预设引用的真机冒烟（同一台测试服）**：导入一个引用预设的任务（`preset:` + 一个 `amount` 覆盖项），
-`GET /api/quests/<id>` 如实给出三样：
+**预设引用的真机冒烟（同一台测试服）**：导入一个引用预设的任务，`GET /api/quests/<id>` 如实给出
+类型与生效值。这一轮冒烟做在「引用 + 覆盖项」还是合法写法的版本上，当时记录的形状是：
 
 ```json
 {"preset":"example_file_mine-stone","type":"break_block",
  "properties":{"amount":128},"resolved":{"amount":128,"target":"STONE"}}
 ```
 
-即类型来自预设、`properties` 只有覆盖项、`resolved` 是合并后的生效值。
-再建一个库里的预设并让另一个任务引用它，然后**改这个预设**（DIRT/8 → SAND/99）：
-保存返回 200 之后直接读任务，`resolved` 已变成 SAND/99、`properties` 仍是空的
-—— 引用没有被写死，也不需要 reload（保存预设会触发一次重载）。
-导出该任务，YAML 里只有 `preset:` 与 `properties: {}`，**没有 `resolved`**（派生数据不落盘）。
+即类型来自预设、`resolved` 是合并后的生效值。随后又验了「改预设立即生效」：另建一个库里的预设、
+让另一个任务引用它，再改这个预设（DIRT/8 → SAND/99），保存返回 200 之后直接读任务，
+`resolved` 已变成 SAND/99、`properties` 仍是空的 —— 引用没有被写死，也不需要 reload
+（保存预设会触发一次重载）。导出该任务时 YAML 里没有 `resolved`（派生数据不落盘）。
 删掉被引用的预设：任务的目标类型变空，问题清单给出
 「引用的预设 xxx 不存在（已删除或 id 写错），这个目标当前不生效」。探针任务与预设随后已清理。
+
+> 覆盖项机制随后被移除（见 4.7 第 3 点）：引用条目只认 `preset`，`properties` 不再出现，
+> 多写的字段报校验问题并在保存时清掉。改动后**没有**重跑真机冒烟，改由
+> `EditorApiTest.presetReferenceRoundTrip`（真实 QuestAdminService + 假仓储 + 真 HTTP）
+> 与 `PresetRefsTest` 钉住契约；浏览器里的点击路径（弹层点预设 = 引用、条目右侧「复制」）
+> 未在真机上点过。
 
 同时验证了两条重要的健壮性行为：
 

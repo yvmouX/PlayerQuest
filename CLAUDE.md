@@ -60,10 +60,15 @@ Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）�
     语法校验查不出来。检测必须放在 `ProgressService.load()`（覆盖全部记录），
     只放热路径会漏掉已完成记录。行为约定是「重置该任务进度 + 记日志」，不是静默错配。
   - **预设引用（`preset:`）的两份配置不要合并**（见 ARCHITECTURE 4.7）：`QuestObjective` /
-    `QuestReward` 的 `properties` 是**生效值**、`authored` 是**作者写的那份**（含 `preset` 键）。
-    落库/导出只写 `authored`，引擎只读 `properties`，展开统一走 `PresetRefs.resolve`
-    （由 `QuestAdminService` 的 reload/save 调用）。少任何一份都会出静默错误：只留生效值 →
-    保存一次就把预设的值复制成显式覆盖、改预设再也不生效；只留作者那份 → 引擎拿到空配置。
+    `QuestReward` 的 `properties` 是**生效值**、`authored` 是**作者写的那份**（引用时就是
+    `{preset: id}`）。落库/导出只写 `authored`，引擎只读 `properties`，展开统一走
+    `PresetRefs.resolve`（由 `QuestAdminService` 的 reload/save 调用）。少任何一份都会出静默错误：
+    只留生效值 → 保存一次就把预设的值复制成显式配置、改预设再也不生效；只留作者那份 → 引擎拿到空配置。
+  - **引用不带覆盖项**：字段全部由预设提供，要偏离就走「展开为独立配置」。引用条目上多写的字段
+    会被 `PresetRefs.problems` 报出来、并在 `trim`（保存时）清掉——**不要**改成静默忽略，
+    早期文档里出现过「`preset` + `properties` 覆盖」的写法，`quests/*.yml` 里会真实存在。
+    编辑器里建立引用的入口是「添加目标/奖励」弹层点条目（条目右侧的「复制」才是插入副本），
+    YAML 与导出只写 `preset:`（写 type/properties 就是一份会过期的副本）。
   - **每个目标字段要声明「值域」**（见 ARCHITECTURE 4.5.1）：`ConfigField.kinds`（`ValueKind`）
     说明这个字段能填哪一类值，`FieldType` 只管渲染成什么控件。选择器列出什么、任务图标怎么推、
     服务端标红什么，三处都读这一份声明——分开写必然漂移，而漂移的表现是
