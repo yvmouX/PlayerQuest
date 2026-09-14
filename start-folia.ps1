@@ -29,7 +29,7 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 $Root      = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RunDir    = Join-Path $Root "run"
-$ServerJar = Join-Path $RunDir "folia-26.1.2-8.jar"
+$ServerJar = Join-Path $RunDir "canvas-build.940.jar"
 $Plugins   = Join-Path $RunDir "plugins"
 
 Write-Host "=== PlayerTaskX 构建与启动 ===" -ForegroundColor Cyan
@@ -125,6 +125,7 @@ $javaArgs = @(
     "-Dfile.encoding=UTF-8",
     "-Dsun.stdout.encoding=UTF-8",
     "-Dsun.stderr.encoding=UTF-8",
+	"--add-modules=jdk.incubator.vector",
     "-jar", $ServerJar,
     "nogui"
 )
