@@ -1,12 +1,12 @@
 package com.playerPlugin.playerTaskX.core.gui.editor;
 
+import cn.yvmou.ylib.gui.MenuItem;
+import cn.yvmou.ylib.gui.PagedMenu;
 import cn.yvmou.ylib.message.MessageService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
-import cn.yvmou.ylib.gui.Menu;
-import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.gui.menu.QuestDetailMenu;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
@@ -21,21 +21,18 @@ import java.util.List;
 /**
  * 任务编辑器入口：分页列出全部任务，可进编辑器、开关、删除、新建、重载。
  * 文件来源（quests/ 下的 YAML）的任务只读：左键进只读预览而不是编辑器，写入仍会由仓储抛错兜住（这里只是不让管理员白点）。
+ * 翻页与页码由 {@link PagedMenu} 管，这里只管任务卡片与「排序 / 新建 / 重载」三个额外按钮。
  */
-public final class QuestBrowserMenu extends Menu {
+public final class QuestBrowserMenu extends PagedMenu<Quest> {
 
-    private static final int SIZE = 54;
-    /** 每页 45 个：前 5 行放任务（列表区用数字下标，见 {@code Menu#layout}），最后一行留分页与新建。 */
-    private static final int PAGE_SIZE = 45;
-
-    /** 界面布局（见 {@code SlotLayout}）：第 1~5 行是任务列表（翻页，用数字下标），最后一行是按钮。 */
+    /** 界面布局：前 5 行是任务区（每页 45 个），最后一行是按钮（6 个按钮 + 3 个空格刚好 9 格）。 */
     private static final String[] SHAPE = {
-            "    `note`",
-            "",
-            "",
-            "",
-            "",
-            "`prev``sort``new` `reload` `info` `next`",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "`prev` `sort``new` `reload``pages` `next`",
     };
 
     /**
@@ -63,7 +60,6 @@ public final class QuestBrowserMenu extends Menu {
         }
     }
 
-    private final int page;
     private final Order order;
     /** 已被要求删除、等着再确认一次的任务 id；换页或刷新后作废，免得隔了很久误删。 */
     private String pendingDelete;
@@ -74,46 +70,66 @@ public final class QuestBrowserMenu extends Menu {
 
     /** @param order 从列表进来时带上的排序方式，翻页 / 返回都要原样带回去 */
     public QuestBrowserMenu(Player viewer, MessageService messages, int page, Order order) {
-        super(viewer, messages, SIZE, "gui.editor-title");
-        this.page = Math.max(0, page);
+        super(viewer, messages, 54, "gui.editor-title");
         this.order = order == null ? Order.ID : order;
+        page(page);
     }
 
     @Override
-    protected void build() {
+    protected String[] shape() {
+        return SHAPE;
+    }
+
+    /** 全部任务按当前排序方式给出（顺序由注册表担保，见 {@code QuestRegistry#all}）。 */
+    @Override
+    protected List<Quest> items() {
+        return PlayerTaskX.getInstance().quests().all(order.comparator);
+    }
+
+    @Override
+    protected MenuItem whenEmpty() {
+        return MenuItem.display(Material.PAPER, "&7还没有任何任务",
+                List.of("&7点下面的 &f新建任务 &7开始"));
+    }
+
+    /** 页码多带两行信息：任务总数与当前排序（基类只管「第几页 / 共几页」）。 */
+    @Override
+    protected MenuItem pageInfo(int current, int totalPages) {
+        return MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
+                List.of("&7任务总数: &f" + items().size(), "&7当前排序: &f" + order.label));
+    }
+
+    /** 排序 / 新建 / 重载：翻页那三个按钮由基类摆。 */
+    @Override
+    protected void decorate() {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
-        // 顺序由注册表担保（见 QuestRegistry#all）；这里只是换一种排法——翻页界面必须保证同一份数据
-        // 每次得到同样的顺序，否则切换启用状态刷新后任务会跳到别的页
-        List<Quest> quests = plugin.quests().all(order.comparator);
-
-        int totalPages = Math.max(1, (quests.size() + PAGE_SIZE - 1) / PAGE_SIZE);
-        int current = Math.min(page, totalPages - 1);
-        int from = current * PAGE_SIZE;
-        layout(SHAPE);
-        for (int offset = 0; offset < PAGE_SIZE && from + offset < quests.size(); offset++) {
-            set(offset, questItem(plugin, quests.get(from + offset), current));
-        }
-        if (quests.isEmpty()) {
-            set("note", MenuItem.display(Material.PAPER, "&7还没有任何任务",
-                    List.of("&7点下面的 &f新建任务 &7开始")));
-        }
-
-        buildPager(plugin, current, totalPages, quests.size());
-        fill(MenuItem.filler());
+        // 排序方式带在界面上循环：翻页 / 进出编辑器都要保持，不然看一眼别的任务回来顺序就变了
+        set("sort", MenuItem.of(Material.HOPPER, "&e排序: &f" + order.label,
+                List.of("&7按现有字段排（任务没有创建时间这类元数据）",
+                        "&7左键: &f换成「" + order.next().label + "」"),
+                context -> reopen(page(), order.next())));
+        set("new", MenuItem.of(Material.LIME_DYE, "&a新建任务",
+                List.of("&7新建的任务默认启用、类型为 NORMAL", "&7id 与至少一个目标是必填"),
+                context -> new QuestEditMenu(viewer(), messages(), QuestDraft.creating(), true,
+                        () -> reopen(page(), order)).open()));
+        set("reload", MenuItem.of(Material.REDSTONE, text("command.reloaded", items().size()),
+                List.of("&7从存储重新载入任务定义"), context -> reload(plugin)));
     }
 
     /**
      * 任务物品：管理员的每一项都是诊断信息（id、类型、分类、目标/奖励构成、启用、校验问题）。
      * id 原样显示是刻意的——管理员要靠它定位到具体配置项，内部标识在管理界面里不是秘密。
      */
-    private MenuItem questItem(PlayerTaskX plugin, Quest quest, int page) {
+    @Override
+    protected MenuItem render(Quest quest, int index) {
+        PlayerTaskX plugin = PlayerTaskX.getInstance();
         Player player = viewer();
         boolean readOnly = plugin.questDefinitions().isReadOnly(quest.id());
         List<String> lore = new ArrayList<>();
         lore.add("&8" + quest.id());
         lore.add("&7类型: &f" + quest.type());
         String category = quest.category();
-        lore.add("&7分类: &f" + (category == null || category.isBlank() ? text("common.none") : category));
+        lore.add("&7分类: &f" + (category == null || category.trim().isEmpty() ? text("common.none") : category));
         lore.add("&7目标: &f" + describeObjectives(player, quest.objectives()));
         lore.add("&7奖励: &f" + describeRewards(player, quest.rewards()));
         lore.add("&7启用: &f" + text(quest.enabled() ? "common.yes" : "common.no"));
@@ -135,12 +151,12 @@ public final class QuestBrowserMenu extends Menu {
         }
 
         return MenuItem.of(MenuItem.material(quest.icon()), quest.name(), lore,
-                context -> click(plugin, quest, page, readOnly, context.clickType()));
+                context -> click(plugin, quest, readOnly, context.clickType()));
     }
 
-    private void click(PlayerTaskX plugin, Quest quest, int page, boolean readOnly, ClickType click) {
+    private void click(PlayerTaskX plugin, Quest quest, boolean readOnly, ClickType click) {
         if (readOnly) {
-            new QuestDetailMenu(viewer(), messages(), quest, null, () -> reopen(page, order)).open();
+            new QuestDetailMenu(viewer(), messages(), quest, null, this::reopen).open();
             return;
         }
         if (click.isShiftClick() && click.isRightClick()) {
@@ -151,8 +167,7 @@ public final class QuestBrowserMenu extends Menu {
             toggle(plugin, quest);
             return;
         }
-        new QuestEditMenu(viewer(), messages(), QuestDraft.of(quest), false,
-                () -> reopen(page, order)).open();
+        new QuestEditMenu(viewer(), messages(), QuestDraft.of(quest), false, this::reopen).open();
     }
 
     // ---------- 写操作 ----------
@@ -205,42 +220,15 @@ public final class QuestBrowserMenu extends Menu {
             return;
         }
         messages().send(viewer(), "command.reloaded", plugin.quests().all().size());
-        // 重载后任务集合与总页数都可能变，界面必须重建（build 内部会把页码夹回合法范围）
+        // 重载后任务集合与总页数都可能变，界面必须重建（页码由基类夹回合法范围）
         refresh();
     }
 
-    // ---------- 分页 ----------
-
-    private void buildPager(PlayerTaskX plugin, int current, int totalPages, int total) {
-        if (current > 0) {
-            set("prev", MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
-                    context -> reopen(current - 1, order)));
-        } else {
-            // 首页把「上一页」摆成灰色不可点而不是干脆不显示：位置固定，翻页时按钮不会跳来跳去
-            set("prev", MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
-        }
-        if (current < totalPages - 1) {
-            set("next", MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
-                    context -> reopen(current + 1, order)));
-        } else {
-            set("next", MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
-        }
-        set("info", MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
-                List.of("&7任务总数: &f" + total, "&7当前排序: &f" + order.label)));
-        // 排序方式带在界面上循环：翻页 / 进出编辑器都要保持，不然看一眼别的任务回来顺序就变了
-        set("sort", MenuItem.of(Material.HOPPER, "&e排序: &f" + order.label,
-                List.of("&7按现有字段排（任务没有创建时间这类元数据）",
-                        "&7左键: &f换成「" + order.next().label + "」"),
-                context -> reopen(current, order.next())));
-        set("new", MenuItem.of(Material.LIME_DYE, "&a新建任务",
-                List.of("&7新建的任务默认启用、类型为 NORMAL", "&7id 与至少一个目标是必填"),
-                context -> new QuestEditMenu(viewer(), messages(), QuestDraft.creating(), true,
-                        () -> reopen(current, order)).open()));
-        set("reload", MenuItem.of(Material.REDSTONE, text("command.reloaded", total),
-                List.of("&7从存储重新载入任务定义"), context -> reload(plugin)));
+    /** 回到这个列表的当前页（排序与页码都原样带回去）。 */
+    private void reopen() {
+        reopen(page(), order);
     }
 
-    /** 回到这个列表的指定页，排序方式原样带回去。 */
     private void reopen(int page, Order order) {
         new QuestBrowserMenu(viewer(), messages(), page, order).open();
     }
