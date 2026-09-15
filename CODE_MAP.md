@@ -10,19 +10,23 @@
 （`storage/jdbc`、`storage/yaml`、`integration/customcontent`、`integration/mythicmobs`、`integration/customfishing`）。
 因此看到包名就知道里面是「契约 / 某一家的实现 / 某一层的服务」，不必先点开文件。
 
-**界面按布局表写**：菜单在 `build()` 开头用 `layout(...)` 声明一张文本图（见 `SlotLayout`），
-之后 `set("名字", 物品)` 按名字摆位——槽位就是那张图里的格子，不用心算数字；
-翻页列表那种整片区域仍用数字下标（45 个格子写成文本图没有可读性）。
+**界面按布局表写**：菜单在 `build()` 开头用 `layout(...)` 声明一张文本图（见 YLib 的 `SlotLayout`），
+一个字符一格、空格留空、`` `名字` `` 让多字符名字也只占一格，之后 `set(名字, 物品)` 按名字摆位。
+一个名字可以占多格：`set` 是静态槽位（整组同一物品），`fill` 是动态槽位（按顺序填一串，任务列表就这么填）。
 
 ---
 
-## 规模（本次统计：116 个主代码类 / 11963 行）
+## 规模（本次统计：113 个主代码类 / 11583 行）
 
 | 模块 | 类 / 行 | 说明 |
 |---|---|---|
 | `api` | 18 / 788 | 模型与扩展点契约（给扩展作者看的公共 API） |
-| `core` | 98 / 11175 | 全部实现 |
-| 测试 | 34 / 4942 | `core/src/test`（其中 32 个测试类 + 2 个测试替身，240 项测试） |
+| `core` | 95 / 10795 | 全部实现（箱子菜单框架不在这里，见下） |
+| 测试 | 33 / 4856 | `core/src/test`（其中 31 个测试类 + 2 个测试替身，234 项测试） |
+
+> **箱子菜单框架在 YLib**（`cn.yvmou.ylib.gui`：`Menu` / `MenuItem` / `MenuListener` / `SlotLayout`，
+> 约 480 行 + 9 项测试）。它是通用界面设施（不认识「任务」），本插件的 `core/gui/` 下只剩自己的界面。
+> 用法见 `YLib/文档/菜单.md`。
 
 行数是「含空行按文件行数累加」，会随提交变动；重新统计见文末。
 
@@ -32,7 +36,7 @@
 
 | 包 | 类 / 行 | 一句话职责 |
 |---|---|---|
-| （根） | 1 / 359 | 插件入口与装配根 |
+| （根） | 1 / 358 | 插件入口与装配根 |
 | `api/model` | 8 / 390 | 数据模型（任务、目标、奖励、预设、玩家记录） |
 | `api/objective` | 3 / 135 | 目标扩展点与动作契约 |
 | `api/registry` | 3 / 93 | 三张注册表的接口 |
@@ -42,9 +46,8 @@
 | `core/config` | 2 / 360 | `config.yml` 与周期配置 |
 | `core/display` | 1 / 174 | 进度展示（actionbar / title） |
 | `core/engine` | 4 / 478 | 进度引擎、奖励发放与结构指纹 |
-| `core/gui` | 4 / 437 | 箱子菜单框架（含布局表 `SlotLayout`：按文本图摆槽位） |
-| `core/gui/editor` | 13 / 1936 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
-| `core/gui/menu` | 2 / 456 | 两个玩家侧菜单（任务详情 / 周期） |
+| `core/gui/editor` | 13 / 1996 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
+| `core/gui/menu` | 2 / 453 | 两个玩家侧菜单（任务详情 / 周期，后者的任务区是动态槽位） |
 | `core/integration` | 2 / 83 | 软依赖接入的公共设施（探测插件、反射小工具） |
 | `core/integration/customcontent` | 4 / 461 | 自定义内容契约 + 汇总 + 两家实现（ItemsAdder / CraftEngine） |
 | `core/integration/customfishing` | 4 / 233 | CustomFishing 接入（Hook / 监听器 / 清单 / 战利品） |
@@ -122,19 +125,19 @@
 - `StructureFingerprint` (45) — 目标结构指纹：目标列表算成短摘要存进玩家记录，顺序变化靠它识别
 - `ApplyResult` (10) — 一次动作处理的结果（改了什么），表现层据此提示
 
-### core/gui（4）
+### YLib（`cn.yvmou.ylib.gui`，箱子菜单框架，约 480 行）
 
-- `Menu` (179, abstract) — 箱子菜单框架：建容器、登记槽位、刷新、标记归属；`layout(...)` + `set("名字", 物品)` 按布局表摆位
-- `SlotLayout` (72) — 界面布局表：文本图里的格子 → 槽位下标；重名 / 越界 / 未知名字当场抛
-- `MenuItem` (97) — 菜单项：图标 + 点击动作
-- `MenuListener` (89) — 把「容器点击」翻译成菜单项的 action
+- `Menu` (200, abstract) — 菜单基类：建容器、登记槽位、刷新、标记归属；`layout(...)` 声明文本图，`set(名字, 物品)` 静态槽位、`fill(名字, 一串物品)` 动态槽位；`open()` 首次构建
+- `SlotLayout` (97) — 布局表：一个字符一格、`` `名字` `` 成组、空格留空；一个名字可占多格（`slots` / `take`），写错当场抛
+- `MenuItem` (97) — 菜单项：图标 + 点击动作；`ClickContext` / `filler` / `withAmount` / `glow`
+- `MenuListener` (89) — 把「容器点击」翻译成菜单项的 action；`init(plugin)` 自我注册
 
 ### core/gui/menu（2）
 
 - `QuestDetailMenu` (254) — 任务详情：多目标进度 + 多奖励预览（也用于编辑器的只读预览）
 - `PeriodicQuestMenu` (189) — 周期任务界面（四种周期切换、刷新按钮、剩余次数）
 
-### core/gui/editor（13）——游戏内任务编辑器
+### core/gui/editor（13）——游戏内任务编辑器（框架见 YLib 的 `cn.yvmou.ylib.gui`）
 
 - `QuestBrowserMenu` — 入口：任务分页列表（可按 id / 名称 / 类型 / 启用排序）、开关、删除（连按两次 Shift+右键）、新建、重载
 - `QuestEditMenu` — 任务面板：基本信息逐项改 + 目标/奖励入口 + 实时校验 + 保存
@@ -292,7 +295,7 @@
 | 奖励与货币 | `MoneyRewardTest`、`CurrencyTypeTest` |
 | 周期 | `PeriodsTest` |
 | schema / 值域 | `ValueKindsTest`、`ObjectiveFieldDomainTest`（每个字段必须声明值域，且没有无人声明的值域） |
-| 界面 | `QuestDetailMenuTest`、`ProgressDisplayRenderTest`、`SlotLayoutTest`（布局表：下标映射、重名/越界/未知名字必须炸） |
+| 界面 | `QuestDetailMenuTest`、`ProgressDisplayRenderTest`（布局表 `SlotLayoutTest` 随框架搬去了 YLib） |
 | 编辑器 | `QuestDraftTest`（草稿读写语义：预设引用原样保住、节点增删移）、`FieldValueTest`（聊天输入 ↔ 字段值）、`CandidateCatalogTest`（按值域列候选） |
 | 目标与联动 | `TargetMatchAliasTest`、`CustomFishObjectiveTest`、`CustomContentHooksTest`、`MythicMobsHookTest`、`CustomFishingListenerTest` |
 | 监听器 | `EntityListenerTest`、`ItemListenerCraftAmountTest` |

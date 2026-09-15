@@ -3,8 +3,8 @@ package com.playerPlugin.playerTaskX.core.gui.editor;
 import cn.yvmou.ylib.message.MessageService;
 import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -24,14 +24,14 @@ public final class NodeListMenu extends Menu {
     /** 每页 45 个：前 5 行是节点列表（列表区仍用数字下标，见 {@code Menu#layout}），最后一行是按钮。 */
     private static final int PAGE_SIZE = 45;
 
-    /** 界面布局（见 {@code SlotLayout}）：最后一行的按钮位置一眼可见；列表区（前 5 行）仍用数字下标。 */
+    /** 界面布局（见 {@code SlotLayout}）：一个字符一格，空格是空位；节点列表区是翻页的，用数字下标摆。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    note .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            "prev .    back .    add  .    info .    next",
+            "    `note`",
+            "",
+            "",
+            "",
+            "",
+            "`prev` `back` `add` `info` `next`",
     };
 
     private final QuestDraft draft;
@@ -51,7 +51,6 @@ public final class NodeListMenu extends Menu {
         this.reward = reward;
         this.page = Math.max(0, page);
         this.onBack = onBack;
-        refresh();
     }
 
     @Override

@@ -6,8 +6,8 @@ import com.playerPlugin.playerTaskX.api.model.Preset;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -28,14 +28,14 @@ public final class NodeEditMenu extends Menu {
     /** 字段区：前 3 行（内置类型最多 3 个字段）；字段是逐个往下排的，因此仍用数字下标。 */
     private static final int FIELD_LIMIT = 27;
 
-    /** 界面布局（见 {@code SlotLayout}）：字段区之外的两个按键位置一眼可见。 */
+    /** 界面布局（见 {@code SlotLayout}）：字段区是往下排的（用数字下标），预设与返回按名字摆。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    hint .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    preset .   action .  swap .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    back .    .    .",
+            "    `hint`",
+            "",
+            "",
+            "  `preset` `action` `swap`",
+            "",
+            "    `back`",
     };
 
     private final QuestDraft draft;
@@ -50,7 +50,6 @@ public final class NodeEditMenu extends Menu {
         this.reward = reward;
         this.index = index;
         this.onBack = onBack;
-        refresh();
     }
 
     @Override

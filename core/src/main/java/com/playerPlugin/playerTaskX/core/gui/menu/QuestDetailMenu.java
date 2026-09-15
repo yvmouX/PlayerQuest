@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 
 /**
  * 任务详情：多目标进度 + 多奖励预览。
@@ -38,14 +38,14 @@ public final class QuestDetailMenu extends Menu {
     private static final int REWARD_START = 27;
     private static final int REWARD_LIMIT = 18;
 
-    /** 界面布局（见 {@code SlotLayout}）：头部与底部操作行的位置一眼可见。 */
+    /** 界面布局（见 {@code SlotLayout}）：目标区（第 2、3 行）与奖励区（第 4、5 行）是数字下标摆的。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    header .    .    .    .",
-            ".    .    .    .    .      .    .    .    .",
-            ".    .    .    .    .      .    .    .    .",
-            ".    .    .    .    .      .    .    .    .",
-            ".    .    .    .    .      .    .    .    .",
-            ".    .    .    .    back   .    .    .    close",
+            "    `header`",
+            "",
+            "",
+            "",
+            "",
+            "    `back`   `close`",
     };
 
     private final Quest quest;
@@ -68,8 +68,6 @@ public final class QuestDetailMenu extends Menu {
         this.quest = Objects.requireNonNull(quest, "quest");
         this.playerQuest = playerQuest;
         this.back = Objects.requireNonNull(back, "back");
-        // 子类字段赋值完成后再构建：基类构造期间这些字段还是 null（见 Menu 的类注释）
-        refresh();
     }
 
     @Override

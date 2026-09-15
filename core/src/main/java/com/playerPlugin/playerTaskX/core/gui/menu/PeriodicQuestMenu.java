@@ -7,36 +7,35 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.config.PeriodSettings;
+import cn.yvmou.ylib.gui.SlotLayout;
 import com.playerPlugin.playerTaskX.core.period.Periods;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import java.util.Locale;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 
 /**
  * 玩家周期任务界面：按周期切换查看自己的任务，可领取奖励或打开详情。
  * 四种周期各有刷新费用与上限，混在一起说不清扣哪份，故按周期切换；标题固定不写周期名（{@code createInventory} 的标题只在创建时定一次）；任务列表取 {@code PeriodicService.currentQuests}，不是全局任务池。
+ * 界面用 {@link SlotLayout} 的文本图画出来：{@code #} 是任务槽（动态，见 {@code fill(名字, 物品)}），周期标签与刷新/关闭是固定槽位。
  */
 public final class PeriodicQuestMenu extends Menu {
 
-    private static final int SIZE = 54;
+    /** 任务列表占的格子名（动态槽位：按玩家实际任务数填）。 */
+    private static final String TASKS = "#";
 
-    /** 任务区：前 5 行（0~44），最后一行留给按钮与周期切换（列表区用数字下标，见 {@code Menu#layout}）。 */
-    private static final int LIST_LIMIT = SIZE - 9;
-    /** 底部：周期切换占 45..48，刷新与关闭固定位置。 */
-    private static final int TYPE_SLOT_START = 45;
-
-    /** 界面布局（见 {@code SlotLayout}）。 */
+    /** 界面布局（见 {@link SlotLayout}）：第 1~5 行是任务槽，最后一行是周期标签、刷新与关闭。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    .       .    .    .    .",
-            ".    .    .    .    .       .    .    .    .",
-            ".    .    .    .    empty   .    .    .    .",
-            ".    .    .    .    .       .    .    .    .",
-            ".    .    .    .    .       .    .    .    .",
-            ".    .    .    .    refresh .    .    .    close",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "`daily``weekly``monthly``custom``refresh`   `close`",
     };
 
     /** 当前正在看哪种周期；切换后整页重建。 */
@@ -50,40 +49,57 @@ public final class PeriodicQuestMenu extends Menu {
      * @param initial 初始显示的周期；{@code null} 表示取第一个已启用的周期（通常就是每日）
      */
     public PeriodicQuestMenu(Player viewer, MessageService messages, QuestType initial) {
-        super(viewer, messages, SIZE, "gui.periodic-title");
+        super(viewer, messages, 54, "gui.periodic-title");
         List<QuestType> types = PlayerTaskX.getInstance().periodicService().enabledTypes();
         this.selected = initial != null ? initial : (types.isEmpty() ? QuestType.DAILY : types.get(0));
-        refresh();
     }
 
     @Override
     protected void build() {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         Player player = viewer();
-
-        List<PlayerQuest> quests = plugin.periodicService().currentQuests(player.getUniqueId(), selected);
         layout(SHAPE);
-        if (quests.isEmpty()) {
+
+        List<MenuItem> items = questItems(plugin,
+                plugin.periodicService().currentQuests(player.getUniqueId(), selected));
+        if (items.isEmpty()) {
             // 任务池为空或这种周期被关掉：给一句明确说明，而不是丢一个空界面给玩家猜
-            set("empty", MenuItem.display(Material.BARRIER, text("periodic.none"), List.of()));
+            set(slots(TASKS).get(0), MenuItem.display(Material.BARRIER, text("periodic.none"), List.of()));
         } else {
-            int slot = 0;
-            for (PlayerQuest playerQuest : quests) {
-                if (slot >= LIST_LIMIT) {
-                    break;   // 任务数量由配置控制，正常远小于上限；超出的直接不展示
-                }
-                Quest quest = plugin.quests().find(playerQuest.questId()).orElse(null);
-                if (quest == null) {
-                    // 任务定义已被删除但玩家记录还在：跳过这条脏数据，不影响后面任务的展示
-                    continue;
-                }
-                set(slot++, questItem(plugin, quest, playerQuest));
+            // 动态槽位：有几个任务就占几格，多出来的任务没有位置（不显示）
+            fill(TASKS, items);
+        }
+        fillButtons(plugin, player);
+        fill(MenuItem.filler());
+    }
+
+    /** 玩家自己的任务 → 菜单项；任务定义已被删除的脏数据跳过（不占格）。 */
+    private List<MenuItem> questItems(PlayerTaskX plugin, List<PlayerQuest> quests) {
+        List<MenuItem> items = new ArrayList<>(quests.size());
+        for (PlayerQuest playerQuest : quests) {
+            Quest quest = plugin.quests().find(playerQuest.questId()).orElse(null);
+            if (quest != null) {
+                items.add(questItem(plugin, quest, playerQuest));
             }
         }
+        return items;
+    }
 
-        buildTypeButtons(plugin, player);
-        buildButtons(plugin, player);
-        fill(MenuItem.filler());
+    /** 周期标签与刷新 / 关闭：布局里没写的位置就不摆（周期可能被关掉、刷新次数可能用完）。 */
+    private void fillButtons(PlayerTaskX plugin, Player player) {
+        for (QuestType type : QuestType.values()) {
+            String name = type.name().toLowerCase(Locale.ROOT);
+            if (declared(name) && plugin.periodicService().enabledTypes().contains(type)) {
+                set(name, typeItem(type));
+            }
+        }
+        if (declared("refresh")
+                && plugin.periodicService().remainingRefreshes(player.getUniqueId(), selected) > 0) {
+            set("refresh", refreshButton(plugin, player));
+        }
+        // 关闭按钮是必须的：布局里漏了它就该当场炸，而不是让玩家找不到出口
+        set("close", MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
+                context -> player.closeInventory()));
     }
 
     // ---------- 任务物品 ----------
@@ -141,36 +157,20 @@ public final class PeriodicQuestMenu extends Menu {
     private void claim(PlayerTaskX plugin, Quest quest) {
         Player player = viewer();
         plugin.rewardService().claim(player, quest.id()).report(messages(), player);
-        refresh();
     }
 
     // ---------- 底部按钮 ----------
 
-    /** 周期切换按钮：点一下换成看那种周期的任务（已启用的才画）。 */
-    private void buildTypeButtons(PlayerTaskX plugin, Player player) {
-        int slot = TYPE_SLOT_START;
-        for (QuestType type : plugin.periodicService().enabledTypes()) {
-            if (slot >= slot("refresh")) {
-                break;   // 最多四种周期，位置够；真超了也不挤掉刷新按钮
-            }
-            boolean active = type == selected;
-            List<String> lore = List.of(text(active ? "gui.periodic-current" : "gui.periodic-switch"));
-            MenuItem item = MenuItem.of(active ? Material.LIME_DYE : Material.GRAY_DYE,
-                    text("gui.periodic-button", Periods.label(type)), lore,
-                    context -> {
-                        selected = type;
-                        refresh();
-                    });
-            set(slot++, item);
-        }
-    }
-
-    private void buildButtons(PlayerTaskX plugin, Player player) {
-        if (plugin.periodicService().remainingRefreshes(player.getUniqueId(), selected) > 0) {
-            set("refresh", refreshButton(plugin, player));
-        }
-        set("close", MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
-                context -> player.closeInventory()));
+    /** 周期切换按钮：点一下换成看那种周期的任务；当前正在看的那一种用亮色。 */
+    private MenuItem typeItem(QuestType type) {
+        boolean active = type == selected;
+        List<String> lore = List.of(text(active ? "gui.periodic-current" : "gui.periodic-switch"));
+        return MenuItem.of(active ? Material.LIME_DYE : Material.GRAY_DYE,
+                text("gui.periodic-button", Periods.label(type)), lore,
+                context -> {
+                    selected = type;
+                    refresh();
+                });
     }
 
     /**
@@ -191,6 +191,5 @@ public final class PeriodicQuestMenu extends Menu {
     private void doRefresh(PlayerTaskX plugin, Player player) {
         plugin.periodicService().refresh(player, selected).report(messages(), player);
         // 不论成败都重建界面：成功换了一批任务，失败也可能是跨周期后的免费重发
-        refresh();
     }
 }

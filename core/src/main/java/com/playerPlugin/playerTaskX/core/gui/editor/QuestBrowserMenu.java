@@ -5,8 +5,8 @@ import com.playerPlugin.playerTaskX.PlayerTaskX;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.gui.menu.QuestDetailMenu;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
@@ -28,14 +28,14 @@ public final class QuestBrowserMenu extends Menu {
     /** 每页 45 个：前 5 行放任务（列表区用数字下标，见 {@code Menu#layout}），最后一行留分页与新建。 */
     private static final int PAGE_SIZE = 45;
 
-    /** 界面布局（见 {@code SlotLayout}）：底部一排按钮的位置一眼可见。 */
+    /** 界面布局（见 {@code SlotLayout}）：第 1~5 行是任务列表（翻页，用数字下标），最后一行是按钮。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    note .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            "prev sort new  .    reload .  info .    next",
+            "    `note`",
+            "",
+            "",
+            "",
+            "",
+            "`prev``sort``new` `reload` `info` `next`",
     };
 
     /**
@@ -77,7 +77,6 @@ public final class QuestBrowserMenu extends Menu {
         super(viewer, messages, SIZE, "gui.editor-title");
         this.page = Math.max(0, page);
         this.order = order == null ? Order.ID : order;
-        refresh();
     }
 
     @Override
@@ -206,6 +205,7 @@ public final class QuestBrowserMenu extends Menu {
             return;
         }
         messages().send(viewer(), "command.reloaded", plugin.quests().all().size());
+        // 重载后任务集合与总页数都可能变，界面必须重建（build 内部会把页码夹回合法范围）
         refresh();
     }
 

@@ -6,8 +6,8 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ValueKind;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
@@ -25,14 +25,14 @@ public final class QuestEditMenu extends Menu {
 
     private static final int SIZE = 54;
 
-    /** 界面布局（见 {@code SlotLayout}）：文本图里那一格就是它的位置，改布局不用再心算数字。 */
+    /** 界面布局（见 {@code SlotLayout}）：一个字符一格，`` `名字` `` 让长名字也只占一格，空格是空位。 */
     private static final String[] SHAPE = {
-            "id    name  desc  icon  cate  type  cost  on    .",
-            ".     .     .     .     verify .    .     .     .",
-            "obj   .     rew   .     .     .    .     .     .",
-            ".     .     .     .     .     .    .     .     .",
-            ".     .     .     .     .     .    .     .     .",
-            ".     .     save  .     back  .    .     .     .",
+            "`id``name``desc``icon``cate``type``cost``on`",
+            "    `verify`",
+            "`obj` `rew`",
+            "",
+            "",
+            "  `save` `back`",
     };
 
     private static final ConfigField ID_FIELD = ConfigField.text("id", "任务 id",
@@ -59,7 +59,6 @@ public final class QuestEditMenu extends Menu {
         this.draft = draft;
         this.creating = creating;
         this.onBack = onBack;
-        refresh();
     }
 
     @Override
@@ -147,7 +146,6 @@ public final class QuestEditMenu extends Menu {
             if (context.clickType().isRightClick()) {
                 if (!draft.description().isEmpty()) {
                     draft.description().remove(draft.description().size() - 1);
-                    refresh();
                 }
                 return;
             }

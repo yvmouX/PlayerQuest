@@ -1,8 +1,8 @@
 package com.playerPlugin.playerTaskX.core.gui.editor;
 
 import cn.yvmou.ylib.message.MessageService;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.gui.editor.CandidateCatalog.Candidate;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
@@ -25,14 +25,14 @@ public final class CandidateMenu extends Menu {
     /** 每页 45 个：最后一行留返回、手动输入、翻页与当前值（列表区用数字下标，见 {@code Menu#layout}）。 */
     private static final int PAGE_SIZE = 45;
 
-    /** 界面布局（见 {@code SlotLayout}）：底部一排按钮的位置一眼可见。 */
+    /** 界面布局（见 {@code SlotLayout}）：候选区是 0~44（用数字下标），底部一排按钮按名字摆。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    empty .   .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            "back .    manual .    prev .    current .    next",
+            "",
+            "",
+            "    `empty`",
+            "",
+            "",
+            "`back` `manual` `prev` `current` `next`",
     };
 
     private final List<Candidate> candidates;
@@ -63,8 +63,6 @@ public final class CandidateMenu extends Menu {
         } : onPick;
         this.onManual = onManual;
         this.onBack = onBack;
-        // 框架硬性要求放在构造最后一行：基类构造期回调会读到上面这些还没赋值的字段
-        refresh();
     }
 
     @Override

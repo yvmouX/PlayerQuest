@@ -11,7 +11,7 @@ import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.period.PeriodicService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.gui.MenuListener;
+import cn.yvmou.ylib.gui.MenuListener;
 import com.playerPlugin.playerTaskX.core.gui.editor.ChatInputListener;
 import com.playerPlugin.playerTaskX.core.integration.customcontent.CustomContentHooks;
 import com.playerPlugin.playerTaskX.core.integration.customfishing.CustomFishingHook;
@@ -277,7 +277,7 @@ public final class PlayerTaskX extends JavaPlugin {
         // CustomFishing 的钓获事件只存在于它的 API 里，因此监听器由钩子反射创建后再注册
         CustomFishingHook.register(this, progressService, progressDisplay::onProgressApplied);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应
-        getServer().getPluginManager().registerEvents(new MenuListener(this), this);
+        MenuListener.init(this);
         // 编辑器的聊天栏输入：没有它管理员点完字段就没了下文
         getServer().getPluginManager().registerEvents(new ChatInputListener(), this);
     }

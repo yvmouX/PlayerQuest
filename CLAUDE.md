@@ -3,7 +3,7 @@
 Minecraft 任务插件（Spigot / Paper / Folia / Canvas，1.21.x，Java 21）。「任务 = 多个目标 + 多个奖励」，支持游戏内 GUI、多语言、PlaceholderAPI。
 任务定义可以放在数据库里（游戏内命令 / GUI 维护），也可以放在数据目录的 `quests/` 与 `presets/` 只读 YAML 里。
 
-> 基于 YLib（必要时可直接改 YLib 源码；注意它的 `api` / `core` 是 **Java 8**，本项目是 Java 21）。
+> 基于 YLib（必要时可直接改 YLib 源码；注意它的 `api` / `core` 是 **Java 8**，本项目是 Java 21）。箱子菜单框架（`cn.yvmou.ylib.gui`：布局即文本图、静态/动态槽位）也在 YLib 里，是给所有用 YLib 的项目共用的界面设施——改它要按库来要求自己。
 > 设计与模块划分见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，逐类职责见 [`CODE_MAP.md`](CODE_MAP.md)，面向使用者的文档在 `docs/`——**改完代码要同步更新这三处**。
 
 - `.\gradlew.bat clean build` 完整构建　`.\gradlew.bat :core:compileJava` 只编译后端（几秒）　`.\gradlew.bat :core:test` 跑测试

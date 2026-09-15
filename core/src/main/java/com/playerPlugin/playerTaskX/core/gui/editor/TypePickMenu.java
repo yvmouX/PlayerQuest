@@ -6,8 +6,8 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
-import com.playerPlugin.playerTaskX.core.gui.Menu;
-import com.playerPlugin.playerTaskX.core.gui.MenuItem;
+import cn.yvmou.ylib.gui.Menu;
+import cn.yvmou.ylib.gui.MenuItem;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -26,14 +26,14 @@ public final class TypePickMenu extends Menu {
     /** 类型区：第 1~4 行（列表区用数字下标）；第 5 行是返回按钮。 */
     private static final int LIMIT = 44;
 
-    /** 界面布局（见 {@code SlotLayout}）。 */
+    /** 界面布局（见 {@code SlotLayout}）：类型区是 0~43（用数字下标），角落两个标记按名字摆。 */
     private static final String[] SHAPE = {
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    .",
-            ".    .    .    .    .    .    .    .    more",
-            ".    .    .    .    back .    .    .    .",
+            "",
+            "",
+            "",
+            "",
+            "        `more`",
+            "    `back`",
     };
 
     private final boolean reward;
@@ -47,7 +47,6 @@ public final class TypePickMenu extends Menu {
         this.reward = reward;
         this.onPick = onPick;
         this.onBack = onBack;
-        refresh();
     }
 
     @Override

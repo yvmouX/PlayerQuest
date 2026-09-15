@@ -14,11 +14,15 @@
 ```
 PlayerTaskX/
 ├── api/          对外暴露的接口与数据模型（其它插件/扩展依赖此模块）
-├── core/         实现 + 引擎 + 存储 + GUI + 命令
-└── YLib/         子模块：调度器 / 日志 / 配置 / 命令 / 消息 基础设施
+├── core/         实现 + 引擎 + 存储 + 界面 + 命令
+└── YLib/         子模块：调度器 / 日志 / 配置 / 命令 / 消息 / **菜单（箱子界面）** 基础设施
 ```
 
 `api` 不含实现，`core` 依赖 `api`。
+
+**箱子菜单框架在 YLib**（`cn.yvmou.ylib.gui`，见 7.1）：它不是本插件的领域逻辑，而是一层通用界面设施——
+别的插件（以及任何用 YLib 的项目）可以直接拿去做自己的箱子界面，本插件只是它的第一个使用者。
+「布局即文本图」的写法、静态 / 动态槽位、点击分发都在那里；`core/gui/` 下只剩本插件自己的界面（`menu/` 与 `editor/`）。
 
 > **曾经有一个内置网页编辑器**（Vue 3 + Vite 前端、Javalin 提供的 `/api/*` 与静态资源、
 > `MaterialCatalog` 素材目录、`LangFileStore` 译名下载），已**整体删除**；
@@ -672,25 +676,35 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 
 ## 7. 界面
 
-### 7.1 玩家 GUI（`core/gui/` 框架 + `core/gui/menu/` 具体菜单）
+### 7.1 玩家 GUI（框架在 YLib：`cn.yvmou.ylib.gui`；本插件的菜单在 `core/gui/menu/`）
 
-通用菜单框架（`Menu` / `MenuItem`，用 `InventoryHolder` 区分归属），
-在此之上实现：周期任务列表（底部一排标签切换四种周期，只显示已启用的）、
+通用菜单框架（`Menu` / `MenuItem` / `MenuListener`）住在 **YLib**，与调度器、消息、命令一样是通用设施：
+它是本插件第一个用到的界面设施，但没有任何 PlayerTaskX 的领域知识（不认识「任务」），
+因此别的插件可以直接依赖 YLib 使用它（见 `YLib/文档/菜单.md`）。
+本插件在此之上实现：周期任务列表（底部一排标签切换四种周期，只显示已启用的）、
 任务详情（多目标进度 + 多奖励预览）、点击领取奖励。
 刷新按钮永远只刷新「当前正在看的那种周期」——四种周期的费用与上限各不相同，
 混在一起时「这个按钮扣哪份钱」根本说不清。
 （任务**分类**目前只作为任务的一个字段用于筛选与展示，没有按分类分页浏览的界面。）
 
-**槽位按布局表写**（`SlotLayout`）：菜单在 `build()` 开头用 `layout("文本图")` 声明界面，
-之后 `set("名字", 物品)` —— 代码里那张图就是界面本身，不必心算「47 是第几行第几格」。
+**界面布局就是一张文本图**（`SlotLayout`）：菜单在 `build()` 开头 `layout(...)` 声明界面，
+一个字符一格、`` `名字` `` 让多字符名字也只占一格、空格是留空，之后按名字摆位——
+代码里那张图就是界面本身，不必心算「47 是第几行第几格」。
+
+**一个名字可以占多格**，这就是槽位的两种用法（语法上不区分，区别只在于调用哪个方法）：
+
+- **静态槽位**：`set(名字, 物品)` —— 这个名字占的每格都放同一个物品（按钮、表头这类）。
+- **动态槽位**：`fill(名字, 一串物品)` —— 按阅读顺序填空，物品多了没位置（不显示）、少了剩下的留空。
+  玩家任务界面就靠它：`"#########"` ×5 是 45 个任务槽，有几个任务填几格（`Menu.fill` 内部是
+  `SlotLayout.take(名字, n)`，配对规则由单测钉住）。
+
 两条边界是刻意的：
 
-- **翻页列表区不进布局表**：45 个格子写成文本图没有可读性，那里继续用数字下标；
-  布局表只管头部、底部按钮这些**锚点**。
-- **错误必须当场炸**：重名（两个功能抢同一个槽位，原先靠常量看运气）、一行超过 9 格、
-  超出容器行数、名字没声明过，全部抛异常并指出是哪一格/有哪些可选名字。
-  框架里 `set(int, ...)` 对越界是**静默忽略**（配置里的脏数据不该打断界面），
-  但「名字写错」是代码 bug，两种错误刻意区别对待。
+- **翻页列表用数字下标，不走动态槽位**：任务编辑器一页 45 条、要翻页，格子位置由翻页代码算
+  （`set(offset, ...)`），布局表只管按钮区；玩家任务界面一次显示全部，才用 `fill(名字, 一串物品)`。
+- **错误必须当场炸**：一行超过 9 格、超出容器行数、反引号没闭合、名字没声明过，全部抛异常并指出
+  是哪一格/有哪些可选名字（布局表是代码，不是用户配置——写错人就是写错了）。
+  框架里 `set(int, ...)` 对越界仍是**静默忽略**（界面数据可能来自别处），两种错误刻意区别对待。
 
 ### 7.2 游戏内任务编辑器
 
@@ -828,12 +842,15 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 44 | **游戏内任务编辑器**：新包 `core/gui/editor`（任务列表 / 面板 / 草稿 / 目标奖励列表 / 字段编辑 / 候选选择器 / 聊天栏输入）；`ConfigField` 补回控件形状 `Shape`（编辑器据此决定弹清单还是聊天输入）；`ValueKind` 值域仍只做校验，图标与候选清单由编辑器推 | ✅ 完成（见 7.2；新增 `QuestDraftTest` / `FieldValueTest` / `CandidateCatalogTest`，删掉被取代的 `AdminQuestMenu`） |
 | 45 | **槽位按布局表写**：`core/gui/SlotLayout` + `Menu#layout/slot/set(String, …)`，7 个菜单的 `XXX_SLOT` 常量换成文本图里的名字；重名/越界/未知名字当场抛 | ✅ 完成（见 7.1；新增 `SlotLayoutTest` 6 项，列表区仍用数字下标） |
 | 46 | **任务顺序改由注册表担保**：`QuestRegistry#all()` 返回按 id 升序的 `List`（实现换成 `TreeMap`），翻页界面与 `/ptxa list` 不再各自排序；另加 `all(Comparator)` 让调用方自己定顺序，编辑器列表据此有了排序开关（id / 名称 / 类型 / 启用） | ✅ 完成（新增 `QuestRegistryImplTest` 6 项；排序稳定，同分保持 id 序） |
+| 47 | **布局表就是界面本身**：`SlotLayout` 改成「一个字符一格」的文本图（`` `名字` `` 让多字符名字也只占一格、空格是留空），一个名字可以占多格 —— **静态槽位** `set(名字, 物品)` 整组同一物品、**动态槽位** `fill(名字, 一串物品)` 按序填（玩家任务列表就这么填任务）。先前那版把布局放进 `config.yml` 的尝试已撤掉：布局是代码的事，服务器不该为此维护一张图 | ✅ 完成（见 7.1；`SlotLayoutTest` 8 项钉住分组 / 阅读顺序 / `take` 配对 / 写错必炸） |
+| 48 | **菜单框架移入 YLib**（`cn.yvmou.ylib.gui`）：从插件搬到通用设施，并借这次搬家补齐库该有的东西——降级到 Java 8（YLib core 的编译级别）、`open()` 首次构建（去掉「构造最后一行必须 refresh」这个陷阱）、`MenuListener.init(plugin)` 自我注册、纯文本标题与 `text()` 的直出回退、`close()` / `ClickContext.isLeft/isRight/isShift/isShiftRight` / `MenuItem.filler(Material)` / `MenuItem.glow()` | ✅ 完成（见 §1 与 7.1、`YLib/文档/菜单.md`；YLib `SlotLayoutTest` 9 项，插件侧只改 import） |
 
 > 阶段 8 / 9 / 14 / 15 / 16 / 20 / 23 / 26 / 27 / 28 / 33 / 35 / 36 做的都是**已被删除的网页编辑器**
 > （阶段 40），本表保留它们作为历史记录——其中的 `/api/*`、`EditorServices`、
 > 前端构建自检与「编辑器目录」测试都不再存在，读到时请以第 7 节与 4.6 的现状为准。
 
-**测试总量：240 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
+**测试总量：234 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+（另有 YLib 侧 24 项——文本渲染 15 + 布局表 9）。
 存储 16（`StorageIntegrationTest`）+ 结构指纹格式 4（`StructureFingerprintFormatTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`YamlTextTest`）+
 合并仓储 5（`MergedDefinitionRepositoryTest`）+ 预设引用 9（`PresetRefsTest`）+
@@ -845,16 +862,17 @@ YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`Yam
 结构指纹 8（`StructureFingerprintTest`）+ 字段值域 11（`ObjectiveFieldDomainTest`）+
 奖励领取 4（`RewardServiceTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 编辑器 25（`FieldValueTest` 13 + `QuestDraftTest` 9 + `CandidateCatalogTest` 3）+
-界面框架 6（`SlotLayoutTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
+GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（32 个 XML），不是靠日志里的汇总行。
+逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 11175 行
-＝ **11963 行 / 116 个 java 文件**；测试 `core/src/test` **4942 行 / 34 个文件**
-（32 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 10795 行
+＝ **11583 行 / 113 个 java 文件**；测试 `core/src/test` **4856 行 / 33 个文件**
+（31 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
+箱子菜单框架（4 个类 / 483 行）与它的 9 项测试已移入 YLib，因此不计在这两个数里。
 删掉网页编辑器后，`core/web/`（7 个类 / 1933 行）与 `task-editor-vue/src`（31 个文件 / 8299 行）
 及其全部测试都不在统计里。
 
