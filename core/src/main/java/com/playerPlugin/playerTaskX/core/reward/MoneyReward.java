@@ -12,11 +12,7 @@ import java.util.List;
 
 /**
  * 奖励：金币（经 Vault 的经济服务）。
- * <p>
- * 判据是「服务端有没有注册 {@link Economy} 服务」，不是「有没有叫 Vault 的插件」：
- * Vault 只是 API 桥，真正决定「钱发不发得出去」的是经济插件有没有把服务注册进来。
- * 没有可用服务时 {@link #available()} 为 false，编辑器与 GUI 会据此提示管理员，
- * 而不是静默发不出奖励。
+ * 判据是服务端有没有注册 {@link Economy} 服务，而不是有没有叫 Vault 的插件——Vault 只是 API 桥。
  */
 public final class MoneyReward implements RewardType {
 
@@ -35,7 +31,7 @@ public final class MoneyReward implements RewardType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.decimal("amount", "数量", 1000.0, "发放的金币数量")
+                ConfigField.decimal("amount", "数量", "发放的金币数量，可以是小数")
         );
     }
 
@@ -101,20 +97,7 @@ public final class MoneyReward implements RewardType {
         return service == null ? String.valueOf(amount) : service.format(amount);
     }
 
-    /**
-     * 当前可用的经济服务；没有则返回 {@code null}。
-     * <p>
-     * <b>判据是服务注册，不是插件名</b>：Vault 只提供 API，钱由经济插件（EssentialsX、CMI…）
-     * 实现，两边通过 {@link Economy} 服务对接——「有没有经济插件」这件事只有服务管理器知道。
-     * 老实现先查 {@code SoftDependency.isPresent("Vault")}：装了 Vault 却没有经济插件时它照样放行，
-     * 于是失败被写成「未安装 Vault 或没有经济插件」这句把两种情形混在一起的话——
-     * 真机排查时正是这句话把「Vault 没装」和「没有经济插件」混为一谈（实测：Vault 装了、
-     * 只是没有任何经济插件在册）。判据换成服务注册后，能装钱的只有那一种情形，措辞也就不再含糊。
-     * <p>
-     * <b>刻意不做静态缓存</b>：这就是一次 map 查找，而调用点（发奖、读余额、格式化、
-     * 可用性校验）都不在进度热路径上；缓存反而把「经济插件被禁用/换掉」变成一个要重启才纠正的
-     * 陈旧判断，也会让测试之间互相污染（静态缓存跨用例存活，而每个用例的服务端是各自 mock 的）。
-     */
+    /** 当前可用的经济服务，没有则返回 {@code null}；判据是服务管理器里注册的 {@link Economy} 服务而不是插件名，且刻意不做静态缓存（缓存会把「经济插件被禁用/换掉」变成要重启才纠正的陈旧判断）。 */
     private static Economy economy() {
         try {
             RegisteredServiceProvider<Economy> provider =

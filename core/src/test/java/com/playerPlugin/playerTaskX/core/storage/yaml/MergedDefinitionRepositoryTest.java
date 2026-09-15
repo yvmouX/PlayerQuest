@@ -23,14 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
+import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
-/**
- * 「数据库 + YAML 文件」合并仓储的规则测试。
- *
- * <p>核心不变量：库优先、冲突告警、只有文件定义的那些是只读、写操作<b>永远落库</b>。
- * 这些规则一旦走偏，表现是「管理员改了任务、重启后被打回」或者「库里悄悄多出一条
- * 与文件同 id 的记录」——都不会报错，只有对着两份数据才能发现。</p>
- */
+/** 「数据库 + YAML 文件」合并仓储的规则测试：核心不变量是库优先、冲突告警、只有文件定义的那些是只读、写操作永远落库——走偏的表现是「管理员改了任务、重启后被打回」或「库里悄悄多出一条与文件同 id 的记录」，都不报错。 */
 class MergedDefinitionRepositoryTest {
 
     private final List<String> warnings = new ArrayList<>();
@@ -89,12 +85,15 @@ class MergedDefinitionRepositoryTest {
     }
 
     @Test
-    @DisplayName("count 的口径是「插件实际能用多少」：库为空但文件里有定义时不为 0")
-    void countReflectsMergedView(@TempDir Path dir) throws IOException {
+    @DisplayName("合并视图的口径是「插件实际能用多少」：库为空但文件里有定义时也读得到")
+    void mergedViewContainsFileDefinitions(@TempDir Path dir) throws IOException {
         write(dir.resolve("only_file.yml"), questYaml("文件里的"));
         MergedQuestRepository merged = merged(dir, new InMemoryQuestRepository());
 
-        assertEquals(1, merged.count(), "文件里的定义也算「能用」，列表与统计看的是这个数");
+        List<Quest> all = merged.findAll();
+        assertEquals(1, all.size(), "文件里的定义也算「能用」");
+        assertEquals("文件里的", all.get(0).name());
+        assertTrue(merged.isReadOnly(all.get(0).id()), "文件里的那份是只读的");
     }
 
 
@@ -107,7 +106,7 @@ class MergedDefinitionRepositoryTest {
                 properties: { amount: 100 }
                 """);
         InMemoryPresetRepository database = new InMemoryPresetRepository();
-        database.save(new Preset(Preset.OBJECTIVES, "db_preset", "库里的", "chat", Map.of(), ""));
+        database.save(new Preset(Preset.OBJECTIVES, "db_preset", "chat", Map.of()));
         YamlSources<Preset> files = YamlDefinitions.presetSources(
                 new DefinitionFolder(dir, "presets", warnings::add));
         MergedPresetRepository merged = new MergedPresetRepository(database, files, warnings::add);
@@ -115,7 +114,7 @@ class MergedDefinitionRepositoryTest {
         assertTrue(merged.isReadOnly("money"));
         assertFalse(merged.isReadOnly("db_preset"));
         assertThrows(DefinitionReadOnlyException.class,
-                () -> merged.save(new Preset(Preset.REWARDS, "money", "改名", "money", Map.of(), "")));
+                () -> merged.save(new Preset(Preset.REWARDS, "money", "money", Map.of())));
     }
 
     // ---------- 辅助 ----------
@@ -170,11 +169,6 @@ class MergedDefinitionRepositoryTest {
         public boolean delete(String id) {
             return data.remove(id) != null;
         }
-
-        @Override
-        public long count() {
-            return data.size();
-        }
     }
 
     /** 内存版预设仓储。 */
@@ -201,11 +195,6 @@ class MergedDefinitionRepositoryTest {
         @Override
         public boolean delete(String id) {
             return data.remove(id) != null;
-        }
-
-        @Override
-        public long count() {
-            return data.size();
         }
     }
 }

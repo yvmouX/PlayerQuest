@@ -1,7 +1,7 @@
 # PlayerTaskX
 
 面向 Spigot / Paper / Folia / Canvas 的**每日任务与自定义任务**插件：
-任务 = 多个目标 + 多个奖励，支持网页编辑器、游戏内 GUI、多语言与 PlaceholderAPI 变量。
+任务 = 多个目标 + 多个奖励，支持游戏内 GUI、多语言与 PlaceholderAPI 变量。
 
 ## 文档
 
@@ -17,7 +17,6 @@
 | [配置](docs/configuration.md) | `config.yml` 全部选项 |
 | [任务目标](docs/objectives.md) | 15 种目标类型 |
 | [任务奖励](docs/rewards.md) | 3 种奖励类型（金币 / 点券 / 命令） |
-| [网页编辑器](docs/editor.md) | 浏览器管理界面 |
 | [变量](docs/placeholders.md) | PlaceholderAPI 变量 |
 | [常见问题](docs/faq.md) | 排查手册 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 架构设计与实现说明（开发者向） |
@@ -115,6 +114,7 @@ git -C YLib checkout dev && git -C YLib pull
 `player_quest` / `daily_state` 是玩家状态。
 
 任务是一个整体（目标与奖励是它的一部分），不存在「主体 / 奖励 / 目标」三套独立存储。
-**没有 YAML / JSON 文件后端**：YAML 1.1 会把 `target: NO` 解析成布尔、把 `1.20` 解析成浮点；
+**没有把文件当权威的 YAML / JSON 文件后端**：YAML 1.1 会把 `target: NO` 解析成布尔、把 `1.20` 解析成浮点；
 文件后端则要面对「文件与库哪个是权威」以及每次进度都重写整份文件的问题。
-需要 diff 或进版本控制时，用编辑器的整份任务导出 / 导入。
+需要 diff 或进版本控制时，把定义写成数据目录下 `quests/` 与 `presets/` 里的 YAML——
+那是**只读**来源，库仍是唯一可写、唯一权威的那一份（详见 [ARCHITECTURE 4.6](ARCHITECTURE.md)）。

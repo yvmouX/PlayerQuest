@@ -8,11 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 合成数量计算：重点是 Shift+点击的「一次事件连做多批」。
- *
- * <p>曾经的 bug：只按单批产物数量计数（火把 4 个/批），玩家 Shift 一点
- * 连做 64 批（256 个）却只记 4 个进度，火把工坊示例要做出约 4 组火把
- * 才算完成。该问题不抛异常、不报错，只有真玩才会发现，必须用测试钉住。</p>
+ * 合成数量计算：Shift+点击会在一次事件里连做多批，只按单批产物数量计数会让 64 批（256 个）只记 4 个进度——不抛异常、不报错，只有真玩才会发现，必须钉住。
  */
 class ItemListenerCraftAmountTest {
 

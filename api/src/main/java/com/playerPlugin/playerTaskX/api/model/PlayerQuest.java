@@ -5,11 +5,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 玩家进行中的任务：运行期状态。
- * <p>
- * 进度以「目标下标 → 当前计数」保存，用下标而非目标 id 关联，因此任务定义调整目标顺序时
- * 必须靠下面的结构摘要识别出来——本类不做兼容，比对摘要并重置进度由
- * {@code ProgressService} 负责（它会清空该任务进度并在日志里告警）。
+ * 玩家进行中的任务（运行期状态）。进度按「目标下标 → 计数」存，因此目标顺序一变旧进度就整体错位，
+ * 靠 {@code structureHash} 识别并重置——比对与重置在 {@code ProgressService}，本类不做兼容。
  */
 public final class PlayerQuest {
 
@@ -21,17 +18,7 @@ public final class PlayerQuest {
     private final Map<Integer, Integer> progress = new LinkedHashMap<>();
     private QuestStatus status;
 
-    /**
-     * 接手该任务时，其目标列表的结构摘要。
-     *
-     * <p>进度按<b>目标下标</b>记录，因此目标顺序一变，旧进度的含义就整体错位
-     * （挖了 32 个石头会显示成"发言 32 次"），而语法校验查不出这种问题。
-     * 存下接手时的结构摘要，以后比对即可发现「定义变过」并重置进度，
-     * 而不是静默把进度套到别的目标上。
-     *
-     * <p>空串表示来源数据没有这一列（旧版本记录），此时只补齐不重置——
-     * 不做无依据的重置。
-     */
+    /** 接手该任务时的目标列表结构摘要；比对由 {@code ProgressService} 做，不一致就重置进度（空串 = 旧数据，只补齐不重置）。 */
     private String structureHash = "";
 
     public PlayerQuest(UUID playerId, String questId, QuestType type,

@@ -4,15 +4,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * 目标与奖励共用的「配置表」读取工具。
- *
- * <h2>为什么两者共用</h2>
- * {@link QuestObjective} 与 {@link QuestReward} 只是同一份「类型 + 两份配置」的形状，
- * 取值语义（缺省、宽松转整数、预设引用键）逐字相同。各写一份的代价是「宽松到什么程度」
- * 会在两侧漂移——例如一边把 {@code "5.0"} 认成 5、另一边返回默认值，
- * 而表现只是某个字段悄悄失效。
- */
+/** 目标与奖励共用的配置表读取工具：取值语义只此一份，免得两侧对「宽松到什么程度」各写一套。 */
 final class ConfigMap {
 
     private ConfigMap() {

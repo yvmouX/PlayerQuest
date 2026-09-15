@@ -8,7 +8,6 @@
 - [任务奖励](rewards)
 
 - **管理**
-- [网页编辑器](editor)
 - [变量（PlaceholderAPI）](placeholders)
 - [常见问题](faq)
 

@@ -14,18 +14,7 @@ import java.util.function.Consumer;
 
 /**
  * 菜单项：一个图标 + 一条点击动作。
- *
- * <h2>为什么是 record</h2>
- * 菜单每次 {@code build()} 都重建整套物品，菜单项天然是「一次性快照」。
- * 若做成可变对象并跨次复用，上一次的状态（改过的数量、旧的进度文案）
- * 就会被带进新界面，这类 bug 极难排查。record 让「重新构造」成为唯一写法。
- *
- * <h2>图标为什么在构造里克隆</h2>
- * {@code ItemStack} 是可变对象，而同一份图标常被多个槽位共用（背景板、分页按钮）。
- * 在构造里克隆一份，调用方后续改数量/名字都不会串味。
- *
- * @param icon   图标（会被克隆，不足的数量按 1 处理）
- * @param action 点击动作，{@code null} 视为「什么也不做」
+ * 用 record 是因为菜单每次 {@code build()} 都重建整套物品，可复用的可变项会把上次的状态带进新界面；图标在构造里克隆，多个槽位共用同一份时不会串味。
  */
 public record MenuItem(ItemStack icon, Consumer<ClickContext> action) {
 
@@ -42,14 +31,7 @@ public record MenuItem(ItemStack icon, Consumer<ClickContext> action) {
 
     // ---------- 静态工厂 ----------
 
-    /**
-     * 构造一个可点击的菜单项。
-     *
-     * @param material 图标材质，{@code null} 或非法时回退 {@link Material#PAPER}
-     * @param name     显示名（MiniMessage 或 &amp; 颜色码，这里统一渲染成 {@code §} 形式）
-     * @param lore     描述行，可为 {@code null}
-     * @param action   点击动作，可为 {@code null}
-     */
+    /** 图标材质为 {@code null} 或非法时回退 {@link Material#PAPER}；描述行与点击动作可为 {@code null}。 */
     public static MenuItem of(Material material, String name, List<String> lore, Consumer<ClickContext> action) {
         return new MenuItem(icon(material, name, lore), action);
     }

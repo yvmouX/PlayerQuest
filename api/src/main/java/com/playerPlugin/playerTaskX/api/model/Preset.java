@@ -5,27 +5,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 目标或奖励预设：一组「类型 + 属性」，建任务时可一键套用。
- *
- * <p>与 {@link QuestObjective} / {@link QuestReward} 的关系：预设是它们的<b>模板</b>，
- * 因此属性结构相同（{@code type} + {@code properties}），另加给人看的
- * {@code kind} / {@code id} / {@code name} / {@code description}。
- *
- * <p>类别 {@code kind} 直接在元素上标明，而不是靠 id 命名约定或两个独立仓储推断——
- * 编辑器要分开展示两类预设，让数据自己说清楚是哪一类最省事。
- *
- * <p>预设只有编辑器使用，<b>游戏引擎完全不读它</b>：套用预设时配置已被复制进任务本身。
- * 因此它与任务定义同属「内容」，与玩家数据（状态）分开存储。
- *
- * @param kind        类别，取值见 {@link #OBJECTIVES} / {@link #REWARDS}
- * @param id          预设标识，用于覆盖与删除
- * @param name        显示名，缺失时回退为 type
- * @param type        目标/奖励类型 id
- * @param properties  该类型的配置
- * @param description 说明文字，可为空
+ * 目标 / 奖励预设：一组「类型 + 属性」，任务里用 {@code preset: <id>} 引用，载入/保存时由 {@code PresetRefs} 展开。
+ * 没有显示名与说明——id 就是它的身份（文件来源时取文件名），游戏内编辑器的预设选择器也是按 id 列的。
  */
-public record Preset(String kind, String id, String name, String type,
-                     Map<String, Object> properties, String description) {
+public record Preset(String kind, String id, String type, Map<String, Object> properties) {
 
     /** 目标预设类别。 */
     public static final String OBJECTIVES = "objectives";

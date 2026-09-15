@@ -12,9 +12,7 @@ import java.util.Optional;
 
 /**
  * 目标类型注册表实现：只维护「id → 类型」的映射。
- * <p>
- * 这里刻意不做「动作类型 → 目标类型」的分发索引——分发索引由 {@code ProgressService}
- * 按玩家自建（注册表是全局的，而热路径要按玩家已接任务过滤，缓存到注册表里反而用不上）。
+ * 不做「动作类型 → 目标类型」的分发索引——注册表是全局的，而热路径要按玩家已接任务过滤，缓存到注册表里反而用不上。
  */
 public final class ObjectiveRegistryImpl implements ObjectiveRegistry {
 

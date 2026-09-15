@@ -13,7 +13,7 @@ import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
 import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
-import com.playerPlugin.playerTaskX.core.gui.PeriodicQuestMenu;
+import com.playerPlugin.playerTaskX.core.gui.menu.PeriodicQuestMenu;
 import com.playerPlugin.playerTaskX.core.period.Periods;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.command.CommandSender;
@@ -23,35 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 玩家命令 {@code /playertaskx}（别名 {@code /ptx}）。
- *
- * <h2>子命令</h2>
- * <ul>
- *   <li>{@code ""} / {@code menu} / {@code gui}：打开周期任务界面；</li>
- *   <li>{@code list}：聊天中列出当前周期任务与完成度；</li>
- *   <li>{@code refresh [类型]}：消耗货币重抽自己的周期任务（不给类型就刷新所有已启用的周期）；</li>
- *   <li>{@code claim <id>}：领取已完成任务的奖励；</li>
- *   <li>{@code progress}：列出所有进行中任务的进度。</li>
- * </ul>
- * 这份清单只出现在帮助里（由 {@link CommandHelp#ofAnnotations} 从注解自动生成），
- * 不在这里手写第二份——手写清单迟早会和代码不一致。
- *
- * <h2>为什么是无参构造</h2>
- * 装配方只需 {@code register(new PlayerCommand())}：命令对象不持有服务引用，
- * 需要时通过 {@link PlayerTaskX#getInstance()} 取。这样命令类不参与依赖装配顺序，
- * 也不会在插件重载后攥着过期的服务实例。
- *
- * <h2>YLib 约束（照抄官方文档会踩的坑）</h2>
- * <ul>
- *   <li>权限只有 {@code @Command(permission=...)} / {@code @SubCommand(permission=...)} 两种写法，
- *       <b>不存在 {@code @Permission} 注解</b>；</li>
- *   <li>参数类型只支持 {@code String/int/Integer/double/Double/boolean/Boolean/Player/World/枚举}，
- *       {@code long}、{@code Material}、{@code OfflinePlayer} 等会被当 String 注入并在反射调用时炸掉，
- *       所以本类只用 {@code String} 与 {@code Player}；</li>
- *   <li>补全方法签名必须是 {@code List<String> f(CommandSender, CommandContext, String)}，
- *       并且必须声明在本类中——YLib 用 {@code getDeclaredMethod} 精确查找，抽到父类或工具类会静默失效；</li>
- *   <li>Tab 补全时 YLib 传的是空 context，<b>拿不到前面已解析的参数</b>，补全只能基于 sender 推断。</li>
- * </ul>
+ * 玩家命令 {@code /ptx}；子命令清单由注解生成（见 {@code @SubCommand}），不在这里手写第二份。
+ * YLib 参数类型只支持 String/int/Player 等少数几种，补全方法必须声明在本类（它用 {@code getDeclaredMethod} 精确查找，抽到父类会静默失效）。
  */
 @Command(name = "playertaskx", aliases = {"ptx"}, description = "PlayerTaskX 玩家命令")
 public class PlayerCommand {
@@ -180,13 +153,7 @@ public class PlayerCommand {
 
     // ---------- 刷新 ----------
 
-    /**
-     * {@code refresh [类型]}：消耗货币重抽自己的周期任务。
-     * <p>
-     * 不给类型就刷新<b>所有已启用的周期</b>，每种各自扣费、各自提示——
-     * 只刷新「第一种」会让开了每周任务的服务器上，玩家以为刷新没生效。
-     * 某种周期刷新失败（次数用完、货币不足）不影响其它周期。
-     */
+    /** {@code refresh [类型]}：消耗货币重抽周期任务；不给类型就刷新所有已启用的周期，各自扣费与提示，一种失败不影响其它。 */
     @SubCommand(value = "refresh", description = "刷新周期任务（消耗货币）：/ptx refresh [daily|weekly|monthly|custom]")
     public void refresh(CommandSender sender, @Arg(value = "类型", suggestion = "suggestPeriodTypes") @Optional String type) {
         Player player = requirePlayer(sender);
@@ -293,14 +260,7 @@ public class PlayerCommand {
 
     // ---------- 补全 ----------
 
-    /**
-     * {@code claim} 的 id 补全：该玩家<b>未领取</b>的任务 id。
-     * <p>
-     * 用全部记录而不是 {@code activeQuests}：进行中集合不含「已完成待领取」，
-     * 而那恰恰是最需要补全出来让玩家敲的状态。已领取与已放弃的没必要再提示。
-     * <p>
-     * 方法必须写在本类中（YLib 用 {@code getDeclaredMethod} 查找），因此两个命令类各有一份。
-     */
+    /** {@code claim} 的 id 补全：取该玩家未领取的任务 id（进行中集合不含「已完成待领取」，而那正是最需要补全的状态）；方法必须写在本类，YLib 用 {@code getDeclaredMethod} 查找。 */
     @SuppressWarnings("unused") // 由 YLib 反射调用
     public List<String> suggestQuestIds(CommandSender sender, CommandContext context, String currentInput) {
         if (!(sender instanceof Player player)) {

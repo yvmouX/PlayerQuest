@@ -17,23 +17,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * 值域的<b>运行期</b>判定：某个候选值属于哪些 {@link ValueKind}，以及一个配置值能不能命中。
- *
- * <h2>为什么只有这一处</h2>
- * 同一份判定要服务三个地方——素材目录给每个候选打标签（编辑器据此按值域列条目）、
- * 选择器按标签过滤、服务端校验「这个值能不能命中」。三处各写一遍必然漂移，
- * 而漂移的后果正是这个项目最怕的「配了却永远不命中」且无人报警。
- *
- * <h2>成员资格从当前服务端算，不维护清单</h2>
- * 方块与物品看 {@link Material} 的运行期方法，生物看 {@link EntityType#getEntityClass()}
- * 是不是 {@link Animals} / {@link Tameable} / {@link Shearable} 等接口：
- * 新版本新增的内容自动进入对应值域，不需要（也不允许）手写一张会过期的表。
- *
- * <h2>判断不了 ≠ 不满足</h2>
- * {@code Material.isItem()} 与 {@code Enchantment.values()} 这类 API 在服务端启动前会直接
- * 抛异常（它们要读注册表，单元测试环境正是这种情况）。那时结论是 {@link Verdict#UNKNOWN}——
- * <b>放行</b>，而不是报一条「这个值不可能命中」。把「我判断不了」当成「你写错了」，
- * 会让校验在半个环境下满屏误报。
+ * 值域的<b>运行期</b>判定：某个值属于哪些 {@link ValueKind}、某个配置值能不能命中。
+ * 成员资格按当前服务端的枚举与接口算（不维护清单）；判断不了时结论是「放行」而不是「你写错了」。
  */
 public final class ValueKinds {
 
@@ -51,7 +36,7 @@ public final class ValueKinds {
     }
 
     // ------------------------------------------------------------------
-    // 条目的值域（编辑器目录用）
+    // 条目的值域（按当前服务端算出的候选归属）
     // ------------------------------------------------------------------
 
     /** 一个材质属于哪些值域（按 {@link ValueKind} 的声明顺序）。 */
@@ -69,9 +54,6 @@ public final class ValueKinds {
             if (material.isItem() && !material.isAir()) {
                 kinds.add(ValueKind.PLACEABLE);
             }
-        }
-        if (material.isEdible()) {
-            kinds.add(ValueKind.FOOD);
         }
         return kinds;
     }
@@ -104,25 +86,10 @@ public final class ValueKinds {
         return kinds;
     }
 
-    /** MythicMobs 的怪：它们是活体，因此既能当击杀目标也能当交互对象。 */
-    public static Set<ValueKind> mythicMob() {
-        return EnumSet.of(ValueKind.ENTITY, ValueKind.LIVING);
-    }
-
-    /** CustomFishing 的战利品。 */
-    public static Set<ValueKind> fish() {
-        return EnumSet.of(ValueKind.FISH);
-    }
-
-    /** 原版附魔。 */
-    public static Set<ValueKind> enchantment() {
-        return EnumSet.of(ValueKind.ENCHANTMENT);
-    }
-
     /**
-     * 全部原版附魔（编辑器选择器用；名字即 Bukkit 附魔名，如 {@code SHARPNESS}）。
+     * 全部原版附魔（名字即 Bukkit 附魔名，如 {@code SHARPNESS}）。
      * <p>
-     * 需要服务端注册表，因此启动前返回空表——目录是运行期请求，拿不到就少一栏，
+     * 需要服务端注册表，因此启动前返回空表——拿不到就当没有这份清单，
      * 不该把插件拖垮。
      */
     public static List<Enchantment> enchantments() {
@@ -139,20 +106,7 @@ public final class ValueKinds {
 
     /**
      * 一个配置值在给定值域下是否<b>可能</b>命中；不可能时返回给管理员看的原因，否则返回 {@code null}。
-     *
-     * <p>刻意只说「不可能命中」这一件事：值写得怪但能对上（例如自定义内容 id）时一律放行——
-     * 这一层的职责是把「永远不生效的配置」拦下来，不是替管理员做全部判断。
-     * 因此以下情形直接放行：
-     * <ul>
-     *   <li>留空或 {@code *}（表示任意）；</li>
-     *   <li>带命名空间的值（{@code itemsadder:…} / {@code craftengine:…} / {@code mythic:…}）——
-     *       那是别家插件的 id，离线判断不了，插件缺失时另有专门的提示；</li>
-     *   <li>相关值域在这个环境下判断不了（{@link Verdict#UNKNOWN}）。</li>
-     * </ul>
-     *
-     * @param kinds    字段声明的值域（多个之间是「或」）
-     * @param rawValue 配置里写的值（可能是逗号分隔的多值）
-     * @param fishLoot CustomFishing 已注册的战利品 id；{@code null} 表示无从校验
+     * 只说「不可能命中」这一件事：留空、{@code *}、带命名空间的别家 id、以及这个环境下判断不了的值一律放行。
      */
     public static String check(List<ValueKind> kinds, String rawValue, List<String> fishLoot) {
         if (kinds == null || kinds.isEmpty()) {
@@ -203,7 +157,7 @@ public final class ValueKinds {
                     : containsIgnoreCase(fishLoot, value) ? Verdict.YES : Verdict.NO;
             case ENCHANTMENT -> enchantmentVerdict(value);
             case ENTITY, LIVING, BREEDABLE, TAMEABLE, SHEARABLE -> entityVerdict(kind, value);
-            case BLOCK, PLACEABLE, ITEM, FOOD -> materialVerdict(kind, value);
+            case BLOCK, PLACEABLE, ITEM -> materialVerdict(kind, value);
         };
     }
 

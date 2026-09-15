@@ -30,20 +30,13 @@ public final class ChatObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.optionalText("target", "关键词", "", "消息需包含的关键词，可用英文逗号分隔多个（命中任意一个即可）；留空或 * 表示任意发言"),
-                ConfigField.amount(1)
+                ConfigField.text("target", "关键词",
+                        "消息需包含的关键词，可用英文逗号分隔多个（命中任意一个即可）；留空或 * 表示任意发言"),
+                ConfigField.amount()
         );
     }
 
-    /**
-     * 判定本次发言内容是否命中关键词：命中返回本次数量，否则返回 0。
-     * <p>
-     * 与其它类型不同，这里用「包含匹配」而不是相等匹配，因此不能复用
-     * {@link ObjectiveType#targetMatches}；关键词与消息都忽略大小写。
-     *
-     * @param context    动作上下文，{@code target} 为聊天内容
-     * @param properties 目标配置，读取 {@code target}
-     */
+    /** 命中关键词时返回本次数量，否则返回 0；用包含匹配而非相等匹配（因此不能复用 {@link ObjectiveType#targetMatches}），关键词与消息都忽略大小写。 */
     @Override
     public int match(ProgressContext context, Map<String, Object> properties) {
         if (!keywordMatches(context, properties)) {

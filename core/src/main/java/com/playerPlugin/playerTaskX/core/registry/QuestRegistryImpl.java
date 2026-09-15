@@ -10,11 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 内存中的任务注册表。
- * <p>
- * 单一数据源原则：引擎与 GUI 的一切任务查询都走这里，存储只是它的持久化备份，
- * 因此调用方不需要感知存储实现。与两个类型注册表放在同一个包，是因为它们
- * 回答的是同一类问题——「当前有哪些任务定义、哪些目标/奖励类型」。
+ * 内存中的任务注册表：引擎与 GUI 的一切任务查询都走这里，存储只是它的持久化备份。
+ * 遍历顺序会体现在界面列表上，因此保持插入顺序。
  */
 public final class QuestRegistryImpl implements QuestRegistry {
 
@@ -34,26 +31,6 @@ public final class QuestRegistryImpl implements QuestRegistry {
     @Override
     public List<Quest> enabled() {
         return quests.values().stream().filter(Quest::enabled).toList();
-    }
-
-    @Override
-    public List<Quest> byCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return enabled();
-        }
-        return enabled().stream()
-                .filter(quest -> category.equalsIgnoreCase(quest.category()))
-                .toList();
-    }
-
-    @Override
-    public List<String> categories() {
-        return enabled().stream()
-                .map(Quest::category)
-                .filter(category -> category != null && !category.isBlank())
-                .distinct()
-                .sorted()
-                .toList();
     }
 
     @Override

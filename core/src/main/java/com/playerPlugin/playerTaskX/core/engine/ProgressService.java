@@ -7,10 +7,8 @@ import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
-import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
-import com.playerPlugin.playerTaskX.core.storage.Hash;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import java.util.ArrayList;
@@ -22,20 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
- * 进度引擎：把一次游戏内动作换算成各任务目标的进度。
- * <p>
- * 这是唯一修改玩家进度的入口，因此所有「进度正确性」的保证都集中在这里。
- *
- * <h2>性能设计</h2>
- * 每次动作（挖掘、说话、移动触发的交互…）都会调用 {@link #apply}，
- * 而一个玩家可能有多个进行中的任务，逐个查数据库不可接受。因此：
- * <ul>
- *   <li>先在内存里查该玩家「可能被本次动作推进」的任务下标（{@code activeIndex}）；</li>
- *   <li>按 {@link Trigger} 过滤出相关目标类型，只有命中的目标才累加；</li>
- *   <li>仅当进度真的变化时才写库，未命中不产生任何 IO。</li>
- * </ul>
- * 索引只缓存「任务下标 → 目标下标 → 类型」这类静态映射，运行期进度不常驻内存，
- * 避免引入缓存一致性问题。
+ * 进度引擎：把一次游戏内动作换算成各任务目标的进度，是唯一修改玩家进度的入口。
+ * 进度按目标下标记录，因此结构指纹的校正必须放在 {@link #load()}（放热路径会漏掉已完成记录）；热路径只查内存索引，进度真变了才写库。
  */
 public final class ProgressService {
 
@@ -68,13 +54,7 @@ public final class ProgressService {
         }
     }
 
-    /**
-     * 计算任务目标列表的结构摘要。
-     * <p>
-     * 进度按<b>下标</b>记录，因此只要目标的数量、顺序、类型或关键参数变了，
-     * 旧进度的含义就整体错位。把「顺序敏感」的信息拼成一个字符串再取哈希：
-     * 顺序不同的列表必然得到不同摘要，正是需要区分的。
-     */
+    /** 计算任务目标列表的结构摘要：进度按下标记录，所以数量、顺序、类型或关键参数任一变化都必须得到不同摘要。 */
     public static String structureHash(Quest quest) {
         StringBuilder builder = new StringBuilder();
         for (QuestObjective objective : quest.objectives()) {
@@ -82,22 +62,10 @@ public final class ProgressService {
                     .append(objective.amount()).append('\u0001')
                     .append(objective.properties()).append('\u0002');
         }
-        return Hash.fingerprint(builder.toString());
+        return StructureFingerprint.fingerprint(builder.toString());
     }
 
-    /**
-     * 校验玩家记录的结构摘要是否仍与当前定义一致。
-     * <p>
-     * 三种结果：
-     * <ul>
-     *   <li>记录里没有摘要（旧版本数据）→ <b>只补齐，不重置</b>：没有依据就重置等于凭空清进度；</li>
-     *   <li>摘要一致 → 什么都不做；</li>
-     *   <li>摘要不一致 → <b>清空该任务进度并记日志</b>。宁可让这个任务进度归零并告知玩家，
-     *       也不能把进度静默套用到别的目标上——后者会让人以为插件坏了，且极难排查。</li>
-     * </ul>
-     *
-     * @return 是否发生了重置
-     */
+    /** 校验玩家记录的结构摘要并返回是否发生了重置：没有摘要（旧数据）只补齐不重置，不一致则清空该任务进度并记日志，绝不能静默套用到别的目标上。 */
     private boolean reconcileStructure(PlayerQuest playerQuest, Quest quest) {
         String current = structureHash(quest);
         String stored = playerQuest.structureHash();

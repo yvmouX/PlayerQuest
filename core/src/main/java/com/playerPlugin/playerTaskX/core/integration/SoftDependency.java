@@ -4,17 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * 软依赖探测：判断某个插件是否已加载、版本是多少。
- *
- * <p>三处细节都是踩出来的，别在这里「简化」：
- * <ul>
- *   <li><b>包住 Throwable</b>：{@code Bukkit.getPluginManager()} 在服务端未初始化时返回
- *       {@code null}（单元测试、引导阶段、插件被早期触碰），直接解引用会抛 NPE。
- *       软依赖探测失败只应表示「不可用」，不该让插件崩掉；</li>
- *   <li><b>不 import 对方任何类</b>：本类只按名字查插件，加载它永远是安全的。</li>
- * </ul>
- */
+/** 软依赖探测：按插件名查是否已加载与版本号；未初始化或探测失败一律当作「不可用」，不抛异常。 */
 public final class SoftDependency {
 
     private SoftDependency() {

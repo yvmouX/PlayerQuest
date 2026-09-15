@@ -5,28 +5,29 @@ import cn.yvmou.ylib.YLibException;
 import cn.yvmou.ylib.logger.Logger;
 import cn.yvmou.ylib.message.MessageService;
 import cn.yvmou.ylib.message.MessageSettings;
+import cn.yvmou.ylib.scheduler.UniversalScheduler;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.command.AdminCommand;
 import com.playerPlugin.playerTaskX.core.command.PlayerCommand;
 import com.playerPlugin.playerTaskX.core.period.PeriodicService;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.gui.MenuListener;
-import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
-import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
-import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
+import com.playerPlugin.playerTaskX.core.gui.editor.ChatInputListener;
+import com.playerPlugin.playerTaskX.core.integration.customcontent.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.customfishing.CustomFishingHook;
+import com.playerPlugin.playerTaskX.core.integration.mythicmobs.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.listener.BlockListener;
 import com.playerPlugin.playerTaskX.core.listener.EntityListener;
 import com.playerPlugin.playerTaskX.core.listener.ItemListener;
 import com.playerPlugin.playerTaskX.core.listener.PlayerListener;
 import com.playerPlugin.playerTaskX.core.listener.TextListener;
-import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
+import com.playerPlugin.playerTaskX.core.display.ProgressDisplay;
 import com.playerPlugin.playerTaskX.core.placeholder.PlaceholderHook;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
-import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.engine.RewardService;
 import com.playerPlugin.playerTaskX.core.storage.DatabaseFactory;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
@@ -36,30 +37,14 @@ import com.playerPlugin.playerTaskX.core.storage.yaml.ExampleDefinitions;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedPresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.MergedQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.yaml.YamlDefinitions;
-import com.playerPlugin.playerTaskX.core.web.EditorServer;
-import com.playerPlugin.playerTaskX.core.web.PluginEditorServices;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
+import com.playerPlugin.playerTaskX.core.reward.RewardBuiltIns;
 
 
-/**
- * 插件入口，只做三件事：
- * <ol>
- *   <li><b>装配</b>：按依赖顺序构造各子系统（看 onEnable 的构造顺序即依赖图）；</li>
- *   <li><b>启停</b>：按序开启/关闭各子系统，单步失败互不拖垮（{@link #guard}）；</li>
- *   <li><b>访问点</b>：向命令、GUI、编辑器暴露各子系统。</li>
- * </ol>
- * 业务逻辑不住在这里：周期任务逻辑在 PeriodicService，任务维护在 QuestAdminService，
- * 事件翻译在 listener 包，类型清单在 BuiltIns。往本类加方法前先想想它属于哪个子系统。
- *
- * <h2>本类不实现 {@code EditorServices}</h2>
- * 网页编辑器后台只认那个窄接口（这样它能脱离服务端单测），但装配它的是
- * {@link PluginEditorServices}，不是本类：接口一旦挂到本类上，「编辑器需要什么」就变成了
- * 本类公开契约的一部分——当初正是为了喂饱它，本类多了 {@code presets()} 与
- * {@code describeStorage()} 两个只有 web 层会用的 getter。现在这两个值在
- * {@link #startEditor()} 里注入给适配器，本类只回答「游戏内功能需要什么」。
- */
+/** 插件入口：只负责装配、按序启停（单步失败互不拖垮）与暴露访问点，业务逻辑都在各子系统里。 */
 public final class PlayerTaskX extends JavaPlugin {
 
     private static PlayerTaskX instance;
@@ -86,7 +71,6 @@ public final class PlayerTaskX extends JavaPlugin {
     private QuestAdminService questAdmin;
     /** MythicMobs 接入点；null 表示未安装或不支持（原版击杀照常工作）。 */
     private MythicMobsHook mythicMobs;
-    private EditorServer editorServer;
 
     public static PlayerTaskX getInstance() {
         return instance;
@@ -131,7 +115,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
         // ---------- 存储 ----------
         // 任务定义、预设与玩家数据共用一个库，因此只有这一次装配；
-        // 仓储都只在启用阶段用一次，故留作局部变量，不占实例字段（presets 例外，编辑器要用）
+        // 仓储都只在启用阶段用一次，故留作局部变量，不占实例字段（presets 例外：预设引用要按它展开）
         DatabaseFactory.Handle handle;
         try {
             handle = DatabaseFactory.open(config, getDataFolder());
@@ -191,7 +175,6 @@ public final class PlayerTaskX extends JavaPlugin {
         guard("进度展示调度", () -> progressDisplay.startAutoRefresh(ylib.getScheduler()));
         guard("每日任务调度", () ->
                 periodicService.startResetCheck(ylib.getScheduler(), messages, () -> getServer().getOnlinePlayers()));
-        guard("网页编辑器", this::startEditor);
         guard("PlaceholderAPI 变量", () -> PlaceholderHook.register(this));
 
         log.info("PlayerTaskX 已启用（{} 个任务，{} 种目标，{} 种奖励）",
@@ -201,13 +184,7 @@ public final class PlayerTaskX extends JavaPlugin {
                 + "用 /ptx help 与 /ptxa help 查看子命令清单");
     }
 
-    /**
-     * 在数据库之外接上 {@code quests/} 与 {@code presets/} 两个只读 YAML 目录。
-     *
-     * <p>与数据库的合并规则（库优先、冲突告警、文件定义只读）由
-     * {@link MergedQuestRepository} / {@link MergedPresetRepository} 承担，这里只做装配：
-     * 建目录、铺一份示例、把告警接到插件日志。
-     */
+    /** 在数据库之外接上 {@code quests/} 与 {@code presets/} 两个只读 YAML 目录；库优先等合并规则由 {@link MergedQuestRepository} / {@link MergedPresetRepository} 承担。 */
     private QuestRepository withYamlDefinitions(DatabaseFactory.Handle handle) {
         java.util.function.Consumer<String> warner = message -> log.warn("YAML 定义: {}", message);
         DefinitionFolder questFolder = DefinitionFolder.of(getDataFolder(), "quests", warner);
@@ -236,13 +213,7 @@ public final class PlayerTaskX extends JavaPlugin {
         }
     }
 
-    /**
-     * 执行一个启动步骤并隔离其异常。
-     * <p>
-     * 启动期的失败往往来自环境（端口占用、软依赖缺失、类加载冲突），
-     * 这些都不该让玩家连插件的主功能都用不了。失败时明确记录是哪一步，
-     * 而不是留下一段难以定位的堆栈。
-     */
+    /** 执行一个启动步骤并隔离异常：失败只记日志（写明是哪一步），启动期的环境问题不该让玩家连主功能都用不了。 */
     private void guard(String step, Runnable action) {
         try {
             action.run();
@@ -257,10 +228,6 @@ public final class PlayerTaskX extends JavaPlugin {
         // 先停运行期任务再关底层资源：定时器若在库关闭后触发会报连接错误
         periodicService.shutdown();
         progressDisplay.shutdown();
-        if (editorServer != null) {
-            editorServer.stop();
-            editorServer = null;
-        }
         HandlerList.unregisterAll(this);
         if (database != null) {
             database.close();
@@ -272,9 +239,9 @@ public final class PlayerTaskX extends JavaPlugin {
         }
     }
 
-    /** 登记内置目标类型；清单唯一来源是 {@link BuiltIns}，新增类型在那里显式登记。 */
+    /** 登记内置目标类型；清单唯一来源是 {@link ObjectiveBuiltIns}，新增类型在那里显式登记。 */
     private void registerBuiltInObjectives() {
-        BuiltIns.objectives().forEach(objectiveTypes::register);
+        ObjectiveBuiltIns.all().forEach(objectiveTypes::register);
         var rejected = objectiveTypes.rejected();
         if (!rejected.isEmpty()) {
             log.warn("有目标类型注册失败: {}", rejected);
@@ -283,7 +250,7 @@ public final class PlayerTaskX extends JavaPlugin {
 
     /** 登记内置奖励类型。 */
     private void registerBuiltInRewards() {
-        BuiltIns.rewards().forEach(rewardTypes::register);
+        RewardBuiltIns.all().forEach(rewardTypes::register);
         // 软依赖缺失时明确告知管理员，否则玩家做完任务拿不到奖励却查不出原因
         for (var type : rewardTypes.all()) {
             if (!type.available()) {
@@ -312,30 +279,11 @@ public final class PlayerTaskX extends JavaPlugin {
         CustomFishingHook.register(this, progressService, progressDisplay::onProgressApplied);
         // 菜单点击分发：没有它玩家能打开界面但点击无反应
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
+        // 编辑器的聊天栏输入：没有它管理员点完字段就没了下文
+        getServer().getPluginManager().registerEvents(new ChatInputListener(), this);
     }
 
-    /**
-     * 启动内置网页编辑器。
-     * <p>
-     * 首选端口被占用时由 {@link EditorServer} 自动 +1 并记 warn，
-     * {@code /ptxa editor} 始终报告实际端口。失败只记录日志，不影响插件其它功能。
-     */
-    private void startEditor() {
-        // 译名准备与「编辑器是否启用」无关：中文语言文件是磁盘上的缓存，
-        // 这次没开编辑器时先取好，下次打开就能直接用。
-        // 编辑器后台要的那几样在这里一次交出去：主类因此不必为它多开公开 getter
-        // （预设仓储与存储描述此前就是「只给编辑器用」的两个例外）
-        editorServer = new EditorServer(this, new PluginEditorServices(quests, questDefinitions, questAdmin,
-                presets, playerQuestRepository, objectiveTypes, rewardTypes,
-                () -> database == null ? null : database.description()));
-        editorServer.prepareCatalog();
-        if (!config.isEditorEnabled()) {
-            return;
-        }
-        editorServer.start(config.getEditorPort());
-    }
-
-    // ---------- 供命令 / GUI / 编辑器使用的访问点 ----------
+    // ---------- 供命令 / GUI 使用的访问点 ----------
 
     public MessageService messages() {
         return messages;
@@ -378,7 +326,7 @@ public final class PlayerTaskX extends JavaPlugin {
         return periodicService;
     }
 
-    /** 任务定义维护入口（保存/删除/重载/校验），管理命令、管理 GUI 与编辑器后台共用。 */
+    /** 任务定义维护入口（保存/删除/重载/校验），管理命令与管理 GUI 共用。 */
     public QuestAdminService questAdmin() {
         return questAdmin;
     }
@@ -387,7 +335,7 @@ public final class PlayerTaskX extends JavaPlugin {
     /**
      * 任务定义仓储（数据库 + 可选的 YAML 只读来源）。
      * <p>
-     * 编辑器用它问 {@code isReadOnly(id)}——文件里的定义在界面上是只读的；
+     * 命令与 GUI 用它问 {@code isReadOnly(id)}——文件里的定义不可写；
      * 写操作仍然走 {@link #questAdmin()}。
      */
     public QuestRepository questDefinitions() {
@@ -398,18 +346,14 @@ public final class PlayerTaskX extends JavaPlugin {
         return playerQuestRepository;
     }
 
-    /**
-     * MythicMobs 接入点；未安装或不支持时为 {@code null}。
-     * <p>
-     * 编辑器用它把自定义怪物列进实体选择器（{@code mythic:<怪物id>}）。
-     */
-    public MythicMobsHook mythicMobs() {
-        return mythicMobs;
+    /** 跨平台调度器（Folia 的实体/区域调度与 Spigot 的 Bukkit 调度都由它统一）。 */
+    public UniversalScheduler scheduler() {
+        return ylib.getScheduler();
     }
 
-
-    /** 网页编辑器实例；未启用或启动失败时为 null。 */
-    public EditorServer editorServer() {
-        return editorServer;
+    /** 目标/奖励预设仓储（只读浏览用；写入仍走 QuestAdminService）。 */
+    public PresetRepository presetDefinitions() {
+        return presets;
     }
 }
+

@@ -29,18 +29,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 语言文件「键」的约束测试。
- *
- * <p>要防的是「不报错的错误」：YAML 1.1 把裸写的 {@code yes} / {@code no} / {@code on} / {@code off}
- * 当作布尔值，于是 {@code common} 段下裸写的 {@code yes: "是"} 在 Bukkit 读进来之后键变成了
- * {@code common.true}。源文件看着没有任何问题，编译与肉眼检查都发现不了，
- * 只有玩家点开界面时才会看到一句「缺少语言键: common.yes」（实测踩过）。</p>
- *
- * <p>所以这里不检查文本，而是检查「Bukkit 实际读到了什么」：把源文件里<b>声明</b>的叶子键
- * 与 YamlConfiguration <b>加载</b>出来的叶子键对比，任何被 YAML 语义悄悄改名的键都会暴露；
- * 再用真实的 {@link MessageServiceImpl} 走一遍「jar 默认 → 用户文件 → 查询」，
- * 钉住玩家界面真正走的那条链路（缺键时界面显示的是 {@code Missing message: <键>}）。
- * 顺带钉住两种语言的键集合必须一致，避免只补了中文、英文回退到 "Missing message"。</p>
+ * 语言文件「键」的约束测试：YAML 1.1 把裸写的 {@code yes}/{@code no}/{@code on}/{@code off} 当布尔，{@code common} 段下裸写 {@code yes: "是"} 会让键变成 {@code common.true}，源文件与编译期都看不出，只有玩家点开界面才显示「缺少语言键: common.yes」（实测踩过）。
+ * 因此这里不查文本，而是对比源文件声明的叶子键与 Bukkit 实际加载出来的键，并用真实 {@link MessageServiceImpl} 走一遍「jar 默认 → 用户文件 → 查询」，顺带要求两种语言的键集合一致。
  */
 class LanguageFileTest {
 

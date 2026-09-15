@@ -6,16 +6,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * 一种周期任务的配置（{@code periodic.daily} / {@code weekly} / {@code monthly} / {@code custom}）。
- *
- * <p>四种周期共用一个类，字段里与该周期无关的那几个保持默认即可：
- * 每日只看 {@code reset-hour}，每周看 {@code reset-weekday}，每月看 {@code reset-month-day}，
- * 自定义周期看 {@code period}。拆成四个类会让「读配置」与「算周期」两处都要写四遍分支，
- * 而它们的差别只有「锚点怎么算」这一件事（见 {@code Periods}）。
- *
- * <p>YLib 的配置约束：字段只能是标量 / List / Map，且 POJO 必须有无参构造器。
- */
+/** 一种周期任务的配置（{@code periodic.daily/weekly/monthly/custom}）：四种周期共用一个类，只用各自相关的字段，无关字段保持默认。 */
 public class PeriodSettings {
 
     @ConfigValue("enabled")

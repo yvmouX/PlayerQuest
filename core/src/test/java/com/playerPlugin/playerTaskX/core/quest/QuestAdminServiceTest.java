@@ -7,13 +7,12 @@ import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
 
-import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.engine.RewardService;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import org.bukkit.Bukkit;
@@ -40,15 +39,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
 
 /**
- * 任务维护入口的不变量测试：保存与删除的「三处同步」。
- *
- * <p>落库、更新注册表、重建玩家索引必须成对发生——漏掉任何一步都是
- * 「不报错的错误」：库里改了但玩家进度仍按旧定义算，只有真机才能发现。
- * rebuildIndex 的效果无法从外部观察（引擎会惰性补建索引），因此用
- * Mockito 验证它确实被调用；ProgressService 是 final 类，Mockito 5
- * 默认的 inline mock maker 可以处理。</p>
+ * 任务维护入口的不变量测试：落库、更新注册表、重建玩家索引必须成对发生，漏掉任何一步都是「库里改了但玩家进度仍按旧定义算」这种不报错的错误。
+ * rebuildIndex 的效果无法从外部观察（引擎会惰性补建索引），因此用 Mockito 验证它确实被调用。
  */
 class QuestAdminServiceTest {
 
@@ -72,12 +67,12 @@ class QuestAdminServiceTest {
         repository = new FakeQuestRepository();
         quests = new QuestRegistryImpl();
         ObjectiveRegistryImpl objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(BuiltIns.objective("break_block"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("break_block"));
         // 「自定义钓鱼」依赖 CustomFishing（单测环境没有），用于验证「类型可用性」也被校验到
-        objectiveTypes.register(BuiltIns.objective("custom_fish"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("custom_fish"));
         // 值域校验的用例要用的两个：剪毛（实体能力）与击杀（放行 mythic: 前缀）
-        objectiveTypes.register(BuiltIns.objective("shear"));
-        objectiveTypes.register(BuiltIns.objective("kill"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("shear"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("kill"));
         RewardRegistryImpl rewardTypes = new RewardRegistryImpl();
         // 只登记恒可用的类型：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
         rewardTypes.register(new CommandReward());
@@ -115,8 +110,8 @@ class QuestAdminServiceTest {
     @Test
     @DisplayName("引用预设的任务：库里只存引用，注册表里是生效值；改预设后重载即刻生效")
     void presetReferenceSurvivesSaveAndFollowsThePreset() {
-        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
-                Map.of("target", "STONE", "amount", 64), ""));
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "break_block",
+                Map.of("target", "STONE", "amount", 64)));
 
         // 早期写法留下的覆盖项（amount）不该活过这次保存
         service.save(new Quest("q1", "任务", List.of(), "PAPER", null, QuestType.NORMAL,
@@ -132,8 +127,8 @@ class QuestAdminServiceTest {
         assertEquals(64, live.objectives().get(0).properties().get("amount"), "生效值完全来自预设");
 
         // 改预设：重载后引用它的任务整体跟着变
-        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "挖石头", "break_block",
-                Map.of("target", "COBBLESTONE", "amount", 32), ""));
+        presets.put("mine-stone", new Preset(Preset.OBJECTIVES, "mine-stone", "break_block",
+                Map.of("target", "COBBLESTONE", "amount", 32)));
         service.reload();
 
         Quest after = quests.find("q1").orElseThrow();
@@ -235,7 +230,7 @@ class QuestAdminServiceTest {
         Quest shearPig = questWithObjective("q2",
                 QuestObjective.of("shear", Map.of("target", "PIG", "amount", 1)));
         assertTrue(service.validate(shearPig).stream().anyMatch(problem -> problem.contains("PIG")),
-                "给猪剪毛永远不会命中，编辑器与 /ptxa list 都必须看到这条，实际: "
+                "给猪剪毛永远不会命中，管理界面与 /ptxa list 都必须看到这条，实际: "
                         + service.validate(shearPig));
 
         // 认不出来的名字同样是死配置
@@ -315,11 +310,6 @@ class QuestAdminServiceTest {
         public boolean delete(String id) {
             return data.remove(id) != null;
         }
-
-        @Override
-        public long count() {
-            return data.size();
-        }
     }
 
     /** 空实现玩家仓储：RewardService 的校验路径不会触到它。 */
@@ -355,16 +345,6 @@ class QuestAdminServiceTest {
 
         @Override
         public void deleteByPlayerAndType(UUID playerId, QuestType type) {
-        }
-
-        @Override
-        public long countPlayers() {
-            return 0;
-        }
-
-        @Override
-        public List<UUID> distinctPlayerIds() {
-            return List.of();
         }
 
         @Override

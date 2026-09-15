@@ -14,30 +14,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * PlaceholderAPI 变量扩展。
- *
- * <h2>支持变量</h2>
- * <ul>
- *   <li>{@code %playertaskx_daily_count%} 今日每日任务总数</li>
- *   <li>{@code %playertaskx_daily_active%} 进行中的每日任务数</li>
- *   <li>{@code %playertaskx_daily_completed%} 已完成待领取数</li>
- *   <li>{@code %playertaskx_daily_claimed%} 已领取数</li>
- *   <li>{@code %playertaskx_daily_refresh_left%} 剩余刷新次数</li>
- *   <li>{@code %playertaskx_daily_refresh_cost%} 刷新费用</li>
- *   <li>{@code %playertaskx_claimable%} 全部可领取数量</li>
- *   <li>{@code %playertaskx_active%} 进行中任务总数（含普通任务）</li>
- *   <li>{@code %playertaskx_quest_name_<id>%} 任务显示名（去格式）</li>
- *   <li>{@code %playertaskx_quest_id_<id>%} 任务 id 本身</li>
- *   <li>{@code %playertaskx_quest_type_<id>%} 任务类型（{@code DAILY} / {@code NORMAL}）</li>
- *   <li>{@code %playertaskx_quest_category_<id>%} 任务分类（未设置时为空串）</li>
- *   <li>{@code %playertaskx_quest_progress_<id>%} 形如 {@code 3/64}</li>
- *   <li>{@code %playertaskx_quest_percent_<id>%} 完成百分比（整数）</li>
- *   <li>{@code %playertaskx_quest_status_<id>%} 状态文案（取自语言文件）</li>
- * </ul>
- * <p>
- * <b>注册方式</b>：本类只应由 {@link PlaceholderHook} 反射加载——
- * 直接 import 并在主类引用它会让未安装 PlaceholderAPI 的服务端在类加载阶段
- * 抛 NoClassDefFoundError，整个插件都无法启动。
+ * PlaceholderAPI 变量扩展（标识符 {@code playertaskx}）：任务数量、进度、状态等变量，清单见 {@code docs/placeholders.md}。
+ * 只能由 {@link PlaceholderHook} 反射加载：在主类直接引用它，会让未装 PlaceholderAPI 的服务端在类加载阶段抛 {@code NoClassDefFoundError}。
  */
 public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
 
@@ -90,13 +68,7 @@ public final class QuestPlaceholderExpansion extends PlaceholderExpansion {
         };
     }
 
-    /**
-     * 处理 {@code <周期>_<字段>} 形式的变量，周期 ∈ {@code daily / weekly / monthly / custom}。
-     * <p>
-     * 四种周期共用一套字段名（{@code daily_count} 就是 {@code daily} 这一种），
-     * 因此加一种周期不必再往这里补一遍分支；服务器没启用的周期照样能查，
-     * 只是结果为空（0 / 空串）——这比「变量不存在」更容易排查。
-     */
+    /** 处理 {@code <周期>_<字段>} 变量；四种周期共用一套字段名，加周期不必补分支，服务器没启用的周期照样能查、结果为空（比「变量不存在」好排查）。 */
     private String handlePeriodicVariable(UUID playerId, String key) {
         for (QuestType type : QuestType.values()) {
             if (!type.isPeriodic()) {

@@ -2,12 +2,7 @@ package com.playerPlugin.playerTaskX.core.storage;
 
 import java.util.List;
 
-/**
- * 极简数据库门面：只暴露这一套方法，避免各仓储各写一套 JDBC 样板。
- * <p>
- * 全部方法使用 JDBC 参数占位符（{@code ?}）。
- * 需要拼接 DDL 等无法参数化的语句时用 {@link #executeInline}。
- */
+/** 极简数据库门面：仓储只依赖这一套方法，避免各写一套 JDBC 样板；参数一律走占位符，无法参数化的 DDL 用 {@link #executeInline}。 */
 public interface Database extends AutoCloseable {
 
     /** 执行写语句（INSERT / UPDATE / DELETE / DDL）。 */

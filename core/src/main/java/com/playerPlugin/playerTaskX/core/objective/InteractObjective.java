@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 
 import java.util.List;
 import java.util.Map;
@@ -29,11 +30,13 @@ public final class InteractObjective implements ObjectiveType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.optionalBlockOrEntity("target", "交互对象", ""),
-                ConfigField.options("mode", "交互方式", "ANY",
-                        List.of("ANY", "LEFT_CLICK_BLOCK", "RIGHT_CLICK_BLOCK", "RIGHT_CLICK_ENTITY", "LEFT_CLICK_ENTITY"),
-                        "限定交互方式，ANY 表示不限"),
-                ConfigField.amount(1)
+                ConfigField.of("target", "交互对象",
+                        "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意",
+                        ValueKind.BLOCK, ValueKind.ENTITY),
+                ConfigField.text("mode", "交互方式",
+                        "限定交互方式：ANY（默认）/ LEFT_CLICK_BLOCK / RIGHT_CLICK_BLOCK / "
+                                + "RIGHT_CLICK_ENTITY / LEFT_CLICK_ENTITY"),
+                ConfigField.amount()
         );
     }
 

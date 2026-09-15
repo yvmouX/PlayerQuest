@@ -8,7 +8,6 @@ import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
@@ -26,13 +25,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
 
-/**
- * 进度引擎测试：验证「动作 → 进度 → 完成」这条主链路。
- * <p>
- * 全部脱离服务端运行——{@link ProgressContext} 允许不带 Player 本体，
- * 因此这里不需要 MockBukkit 之类的框架。
- */
+/** 进度引擎测试：钉住「动作 → 进度 → 完成」这条主链路；{@link ProgressContext} 允许不带 Player 本体，因此全部脱服务端运行，不需要 MockBukkit 之类的框架。 */
 class ProgressServiceTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
@@ -46,7 +41,7 @@ class ProgressServiceTest {
     void setUp() {
         quests = new QuestRegistryImpl();
         objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(BuiltIns.objective("break_block"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("break_block"));
         objectiveTypes.register(new ChatObjective());
         objectiveTypes.register(new InteractObjective());
         repository = new InMemoryPlayerQuestRepository();

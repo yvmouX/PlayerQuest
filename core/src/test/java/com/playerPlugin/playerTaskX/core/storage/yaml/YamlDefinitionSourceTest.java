@@ -17,12 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * {@code quests/} 与 {@code presets/} 目录的读取测试。
- *
- * <p>这一层最容易出的错都<b>不报错</b>：文件名与 id 对不上、某个文件解析失败被静默忽略、
- * 两个文件抢同一个 id 时结果取决于文件系统顺序。因此逐条钉住，包括「告警有没有发出来」。</p>
- */
+/** {@code quests/} 与 {@code presets/} 目录的读取测试：文件名与 id 对不上、某个文件解析失败被静默忽略、两个文件抢同一个 id 时结果取决于文件系统顺序——这些错都不报错，因此连「告警有没有发出来」一起钉住。 */
 class YamlDefinitionSourceTest {
 
     @Test

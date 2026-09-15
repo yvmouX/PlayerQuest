@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.customcontent.CustomContentHooks;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -19,16 +19,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import java.util.function.Consumer;
 
 /**
- * 方块相关动作：挖掘、放置、对方块的交互。
- * <p>
- * 注意 {@link PlayerInteractEvent} 会同时承载「左键破坏」与「右键交互」，
- * 因此在这里区分：左键且**可瞬间破坏**的方块（草、花、火把等）视为挖掘，
- * 其余交互一律交给 {@link Trigger#INTERACT}，避免同一次操作既算挖掘又算交互。
- *
- * <h2>自定义方块</h2>
- * ItemsAdder / CraftEngine 的自定义方块在服务端仍是原版方块（靠方块状态与资源包呈现），
- * 因此这些事件照常触发。这里额外把自定义 id 作为<b>别名</b>带上，于是
- * {@code target: itemsadder:myitems:ruby_block} 与 {@code target: NOTE_BLOCK} 都能命中。
+ * 方块相关动作：挖掘、放置、对方块的交互；自定义方块 id 作为别名随原版材质名一起推。
+ * <p>{@link PlayerInteractEvent} 同时承载左键破坏与右键交互，因此左键且可瞬间破坏的方块算挖掘，其余算交互，避免一次操作双计。
  */
 public final class BlockListener extends ProgressListener implements Listener {
 

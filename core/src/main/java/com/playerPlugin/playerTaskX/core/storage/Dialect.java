@@ -1,10 +1,6 @@
 package com.playerPlugin.playerTaskX.core.storage;
 
-/**
- * 数据库方言：集中处理 SQLite 与 MySQL 的语法差异。
- * <p>
- * 约定：所有 SQL 一律由方言生成或写在这一个包里，其它包不得出现 SQL 字符串。
- */
+/** 数据库方言：集中处理 SQLite 与 MySQL 的语法差异；约定所有 SQL 字符串只允许出现在本包内，其它包不得出现。 */
 public enum Dialect {
 
     SQLITE {

@@ -2,20 +2,7 @@ package com.playerPlugin.playerTaskX.api.model;
 
 import java.util.List;
 
-/**
- * 任务定义（静态数据，由配置文件或网页编辑器维护）。
- *
- * @param id          唯一标识，如 {@code daily_mine_64}
- * @param name        显示名（支持 MiniMessage / &amp; 颜色码）
- * @param description 描述，按行
- * @param icon        图标材质名，如 {@code DIAMOND_PICKAXE}
- * @param category    分类，用于 GUI 与编辑器分组，可为空
- * @param type        任务类型
- * @param objectives  任务目标，至少一个
- * @param rewards     任务奖励，可为空
- * @param refreshCost 刷新费用（仅周期任务有意义），0 表示不可刷新
- * @param enabled     是否启用（禁用后不再被抽取/展示）
- */
+/** 任务定义（静态数据，来自数据库或只读的 {@code quests/*.yml}）；{@code refreshCost} 为 0 表示不可刷新。 */
 public record Quest(
         String id,
         String name,

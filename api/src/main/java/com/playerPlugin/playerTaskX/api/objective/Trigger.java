@@ -1,10 +1,8 @@
 package com.playerPlugin.playerTaskX.api.objective;
 
 /**
- * 游戏内触发动作：目标匹配时用于快速判别，避免每个目标类型都遍历所有事件。
- * <p>
- * 一个 Bukkit 事件可能对应多个 Trigger（如 {@code PlayerInteractEvent} 可能是
- * 交互、放置或提交），由监听器负责区分。
+ * 游戏内触发动作：目标按它快速判别，避免每个类型都遍历所有事件。
+ * 一个 Bukkit 事件可能对应多个 Trigger（交互事件可能是交互、放置或提交），由监听器区分。
  */
 public enum Trigger {
     /** 破坏方块 */

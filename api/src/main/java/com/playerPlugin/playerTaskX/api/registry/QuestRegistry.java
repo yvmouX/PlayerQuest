@@ -7,9 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 任务定义注册表：内存中的任务视图，数据来自存储层。
- */
+/** 任务定义注册表：引擎、GUI 与命令都从这里查任务，存储只是它的持久化备份。 */
 public interface QuestRegistry {
 
     Optional<Quest> find(String id);
@@ -32,17 +30,6 @@ public interface QuestRegistry {
     default List<Quest> ofType(QuestType type) {
         return enabled().stream().filter(quest -> quest.type() == type).toList();
     }
-
-    /** 所有周期任务（四种周期合起来），供编辑器与统计使用。 */
-    default List<Quest> periodic() {
-        return enabled().stream().filter(quest -> quest.type().isPeriodic()).toList();
-    }
-
-    /** 按分类筛选，分类为空表示不筛选。 */
-    List<Quest> byCategory(String category);
-
-    /** 所有分类名，用于 GUI 与编辑器。 */
-    List<String> categories();
 
     /** 用最新数据替换全部任务定义（重载后调用）。 */
     void replaceAll(Collection<Quest> quests);

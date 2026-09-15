@@ -5,9 +5,7 @@ import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import java.util.Collection;
 import java.util.Optional;
 
-/**
- * 奖励类型注册表。
- */
+/** 奖励类型注册表。 */
 public interface RewardRegistry {
 
     /** 注册一个奖励类型；重复 id 会被拒绝并告警。 */

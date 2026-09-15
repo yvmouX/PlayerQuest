@@ -4,7 +4,6 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -13,12 +12,7 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 import java.util.function.Consumer;
 
-/**
- * 文本输入类动作：发言、执行命令。
- * <p>
- * 从 ItemListener 独立出来：这两个动作与「物品」毫无关系，塞在物品域里
- * 只会让类名撒谎。独立成类后，「玩家输入了什么」相关的动作有了唯一归宿。
- */
+/** 文本输入类动作：发言、执行命令。 */
 public final class TextListener extends ProgressListener implements Listener {
 
     public TextListener(ProgressService progress, Consumer<ApplyResult> onProgress) {
@@ -26,12 +20,8 @@ public final class TextListener extends ProgressListener implements Listener {
     }
 
     /**
-     * 发言 → {@link Trigger#CHAT}。
-     * <p>
-     * 用 {@link AsyncPlayerChatEvent}（Spigot 标准）而非 Paper 的 AsyncChatEvent：
-     * 后者不在 spigot-api 中，直接用会导致插件在 Spigot 上无法加载。
-     * 该事件是<b>异步</b>的，因此这里只做纯内存的进度判定，不触碰任何 Bukkit 世界 API；
-     * 需要发消息/改物品的动作由主线程后续完成。
+     * 发言 → {@link Trigger#CHAT}；用 Spigot 的 {@link AsyncPlayerChatEvent}（Paper 的 AsyncChatEvent 不在 spigot-api 里，会导致 Spigot 上加载失败）。
+     * 该事件是异步的，因此这里只做纯内存判定、不碰任何 Bukkit 世界 API，发消息/改物品由主线程完成。
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChat(AsyncPlayerChatEvent event) {

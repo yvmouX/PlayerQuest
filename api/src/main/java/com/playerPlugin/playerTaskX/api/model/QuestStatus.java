@@ -1,8 +1,6 @@
 package com.playerPlugin.playerTaskX.api.model;
 
-/**
- * 玩家任务的状态。
- */
+/** 玩家任务的状态。 */
 public enum QuestStatus {
     /** 进行中 */
     IN_PROGRESS,

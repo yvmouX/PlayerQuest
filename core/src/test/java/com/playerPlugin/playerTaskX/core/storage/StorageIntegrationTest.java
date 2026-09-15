@@ -26,13 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * 存储层集成测试：在内存 SQLite 上跑真实的 SQL。
- * <p>
- * 为什么必须有这一层：方言（upsert 语法、保留字转义、JSON 列）的问题
- * 在编译期完全看不出来——曾经就出现过 SQLite 上 {@code VALUES(col)} 语法错误
- * 导致所有写入路径失效的情况。用内存库跑一遍是最便宜的保护。
- */
+/** 存储层集成测试：在内存 SQLite 上跑真实 SQL——方言问题（upsert 语法、保留字转义、JSON 列）编译期完全看不出来，曾出现 {@code VALUES(col)} 在 SQLite 上语法错误导致所有写入路径失效的情况。 */
 class StorageIntegrationTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
@@ -71,7 +65,7 @@ class StorageIntegrationTest {
     void schemaIsIdempotent() {
         Schema.initialize(database);
         Schema.initialize(database);
-        assertEquals(0, questRepository.count());
+        assertTrue(questRepository.findAll().isEmpty());
     }
 
     @Test
@@ -109,7 +103,7 @@ class StorageIntegrationTest {
                 List.of(), 0.0, false);
         questRepository.save(updated);
 
-        assertEquals(1, questRepository.count(), "同一 id 不应该产生第二行");
+        assertEquals(1, questRepository.findAll().size(), "同一 id 不应该产生第二行");
         Quest loaded = questRepository.findById("q1").orElseThrow();
         assertEquals("改名后", loaded.name());
         assertFalse(loaded.enabled());
@@ -325,30 +319,5 @@ class StorageIntegrationTest {
 
         assertEquals(0, database.count("SELECT COUNT(*) FROM player_quest"));
         assertTrue(playerQuestRepository.findByPlayer(PLAYER).isEmpty());
-    }
-
-
-    @Test
-    @DisplayName("玩家计数按 DISTINCT 玩家")
-    void countPlayersIsDistinct() {
-        UUID other = UUID.fromString("99999999-8888-7777-6666-555555555555");
-        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q1"), 0L, 0L));
-        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q2"), 0L, 0L));
-        playerQuestRepository.save(PlayerQuest.assign(other, sampleQuest("q1"), 0L, 0L));
-
-        assertEquals(2, playerQuestRepository.countPlayers());
-    }
-
-    @Test
-    @DisplayName("有任务记录的玩家 id 列表（网页编辑器管理端用）")
-    void distinctPlayerIds() {
-        UUID other = UUID.fromString("99999999-8888-7777-6666-555555555555");
-        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q1"), 0L, 0L));
-        playerQuestRepository.save(PlayerQuest.assign(PLAYER, sampleQuest("q2"), 0L, 0L));
-        playerQuestRepository.save(PlayerQuest.assign(other, sampleQuest("q1"), 0L, 0L));
-
-        List<UUID> ids = playerQuestRepository.distinctPlayerIds();
-        assertEquals(2, ids.size(), "同一玩家的多条记录应只出现一次: " + ids);
-        assertTrue(ids.contains(PLAYER) && ids.contains(other));
     }
 }

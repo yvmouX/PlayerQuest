@@ -10,13 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * 奖励类型注册表实现。
- * <p>
- * 只负责「按 id 找类型」这一件事。可用性判断在 {@link RewardType#available()}，
- * 任务级校验在 {@code QuestAdminService.validate}；这里曾经另有一份 validate，
- * 与后者口径不一致（一个说「未知」一个说「不可用」），已删除。
- */
+/** 奖励类型注册表实现：只负责「按 id 找类型」，可用性判断在 {@link RewardType#available()}，任务级校验在 {@code QuestAdminService.validate}。 */
 public final class RewardRegistryImpl implements RewardRegistry {
 
     private final Map<String, RewardType> byId = new LinkedHashMap<>();

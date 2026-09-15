@@ -7,24 +7,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 值域判定与校验的测试。
- *
- * <p>这一层决定两件事，且两件事必须一致：选择器里能选到什么、服务端会不会把配置标红。
- * 判错的后果都是静默的——要么列出一个永远命中不了的值（挖苹果），
- * 要么把一个其实能用的值判成非法（把自定义内容 id 拦下来）。因此逐个钉住。
- *
- * <h2>这里只有「实体系」的断言</h2>
- * {@code Material.isItem()} 与 {@code Enchantment.values()} 都要读服务端注册表，
- * 单元测试环境里会抛异常——那是刻意的设计（见 {@code ValueKinds} 的 UNKNOWN 分支）：
- * 判断不了就放行，而不是满屏误报。因此材质与附魔的判定只能靠真机验证，
- * 这里钉住的是**能离线判断的那些**：生物能力、CustomFishing 清单、以及各种放行规则。
+ * 值域判定与校验的测试：这一层同时决定「GUI 按哪个值域推图标」与「服务端会不会把配置标红」，判错的后果都是静默的——放过永远命中不了的值（挖苹果），或把其实能用的值（自定义内容 id）判成非法。
+ * 材质与附魔要读服务端注册表，单测环境会抛异常（刻意的 UNKNOWN 放行分支：判断不了就放行，而不是满屏误报），因此这里只钉能离线判断的那些。
  */
 class ValueKindsTest {
 
@@ -38,12 +28,6 @@ class ValueKindsTest {
         assertTrue(ValueKinds.of(EntityType.WOLF).contains(ValueKind.TAMEABLE));
         assertTrue(ValueKinds.of(EntityType.ZOMBIE).contains(ValueKind.LIVING));
         assertFalse(ValueKinds.of(EntityType.ZOMBIE).contains(ValueKind.BREEDABLE), "僵尸不能繁殖");
-    }
-
-    @Test
-    @DisplayName("MythicMobs 的怪按活体处理：既能当击杀目标也能当交互对象")
-    void mythicMobsAreLiving() {
-        assertEquals(List.of(ValueKind.ENTITY, ValueKind.LIVING), List.copyOf(ValueKinds.mythicMob()));
     }
 
     @Test

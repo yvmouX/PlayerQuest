@@ -6,11 +6,7 @@ import com.playerPlugin.playerTaskX.core.storage.StorageException;
 
 import java.util.List;
 
-/**
- * 建表语句的唯一来源。
- * <p>
- * 所有语句经 {@link Dialect} 生成，因此同一份定义在 SQLite 与 MySQL 上都成立。
- */
+/** 建表语句的唯一来源；所有语句经 {@link Dialect} 生成，因此同一份定义在 SQLite 与 MySQL 上都成立。 */
 public final class Schema {
 
     private Schema() {
@@ -81,10 +77,8 @@ public final class Schema {
                 "CREATE TABLE IF NOT EXISTS preset ("
                         + "kind VARCHAR(16) NOT NULL, "
                         + "id VARCHAR(64) PRIMARY KEY, "
-                        + "name " + text + ", "
                         + "type VARCHAR(64) NOT NULL, "
-                        + "properties " + text + ", "
-                        + "description " + text
+                        + "properties " + text
                         + ")" + option
         );
     }

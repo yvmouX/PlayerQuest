@@ -7,7 +7,6 @@ import com.playerPlugin.playerTaskX.api.model.QuestStatus;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.objective.ChatObjective;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
@@ -26,13 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
 
 /**
- * 目标结构指纹的测试。
- *
- * <p>要防的是「静默错配」：进度按目标<b>下标</b>记录，因此调换目标顺序后，
- * 旧进度会被套到别的目标上（挖了 32 个石头显示成"发言 32 次"），
- * 而语法校验查不出任何问题。这里的断言确保它变成「重置 + 告警」而不是静默错位。
+ * 目标结构指纹测试：进度按目标下标记录，调换目标顺序会把旧进度静默套到别的目标上（挖石头显示成「发言 32 次」），而语法校验查不出来。
+ * 这里确保它变成「重置 + 告警」而不是静默错位。
  */
 class StructureFingerprintTest {
 
@@ -48,7 +45,7 @@ class StructureFingerprintTest {
     void setUp() {
         quests = new QuestRegistryImpl();
         objectiveTypes = new ObjectiveRegistryImpl();
-        objectiveTypes.register(BuiltIns.objective("break_block"));
+        objectiveTypes.register(ObjectiveBuiltIns.byId("break_block"));
         objectiveTypes.register(new ChatObjective());
         repository = new InMemoryPlayerQuestRepository();
         service = new ProgressService(quests, objectiveTypes, repository);

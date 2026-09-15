@@ -9,42 +9,14 @@ import org.yaml.snakeyaml.representer.Representer;
 import org.yaml.snakeyaml.resolver.Resolver;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * YAML 文本 ⇄ 普通对象（{@code Map} / {@code List} / 标量）的编解码。
- *
- * <h2>这里只做「文本 ⇄ 对象」，不做字段映射</h2>
- * 字段名与形状由 {@code QuestJson} / {@code PresetJson} 定义（它们就是编辑器 JSON 契约），
- * 本类只负责把同一份对象写成 YAML、或从 YAML 读回来。这样「YAML 文件 / 导出文件 /
- * 编辑器 JSON」三处的字段名永远只有一份来源。
- *
- * <h2>写：把「看起来像别的类型」的字符串加引号</h2>
- * YAML 1.1 把裸写的 {@code yes} / {@code no} / {@code on} / {@code off} / {@code ~}
- * 读成布尔或 null，把 {@code 1.20} 读成浮点、把 {@code 012} 读成八进制。
- * 任务里这些值完全可能合法（发言关键词 "yes"、材质名 "NO"、命令名 "on"…），
- * 一旦失去引号，读回来就变成了另一个值——本项目的语言文件已经在同一类陷阱上栽过一次
- * （{@code common.yes} 从未生效）。因此写出时凡是命中这些模式的字符串一律加单引号，
- * 并由 {@code YamlTextTest} 钉住往返不变。
+ * YAML 文本 → 普通对象（{@code Map} / {@code List} / 标量）；字段映射不在这里，由 {@code QuestJson} / {@code PresetJson} 定义。
+ * 解析按 YAML 1.2 core 语义：{@code yes}/{@code no}/{@code on}/{@code off} 一律是字符串、{@code 012} 是十进制 12；默认的 1.1 语义会把 {@code target: NO} 读成布尔 false，由 {@code YamlTextTest} 钉住。
  */
 public final class YamlText {
-
-    /**
-     * 需要加引号的字符串：YAML 1.1 的布尔/null 字面量、纯数字、以及有特殊含义的首字符。
-     * <p>
-     * 保守一些没有坏处——多一对引号只是不好看，少一对引号是数据变了。
-     */
-    private static final Pattern AMBIGUOUS = Pattern.compile(
-            "(?i)^(y|yes|n|no|on|off|true|false|null|~)$"
-                    + "|^[+-]?(\\d[\\d_]*)(\\.\\d*)?([eE][+-]?\\d+)?$"
-                    + "|^[+-]?\\.(inf|nan)$"
-                    + "|^0[xX][0-9a-fA-F]+$"
-                    + "|^0[oO]?[0-7]+$");
-
-    /** 首字符有特殊含义（指示符、注释、锚点、流式语法等）的字符串。 */
-    private static final String SPECIAL_FIRST = "-?:,[]{}#&*!|>'\"%@` ";
 
     private YamlText() {
     }
@@ -64,12 +36,7 @@ public final class YamlText {
         return reader().load(text);
     }
 
-    /**
-     * 读取用的 {@link Yaml}：SafeConstructor + {@link StrictResolver}。
-     * <p>
-     * 只用这一个解析器读**所有** YAML（文件、导入、示例），因此「哪些写法会被当成字符串」
-     * 只有一处定义。
-     */
+    /** 读取用的 {@link Yaml}（SafeConstructor + {@link StrictResolver}）：所有 YAML（定义文件与示例）都只经这一个解析器，因此「哪些写法会被当成字符串」只有一处定义。 */
     private static Yaml reader() {
         LoaderOptions loaderOptions = new LoaderOptions();
         DumperOptions dumperOptions = new DumperOptions();
@@ -77,29 +44,13 @@ public final class YamlText {
                 dumperOptions, loaderOptions, new StrictResolver());
     }
 
-    /**
-     * 按 YAML 1.2 core 的口径解析标量，只保留我们真正需要的隐式类型：
-     * <ul>
-     *   <li>{@code true/false} → 布尔；</li>
-     *   <li>十进制整数 → 整数，小数/科学计数 → 浮点；</li>
-     *   <li>{@code null/~/空} → null；</li>
-     *   <li><b>其它一律是字符串</b>。</li>
-     * </ul>
-     *
-     * <h2>为什么必须自定义</h2>
-     * SnakeYAML 默认是 YAML 1.1 语义：{@code yes/no/on/off/y/n} 是布尔、
-     * {@code 012} 是八进制、{@code 1:30} 是六十进制、{@code 2024-01-01} 是日期。
-     * 任务配置里这些值全都有可能是合法字符串（材质名 {@code NO}、发言关键词 {@code yes}、
-     * 命令名 {@code on}、鱼 id、任务 id…），一旦被隐式转换，读回来就变成了别的类型——
-     * <b>实测 {@code target: NO} 会变成布尔 false</b>，而玩家只会看到「这个任务不涨进度」。
-     * 本项目的语言文件已经在同一类陷阱上栽过一次（{@code common.yes} 从未生效）。
-     */
+    /** 标量解析：只认 {@code true/false}、整数、浮点与 {@code null}，其余一律当字符串（SnakeYAML 默认的 1.1 语义会把 {@code target: NO} 读成布尔 false）。 */
     private static final class StrictResolver extends Resolver {
 
         private static final Pattern BOOL = Pattern.compile("^(?:true|True|TRUE|false|False|FALSE)$");
         /**
          * 整数：十进制（含前导零）、{@code 0x} 十六进制、{@code 0o} 八进制——与 YAML 1.2 core
-         * 及前端的 js-yaml 一致。刻意不接受 {@code 1_000}（js-yaml 也当字符串）。
+         * 及 YAML 1.2 的语义一致。刻意不接受 {@code 1_000}（同样当字符串）。
          */
         private static final Pattern INT = Pattern.compile(
                 "^[-+]?(?:[0-9]+|0[xX][0-9a-fA-F]+|0[oO][0-7]+)$");
@@ -120,14 +71,7 @@ public final class YamlText {
         }
     }
 
-    /**
-     * 按 YAML 1.2 core 解释整数。
-     * <p>
-     * 必须换掉内置实现：SnakeYAML 用的是 1.1 规则，会把 {@code 012} 读成八进制 10，
-     * 而 1.2 core（以及前端的 js-yaml）认为它是十进制的 12。同一份文件在编辑器和加载器里
-     * 得到不同的数字，正是最难查的那类问题。这里替换 {@code Tag.INT} 的构造器即可，
-     * 其余标量行为仍由 {@link SafeConstructor} 负责。
-     */
+    /** 按 YAML 1.2 core 解释整数：SnakeYAML 的 1.1 规则会把 {@code 012} 读成八进制 10，这里换掉 {@code Tag.INT} 的构造器。 */
     private static final class CoreSchemaConstructor extends SafeConstructor {
 
         CoreSchemaConstructor(LoaderOptions loaderOptions) {
@@ -179,13 +123,7 @@ public final class YamlText {
         return stringKeyed(map);
     }
 
-    /**
-     * 顶层是否是「键: 值」形状（一个文件一份定义）。
-     * <p>
-     * 目录扫描与导入都按「一个文件一份定义」办事，因此需要把「顶层写了列表」
-     * 与「文件是空的 / 只有注释」区分开：前者要告警（多半是旧的多任务清单），
-     * 后者是合理用法（留个空文件写笔记），静默跳过。
-     */
+    /** 顶层是否是「键: 值」（一个文件一份定义）：用来区分「顶层写了列表」（要告警）与「空文件 / 只有注释」（静默跳过）。 */
     public static boolean isMapping(String text) {
         return read(text) instanceof Map<?, ?>;
     }
@@ -197,100 +135,5 @@ public final class YamlText {
             result.put(String.valueOf(entry.getKey()), entry.getValue());
         }
         return result;
-    }
-
-    // ------------------------------------------------------------------
-    // 写
-    // ------------------------------------------------------------------
-
-    /**
-     * 对象 → YAML 文本（块状、缩进 2、不折行）。
-     * <p>
-     * 不折行很重要：折行会把一个长字符串拆成多行，读回来时换行位置变成空格，
-     * 而任务描述、命令奖励里的引号与空格都是有意义的。
-     */
-    public static String write(Object document) {
-        DumperOptions options = new DumperOptions();
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setIndent(2);
-        options.setWidth(Integer.MAX_VALUE);
-        options.setSplitLines(false);
-        options.setAllowUnicode(true);
-        Yaml yaml = new Yaml(new QuotingRepresenter(options), options);
-        return yaml.dump(document);
-    }
-
-    /**
-     * 会为「看起来像别的类型」的字符串加引号的 Representer。
-     * <p>
-     * 这是本类存在的核心理由：默认 Representer 认为 {@code yes}、{@code 1.20}
-     * 这类字符串可以裸写（YAML 1.2 语义下确实可以），但读的一方若按 1.1 解析就会变值。
-     */
-    private static final class QuotingRepresenter extends Representer {
-
-        QuotingRepresenter(DumperOptions options) {
-            super(options);
-        }
-
-        @Override
-        protected org.yaml.snakeyaml.nodes.Node representScalar(Tag tag, String value, DumperOptions.ScalarStyle style) {
-            DumperOptions.ScalarStyle chosen = style;
-            if (Tag.STR.equals(tag) && needsQuoting(value)) {
-                chosen = DumperOptions.ScalarStyle.SINGLE_QUOTED;
-            }
-            return super.representScalar(tag, value, chosen);
-        }
-
-        private static boolean needsQuoting(String value) {
-            if (value.isEmpty()) {
-                // 空串裸写会变成 null
-                return true;
-            }
-            if (AMBIGUOUS.matcher(value).matches()) {
-                return true;
-            }
-            char first = value.charAt(0);
-            if (SPECIAL_FIRST.indexOf(first) >= 0) {
-                return true;
-            }
-            // 行尾空格、冒号+空格、井号前有空格都会改变解析结果
-            return value.endsWith(" ")
-                    || value.contains(": ")
-                    || value.contains(" #")
-                    || value.indexOf('\n') >= 0
-                    || value.indexOf('\t') >= 0;
-        }
-    }
-
-    /**
-     * 数字：{@code 64.0} 写成 {@code 64}，避免导出的 YAML 里出现一堆 {@code 64.0}。
-     * <p>
-     * 返回 {@code Long} 而不是 {@code BigDecimal}：SnakeYAML 会给 BigDecimal 打
-     * {@code !!float} 标签（形如 {@code refreshCost: !!float '1000'}），既不好看也不像给
-     * 人读的配置；整数值用 Long 就会写成裸的 {@code 1000}。
-     */
-    public static Object number(Object value) {
-        if (value instanceof Double d && !d.isInfinite() && !d.isNaN() && d == Math.rint(d)
-                && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
-            return d.longValue();
-        }
-        if (value instanceof Float f && !f.isInfinite() && !f.isNaN() && f == Math.rint(f)) {
-            return f.longValue();
-        }
-        return value;
-    }
-
-    /**
-     * 按 key 排序后的属性表：导出的文件要能进版本控制，就得让同一份数据每次写出同样的字节。
-     * <p>
-     * 属性之间的顺序本来没有语义（每个字段由自己的 key 定位），而 {@code Map.of} 的迭代顺序
-     * 不保证稳定，排序是唯一能让 diff 干净的做法。
-     */
-    public static Map<String, Object> sortedProperties(Map<String, Object> properties) {
-        Map<String, Object> sorted = new java.util.TreeMap<>();
-        if (properties != null) {
-            sorted.putAll(properties);
-        }
-        return sorted;
     }
 }

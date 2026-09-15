@@ -68,6 +68,7 @@ command:
   player-only: "<red>该命令只能由玩家执行。</red>"
   player-help: "玩家命令"
   admin-help: "管理员命令"
+  list-title: "任务列表"
   reloaded: "<green>配置与任务已重载（{0} 个任务）。</green>"
   reload-failed: "<red>重载失败：{0}</red>"
 
@@ -79,7 +80,15 @@ gui:
   periodic-current: "<green>正在查看这一种周期</green>"
   periodic-switch: "<gray>点击切换查看</gray>"
   quest-detail-title: "任务详情：{0}"
-  admin-title: "任务管理"
+  # 以下是任务编辑器的标题；界面里的字段名与提示一律中文直写（那是给管理员看的排错信息，与 /ptxa list 同一套措辞）
+  editor-title: "任务编辑器"
+  editor-quest: "编辑任务"
+  editor-objectives: "编辑目标"
+  editor-rewards: "编辑奖励"
+  editor-objectives-type: "新增目标：选择类型"
+  editor-rewards-type: "新增奖励：选择类型"
+  editor-fields: "编辑字段"
+  editor-pick: "选择：{0}"
   click-to-view: "<yellow>点击查看详情</yellow>"
   click-to-claim: "<green>点击领取奖励</green>"
   in-progress: "<gray>进行中</gray>"
@@ -92,13 +101,6 @@ gui:
   back: "<yellow>返回</yellow>"
   refresh: "<yellow>刷新任务</yellow>"
   refresh-cost: "<yellow>刷新（{0}）</yellow>"
-
-# ---------- 编辑器 ----------
-editor:
-  started: "<green>网页编辑器已启动：</green><white>http://{0}</white>"
-  disabled: "<gray>网页编辑器未启用。</gray>"
-  token: "<gray>访问令牌：<white>{0}</white></gray>"
-  token-required: "<red>缺少访问令牌，请在配置中设置 editor.token。</red>"
 
 # ---------- 错误 ----------
 error:

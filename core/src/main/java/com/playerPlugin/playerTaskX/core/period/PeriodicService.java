@@ -7,7 +7,7 @@ import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 import com.playerPlugin.playerTaskX.core.config.PeriodSettings;
 import com.playerPlugin.playerTaskX.core.config.PluginConfig;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.reward.CurrencyType;
+import com.playerPlugin.playerTaskX.core.period.CurrencyType;
 import com.playerPlugin.playerTaskX.core.reward.MoneyReward;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import cn.yvmou.ylib.message.MessageService;
@@ -27,19 +27,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * 周期任务：每日 / 每周 / 每月 / 自定义四种周期，各自从池里按玩家抽取、过期作废、可消耗货币刷新。
- *
- * <h2>四种周期是同一套逻辑</h2>
- * 差别只有「周期怎么算」与「配置读哪一段」，因此这里所有方法都带一个 {@link QuestType}：
- * 抽谁、发给谁、按哪个周期判重、刷新扣谁的费用。周期算法本身在 {@link Periods}（纯函数、可单测）。
- * 登录时发放由 {@code PlayerListener} 触发 {@link #ensureAssigned}；挂线玩家的跨期检查由
- * {@link #startResetCheck} 的定时器负责——定时是必需的，不能只在登录时判断。
- *
- * <h2>为什么用确定性种子</h2>
- * 抽取结果由 {@code hash(playerId, 周期, 刷新次数)} 决定，而不是「随机一次再存库」：
- * 这样同一玩家在同一周期内重登、换服、掉线重连都会看到同一批任务，
- * 既符合玩家预期，也避免通过反复重连来刷任务。
- * 数据库只记录「这个周期已经发过」，不记录抽取过程。
+ * 周期任务：每日 / 每周 / 每月 / 自定义四种周期共用这一套逻辑（抽谁、发给谁、按哪个周期判重、扣谁的费用），周期算法本身在 {@link Periods}。
+ * 抽取用 {@code hash(playerId, 周期, 刷新次数)} 作确定性种子，同一周期内重登、换服看到同一批任务，也堵住反复重连刷任务；跨期检查必须靠定时器，不能只在登录时判断。
  */
 public final class PeriodicService {
 
@@ -78,14 +67,7 @@ public final class PeriodicService {
         return Periods.periodOf(type, settings(type), LocalDateTime.now());
     }
 
-    /**
-     * 启动跨期检查定时器：挂着不下线的玩家也必须换任务。
-     * <p>
-     * 调用方（入口类）只负责在启停时机上调用，轮询参数与发放逻辑都在本类——
-     * 「什么时候该重发」是周期任务的领域知识，不该散落在装配类里。
-     *
-     * @param onlinePlayers 在线玩家供应器，延迟求值（装配完成时还没有玩家）
-     */
+    /** 启动跨期检查定时器：挂着不下线的玩家也必须换任务，因此不能只在登录时判断；在线玩家供应器延迟求值（装配完成时还没有玩家）。 */
     public void startResetCheck(UniversalScheduler scheduler, MessageService messages,
                                 Supplier<Collection<? extends Player>> onlinePlayers) {
         if (!config.isAnyPeriodicEnabled()) {
@@ -131,13 +113,7 @@ public final class PeriodicService {
         return pool;
     }
 
-    /**
-     * 确保玩家拿到每种已启用周期的当前任务。
-     * <p>
-     * 玩家登录与定时检查都会调用；某个周期已在当前周期发放过就跳过它，不产生写操作。
-     *
-     * @return 本次真正重新发放的周期类型（空表示什么都没变），调用方可据此提示玩家
-     */
+    /** 确保玩家拿到每种已启用周期的当前任务（登录与定时检查都会调用，已发放过的周期跳过且不写库），返回本次真正重新发放的周期类型。 */
     public List<QuestType> ensureAssigned(Player player) {
         return ensureAssigned(player.getUniqueId());
     }
@@ -157,18 +133,7 @@ public final class PeriodicService {
         return assigned;
     }
 
-    /**
-     * 重置玩家某种周期的任务：重新抽取一批，<b>不扣费、不消耗刷新次数</b>（管理员工具用）。
-     * <p>
-     * 与 {@link #refresh(Player, QuestType)} 的区别有两处，都是刻意的：
-     * <ul>
-     *   <li><b>不扣费</b>：管理员执行它是为了解决问题（玩家反馈任务做不了、任务配置刚改过），
-     *       若还要先扣玩家的钱，这个工具就没法用了；</li>
-     *   <li><b>不消耗刷新次数</b>：不占用玩家本周期有限的刷新额度，
-     *       否则管理员帮玩家重置几次就把玩家的额度用光了。</li>
-     * </ul>
-     * 抽取仍带刷新次数参与种子，因此重置后会拿到与当前不同的一批任务。
-     */
+    /** 管理员重置某种周期的任务：重新抽取一批但不扣费、也不消耗刷新次数（不占用玩家的刷新额度），抽取仍带刷新次数参与种子，因此会换到另一批。 */
     public RefreshResult resetPeriod(Player player, QuestType type) {
         return doRefresh(player, type, false);
     }
@@ -254,14 +219,7 @@ public final class PeriodicService {
         return progressService.questsOfType(playerId, type);
     }
 
-    /**
-     * 把刷新费用渲染成给玩家看的文案，如「1,000 金币」「100 点券」。
-     * <p>
-     * 金币交给 Vault 的格式化（与服务器经济插件显示一致），点券是整数，直接用其显示名。
-     * 放在这里而不是各个调用点：费用文案与实际扣费必须用同一套货币推断，
-     * 分开写迟早会不一致。一个货币都没有时返回不可用说明——GUI 的按钮上就会写着刷新用不了，
-     * 而不是点下去才发现。
-     */
+    /** 把刷新费用渲染成给玩家看的文案（如「1,000 金币」）；必须与实际扣费走同一套货币推断，一个货币都没有时返回不可用说明，GUI 上就该显示刷新用不了。 */
     public String formatCost(double cost) {
         CurrencyType currency = CurrencyType.select(config.getRefreshCurrency());
         if (currency == null) {
@@ -278,16 +236,7 @@ public final class PeriodicService {
         assign(playerId, type, period, refreshCount, refreshCount);
     }
 
-    /**
-     * 重新抽取并写入玩家的某种周期任务。
-     * <p>
-     * 先清空该玩家上一批这种周期的任务（含进度），再按确定性种子抽新的一批，
-     * 因此刷新是「换一批任务」而不是「追加」。
-     *
-     * @param seedRefreshCount   参与抽取种子的次数：改变它才能换到不同的一批
-     * @param storedRefreshCount 写回数据库的次数：管理员重置时保持不变，
-     *                           避免占用玩家本周期有限的刷新额度
-     */
+    /** 重新抽取并写入玩家的某种周期任务：先清空上一批（含进度），因此刷新是「换一批」而不是追加；seed 次数决定抽到哪一批，写回次数在管理员重置时保持不变以免占用玩家额度。 */
     private void assign(UUID playerId, QuestType type, String period,
                         int seedRefreshCount, int storedRefreshCount) {
         List<Quest> pool = pool(type);
@@ -324,14 +273,7 @@ public final class PeriodicService {
         progressService.load(playerId);
     }
 
-    /**
-     * 确定性抽取：同一 (玩家, 周期, 刷新次数) 必然得到同一批任务。
-     * <p>
-     * 把刷新次数纳入种子，这样刷新后拿到的是「另一批」而不是同一批。
-     * 抽成静态纯函数是为了能直接测试——「同玩家同周期结果一致」是本功能的核心不变量。
-     *
-     * @param pool 已排序的候选池（顺序必须稳定，否则结果不确定）
-     */
+    /** 确定性抽取：同一 (玩家, 周期, 刷新次数) 必然得到同一批任务（核心不变量），刷新次数纳入种子才能换到另一批；候选池顺序必须稳定，否则结果不确定。 */
     public static List<Quest> draw(List<Quest> pool, UUID playerId, String period,
                                    int refreshCount, int amount) {
         long seed = playerId.getMostSignificantBits()
@@ -347,13 +289,7 @@ public final class PeriodicService {
         repository.savePeriodState(playerId, type, period, refreshCount, System.currentTimeMillis());
     }
 
-    /**
-     * 刷新结果：要发给玩家的提示序列（成功与失败都在里面）。
-     * <p>
-     * 直接带上回复而不是让调用方拿 {@code success/cost/limit/error} 自己拼：
-     * 玩家命令、管理员命令、GUI 三个入口各拼一次，措辞迟早会不一致，
-     * 而玩家会把「同一个功能两种说法」当成 bug。
-     */
+    /** 刷新结果：直接带上要发给玩家的提示序列（成功与失败都在里面），免得命令、管理员命令与 GUI 各拼一份措辞。 */
     public record RefreshResult(List<Reply> replies) {
 
         /** 一条提示：语言键 + 占位符参数。 */

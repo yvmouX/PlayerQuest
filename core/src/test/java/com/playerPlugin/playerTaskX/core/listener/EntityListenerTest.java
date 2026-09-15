@@ -3,8 +3,8 @@ package com.playerPlugin.playerTaskX.core.listener;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.integration.FakeMythicMobsHook;
-import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
+import com.playerPlugin.playerTaskX.core.integration.mythicmobs.FakeMythicMobsHook;
+import com.playerPlugin.playerTaskX.core.integration.mythicmobs.MythicMobsHook;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -24,11 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 击杀事件的翻译测试：原版实体类型 + MythicMobs 别名。
- *
- * <p>三件事都只能靠测试钉住：没装 MythicMobs 时行为必须与从前完全一致；
- * 装了时怪物 id 要进别名（而不是再推一次动作）；MythicMobs 自己抛异常时
- * 玩家的这次击杀不能被吞掉。</p>
+ * 击杀事件的翻译测试（原版实体类型 + MythicMobs 别名）：没装 MythicMobs 时判定不得变化，装了时怪物 id 要进别名而不是再推一次动作，且 MythicMobs 抛异常不能吞掉这次击杀。
  */
 class EntityListenerTest {
 

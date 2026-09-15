@@ -4,22 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 「内容类」数据的仓储契约：任务定义、目标/奖励预设都归它管。
- *
- * <h2>为什么与玩家数据分成两个接口</h2>
- * 两者虽然都是"存储"，但操作形态不同，强行合并会让某一侧将就：
- * <ul>
- *   <li>内容类：整体载入、按 id 覆盖、极少写入，<b>不需要事务</b>；</li>
- *   <li>玩家数据：按（玩家, 任务）双键频繁读写、需要过滤查询与聚合、<b>需要事务</b>。</li>
- * </ul>
- * 合并的后果是二选一：要么玩家侧丢掉索引查询与事务（性能退化），
- * 要么内容侧被迫实现一个完整的键控可查询存储（等于拿内容表当数据库用）。
- * 因此拆成两个接口，但<b>由同一个 {@link DatabaseFactory} 装配</b>。
- *
- * <h2>id 是唯一身份</h2>
- * 实现不得用行号等外部信息推断 id：{@code id} 字段是权威来源。
- *
- * @param <T> 元素类型（{@code Quest} / {@code Preset}）
+ * 「内容类」数据的仓储契约：任务定义与目标/奖励预设，整体载入、按 id 覆盖、极少写入，因而无需事务。
+ * id 是唯一身份（不得用行号推断）；{@link #save} 必须原子，任务与它的目标/奖励子表要落在同一个事务里。
  */
 public interface DefinitionRepository<T> {
 
@@ -45,14 +31,11 @@ public interface DefinitionRepository<T> {
     /** 删除元素；返回是否确实删掉了。 */
     boolean delete(String id);
 
-    /** 元素总数。 */
-    long count();
-
     /**
      * 该 id 的定义是否为<b>只读</b>（来自 YAML 文件而不是数据库）。
      * <p>
      * 只有「库 + 文件」合并的那层实现会返回 true：文件定义不进数据库，因此游戏内命令与
-     * 网页编辑器都不能改它们。默认 false 让纯数据库实现无需关心这件事。
+     * GUI 都不能改它们。默认 false 让纯数据库实现无需关心这件事。
      */
     default boolean isReadOnly(String id) {
         return false;

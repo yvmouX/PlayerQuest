@@ -5,7 +5,7 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 import com.playerPlugin.playerTaskX.core.period.PeriodicService;
 import com.playerPlugin.playerTaskX.core.period.Periods;
-import com.playerPlugin.playerTaskX.core.progress.ProgressDisplay;
+import com.playerPlugin.playerTaskX.core.display.ProgressDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,8 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
  * 玩家生命周期：登录时载入任务索引、补发周期任务并刷新展示，退出时释放内存。
- * <p>
- * 载入与释放必须在进出服时成对执行，否则进度索引会随玩家数无界增长。
+ * <p>登录三步顺序不能颠倒（先展示后补发会让玩家看到空列表）；载入与释放必须成对，否则进度索引随玩家数无界增长。
  */
 public final class PlayerListener implements Listener {
 

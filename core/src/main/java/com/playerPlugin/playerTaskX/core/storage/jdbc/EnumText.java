@@ -3,27 +3,15 @@ package com.playerPlugin.playerTaskX.core.storage.jdbc;
 import java.util.Locale;
 
 /**
- * 枚举列的容错解析：缺失或非法一律退回给定默认值，并记一条告警。
- *
- * <p>存储层的容错优先级高于严格性：手工改过库、旧版本格式、写入中途崩溃都会留下
- * 对不上枚举名的值，而「读不出来」的表现是整个玩家的任务列表抛异常。
- * 因此这里不抛异常——宁可少一条字段的精度，也不能让一条脏数据拖垮整次读取。
- *
- * <p>告警出口只有这一处：这些消息都是「库里有一条脏数据」这一类，
- * 措辞与去向必须一致，否则同一种问题会在日志里出现两种说法。
+ * 枚举列的容错解析：缺失或非法一律退回给定默认值并记告警；存储层容错优先，一条脏数据不该让整份任务列表抛异常。
+ * 告警出口只有这一处，保证「库里有一条脏数据」这类消息的措辞与去向一致。
  */
 final class EnumText {
 
     private EnumText() {
     }
 
-    /**
-     * 解析枚举名（大小写不敏感、去空白）；空值或非法值返回 {@code fallback}。
-     *
-     * @param type     枚举类型
-     * @param raw      列里的原文
-     * @param fallback 空值或非法值时的兜底枚举值
-     */
+    /** 解析枚举名（大小写不敏感、去空白）；空值或非法值返回 {@code fallback} 并记一次告警。 */
     static <E extends Enum<E>> E parse(Class<E> type, String raw, E fallback) {
         return parse(type, raw, fallback, type.getSimpleName());
     }

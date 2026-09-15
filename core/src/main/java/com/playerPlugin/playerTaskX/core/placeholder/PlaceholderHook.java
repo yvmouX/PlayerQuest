@@ -6,14 +6,8 @@ import org.bukkit.plugin.Plugin;
 import java.lang.reflect.Method;
 
 /**
- * PlaceholderAPI 反射接入点。
- * <p>
- * 存在的唯一理由：把对 PlaceholderAPI 的编译期依赖关在这一个类里，
- * 而且必须是<b>完全反射</b>——本类不 import 任何 PAPI 类型，
- * 也不 import 那个实现了 PAPI 抽象类的扩展类本身
- * （加载它就会触发 PAPI 类解析）。
- * <p>
- * 否则未安装 PlaceholderAPI 的服务端会在加载本类时抛 {@code NoClassDefFoundError}。
+ * PlaceholderAPI 反射接入点：把对 PAPI 的编译期依赖关在这一个类里。
+ * 必须完全反射——本类不 import 任何 PAPI 类型，也不 import 扩展类本身，否则未装 PlaceholderAPI 的服务端加载时会抛 {@code NoClassDefFoundError}。
  */
 public final class PlaceholderHook {
 

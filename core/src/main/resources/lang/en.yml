@@ -68,6 +68,7 @@ command:
   player-only: "<red>This command can only be used by players.</red>"
   player-help: "Player commands"
   admin-help: "Admin commands"
+  list-title: "Quest List"
   reloaded: "<green>Configuration and quests reloaded ({0} quests).</green>"
   reload-failed: "<red>Reload failed: {0}</red>"
 
@@ -78,7 +79,15 @@ gui:
   periodic-current: "<green>Viewing this period</green>"
   periodic-switch: "<gray>Click to switch</gray>"
   quest-detail-title: "Quest: {0}"
-  admin-title: "Quest Admin"
+  # Quest editor titles; the field labels inside are Chinese by design (they mirror /ptxa list wording)
+  editor-title: "Quest Editor"
+  editor-quest: "Edit Quest"
+  editor-objectives: "Edit Objectives"
+  editor-rewards: "Edit Rewards"
+  editor-objectives-type: "New Objective: Pick Type"
+  editor-rewards-type: "New Reward: Pick Type"
+  editor-fields: "Edit Fields"
+  editor-pick: "Pick: {0}"
   click-to-view: "<yellow>Click for details</yellow>"
   click-to-claim: "<green>Click to claim reward</green>"
   in-progress: "<gray>In progress</gray>"
@@ -91,13 +100,6 @@ gui:
   back: "<yellow>Back</yellow>"
   refresh: "<yellow>Refresh quests</yellow>"
   refresh-cost: "<yellow>Refresh ({0})</yellow>"
-
-# ---------- Editor ----------
-editor:
-  started: "<green>Web editor started at </green><white>http://{0}</white>"
-  disabled: "<gray>Web editor is disabled.</gray>"
-  token: "<gray>Access token: <white>{0}</white></gray>"
-  token-required: "<red>Access token is missing, please set editor.token in the config.</red>"
 
 # ---------- Errors ----------
 error:

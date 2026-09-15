@@ -13,11 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 周期算法测试（纯函数，不需要服务端）。
- *
- * <p>要防的错误是「同一周期被当成两个周期」或反过来——前者会让玩家一个周期里被发两次任务，
- * 后者会让玩家永远拿不到新任务，而两者都不会报错，只会表现为「任务怪怪的」。
- * 重置小时、跨周、跨月、跨年都是这类错误的常见触发点。</p>
+ * 周期算法测试（纯函数，不需要服务端）：防「同一周期被当成两个周期」或反过来——前者会让玩家一个周期里被发两次任务，后者让他永远拿不到新任务，两者都不会报错。
  */
 class PeriodsTest {
 

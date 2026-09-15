@@ -12,14 +12,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 玩家任务仓储的内存实现，供引擎侧、奖励侧测试使用。
- *
- * <p>为什么不模拟「中途失败」：那不是它的职责。事务回滚的真实行为由
- * {@code StorageIntegrationTest} 在真实 SQLite 上验证——内存实现里假装回滚
- * 只会给人「已经测过了」的错觉。</p>
- *
- * <p>放在 {@code core.storage} 而不是某个测试类里：进度引擎、奖励发放、每日抽取
- * 三处都要用它，各写一份的下场是其中一份的行为悄悄与另外两份不同。</p>
+ * 玩家任务仓储的内存实现，供引擎侧、奖励侧测试使用；放在 {@code core.storage} 而不是某个测试类里，是因为进度引擎、奖励发放、每日抽取三处都要用它，各写一份迟早会让其中一份悄悄走偏。
+ * 它刻意不模拟「中途失败」：事务回滚由 {@code StorageIntegrationTest} 在真实 SQLite 上验证，内存里假装回滚只会给人「已经测过了」的错觉。
  */
 public final class InMemoryPlayerQuestRepository implements PlayerQuestRepository {
 
@@ -65,16 +59,6 @@ public final class InMemoryPlayerQuestRepository implements PlayerQuestRepositor
         if (perPlayer != null) {
             perPlayer.values().removeIf(playerQuest -> playerQuest.type() == type);
         }
-    }
-
-    @Override
-    public long countPlayers() {
-        return data.size();
-    }
-
-    @Override
-    public List<UUID> distinctPlayerIds() {
-        return new ArrayList<>(data.keySet());
     }
 
     @Override

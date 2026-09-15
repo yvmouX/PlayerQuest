@@ -14,23 +14,8 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * 一个 YAML 定义文件夹（{@code quests/} 或 {@code presets/}）。
- *
- * <h2>目录约定</h2>
- * <ul>
- *   <li>只认 {@code .yml} / {@code .yaml}，其它文件忽略（放 README 或备份不会出事）；</li>
- *   <li>会递归扫描子目录，方便按主题分组；</li>
- *   <li><b>文件名（去掉扩展名）就是默认 id</b>；文件内容里写了 {@code id} 则以内容为准——
- *       这样「一个定义一个文件」时不必重复写 id，而复制文件改内容时也不会撞 id；</li>
- *   <li>单个文件解析失败只跳过它并记一条告警：一份写坏的 YAML 不该让整个插件起不来。</li>
- * </ul>
- *
- * <p>解析结果的缓存由调用方（{@code Yaml*Repository}）持有：本类每次 {@link #load()} 都重新读盘，
- * 于是「重载」天然能拿到文件的最新内容，而编辑器的逐条查询走上层缓存、不会反复读盘。
- *
- * <p><b>写入只有「铺一次示例」这一条路</b>（{@link #isEmpty()} + {@link #writeOnce}）：
- * 目录空着时插件放一份示例进去，之后再也不动它。定义本身永远不进这里——
- * 编辑器与游戏内命令的保存都只写数据库。
+ * 一个 YAML 定义文件夹（{@code quests/} 或 {@code presets/}）：递归扫描、只认 {@code .yml}/{@code .yaml}，文件名去扩展名即默认 id（内容里写了 {@code id} 则以内容为准）。
+ * 单个文件解析失败只跳过它并告警；本类每次 {@link #load()} 都重新读盘，缓存由上层仓储持有；写入只有「目录空着时铺一次示例」这一条路。
  */
 public final class DefinitionFolder {
 
@@ -51,14 +36,7 @@ public final class DefinitionFolder {
         return new DefinitionFolder(new File(base, name).toPath(), name, warner);
     }
 
-    /**
-     * 目录不存在时创建它。
-     * <p>
-     * 里面写什么由调用方决定：插件只在目录<b>空着</b>时铺一份示例（见 {@link #writeOnce}），
-     * 已经有任何定义时一律不动，免得把管理员自己删掉的示例又变回来。
-     *
-     * @return 是否真的创建了目录（调用方可以据此提示管理员）
-     */
+    /** 目录不存在时创建它；返回是否真的建了。里面写什么由调用方决定（插件只在空着时铺一次示例）。 */
     public boolean ensureExists() {
         if (Files.isDirectory(directory)) {
             return false;
@@ -117,14 +95,7 @@ public final class DefinitionFolder {
         return directory.resolve(fileName + ".yml");
     }
 
-    /**
-     * 写一个文件，<b>已存在则什么都不做</b>。
-     * <p>
-     * 这两个目录平时是管理员的领地，插件只有「铺示例」这一次写机会，
-     * 因此这里不提供覆盖语义：想改示例就改文件，想重新拿到示例就先把目录清空。
-     *
-     * @return 是否真的写了（false = 已存在或写失败，后者已记告警）
-     */
+    /** 写一个文件，已存在则什么都不做（插件的唯一写入机会是「铺示例」，因此不提供覆盖语义）；返回是否真的写了。 */
     public boolean writeOnce(Path file, String text) {
         if (Files.exists(file)) {
             return false;
@@ -200,7 +171,8 @@ public final class DefinitionFolder {
         return text.lines().allMatch(line -> line.isBlank() || line.stripLeading().startsWith("#"));
     }
 
-    /** 直接父目录名；预设用它兜底判断类别（{@code presets/rewards/x.yml}）。 */    private static String parentName(Path file) {
+    /** 直接父目录名；预设用它兜底判断类别（{@code presets/rewards/x.yml}）。 */
+    private static String parentName(Path file) {
         Path parent = file.getParent();
         return parent == null || parent.getFileName() == null ? "" : parent.getFileName().toString();
     }
@@ -228,10 +200,7 @@ public final class DefinitionFolder {
 
     /**
      * 一个 YAML 文件的解析结果。
-     *
-     * @param location   相对路径（日志与「只读定义来自哪个文件」提示用）
-     * @param fileId     文件名推出来的 id（内容里没写 id 时用的就是它）
-     * @param values     内容（已保证有 {@code id}）
+     * @param values     内容，已保证带 {@code id}
      * @param parentName 直接父目录名；预设用它兜底判断类别
      */
     public record Document(String location, String fileId, Map<String, Object> values, String parentName) {

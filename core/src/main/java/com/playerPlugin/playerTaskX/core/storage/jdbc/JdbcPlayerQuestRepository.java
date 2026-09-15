@@ -1,7 +1,7 @@
 package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import com.playerPlugin.playerTaskX.core.storage.Database;
-import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
+import com.playerPlugin.playerTaskX.core.storage.codec.JsonCodec;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 
 import com.playerPlugin.playerTaskX.api.model.PlayerQuest;
@@ -16,18 +16,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * {@link PlayerQuestRepository} 的 JDBC 实现，并附带每日任务所需的 {@code daily_state} 读写。
- * <p>
- * 关键取舍：
- * <ul>
- *   <li><b>UUID 一律以 {@code toString()} 存 VARCHAR(36)</b>：两种数据库对 UUID 类型支持不一致，
- *       统一走字符串最简单，也让手工查库可读。读取时 {@code UUID.fromString} 失败只跳过这一行
- *       ——宁可少读一条坏记录，也不能让玩家的整份任务列表直接抛异常。</li>
- *   <li><b>进度列用「下标 → 计数」的 JSON 对象</b>（见 {@link JsonCodec#writeIntMap}），
- *       与 {@link PlayerQuest} 的内存结构一一对应，无需额外建表。</li>
- *   <li>写入统一用 {@link Dialect#upsert}：SQLite 走 {@code ON CONFLICT}、MySQL 走
- *       {@code ON DUPLICATE KEY}，复合主键 {@code (player_id, quest_id)} 两种方言都成立。</li>
- * </ul>
+ * {@link PlayerQuestRepository} 的 JDBC 实现，并附带周期任务状态（{@code period_state}）的读写。
+ * UUID 一律以 {@code toString()} 存 VARCHAR(36)（两种库对 UUID 支持不一致），读不出来的行只跳过而不让整份列表抛异常；写入统一走 {@link Dialect#upsert}，进度列用「下标 → 计数」的 JSON。
  */
 public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
 
@@ -64,13 +54,9 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
     private final String sqlUpsert;
     private final String sqlDeleteOne;
     private final String sqlDeleteByType;
-    private final String sqlCountPlayers;
 
     private final String sqlSelectPeriodState;
     private final String sqlUpsertPeriodState;
-    private final String sqlDeletePeriodState;
-
-    private final String sqlSelectDistinctPlayerIds;
 
     public JdbcPlayerQuestRepository(Database database) {
         this.database = Objects.requireNonNull(database, "database 不能为空");
@@ -86,15 +72,11 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
                 "player_quest", PLAYER_QUEST_KEY_COLUMNS, PLAYER_QUEST_COLUMNS);
         this.sqlDeleteOne = "DELETE FROM player_quest WHERE player_id = ? AND quest_id = ?";
         this.sqlDeleteByType = "DELETE FROM player_quest WHERE player_id = ? AND type = ?";
-        this.sqlCountPlayers = "SELECT COUNT(DISTINCT player_id) FROM player_quest";
-
-        this.sqlSelectDistinctPlayerIds = "SELECT DISTINCT player_id FROM player_quest";
 
         this.sqlSelectPeriodState = "SELECT period, refresh_count, assigned_at"
                 + " FROM period_state WHERE player_id = ? AND type = ?";
         this.sqlUpsertPeriodState = database.dialect().upsert(
                 "period_state", PERIOD_STATE_KEY_COLUMNS, PERIOD_STATE_COLUMNS);
-        this.sqlDeletePeriodState = "DELETE FROM period_state WHERE player_id = ? AND type = ?";
     }
 
     // ------------------------------------------------------------------
@@ -162,25 +144,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         database.execute(sqlDeleteByType, playerId.toString(), type.name());
     }
 
-    @Override
-    public long countPlayers() {
-        // DISTINCT：同一玩家通常有多条任务记录，主键是 (player_id, quest_id)
-        return database.count(sqlCountPlayers);
-    }
-
-    @Override
-    public List<UUID> distinctPlayerIds() {
-        // 脏数据（非法 UUID）在映射阶段被过滤掉，与其它读取路径保持一致
-        return database.query(sqlSelectDistinctPlayerIds, rs -> {
-            String raw = rs.getString("player_id");
-            try {
-                return UUID.fromString(raw);
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
-        }).stream().filter(Objects::nonNull).toList();
-    }
-
     // ------------------------------------------------------------------
     // 周期任务状态（每日 / 每周 / 每月 / 自定义各一行）
     // ------------------------------------------------------------------
@@ -213,19 +176,6 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
                 period == null ? "" : period,
                 Math.max(0, refreshCount),
                 assignedAt);
-    }
-
-    /**
-     * 删除某种周期的状态（例如管理员重置该玩家的周期任务时使用）。
-     * <p>
-     * 契约里未列出，但保存/读取成对出现时清理入口是必需的，这里一并提供。
-     */
-    @Override
-    public void deletePeriodState(UUID playerId, QuestType type) {
-        if (playerId == null || type == null) {
-            return;
-        }
-        database.execute(sqlDeletePeriodState, playerId.toString(), type.name());
     }
 
     // ------------------------------------------------------------------
@@ -298,13 +248,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
         return EnumText.parse(QuestType.class, raw, QuestType.NORMAL, "玩家任务的 type");
     }
 
-    /**
-     * 容错解析状态：非法/缺失按「进行中」处理。
-     * <p>
-     * 取舍：宁可把一条状态未知的记录当成进行中（玩家还能看到自己的任务），
-     * 也不要让它凭空消失；查询「进行中任务」是在 SQL 侧按 status 过滤的，
-     * 因此这里的兜底不会把脏数据混进活跃列表。
-     */
+    /** 容错解析状态：非法/缺失按「进行中」兜底，让状态未知的记录仍能被玩家看到；活跃任务是在 SQL 侧按 status 过滤的，因此兜底不会把脏数据混进活跃列表。 */
     private static QuestStatus parseStatus(String raw) {
         return EnumText.parse(QuestStatus.class, raw, QuestStatus.IN_PROGRESS, "玩家任务的状态");
     }

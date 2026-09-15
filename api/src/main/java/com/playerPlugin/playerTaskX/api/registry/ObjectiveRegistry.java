@@ -5,12 +5,7 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import java.util.Collection;
 import java.util.Optional;
 
-/**
- * 目标类型注册表。内置类型在插件启动时注册，其它插件也可注册自定义类型。
- *
- * <p>只负责「按 id 查类型」；把动作分发到目标类型是引擎自己的事
- * （见 {@code ProgressService} 的按玩家目标索引）。</p>
- */
+/** 目标类型注册表：内置类型启动时注册，其它插件也可注册自己的；只管按 id 查。 */
 public interface ObjectiveRegistry {
 
     /** 注册一个目标类型；重复 id 会被拒绝并告警。 */
@@ -18,7 +13,7 @@ public interface ObjectiveRegistry {
 
     Optional<ObjectiveType> find(String id);
 
-    /** 是否存在该类型（用于编辑器校验配置）。 */
+    /** 是否存在该类型（用于配置校验）。 */
     default boolean contains(String id) {
         return find(id).isPresent();
     }

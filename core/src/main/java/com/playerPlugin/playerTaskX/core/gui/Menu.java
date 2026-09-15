@@ -12,25 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * 箱子菜单框架：只负责「建容器、登记槽位、刷新重建、标记归属」四件事，
- * 具体摆什么物品交给子类在 {@link #build()} 里决定。
- *
- * <h2>为什么用 {@link MenuHolder} 判归属，而不是比较标题</h2>
- * 标题是展示文本：它会随语言文件变、两个菜单可能同名、也可能和别的插件撞上，
- * 更别说 {@code Inventory#getTitle()} 在部分实现里本就不稳定。
- * {@code InventoryHolder} 是对象身份，因此监听器只认
- * {@code getView().getTopInventory().getHolder() instanceof MenuHolder}。
- *
- * <h2>为什么 build() 由子类在构造末尾触发，而不是在基类构造里调用</h2>
- * 基类构造执行时子类字段尚未赋值，此时回调 {@link #build()} 必然读到 {@code null}
- * （{@code QuestDetailMenu} 的任务定义与玩家进度就是这类字段），是典型的
- * 「构造期调用可覆写方法」陷阱。因此约定：<b>子类在构造最后一行调用 {@link #refresh()}</b>。
- * 漏写不会打开空界面，但会少一次填充——没有兜底可言，只能靠这条约定。
- *
- * <h2>刷新与重入</h2>
- * 点击动作里常常要「操作完立刻刷新界面」，而刷新会清空并重建 inventory。
- * {@link #refresh()} 自带重入保护：若 {@link #build()} 内部再触发刷新会直接返回，
- * 避免无限递归；监听器一侧也有独立的重入保护（见 {@link MenuListener}）。
+ * 箱子菜单框架：建容器、登记槽位、刷新重建、标记归属，摆什么物品交给子类在 {@link #build()} 里决定。
+ * 子类必须在构造最后一行调用 {@link #refresh()}——基类构造期回调会读到未赋值的子类字段；归属判定用 {@link MenuHolder} 对象身份而非标题。
  */
 public abstract class Menu {
 
@@ -54,13 +37,7 @@ public abstract class Menu {
     /** {@link #refresh()} 的重入保护。 */
     private boolean rebuilding;
 
-    /**
-     * @param viewer    打开界面的玩家
-     * @param messages  语言服务
-     * @param size      容器大小（9~54，非 9 的倍数会被向下取整）
-     * @param titleKey  标题的语言键
-     * @param titleArgs 标题占位符参数（{0}、{1}…）
-     */
+    /** 容器大小会被夹到 9~54 并按 9 向下取整，标题走语言键与占位符参数。 */
     protected Menu(Player viewer, MessageService messages, int size, String titleKey, Object... titleArgs) {
         this.viewer = Objects.requireNonNull(viewer, "viewer");
         this.messages = Objects.requireNonNull(messages, "messages");
@@ -152,14 +129,7 @@ public abstract class Menu {
 
     // ---------- 文本 ----------
 
-    /**
-     * 渲染语言键文本（占位符按 {0}、{1}… 顺序替换）。
-     * <p>
-     * 用 {@code raw(viewer, key, args)} 而不是 {@code raw(key, args)}：
-     * 前者在配置开启 {@code use-client-locale} 时按玩家客户端语言解析，
-     * 与 {@code messages.send(...)} 的聊天提示保持同一语言，否则同一个玩家
-     * 会在聊天里看到一种语言、在界面标题里看到另一种。
-     */
+    /** 渲染语言键文本（占位符按 {0}、{1}… 顺序替换）；用 {@code raw(viewer, ...)} 按玩家客户端语言解析，与聊天提示保持同一语言。 */
     protected final String text(String key, Object... args) {
         return Texts.render(messages.raw(viewer, key, args));
     }
@@ -180,13 +150,7 @@ public abstract class Menu {
         return size - (size % 9);
     }
 
-    /**
-     * 归属标记：把「这个容器属于哪个菜单」记在 {@code InventoryHolder} 上。
-     * <p>
-     * 做成非静态内部类，是为了让 {@link #getInventory()} 直接返回外层字段，
-     * 不必再回填一次引用；该字段在构造中赋值，而 Bukkit 不会在
-     * {@code createInventory} 期间回调持有者，因此不存在读到 null 的窗口。
-     */
+    /** 归属标记：做成非静态内部类，{@link #getInventory()} 直接返回外层字段，因此不存在读到 {@code null} 的窗口。 */
     public final class MenuHolder implements InventoryHolder {
 
         @Override

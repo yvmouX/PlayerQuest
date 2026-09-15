@@ -8,14 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 插件主配置（config.yml）。
- * <p>
- * 注意 YLib 配置的约束：字段类型只支持标量 / List / Map&lt;String,V&gt;，
- * 且**顶层不能是自定义 POJO**（会抛 IllegalArgumentException），
- * 因此嵌套结构一律用 {@code Map<String, Pojo>} 或点分路径表达。
- * <p>
- * {@code version} 变化会让 YLib 备份旧 config.yml 并按新结构重新生成
- * （只迁移仍然存在的字段），旧键因此自动清理——删配置项时要一并 bump 它。
+ * 插件主配置（config.yml）。字段只支持标量 / List / Map&lt;String,V&gt;，顶层不能是自定义 POJO。
+ * {@code version} 变化会让 YLib 备份并重新生成配置（旧键自动清理），删配置项时要一并 bump 它。
  */
 @AutoConfiguration(configFile = "config.yml", version = "2.1.0")
 public class PluginConfig {
@@ -44,8 +38,8 @@ public class PluginConfig {
             description = "是否读取插件目录下 quests/ 与 presets/ 里的 YAML 定义（默认开启）。"
                     + "一个文件一个定义，文件名即 id（文件内容里写了 id 则以内容为准）；"
                     + "与数据库里同 id 的定义冲突时以数据库为准，文件里的那份会被忽略并记入日志。"
-                    + "注意：文件里的定义不写进数据库，因此游戏内与网页编辑器的修改只对数据库里的定义生效，"
-                    + "文件里的那些在编辑器里是只读的（要改就去改文件，或用导出/导入把它搬进数据库）。"
+                    + "注意：文件里的定义不写进数据库，因此游戏内的修改（命令与 GUI）只对数据库里的定义生效；"
+                    + "文件里的那些是只读的，要改就去改文件。"
                     + "⚠ 用 MySQL 多服共享时，把任务写在 YAML 文件里会导致各服定义不一致——文件不会跨服同步；"
                     + "只有「有意让不同服务器的任务存在差异」时才这样用，否则请把定义放进数据库。")
     private boolean definitionsReadFiles = true;
@@ -122,20 +116,6 @@ public class PluginConfig {
         return false;
     }
 
-    @ConfigValue(value = "editor.enabled", description = "是否启用内置网页编辑器")
-    private boolean editorEnabled = true;
-
-    @ConfigValue(value = "editor.port", description = "网页编辑器监听端口；被占用时自动 +1 重试，以启动日志为准")
-    private int editorPort = 28080;
-
-    @ConfigValue(value = "editor.token", description = "编辑器访问令牌（留空表示不校验，仅建议本机使用）")
-    private String editorToken = "";
-
-    @ConfigValue(value = "editor.fetch-chinese-names",
-            description = "编辑器图标列表是否下载中文译名（Minecraft 服务端不含中文语言文件）；"
-                    + "关闭后仅显示英文名。也可手动把 zh_cn.json 放到 editor/ 目录，插件会优先使用本地文件")
-    private boolean editorFetchChineseNames = true;
-
     private static Map<String, MysqlSettings> defaultMysql() {
         Map<String, MysqlSettings> map = new LinkedHashMap<>();
         MysqlSettings settings = new MysqlSettings();
@@ -186,25 +166,7 @@ public class PluginConfig {
         return titleOnComplete;
     }
 
-    public boolean isEditorEnabled() {
-        return editorEnabled;
-    }
-
-    public int getEditorPort() {
-        return editorPort;
-    }
-
-    public String getEditorToken() {
-        return editorToken;
-    }
-
-    public boolean isEditorFetchChineseNames() {
-        return editorFetchChineseNames;
-    }
-
-    /**
-     * MySQL 连接设置（放在 Map 里以绕开 YLib 不支持顶层嵌套 POJO 的限制）。
-     */
+    /** MySQL 连接设置（放在 Map 里以绕开 YLib 不支持顶层嵌套 POJO 的限制）。 */
     public static class MysqlSettings {
 
         @ConfigValue("host")

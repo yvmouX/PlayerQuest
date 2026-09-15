@@ -7,13 +7,13 @@ import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
-import com.playerPlugin.playerTaskX.core.integration.CustomFishingHook;
-import com.playerPlugin.playerTaskX.core.integration.FishLoot;
-import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
+import com.playerPlugin.playerTaskX.core.integration.customcontent.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.customfishing.CustomFishingHook;
+import com.playerPlugin.playerTaskX.core.integration.customfishing.FishLoot;
+import com.playerPlugin.playerTaskX.core.integration.mythicmobs.MythicMobsHook;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
-import com.playerPlugin.playerTaskX.core.reward.RewardService;
+import com.playerPlugin.playerTaskX.core.engine.RewardService;
 import com.playerPlugin.playerTaskX.core.schema.ValueKinds;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 import org.bukkit.Bukkit;
@@ -25,24 +25,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import com.playerPlugin.playerTaskX.core.preset.PresetRefs;
 
 /**
- * 任务定义的维护入口：保存、删除、重载、校验、启停。
- *
- * <h2>为什么它存在</h2>
- * 「改一个任务」要同时动三处——落库、更新内存注册表、重建玩家进度索引——
- * 三者必须成对发生，否则会出现「库里改了但玩家进度仍按旧定义算」的错位。
- * 管理命令、管理 GUI、网页编辑器后台都走这一个入口，成对不变量由本类担保，
- * 而不是散落在各个调用点靠调用方自觉。
- *
- * <h2>校验也只有这一处</h2>
- * 编辑器标红、管理员命令 {@code /ptxa list}、管理界面上的「! 」提示都调用
- * {@link #validate(Quest)}。三个入口各写一份时，「未知奖励类型」在一处报、
- * 「奖励不可用」在另一处报，管理员就会看到自相矛盾的结论。
- *
- * <h2>它不在 PlayerTaskX 里</h2>
- * 入口类承诺「只装配、不含业务逻辑」，这些是货真价实的领域逻辑。拆出后本类可以
- * 脱离服务端单测（在线玩家列表通过 {@link Supplier} 注入）。
+ * 任务定义的维护入口：保存、删除、重载、校验、启停，管理命令与管理 GUI 共用这一处。
+ * 「改一个任务」要同时落库、更新内存注册表、重建玩家进度索引，三者成对发生的不变量由本类担保；校验与措辞也只有这一处。
  */
 public final class QuestAdminService {
 
@@ -86,16 +73,7 @@ public final class QuestAdminService {
         this.customContent = customContent == null ? CustomContentHooks::empty : customContent;
     }
 
-    /**
-     * 从存储载入全部任务定义到内存注册表，并顺带校验引用完整性。
-     * <p>
-     * 结构不完整（缺目标）的任务跳过而不让整个载入失败；
-     * 引用了不存在/不可用类型的任务照常载入但记警告——配置问题
-     * 不该让其它任务一起不可用。
-     * <p>
-     * 载入时会展开任务里的预设引用；因为这个展开结果可能改变目标的类型（结构指纹随之变化），
-     * 在线玩家的进度索引在这里也一并重建——否则「改了预设」之后，在线玩家的进度会按旧定义算。
-     */
+    /** 从存储载入全部任务定义（缺目标的跳过、类型不可用的只记警告），并展开预设引用后重建在线玩家进度索引——展开会改变目标结构，不重建就会按旧定义算。 */
     public void reload() {
         List<Quest> loaded = new ArrayList<>();
         for (Quest quest : repository.findAll()) {
@@ -119,14 +97,7 @@ public final class QuestAdminService {
                 + (skipped > 0 ? "（跳过 " + skipped + " 个）" : ""));
     }
 
-    /**
-     * 校验任务定义，返回问题清单（空表示无问题）。
-     * <p>
-     * 奖励除了「类型是否存在」还要看「是否可用」：Vault 未装时金币奖励配置完全合法，
-     * 但玩家一分钱也拿不到——这种情况必须暴露在管理员视图里，否则只能靠翻日志发现。
-     * 目标同理（{@link ObjectiveType#available()}），例如没装 CustomFishing 时
-     * 「自定义钓鱼」目标永远不涨进度。
-     */
+    /** 校验任务定义并返回问题清单（空表示无问题）：类型不仅要存在还要可用，否则例如 Vault 未装时金币奖励配置合法却一分钱也发不出去。 */
     public List<String> validate(Quest quest) {
         List<String> problems = new ArrayList<>();
         if (quest.objectives().isEmpty()) {
@@ -144,8 +115,8 @@ public final class QuestAdminService {
                 problems.add("目标类型 " + objective.type() + " 不可用（" + type.unavailableReason() + "）");
             } else {
                 // 字段值域：配了「永远不可能命中」的值必须报出来（挖苹果、剪猪毛…）。
-                // 判据与编辑器选择器列出的候选是同一份声明（见 ValueKind / ValueKinds），
-                // 因此「选择器里选不到」与「校验会标红」天然一致
+                // 判据与 GUI 推图标读的是同一份声明（见 ValueKind / ValueKinds），
+                // 因此「GUI 里摆不出这个图标」与「校验会报问题」天然一致
                 problems.addAll(valueProblems(type, objective));
             }
         }
@@ -159,16 +130,7 @@ public final class QuestAdminService {
         return problems;
     }
 
-    /**
-     * 字段值域校验：目标里写了「这个字段不可能接受的值」时逐条报出来。
-     *
-     * <p>为什么必须有这一层：值可以手打、可以来自 {@code quests/*.yml}、可以来自导入的 zip，
-     * 前端选择器拦不住任何一条。而这类错误的表现是「配了却永远不涨进度」——管理员只会看到
-     * 玩家来问「我挖了怎么不涨」，正是本项目最想根除的一类问题。
-     *
-     * <p>CustomFishing 的战利品清单只在这里读一次（装了才有清单）：鱼 id 是裸字符串，
-     * 没有清单就只能放行。
-     */
+    /** 字段值域校验：值可能手打或来自 {@code quests/*.yml}，这类错误的表现是「配了却永远不涨进度」，因此必须逐条报出来；CustomFishing 没装时没有鱼 id 清单，只能放行。 */
     private List<String> valueProblems(ObjectiveType type, QuestObjective objective) {
         List<ValueKind> allKinds = new ArrayList<>();
         boolean needsFish = false;
@@ -199,16 +161,7 @@ public final class QuestAdminService {
         return problems;
     }
 
-    /**
-     * 保存任务（新增或覆盖）并同步三处状态。
-     * <p>
-     * 「落库 + 更新注册表 + 重建玩家索引」必须成对发生：
-     * 注册表是引擎与界面的数据源，索引决定玩家进度记到哪个任务定义上。
-     * <p>
-     * 预设引用在这里处理两次，顺序不能反：先 {@link PresetRefs#trim} 把引用条目清成
-     * 只有 {@code preset} 键（导入的文件与手工改库都可能留下多余的字段），再
-     * {@link PresetRefs#resolve} 展开成生效值进注册表。
-     */
+    /** 保存任务（新增或覆盖）并同步三处状态：「落库 + 更新注册表 + 重建玩家索引」必须成对发生，且预设引用要先 {@link PresetRefs#trim} 再 {@link PresetRefs#resolve}，顺序不能反。 */
     public void save(Quest quest) {
         Quest trimmed = PresetRefs.trim(quest);
         repository.save(trimmed);
@@ -226,16 +179,7 @@ public final class QuestAdminService {
         return removed;
     }
 
-    /**
-     * 切换任务的启用状态并落库。
-     * <p>
-     * 管理命令与管理界面共用这一处：两边各写一份时，一边走全量 {@code reload()}、
-     * 一边走单条 {@code upsert()}，行为差异没有任何理由，只是重复实现的副产品。
-     * 这里刻意选单条 upsert——连点几次开关就触发多次全量读库，代价与收益不成比例；
-     * 需要全量重载时另有 {@link #reload()}。
-     *
-     * @return 更新后的任务；id 不存在时返回 {@code null}
-     */
+    /** 切换任务的启用状态并落库，返回更新后的任务（id 不存在时返回 {@code null}）；刻意走单条 upsert 而不是全量 {@link #reload()}。 */
     public Quest setEnabled(String id, boolean enabled) {
         Quest quest = quests.find(id).orElse(null);
         if (quest == null) {

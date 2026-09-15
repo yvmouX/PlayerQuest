@@ -1,11 +1,7 @@
 package com.playerPlugin.playerTaskX.api.model;
 
 /**
- * 任务类型。
- *
- * <p>{@link #NORMAL} 之外的四种都是<b>周期任务</b>：按玩家从池里抽取、过周期失效、可消耗货币刷新。
- * 每种周期在配置里各有一段（{@code periodic.daily} / {@code weekly} / {@code monthly} / {@code custom}），
- * 各自决定数量、重置锚点、刷新费用与上限。
+ * 任务类型：{@link #NORMAL} 之外的四种都是周期任务，各自在配置里有独立一段（数量 / 重置锚点 / 费用 / 上限）。
  */
 public enum QuestType {
     /** 每日任务：按玩家从全局池抽取，跨天失效 */

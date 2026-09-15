@@ -3,7 +3,6 @@ package com.playerPlugin.playerTaskX.core.objective;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,18 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * 「同一对象的多个等价标识」（{@link ProgressContext#aliases()}）的判定测试。
- *
- * <p>场景来自 MythicMobs：一只自定义僵尸既是 {@code ZOMBIE}，又是 {@code mythic:CustomZombie}。
- * 两种写法都必须能配上任务，而「击杀任意生物」必须只算一次——监听器只推一个动作、
- * 把另一个名字放进别名，就是为了这一点。若退回「每识别出一个名字就推一次动作」，
- * 那个「任意生物」的任务会默默地按双倍速度完成。</p>
+ * 「同一对象的多个等价标识」（{@link ProgressContext#aliases()}）的判定测试：一只自定义僵尸既能配 {@code ZOMBIE} 也能配 {@code mythic:CustomZombie}，而「击杀任意生物」必须只算一次，否则会静默按双倍速度完成。
  */
 class TargetMatchAliasTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
 
-    private final ObjectiveType kill = BuiltIns.objective("kill");
+    private final ObjectiveType kill = ObjectiveBuiltIns.byId("kill");
 
     @Test
     @DisplayName("配置写原版类型名时命中（别名不影响主标识）")

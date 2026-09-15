@@ -3,7 +3,8 @@ package com.playerPlugin.playerTaskX.core.objective;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
 import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
+import com.playerPlugin.playerTaskX.api.schema.ConfigField;
+import com.playerPlugin.playerTaskX.api.schema.ValueKind;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -12,21 +13,15 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * 「自定义钓鱼」目标（CustomFishing 对接）的判定测试。
- *
- * <p>要防的是「配了却永远不涨」：战利品 id 比较写错大小写、最小尺寸比反了方向、
- * 拿不到尺寸时把小鱼算成达标——这些都不会报错，只会让玩家反复钓却看不到进度。</p>
- */
+/** 「自定义钓鱼」目标（CustomFishing 对接）的判定测试：防「配了却永远不涨」——战利品 id 大小写比错、最小尺寸比反方向、拿不到尺寸时把小鱼算成达标，这些都不报错。 */
 class CustomFishObjectiveTest {
 
     private static final UUID PLAYER = UUID.fromString("11111111-2222-3333-4444-555555555555");
 
-    private final ObjectiveType type = BuiltIns.objective(CustomFishObjective.ID);
+    private final ObjectiveType type = ObjectiveBuiltIns.byId(CustomFishObjective.ID);
 
     @Test
     @DisplayName("id 命中就给本次数量，id 不符给 0")
@@ -94,15 +89,20 @@ class CustomFishObjectiveTest {
     }
 
     @Test
-    @DisplayName("schema：id 可留空、尺寸是非必填的 DECIMAL、数量是 INTEGER")
-    void schemaIsEditorFriendly() {
-        assertNotNull(type.schema().stream().filter(field -> "target".equals(field.key()))
-                .findFirst().orElse(null));
-        assertFalse(type.schema().stream().filter(field -> "target".equals(field.key()))
-                .findFirst().orElseThrow().required(), "id 允许留空表示任意鱼");
-        assertEquals("DECIMAL", type.schema().stream().filter(field -> "min-size".equals(field.key()))
-                .findFirst().orElseThrow().type().name());
-        assertTrue(type.schema().stream().anyMatch(field -> "amount".equals(field.key())));
+    @DisplayName("schema：鱼 id 声明 FISH 值域（校验据此比对注册表），min-size 与 amount 是自由字段")
+    void schemaDeclaresValueDomains() {
+        // 校验只有拿到值域才敢说「这个鱼 id 不存在」，因此这一条不能漏
+        assertEquals(List.of(ValueKind.FISH), field("target").kinds());
+        assertTrue(field(CustomFishObjective.SIZE).kinds().isEmpty());
+        assertTrue(field("amount").kinds().isEmpty(), "数量不是名字类字段，没有候选清单");
+        assertNotNull(field("target").hint());
+    }
+
+    private ConfigField field(String key) {
+        return type.schema().stream()
+                .filter(candidate -> key.equals(candidate.key()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("缺少字段 " + key));
     }
 
     private static ProgressContext context(String id, String size, int amount) {

@@ -24,19 +24,11 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import com.playerPlugin.playerTaskX.core.period.CurrencyType;
 
 /**
- * 金币奖励的可用性判据：<b>服务注册</b>，不是插件名。
- *
- * <p>这条判据两个方向都会出错，而且都不报错，只有管理员发现「配了却发不出钱」：
- * <ul>
- *   <li>只装了 Vault 而没有任何经济插件——插件名查得到，但服务是空的，钱照样发不出去，
- *       而老实现把这种情形写成「未安装 Vault 或没有经济插件」，排查时会被这句话带偏（踩过）；</li>
- *   <li>服务在册但经济插件被禁用——服务还在，钱同样发不出去。</li>
- * </ul>
- *
- * <p>因此这里直接 mock 服务管理器：<b>没有</b>任何叫 Vault 的插件，只注册 {@link Economy} 服务，
- * 金币就必须可用。
+ * 金币奖励的可用性判据是「服务注册」而不是插件名：只装 Vault 而没有任何经济插件、或服务在册但经济插件被禁用时，插件名与在册服务都查得到，钱却发不出去且不报错。
+ * 因此这里故意不放任何叫 Vault 的插件，只注册 {@link Economy} 服务，金币就必须可用。
  */
 class MoneyRewardTest {
 

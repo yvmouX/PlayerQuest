@@ -7,25 +7,8 @@ import org.bukkit.entity.Player;
 import java.lang.reflect.Method;
 
 /**
- * 向玩家发送 actionbar 与 title。
- *
- * <h2>入口约定</h2>
- * 两个方法都接受<b>原始文本</b>（MiniMessage 或 {@code &} 颜色码皆可），
- * 内部统一渲染后发送。把转换收敛到出口，避免「有的段落渲染了、有的没有」。
- *
- * <h2>actionbar 的实现选择</h2>
- * Spigot 没有 actionbar API，常见替代是「空 title + 副标题」，但那在<b>屏幕中央</b>，
- * 会严重遮挡视野。Paper / Folia / Canvas 提供 {@code sendActionBar(String)}，因此：
- * <ol>
- *   <li>优先反射调用它 —— 真正的动作栏位置；</li>
- *   <li>服务端确实没有时才退回副标题方案，并在日志里明确记录。</li>
- * </ol>
- *
- * <h2>为什么要传 {@code §} 色码而不是 MiniMessage</h2>
- * 实测发现 Paper 的 {@code sendActionBar(String)} <b>不解析 MiniMessage</b>：
- * 传 {@code <yellow>文字} 会把标签原样显示给玩家（真实线上截图证实）。
- * YLib 的 {@link TextRenderer#render(String)} 输出的正是 {@code §} 色码，
- * 因此直接用它的结果即可——这也是渲染放在 YLib 而不是各插件各写一遍的原因。
+ * 向玩家发送 actionbar 与 title，入口收原始文本、内部统一渲染成 {@code §} 色码。
+ * actionbar 优先反射调用 {@code sendActionBar}（空 title 的替代方案在屏幕中央会遮视野），且它不解析 MiniMessage，传标签会把标签原样显示给玩家。
  */
 public final class PlayerNotifier {
 

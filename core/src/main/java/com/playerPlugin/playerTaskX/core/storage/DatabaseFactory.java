@@ -12,22 +12,8 @@ import java.io.File;
 import java.sql.SQLException;
 
 /**
- * 按配置打开数据库、建表，并装配四份仓储——存储层唯一的入口。
- * <p>
- * 任务定义、预设与玩家数据<b>共用一个库</b>：SQLite 与 MySQL 只是同一个
- * {@link JdbcDatabase} 门面的两种连接来源，差异全部由 {@link Dialect} 承担，
- * 因此不存在「定义用这个库、玩家数据用那个库」的分叉，装配点也就只需要一个。
- * 仓储按<b>用途</b>切分而不是按表切分：领取账本与任务记录虽然都是玩家数据，
- * 但一个是永久事实、一个是可被整批删除的当前状态，合并只会让契约变胖。
- *
- * <h2>关键取舍</h2>
- * <ul>
- *   <li><b>未知存储类型回退 SQLite</b>：配置文件里写错一个单词（如 {@code MYSQL5}）时，
- *       能让插件带着本地库正常起来，比直接启动失败更符合使用者的预期，同时打一条告警。</li>
- *   <li><b>建表失败必须关闭已打开的资源</b>：否则 SQLite 的文件句柄/MySQL 的连接池会泄漏，
- *       在插件热重载场景下会越积越多。</li>
- *   <li><b>{@link Handle} 幂等关闭</b>：插件 onDisable 与异常路径可能重复触发 close。</li>
- * </ul>
+ * 按配置打开数据库、建表并装配四份仓储，是存储层唯一的入口；三种数据共用一个库，SQLite 与 MySQL 的差异全在 {@link Dialect}。
+ * 未知存储类型回退 SQLite（写错一个单词不该让插件起不来）；建表失败必须关掉已打开的资源，否则句柄/连接池会泄漏。
  */
 public final class DatabaseFactory {
 
@@ -40,13 +26,7 @@ public final class DatabaseFactory {
     private DatabaseFactory() {
     }
 
-    /**
-     * 按配置打开存储并建表。
-     *
-     * @param config     插件配置，为 null 时按 SQLite + 默认文件名处理
-     * @param dataFolder 插件数据目录，SQLite 文件相对它解析
-     * @throws StorageException 打开连接或建表失败
-     */
+    /** 按配置打开存储并建表（未知类型回退 SQLite）；失败抛 {@link StorageException}，由插件禁用自己。 */
     public static Handle open(PluginConfig config, File dataFolder) {
         String type = config == null ? null : config.getStorageType();
         String normalized = type == null ? "" : type.trim().toUpperCase(java.util.Locale.ROOT);
@@ -109,12 +89,7 @@ public final class DatabaseFactory {
         return settings.getHost() + ":" + settings.getPort() + "/" + settings.getDatabase();
     }
 
-    /**
-     * 数据库句柄：把「门面 + 四份仓储 + 描述」绑在一起，调用方只依赖各仓储接口。
-     * <p>
-     * 底层资源由 {@link JdbcDatabase#close()} 负责（它自己知道该关连接还是关池），
-     * 因此这里不再单独持有 {@code AutoCloseable} —— 两处都能关是泄漏的温床。
-     */
+    /** 数据库句柄：把门面与四份仓储绑在一起，调用方只依赖各仓储接口；底层资源统一由 {@link JdbcDatabase#close()} 关闭，这里不再单独持有。 */
     public static final class Handle implements AutoCloseable {
 
         private final JdbcDatabase database;
@@ -132,7 +107,7 @@ public final class DatabaseFactory {
             this.description = description;
         }
 
-        /** 任务定义仓储（网页编辑器与游戏内指令的定义读写都走它）。 */
+        /** 任务定义仓储（游戏内指令与 GUI 的定义读写都走它）。 */
         public QuestRepository quests() {
             return quests;
         }

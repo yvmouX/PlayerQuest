@@ -19,17 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 基于 JDBC 的存储引擎：SQLite 与 MySQL 共用这一份执行逻辑，差异全在 {@link Dialect}
- * 与「连接从哪来」。
- *
- * <h2>两种连接策略，两个工厂</h2>
- * <ul>
- *   <li>{@link #sqlite}：<b>单连接长驻</b>。SQLite 的写入是全局串行的，用连接池反而会
- *       制造 {@code SQLITE_BUSY}；WAL 让读不阻塞写。</li>
- *   <li>{@link #mysql}：<b>HikariCP 池化</b>，用完必须归还。</li>
- * </ul>
- * 策略差异只体现在「借出/归还」与「怎么关」这三件事上，因此用一个私有的连接来源接口
- * 表达，而不是为两种数据库各写一个类——那样「执行 SQL」的通用逻辑就得在三个类之间对齐。
+ * 基于 JDBC 的存储引擎：SQLite 与 MySQL 共用这一份执行逻辑，差异全在 {@link Dialect} 与「连接从哪来」。
+ * SQLite 单连接长驻（写入全局串行，用连接池反而制造 {@code SQLITE_BUSY}），MySQL 走 HikariCP 池化，用完必须归还。
  */
 public final class JdbcDatabase implements Database, AutoCloseable {
 

@@ -6,13 +6,7 @@ import com.playerPlugin.playerTaskX.core.engine.ProgressService;
 
 import java.util.function.Consumer;
 
-/**
- * 监听器基类：只做「事件 → {@link ProgressContext}」的翻译与投递。
- * <p>
- * 约定：**判定逻辑一律不写在监听器里**，这里不允许出现任何
- * {@code if (objectiveType.equals(...))} 之类的分支，
- * 否则新增目标类型又要回来改事件代码。
- */
+/** 监听器基类：只做「事件 → {@link ProgressContext}」的翻译与投递，判定逻辑一律不写在这里。 */
 public abstract class ProgressListener {
 
     protected final ProgressService progress;

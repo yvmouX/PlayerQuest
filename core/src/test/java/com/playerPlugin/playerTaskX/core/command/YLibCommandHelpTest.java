@@ -17,15 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * YLib 统一 help API 的集成测试。
- *
- * <p>YLib 自身没有测试基建（无 test 目录与 JUnit 依赖），因此这套测试放在插件侧，
- * 覆盖「注解 → 扫描 → 渲染」的完整链路，相当于对 YLib 该功能的回归保护。</p>
- *
- * <p>被测的 {@link CommandHelp} 是库级 API：所有依赖 YLib 的插件都用它渲染帮助，
- * 因此这里的断言同时也是「插件帮助样式一致」的保证。</p>
- */
+/** YLib 统一 help API 的集成测试：覆盖「注解 → 扫描 → 渲染」整条链路；YLib 自身没有测试基建（无 test 目录与 JUnit 依赖），因此这套断言就是它的回归保护与「插件帮助样式一致」的保证。 */
 class YLibCommandHelpTest {
 
     // ---------- 被测用的命令类 ----------

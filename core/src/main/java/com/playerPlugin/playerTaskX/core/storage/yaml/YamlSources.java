@@ -9,17 +9,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * YAML 定义源的读取与缓存：把「扫目录 → 解析 → 转模型 → 记 id 位置」收在一处，
- * 任务与预设各持一个实例。
- *
- * <h2>缓存策略</h2>
- * {@link #all()} 每次调用都<b>重新读盘</b>——它只被启动与 {@code /ptxa reload} 调用，
- * 正好是「希望看到文件最新内容」的时机。{@link #find(String)} 与 {@link #location(String)}
- * 用上一次的结果，因此编辑器逐条问「这条是不是文件里的」不会变成磁盘风暴。
- *
- * <h2>文件之间的重复 id</h2>
- * 按文件路径排序后<b>先到先得</b>并告警：同一份目录树每次得到相同结果，
- * 不像「后加载覆盖先加载」那样取决于文件系统返回顺序。
+ * YAML 定义源的读取与缓存：扫目录 → 解析 → 转模型 → 记 id 位置，任务与预设各持一个实例。
+ * {@link #all()} 每次重新读盘（启动与 reload 正好需要最新内容），{@link #find(String)} / {@link #location(String)} 用缓存；文件之间重复的 id 按路径排序先到先得并告警。
  */
 public final class YamlSources<T> {
 

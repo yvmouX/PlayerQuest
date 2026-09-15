@@ -5,7 +5,6 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.objective.ObjectiveType;
-import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.reward.CommandReward;
@@ -29,19 +28,11 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
 
 /**
- * 出厂示例（随插件发布的 {@code quests/} 与 {@code presets/} 资源）的测试。
- *
- * <p>这里挡两类问题，它们的共同点是「不报错」：
- * <ul>
- *   <li><b>示例没进包</b>：资源目录被改名/漏打包时，插件启动后既不铺示例也不报错，
- *       表现只是「新服里一个任务都没有」；</li>
- *   <li><b>示例自己是错的</b>：材质名拼错、类型被改名、奖励参数少了占位符——
- *       示例是给管理员照抄的活文档，错的东西会被抄进真实配置。</li>
- * </ul>
- * 校验走的是生产同一套读取路径（{@link DefinitionFolder} → {@link YamlDefinitions}），
- * 因此「文件名即 id」「内容里不写 id」这些约定也一并被钉住。
+ * 出厂示例（随插件发布的 {@code quests/} 与 {@code presets/} 资源）的测试：挡两类不报错的问题——示例没进包（资源目录被改名/漏打包，表现只是「新服里一个任务都没有」），以及示例本身写错（材质名、类型名、奖励占位符，示例是给管理员照抄的活文档）。
+ * 校验走生产同一套读取路径（{@link DefinitionFolder} → {@link YamlDefinitions}），因此「文件名即 id」「内容里不写 id」这些约定也一并被钉住。
  */
 class ExampleDefinitionsTest {
 
@@ -57,7 +48,7 @@ class ExampleDefinitionsTest {
     @BeforeAll
     static void setUpRegistries() {
         objectiveTypes = new ObjectiveRegistryImpl();
-        for (ObjectiveType type : BuiltIns.objectives()) {
+        for (ObjectiveType type : ObjectiveBuiltIns.all()) {
             objectiveTypes.register(type);
         }
         // 只登记 id 供比对：money/points 的 available() 会探测 Bukkit 插件，单测环境没有服务端
@@ -158,7 +149,7 @@ class ExampleDefinitionsTest {
         boolean hasReward = false;
         for (Preset preset : presets) {
             assertTrue(ids.add(preset.id()), "示例预设 id 重复: " + preset.id());
-            assertTrue(!preset.name().isBlank(), "示例预设 " + preset.id() + " 缺少显示名");
+            assertTrue(!preset.id().isBlank(), "示例预设缺少 id（文件名即 id，不该为空）");
             if (preset.isReward()) {
                 hasReward = true;
                 assertTrue(rewardTypes.find(preset.type()).isPresent(),
@@ -177,7 +168,7 @@ class ExampleDefinitionsTest {
                         "预设 " + preset.id() + " 的数量应为正数，实际 " + amount);
             }
         }
-        assertTrue(hasObjective && hasReward, "两类预设都要有示例，否则编辑器里看不到另一类长什么样");
+        assertTrue(hasObjective && hasReward, "两类预设都要有示例，否则管理员看不到另一类长什么样");
     }
 
     // ---------- 辅助 ----------

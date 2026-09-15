@@ -4,7 +4,6 @@ import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.api.schema.ConfigField;
 import com.playerPlugin.playerTaskX.core.integration.SoftDependency;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.lang.reflect.Method;
@@ -13,9 +12,7 @@ import java.util.UUID;
 
 /**
  * 奖励：点券（经 PlayerPoints）。
- * <p>
- * 用反射而不是直接 import：PlayerPoints 是软依赖，直接引用会让缺失该插件的
- * 服务端在类加载阶段就报 NoClassDefFoundError，连插件都启动不了。
+ * 用反射而不是直接 import：PlayerPoints 是软依赖，直接引用会让缺失它的服务端在类加载阶段就报 NoClassDefFoundError，连插件都启动不了。
  */
 public final class PointsReward implements RewardType {
 
@@ -34,7 +31,7 @@ public final class PointsReward implements RewardType {
     @Override
     public List<ConfigField> schema() {
         return List.of(
-                ConfigField.integer("amount", "数量", 100, "发放的点券数量")
+                ConfigField.integer("amount", "数量", "发放的点券数量，整数")
         );
     }
 

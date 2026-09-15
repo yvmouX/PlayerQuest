@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.integration.CustomContentHooks;
+import com.playerPlugin.playerTaskX.core.integration.customcontent.CustomContentHooks;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,13 +18,7 @@ import org.bukkit.inventory.Recipe;
 
 import java.util.function.Consumer;
 
-/**
- * 物品域动作：合成、消耗、附魔。
- * <p>
- * 分组依据是「动作围绕一件物品发生」，与事件在 Bukkit 的包归属无关
- * （消耗事件在 player 包、附魔事件在 enchantment 包）。附魔原在
- * EntityListener，属于归位；发言与执行命令与物品无关，归 {@link TextListener}。
- */
+/** 物品域动作：合成、消耗、附魔；分组依据是「动作围绕一件物品发生」，与事件在 Bukkit 的哪个包无关。 */
 public final class ItemListener extends ProgressListener implements Listener {
 
     /** 自定义内容来源；空实现表示 ItemsAdder / CraftEngine 都没装。 */
@@ -37,13 +31,8 @@ public final class ItemListener extends ProgressListener implements Listener {
     }
 
     /**
-     * 合成 → {@link Trigger#CRAFT}。
-     * <p>
-     * 数量是本次合成的<b>实际产出</b>而不是配方单批产量：
-     * Shift+点击会一次连做多批，批数计算见 {@link #craftedAmount}。
-     * <p>
-     * 产物是自定义物品时带上它的 id 作为别名（{@code itemsadder:...} / {@code craftengine:...}），
-     * 于是「合成 N 个自定义物品」既能按原版材质写、也能按自定义 id 写。
+     * 合成 → {@link Trigger#CRAFT}，数量取本次实际产出（Shift+点击会连做多批，见 {@link #craftedAmount}）。
+     * 产物是自定义物品时带上它的 id 别名。
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
@@ -62,20 +51,8 @@ public final class ItemListener extends ProgressListener implements Listener {
     }
 
     /**
-     * 计算本次合成实际产出的数量（纯函数，便于脱离服务端测试）。
-     * <p>
-     * Shift+点击合成时 Bukkit 只触发一次事件，却会按原料连做多批——
-     * 例如火把配方一批产 4 个，背包里放 64 煤 + 64 木棍再 Shift 一点，
-     * 实际产出 256 个，但事件里的产物数量仍是 4。若只按单批产物计数，
-     * 玩家要做远超配置数量的合成才能完成任务。
-     * <p>
-     * 每个配方格一批只消耗 1 个原料（原版配方皆是如此），因此批数 =
-     * 格子里原料最少的那个的数量。背包空间不足时实际产出会小于该值，
-     * 进度会略微超前——宁可略多不可少计，少计正是火把工坊 bug 的根因。
-     *
-     * @param shiftClick   是否为 Shift+点击（一次连做多批）
-     * @param matrix       合成格里的原料，空格子为 null 或 AIR
-     * @param resultAmount 单批产物数量
+     * 计算本次合成的实际产出（纯函数，便于脱离服务端测试）：批数 = 合成格里原料最少的那个的数量。
+     * Shift+点击只触发一次事件却连做多批，按单批产物计数会严重少计；背包放不下时会略多计——宁可略多不可少计。
      */
     static int craftedAmount(boolean shiftClick, ItemStack[] matrix, int resultAmount) {
         if (!shiftClick) {

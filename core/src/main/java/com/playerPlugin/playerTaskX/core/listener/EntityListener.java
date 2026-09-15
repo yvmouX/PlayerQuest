@@ -4,7 +4,7 @@ import com.playerPlugin.playerTaskX.api.objective.ProgressContext;
 import com.playerPlugin.playerTaskX.api.objective.Trigger;
 import com.playerPlugin.playerTaskX.core.engine.ApplyResult;
 import com.playerPlugin.playerTaskX.core.engine.ProgressService;
-import com.playerPlugin.playerTaskX.core.integration.MythicMobsHook;
+import com.playerPlugin.playerTaskX.core.integration.mythicmobs.MythicMobsHook;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -23,16 +23,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * 实体相关动作：击杀、垂钓、剪切、繁殖、驯服、与实体交互。
- * <p>
- * 附魔原在此处，已归位到 {@link ItemListener}——它是物品域事件，与实体无关。
- *
- * <p>{@code mythicMobs} 可以为 {@code null}（未安装 MythicMobs，这是最常见的情况）：
- * 击杀事件照常翻译，只是不会带上 {@code mythic:} 标识。
- * 自定义鱼（CustomFishing）不在这里——那是另一个插件的事件，见
- * {@code core/integration/CustomFishingListener}。
- */
+/** 实体相关动作：击杀、垂钓、剪切、繁殖、驯服、与实体交互。 */
 public final class EntityListener extends ProgressListener implements Listener {
 
     /** MythicMobs 接入点；null 表示服务端没有（或不支持）MythicMobs。 */
@@ -48,13 +39,8 @@ public final class EntityListener extends ProgressListener implements Listener {
     }
 
     /**
-     * 击杀生物 → {@link Trigger#KILL}。
-     * <p>
-     * {@code getKiller()} 为 null 表示非玩家致死（摔落、岩浆等），不计入任何人的进度。
-     * <p>
-     * MythicMobs 怪物会额外带上 {@code mythic:<内部名>} 别名：它与原版实体类型名是
-     * <b>同一个对象的两个等价标识</b>，因此放在同一个动作里，而不是推两次动作——
-     * 推两次会让「击杀任意生物」这类目标计双份。
+     * 击杀生物 → {@link Trigger#KILL}；{@code getKiller()} 为 null（摔落、岩浆等）时不计。
+     * MythicMobs 别名与实体类型名是同一个对象的两个等价标识，必须放进同一个动作——推两次会让「击杀任意生物」计双份。
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(EntityDeathEvent event) {

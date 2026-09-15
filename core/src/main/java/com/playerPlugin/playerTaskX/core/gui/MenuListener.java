@@ -13,22 +13,8 @@ import java.util.Objects;
 import java.util.logging.Level;
 
 /**
- * 菜单事件监听器：把「容器上的点击」翻译成「菜单项的 action」。
- *
- * <h2>为什么用视图的上层容器判归属</h2>
- * 用 {@code event.getView().getTopInventory()} 而不是 {@code event.getClickedInventory()}：
- * 玩家点自己背包（或 shift 点击把物品塞进菜单）时，被点击的容器是玩家背包，
- * 只看它就会漏判——菜单会被当成普通箱子用，物品能被塞进去甚至取走。
- * 上层容器在整个视图生命周期内始终是我们的菜单，判断唯一且稳定。
- *
- * <h2>为什么无论点哪里都先取消事件</h2>
- * 菜单是「展示 + 触发」的载体，不是储物容器。先无条件取消，再决定要不要执行动作：
- * 顺序反过来就会出现「动作抛异常 → 事件没被取消 → 物品被玩家拿走」的漏洞。
- *
- * <h2>重入保护</h2>
- * 动作里常会 {@code refresh()} 甚至打开另一个菜单，这会改动 inventory 内容
- * （打开新菜单还会关闭旧容器），从而可能在同一次交互里再次触发事件。
- * 派发期间用 {@link #dispatching} 挡住二次进入，动作结束（含抛异常）后必定复位。
+ * 菜单事件监听器：把容器上的点击翻译成菜单项的 action。
+ * 判归属只能看视图的上层容器（玩家点自己背包时 clickedInventory 是背包）；必须先无条件取消事件再执行动作，否则动作抛异常就会漏掉取消；派发期间用 {@link #dispatching} 防重入。
  */
 public final class MenuListener implements Listener {
 
@@ -42,13 +28,7 @@ public final class MenuListener implements Listener {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
     }
 
-    /**
-     * 点击派发。
-     * <p>
-     * 显式声明 {@code ignoreCancelled = false}：即便别的插件取消了这次点击，
-     * 我们仍然要取消事件本身（否则物品能被拖走），但因「已被取消」而不再执行动作——
-     * 尊重其它插件的判断，同时保住菜单的完整性。
-     */
+    /** 点击派发：显式 {@code ignoreCancelled = false}——别的插件取消了也要取消事件本身（否则物品能被拖走），但不再执行动作。 */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onClick(InventoryClickEvent event) {
         Menu menu = menuOf(event.getView());

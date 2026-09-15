@@ -2,7 +2,7 @@ package com.playerPlugin.playerTaskX.core.storage.jdbc;
 
 import com.playerPlugin.playerTaskX.core.storage.Database;
 import com.playerPlugin.playerTaskX.core.storage.Dialect;
-import com.playerPlugin.playerTaskX.core.storage.JsonCodec;
+import com.playerPlugin.playerTaskX.core.storage.codec.JsonCodec;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 
 import com.playerPlugin.playerTaskX.api.model.Quest;
@@ -21,17 +21,7 @@ import java.util.Optional;
 
 /**
  * {@link QuestRepository} 的 JDBC 实现，SQLite 与 MySQL 共用（差异全部由 {@link Dialect} 承担）。
- * <p>
- * 关键取舍：
- * <ul>
- *   <li><b>读：批量取子树，规避 N+1</b>。{@link #findAll()} 只发 3 条 SQL（主表 + 目标表 + 奖励表），
- *       子表整表取出后在内存里按 {@code quest_id} 分组；否则 N 个任务就是 1+2N 次查询，
- *       网页编辑器一次刷新就能把 MySQL 打出几百次往返。</li>
- *   <li><b>写：先删子树再整体重建</b>。目标与奖励都是一份整体配置，逐条 diff 只增加复杂度；
- *       整个写入包在一个事务里，中途失败会整体回滚，不会留下「主表在、子树没了」的残缺任务。</li>
- *   <li><b>所有 SQL 只出现在本文件</b>，且 {@code idx} 列名一律经 {@link Dialect#quote(String)} 转义
- *       （MySQL 8 中 {@code idx} 是保留字）。语句在构造时拼好，避免每行重复字符串拼接。</li>
- * </ul>
+ * 读用「子表整表取出后按 {@code quest_id} 分组」规避 N+1，写是「先删子树再整体重建」并包在一个事务里；所有 SQL 只出现在本文件，{@code idx} 列名一律经 {@link Dialect#quote(String)} 转义（MySQL 8 保留字）。
  */
 public final class JdbcQuestRepository implements QuestRepository {
 
@@ -47,7 +37,7 @@ public final class JdbcQuestRepository implements QuestRepository {
 
     private final Database database;
 
-    /** 转义后的 {@code idx} 列名（{@code `idx`}），供子表语句复用。 */
+    /** 转义后的 idx 列名（MySQL 8 保留字，必须经 Dialect 转义），供子表语句复用。 */
     private final String idx;
 
     private final String sqlSelectAll;
@@ -161,11 +151,6 @@ public final class JdbcQuestRepository implements QuestRepository {
         return deleted[0];
     }
 
-    @Override
-    public long count() {
-        return database.count(sqlCount);
-    }
-
     // ------------------------------------------------------------------
     // 内部实现
     // ------------------------------------------------------------------
@@ -173,7 +158,7 @@ public final class JdbcQuestRepository implements QuestRepository {
     private void saveInternal(Quest quest) {
         String id = quest.id();
         if (id == null || id.isBlank()) {
-            // id 是主键，为空时无法落库；跳过它而不是让整批导入失败
+            // id 是主键，为空时无法落库；跳过它而不是让整批写入失败
             warn("任务 id 为空，已跳过保存");
             return;
         }
@@ -290,10 +275,7 @@ public final class JdbcQuestRepository implements QuestRepository {
         T read(ResultSet rs) throws SQLException;
     }
 
-    /**
-     * 主表行的中间形态：{@link Quest} 是不可变 record，目标/奖励必须在构造时传齐，
-     * 因此先用它承接主表字段，等子表分组完成后再组装。
-     */
+    /** 主表行的中间形态：{@link Quest} 是不可变 record，目标/奖励必须构造时传齐，因此先用它承接主表字段。 */
     private record QuestRow(String id, String name, String description, String icon, String category,
                             QuestType type, double refreshCost, boolean enabled) {
     }

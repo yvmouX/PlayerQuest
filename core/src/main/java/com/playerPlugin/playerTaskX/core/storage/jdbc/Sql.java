@@ -4,28 +4,13 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
-/**
- * JDBC 参数绑定工具。
- */
+/** JDBC 参数绑定工具。 */
 final class Sql {
 
     private Sql() {
     }
 
-    /**
-     * 绑定参数。
-     * <p>
-     * 数值与字符串交给 {@link PreparedStatement#setObject} 自己按运行时类型映射
-     * （JDBC 规范会转成对应的 {@code java.sql.Types}），省掉一份会随调用点增长而失配的
-     * 逐类型分派表。
-     * <p>
-     * 三处刻意<b>不</b>走 {@code setObject}：
-     * <ul>
-     *   <li>{@code null}：部分驱动报「无法推断类型」，写明 {@link Types#NULL} 才稳定；</li>
-     *   <li>{@code Boolean}：驱动对它的支持参差（本项目也从不传布尔——列都是 SMALLINT）；</li>
-     *   <li>其它类型：与旧实现一致地按字符串写入，避免驱动各自发挥。</li>
-     * </ul>
-     */
+    /** 绑定参数：数值与字符串走 {@code setObject}，{@code null} 显式写 {@link Types#NULL}（部分驱动无法推断类型），其余按字符串写入。 */
     static void bind(PreparedStatement statement, Object... params) throws SQLException {
         if (params == null) return;
         for (int i = 0; i < params.length; i++) {

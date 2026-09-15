@@ -8,16 +8,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 装配玩家可见文本的小工具。
- *
- * <h2>为什么集中在这里</h2>
- * 「渲染成 § 色码」「数字去掉小数尾巴」「配置表摊成一行」「类型显示名优先取语言键」
- * 这四件事命令、GUI、进度展示三处都要做。分散实现的代价不是多敲几行，而是
- * <b>三处口径会漂移</b>：一个地方显示「500」，另一个地方显示「500.0」。
- *
- * <h2>渲染只做一次</h2>
- * 所有出口都交给 {@link TextRenderer#render}，它把 {@code &} / {@code §} / MiniMessage
- * 三种写法归一化后一次解析。调用方拼接好<b>原文</b>再交给这里，不要先渲染再拼接。
+ * 装配玩家可见文本的小工具：渲染色码、数字去小数尾巴、配置表摊成一行、类型显示名。
+ * 集中在一处是为了命令/GUI/进度三处口径不漂移；渲染只做一次，调用方拼好原文再交给这里，不要先渲染再拼接。
  */
 public final class Texts {
 
@@ -53,15 +45,7 @@ public final class Texts {
         return builder.append(')').toString();
     }
 
-    /**
-     * 类型显示名：优先语言键 {@code <group>.<id>}（用户可自定义措辞），
-     * 缺失时退回类型自带的显示名。
-     * <p>
-     * 绝不把 {@code break_block} 这种内部标识抛给玩家——调用方传入的 fallback
-     * 应当是类型的 {@code displayName()}，而不是 id 本身。
-     *
-     * @param receiver 解析语言用的接收者；为 {@code null} 时用全局默认语言（进度展示没有接收者）
-     */
+    /** 类型显示名：优先语言键 {@code <group>.<id>}，缺失时退回 fallback（应传类型的 displayName 而非 id 本身）；{@code receiver} 为 {@code null} 时用全局默认语言。 */
     public static String typeName(MessageService messages, CommandSender receiver,
                                   String group, String id, String fallback) {
         String key = group + "." + id;

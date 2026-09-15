@@ -11,16 +11,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * 「数据库优先 + YAML 文件补充」的合并读取规则——任务与预设共用这一份实现。
- *
- * <h2>为什么库优先</h2>
- * 数据库是<b>可写</b>的那一份：游戏内命令与网页编辑器都改它，玩家进度也挂在它的 id 上。
- * 文件只是「随插件一起发布 / 进版本控制」的只读来源。同一 id 两边都有时若让文件赢，
- * 管理员的每次编辑都会在重启后被打回，且毫无提示。因此：<b>库里有就以库为准</b>，
- * 文件里那份被忽略并记一条告警。
- *
- * <h2>只读是「没有库记录」的那一侧</h2>
- * 同 id 两边都有时，可写的是库里的那条（文件那份已被忽略），因此 {@link #readOnly} 要先问库。
+ * 「数据库优先 + YAML 文件补充」的合并读取规则，任务与预设共用这一份实现。
+ * 库里有就以库为准（让文件赢会让管理员的每次编辑在重启后被打回且毫无提示），文件里那份只记一条告警；只有「库里没有」的那一侧才算只读。
  */
 public final class MergedSources<T> {
 
@@ -81,12 +73,7 @@ public final class MergedSources<T> {
     public String readOnlyHint(String id) {
         String location = files.location(id)
                 .orElse(files.directoryLabel() + "/ 下的 YAML 文件");
-        return label + " " + id + " 定义在 " + location + " 里，游戏内与网页编辑器只修改数据库中的定义；"
-                + "请改文件，或先用编辑器的「导入 YAML」把它搬进数据库";
-    }
-
-    /** 合并后的总数（看的是「插件实际能用多少」，因此含文件里的那些）。 */
-    public long count() {
-        return all().size();
+        return label + " " + id + " 定义在 " + location + " 里，游戏内只修改数据库中的定义；"
+                + "要改它请直接改文件，然后执行 /ptxa reload";
     }
 }

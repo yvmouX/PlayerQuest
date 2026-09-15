@@ -14,10 +14,9 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
 import com.playerPlugin.playerTaskX.api.model.QuestReward;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
-import com.playerPlugin.playerTaskX.core.gui.AdminQuestMenu;
+import com.playerPlugin.playerTaskX.core.gui.editor.QuestBrowserMenu;
 import com.playerPlugin.playerTaskX.core.storage.DefinitionReadOnlyException;
 import com.playerPlugin.playerTaskX.core.text.Texts;
-import com.playerPlugin.playerTaskX.core.web.EditorServer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -26,41 +25,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * 管理员命令 {@code /playertaskxadmin}（别名 {@code /ptxa}），权限 {@code playertaskx.admin}。
- *
- * <h2>子命令</h2>
- * <ul>
- *   <li>{@code ""} / {@code help}：管理员命令清单；</li>
- *   <li>{@code menu}：打开任务管理界面；</li>
- *   <li>{@code editor}：查看网页编辑器地址与访问令牌；</li>
- *   <li>{@code reload}：重载配置与任务定义；</li>
- *   <li>{@code list}：列出全部任务及校验问题；</li>
- *   <li>{@code info <id>}：单个任务的完整信息；</li>
- *   <li>{@code enable <id>} / {@code disable <id>}：切换启用状态并持久化；</li>
- *   <li>{@code setobjective <玩家> <任务> <目标序号> <进度>}：直接设定目标进度（调试）；</li>
- *   <li>{@code grant <玩家> <任务>}：只发奖励不改状态（调试）；</li>
- *   <li>{@code resetdaily <玩家>}：重置某玩家的每日任务（不扣费、不消耗次数）。</li>
- * </ul>
- * 清单与说明来自注解（帮助由 {@link CommandHelp#ofAnnotations} 生成），不另写一份。
- *
- * <h2>命名约定</h2>
- * 子命令一律用能表达真实动作的词，且与玩家命令刻意区分：
- * 发放奖励叫 {@code grant} 而不是 {@code give}（后者在插件语境里通常指给物品）；
- * 改进度叫 {@code setobjective} 而不是 {@code progress}（后者看起来像「查看进度」）；
- * 管理员重置每日任务叫 {@code resetdaily}，与玩家的 {@code /ptx refresh} 分开——
- * 两者效果不同（玩家刷新收费且消耗次数，管理员重置都不），同名会让收费与否无从判断。
- *
- * <h2>权限为什么只写在类上</h2>
- * {@code @Command(permission=...)} 挂在根节点，而 {@code CommandDispatcher} 每次执行都会先校验根节点，
- * 因此所有子命令天然被同一道门禁覆盖，不需要逐个 {@code @SubCommand} 再写一遍权限。
- *
- * <h2>无参构造</h2>
- * 装配方只做 {@code register(new AdminCommand())}，服务在执行时通过 {@link PlayerTaskX#getInstance()} 取。
- *
- * <h2>YLib 约束</h2>
- * 参数类型只支持 {@code String/int/Integer/double/Double/boolean/Boolean/Player/World/枚举}，
- * 因此玩家用 {@code Player}（框架自带在线玩家补全），其余一律用 {@code String} 接；
- * 补全方法必须声明在本类中，签名为 {@code List<String> f(CommandSender, CommandContext, String)}。
+ * 管理员命令 {@code /ptxa}（权限 {@code playertaskx.admin}）；子命令清单由注解生成，见 {@code @SubCommand}。
+ * 子命令用 {@code grant}、{@code setobjective}、{@code resetperiod} 与玩家命令刻意区分；参数只支持 String/Player，补全方法必须声明在本类。
  */
 @Command(name = "playertaskxadmin", aliases = {"ptxa"}, description = "PlayerTaskX 管理员命令",
         permission = "playertaskx.admin", permissionDefault = "op")
@@ -96,40 +62,16 @@ public class AdminCommand {
                 .send(sender);
     }
 
-    /**
-     * {@code editor}：输出网页编辑器地址与令牌。
-     * <p>
-     * 管理员常在服务器上而非本机浏览器操作，因此把 URL 直接发到聊天里，不必去翻 config.yml。
-     * 端口被占用会自动 +1，因此必须报<b>实际</b>端口而不是配置值。
-     */
-    @SubCommand(value = "editor", description = "显示网页编辑器地址")
-    public void editor(CommandSender sender) {
-        PlayerTaskX plugin = PlayerTaskX.getInstance();
-        MessageService messages = plugin.messages();
-        EditorServer server = plugin.editorServer();
-        if (!plugin.config().isEditorEnabled() || server == null || server.port() <= 0) {
-            messages.send(sender, "editor.disabled");
-            return;
-        }
-        messages.send(sender, "editor.started", "127.0.0.1:" + server.port());
-        String token = plugin.config().getEditorToken();
-        if (token != null && !token.isBlank()) {
-            messages.send(sender, "editor.token", token);
-        } else {
-            messages.send(sender, "editor.token-required");
-        }
-    }
-
     // ---------- 界面 ----------
 
-    /** {@code menu}：打开管理界面（只有玩家能开箱子界面，控制台提示后返回）。 */
-    @SubCommand(value = "menu", description = "打开任务管理界面")
+    /** {@code menu}：打开任务编辑器（只有玩家能开箱子界面，控制台提示后返回）。 */
+    @SubCommand(value = "menu", description = "打开任务编辑器")
     public void menu(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             messages().send(sender, "command.player-only");
             return;
         }
-        new AdminQuestMenu(player, messages()).open();
+        new QuestBrowserMenu(player, messages()).open();
     }
 
     // ---------- 重载 ----------
@@ -166,7 +108,7 @@ public class AdminCommand {
             return;
         }
         messages.sendRaw(sender, Texts.render("&8&m-----&r "
-                + messages.raw(sender, "gui.admin-title") + " &7(" + quests.size() + ") &8&m-----"));
+                + messages.raw(sender, "command.list-title") + " &7(" + quests.size() + ") &8&m-----"));
         for (Quest quest : quests) {
             messages.sendRaw(sender, Texts.render("&8- &f" + TextRenderer.render(quest.name())
                     + " &8(" + quest.id() + ")" + SEPARATOR
@@ -180,15 +122,7 @@ public class AdminCommand {
         }
     }
 
-    /**
-     * {@code info <id>}：单个任务的完整信息。
-     * <p>
-     * 目标与奖励都按「类型显示名 + 配置 + 数量」展开：管理员排查「任务为什么不涨进度」时，
-     * 需要看到的就是这些，不必再去翻数据库或网页编辑器。
-     * <p>
-     * 管理端文案是<b>给管理员看的排错信息</b>而非玩家文案，与 {@code /ptxa list}、
-     * 管理 GUI 用同一套措辞，不走语言键。
-     */
+    /** {@code info <id>}：单个任务的完整信息，目标与奖励按「类型显示名 + 配置 + 数量」展开；管理端文案与 {@code /ptxa list}、管理 GUI 同一套措辞，不走语言键。 */
     @SubCommand(value = "info", description = "查看单个任务的完整信息")
     public void info(CommandSender sender, @Arg(value = "id", suggestion = "suggestQuestIds") String id) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
@@ -337,13 +271,7 @@ public class AdminCommand {
         plugin.messages().send(sender, "quest.claimed", TextRenderer.render(quest.name()));
     }
 
-    /**
-     * {@code resetperiod <玩家> [类型]}：重新抽取该玩家的周期任务（管理员工具）。
-     * <p>
-     * 与玩家的 {@code /ptx refresh} 刻意区分：后者消耗货币与一次刷新次数，
-     * 前者都不消耗（它是排障工具，不是消费入口）。
-     * 不给类型就重置<b>所有已启用的周期</b>。
-     */
+    /** {@code resetperiod <玩家> [类型]}：重新抽取该玩家的周期任务；与玩家的 {@code /ptx refresh} 刻意区分——它是排障工具，不扣费也不消耗次数，不给类型就重置全部已启用周期。 */
     @SubCommand(value = "resetperiod", description = "重置玩家的周期任务（不扣费、不消耗次数）：/ptxa resetperiod <玩家> [daily|weekly|monthly|custom]")
     public void resetPeriod(CommandSender sender, @Arg("player") Player target,
                             @Arg(value = "类型", suggestion = "suggestPeriodTypes") @Optional String type) {
