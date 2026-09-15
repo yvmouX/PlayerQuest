@@ -44,7 +44,6 @@ import com.playerPlugin.playerTaskX.core.objective.ObjectiveBuiltIns;
 import com.playerPlugin.playerTaskX.core.reward.RewardBuiltIns;
 
 
-/** 插件入口：只负责装配、按序启停（单步失败互不拖垮）与暴露访问点，业务逻辑都在各子系统里。 */
 public final class PlayerTaskX extends JavaPlugin {
 
     private static PlayerTaskX instance;

@@ -4,19 +4,18 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 /**
  * 内存中的任务注册表：引擎与 GUI 的一切任务查询都走这里，存储只是它的持久化备份。
- * 遍历顺序会体现在界面列表上，因此保持插入顺序。
+ * 用 {@link TreeMap} 按 id 存：遍历顺序就是 id 升序，翻页界面与命令列表因此天然稳定，不必各自排序。
  */
 public final class QuestRegistryImpl implements QuestRegistry {
 
-    /** 保持插入顺序：注册表的遍历顺序会体现在界面列表上，随加载顺序变化会让人以为数据变了。 */
-    private final Map<String, Quest> quests = new LinkedHashMap<>();
+    private final Map<String, Quest> quests = new TreeMap<>();
 
     @Override
     public Optional<Quest> find(String id) {
@@ -24,7 +23,7 @@ public final class QuestRegistryImpl implements QuestRegistry {
     }
 
     @Override
-    public Collection<Quest> all() {
+    public List<Quest> all() {
         return List.copyOf(quests.values());
     }
 

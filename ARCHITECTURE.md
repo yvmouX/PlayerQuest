@@ -696,7 +696,8 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 
 `/ptxa menu` 打开编辑器（`core/gui/editor`），一层界面管一件事：
 
-- **任务列表**：分页浏览 + 校验问题直读、启用/禁用、`Shift+右键` 连按两次删除、新建任务。
+- **任务列表**：分页浏览 + 校验问题直读、启用/禁用、`Shift+右键` 连按两次删除、新建任务，
+  底部还能切换排序（id / 名称 / 类型 / 启用，见 `QuestRegistry#all(Comparator)`）。
   文件来源（`quests/*.yml`）的任务左键进只读预览而不是编辑器——文件定义本来写不进去，不如不给点。
 - **任务面板**：id、名称、描述、图标、分类、类型、刷新费用、启用逐项改，下面是目标/奖励入口与保存。
 - **目标 / 奖励列表**：新增（先选类型再填字段）、改字段、删除、`Shift+左右键` 调整顺序（顺序就是发放与展示顺序）。
@@ -826,18 +827,19 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 43 | 两处收尾：`core/progress`→`core/display`（原名与 `engine/ProgressService` 互相错位）；`BuiltIns` 拆成 `ObjectiveBuiltIns` / `RewardBuiltIns` 各自回域包（`registry` 因此只剩三张注册表的实现） | ✅ 完成（见 §1 的包约定；`reward` 不再 import 目标类） |
 | 44 | **游戏内任务编辑器**：新包 `core/gui/editor`（任务列表 / 面板 / 草稿 / 目标奖励列表 / 字段编辑 / 候选选择器 / 聊天栏输入）；`ConfigField` 补回控件形状 `Shape`（编辑器据此决定弹清单还是聊天输入）；`ValueKind` 值域仍只做校验，图标与候选清单由编辑器推 | ✅ 完成（见 7.2；新增 `QuestDraftTest` / `FieldValueTest` / `CandidateCatalogTest`，删掉被取代的 `AdminQuestMenu`） |
 | 45 | **槽位按布局表写**：`core/gui/SlotLayout` + `Menu#layout/slot/set(String, …)`，7 个菜单的 `XXX_SLOT` 常量换成文本图里的名字；重名/越界/未知名字当场抛 | ✅ 完成（见 7.1；新增 `SlotLayoutTest` 6 项，列表区仍用数字下标） |
+| 46 | **任务顺序改由注册表担保**：`QuestRegistry#all()` 返回按 id 升序的 `List`（实现换成 `TreeMap`），翻页界面与 `/ptxa list` 不再各自排序；另加 `all(Comparator)` 让调用方自己定顺序，编辑器列表据此有了排序开关（id / 名称 / 类型 / 启用） | ✅ 完成（新增 `QuestRegistryImplTest` 6 项；排序稳定，同分保持 id 序） |
 
 > 阶段 8 / 9 / 14 / 15 / 16 / 20 / 23 / 26 / 27 / 28 / 33 / 35 / 36 做的都是**已被删除的网页编辑器**
 > （阶段 40），本表保留它们作为历史记录——其中的 `/api/*`、`EditorServices`、
 > 前端构建自检与「编辑器目录」测试都不再存在，读到时请以第 7 节与 4.6 的现状为准。
 
-**测试总量：234 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
+**测试总量：240 项全部通过**（32 个测试类，全部 failures=0 / errors=0）：
 存储 16（`StorageIntegrationTest`）+ 结构指纹格式 4（`StructureFingerprintFormatTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`YamlTextTest`）+
 合并仓储 5（`MergedDefinitionRepositoryTest`）+ 预设引用 9（`PresetRefsTest`）+
 示例定义 4（`ExampleDefinitionsTest`）+ 周期算法 12（`PeriodsTest`）+
 引擎 12（`ProgressServiceTest`）+ 命令帮助 12（`YLibCommandHelpTest`）+
-任务管理 12（`QuestAdminServiceTest`）+ 值域 8（`ValueKindsTest`）+
+任务管理 12（`QuestAdminServiceTest`）+ 注册表顺序 6（`QuestRegistryImplTest`）+ 值域 8（`ValueKindsTest`）+
 奖励 10（`CurrencyTypeTest` 6 + `MoneyRewardTest` 4）+
 自定义钓鱼 9（`CustomFishObjectiveTest`）+ 自定义内容接入 7（`CustomContentHooksTest`）+
 结构指纹 8（`StructureFingerprintTest`）+ 字段值域 11（`ObjectiveFieldDomainTest`）+
@@ -848,11 +850,11 @@ YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`Yam
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（31 个 XML），不是靠日志里的汇总行。
+逐套件累加（32 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 773 行 + `core/src/main` 11181 行
-＝ **11954 行 / 116 个 java 文件**；测试 `core/src/test` **4829 行 / 33 个文件**
-（31 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 11175 行
+＝ **11963 行 / 116 个 java 文件**；测试 `core/src/test` **4942 行 / 34 个文件**
+（32 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
 删掉网页编辑器后，`core/web/`（7 个类 / 1933 行）与 `task-editor-vue/src`（31 个文件 / 8299 行）
 及其全部测试都不在统计里。
 

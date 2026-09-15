@@ -16,13 +16,13 @@
 
 ---
 
-## 规模（本次统计：116 个主代码类 / 11954 行）
+## 规模（本次统计：116 个主代码类 / 11963 行）
 
 | 模块 | 类 / 行 | 说明 |
 |---|---|---|
-| `api` | 18 / 773 | 模型与扩展点契约（给扩展作者看的公共 API） |
-| `core` | 98 / 11181 | 全部实现 |
-| 测试 | 33 / 4829 | `core/src/test`（其中 31 个测试类 + 2 个测试替身，234 项测试） |
+| `api` | 18 / 788 | 模型与扩展点契约（给扩展作者看的公共 API） |
+| `core` | 98 / 11175 | 全部实现 |
+| 测试 | 34 / 4942 | `core/src/test`（其中 32 个测试类 + 2 个测试替身，240 项测试） |
 
 行数是「含空行按文件行数累加」，会随提交变动；重新统计见文末。
 
@@ -35,15 +35,15 @@
 | （根） | 1 / 359 | 插件入口与装配根 |
 | `api/model` | 8 / 390 | 数据模型（任务、目标、奖励、预设、玩家记录） |
 | `api/objective` | 3 / 135 | 目标扩展点与动作契约 |
-| `api/registry` | 3 / 92 | 三张注册表的接口 |
+| `api/registry` | 3 / 93 | 三张注册表的接口 |
 | `api/reward` | 1 / 22 | 奖励扩展点 |
 | `api/schema` | 3 / 134 | 「类型自描述」：字段声明（含控件形状）与值域词汇表 |
-| `core/command` | 2 / 646 | 玩家 / 管理员命令 |
+| `core/command` | 2 / 645 | 玩家 / 管理员命令 |
 | `core/config` | 2 / 360 | `config.yml` 与周期配置 |
 | `core/display` | 1 / 174 | 进度展示（actionbar / title） |
 | `core/engine` | 4 / 478 | 进度引擎、奖励发放与结构指纹 |
 | `core/gui` | 4 / 437 | 箱子菜单框架（含布局表 `SlotLayout`：按文本图摆槽位） |
-| `core/gui/editor` | 13 / 1939 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
+| `core/gui/editor` | 13 / 1936 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
 | `core/gui/menu` | 2 / 456 | 两个玩家侧菜单（任务详情 / 周期） |
 | `core/integration` | 2 / 83 | 软依赖接入的公共设施（探测插件、反射小工具） |
 | `core/integration/customcontent` | 4 / 461 | 自定义内容契约 + 汇总 + 两家实现（ItemsAdder / CraftEngine） |
@@ -93,7 +93,7 @@
 
 - `ObjectiveRegistry` (28) — 目标类型注册表（注册、按 id 查、列全部、取显示名）
 - `RewardRegistry` (25) — 奖励类型注册表（同上）
-- `QuestRegistry` (42) — 任务定义注册表（内存视图：按 id、按类型、按启用状态查询）
+- `QuestRegistry` (52) — 任务定义注册表（内存视图：按 id、按类型、按启用状态查询；`all()` 按 id 升序，`all(Comparator)` 换顺序）
 
 ### api/reward（1）
 
@@ -136,7 +136,7 @@
 
 ### core/gui/editor（13）——游戏内任务编辑器
 
-- `QuestBrowserMenu` — 入口：任务分页列表、开关、删除（连按两次 Shift+右键）、新建、重载
+- `QuestBrowserMenu` — 入口：任务分页列表（可按 id / 名称 / 类型 / 启用排序）、开关、删除（连按两次 Shift+右键）、新建、重载
 - `QuestEditMenu` — 任务面板：基本信息逐项改 + 目标/奖励入口 + 实时校验 + 保存
 - `QuestDraft` — 编辑中的任务草稿（可变，`toQuest()` 才交给 `QuestAdminService` 保存）
 - `NodeListMenu` — 一个任务的目标（或奖励）列表：增删改 + Shift 上下移动
@@ -216,7 +216,7 @@
 
 ### core/registry（3）
 
-- `QuestRegistryImpl` (59) — 内存任务注册表（引擎与 GUI 的任务查询都走它）
+- `QuestRegistryImpl` (56) — 内存任务注册表（`TreeMap` 按 id 存，遍历顺序即 id 升序；引擎与 GUI 的任务查询都走它）
 - `ObjectiveRegistryImpl` (51) — 目标类型注册表实现（id → 类型）
 - `RewardRegistryImpl` (35) — 奖励类型注册表实现
 
@@ -288,7 +288,7 @@
 | 存储 | `StorageIntegrationTest`（内存 SQLite 上跑真 SQL：方言、JSON 列、事务、脏数据） |
 | 引擎 | `ProgressServiceTest`、`StructureFingerprintTest`、`StructureFingerprintFormatTest`（指纹格式：换实现即静默重置全部进度）、`RewardServiceTest` |
 | YAML 定义 | `YamlTextTest`、`YamlDefinitionSourceTest`、`MergedDefinitionRepositoryTest`、`ExampleDefinitionsTest` |
-| 任务维护 | `QuestAdminServiceTest`、`PresetRefsTest` |
+| 任务维护 | `QuestAdminServiceTest`、`PresetRefsTest`、`QuestRegistryImplTest`（`all()` 按 id 升序：翻页与命令列表都直接用它的顺序） |
 | 奖励与货币 | `MoneyRewardTest`、`CurrencyTypeTest` |
 | 周期 | `PeriodsTest` |
 | schema / 值域 | `ValueKindsTest`、`ObjectiveFieldDomainTest`（每个字段必须声明值域，且没有无人声明的值域） |

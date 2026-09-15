@@ -21,7 +21,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -102,7 +101,7 @@ public class AdminCommand {
     public void list(CommandSender sender) {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         MessageService messages = messages();
-        Collection<Quest> quests = plugin.quests().all();
+        List<Quest> quests = plugin.quests().all();
         if (quests.isEmpty()) {
             messages.send(sender, "daily.none");
             return;

@@ -4,6 +4,7 @@ import com.playerPlugin.playerTaskX.api.model.Quest;
 import com.playerPlugin.playerTaskX.api.model.QuestType;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,7 +17,25 @@ public interface QuestRegistry {
         return find(id).isPresent();
     }
 
-    Collection<Quest> all();
+    /**
+     * 全部任务，<b>按 id 升序</b>。
+     * <p>
+     * 顺序由注册表担保（而不是存储读取顺序）：翻页界面与命令列表都要「同一份数据每次得到同样的顺序」，
+     * 否则切换一次启用状态刷新后，任务会跳到别的页。要别的顺序，用 {@link #all(Comparator)}。
+     */
+    List<Quest> all();
+
+    /**
+     * 全部任务，按给定顺序排（{@code order} 为 {@code null} 时等同 {@link #all()}）。
+     * <p>
+     * 排序稳定：比较结果相同的任务（例如同名）保持 id 升序，因此翻页不会因为「同分」而抖。
+     */
+    default List<Quest> all(Comparator<Quest> order) {
+        if (order == null) {
+            return all();
+        }
+        return all().stream().sorted(order).toList();
+    }
 
     /** 已启用的任务。 */
     List<Quest> enabled();
