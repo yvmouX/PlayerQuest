@@ -80,12 +80,6 @@ public record ConfigField(
         return picker(key, label, defaultValue, true, "方块名，如 DIAMOND_ORE", ValueKind.BLOCK);
     }
 
-    /** 允许留空的方块名（留空或 {@code *} 表示任意方块）。 */
-    public static ConfigField optionalBlocks(String key, String label, String defaultValue) {
-        return picker(key, label, defaultValue, false, "方块名，如 DIAMOND_ORE；留空或 * 表示任意方块",
-                ValueKind.BLOCK);
-    }
-
     /** 必填的物品名。 */
     public static ConfigField items(String key, String label, String defaultValue) {
         return picker(key, label, defaultValue, true, "物品名，如 DIAMOND", ValueKind.ITEM);
@@ -106,12 +100,6 @@ public record ConfigField(
                                                ValueKind... kinds) {
         ValueKind[] domain = kinds == null || kinds.length == 0 ? new ValueKind[]{ValueKind.ENTITY} : kinds;
         return picker(key, label, defaultValue, false, hint, domain);
-    }
-
-    /** 方块或实体皆可的目标（例如右键交互的对象）。 */
-    public static ConfigField blockOrEntity(String key, String label, String defaultValue) {
-        return picker(key, label, defaultValue, true, "方块或实体类型名，如 CHEST、VILLAGER；留空或 * 表示任意",
-                ValueKind.BLOCK, ValueKind.ENTITY);
     }
 
     /** 允许留空的方块或实体字段。 */

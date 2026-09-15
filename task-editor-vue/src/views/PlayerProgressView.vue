@@ -343,43 +343,25 @@ function toggleRow(questId: string): void {
 
 /* ---------------- 展示辅助 ---------------- */
 
-/** 后端状态枚举名 → 中文文案；未知状态原样显示，避免被误读成「已完成」。 */
-function statusText(status: string): string {
-  switch (status) {
-    case 'ACTIVE':
-    case 'IN_PROGRESS':
-    case 'ONGOING':
-      return '进行中'
-    case 'COMPLETED':
-      return '已完成'
-    case 'CLAIMED':
-      return '已领取'
-    case 'ABANDONED':
-      return '已放弃'
-    case 'EXPIRED':
-      return '已过期'
-    default:
-      return status || '未知'
-  }
+/**
+ * 任务状态的文案与徽标样式。
+ *
+ * <p>后端只有 {@code QuestStatus} 那四个值，未知值原样显示成灰色徽标——
+ * 编一个中文名会让管理员以为它是个已知状态。
+ */
+const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
+  IN_PROGRESS: { label: '进行中', cls: 'badge-blue' },
+  COMPLETED: { label: '已完成', cls: 'badge-green' },
+  CLAIMED: { label: '已领取', cls: 'badge-purple' },
+  ABANDONED: { label: '已放弃', cls: 'badge-gray' }
 }
 
-/** 状态对应的颜色样式。 */
+function statusText(status: string): string {
+  return STATUS_STYLES[status]?.label ?? status ?? '未知'
+}
+
 function statusClass(status: string): string {
-  switch (status) {
-    case 'ACTIVE':
-    case 'IN_PROGRESS':
-    case 'ONGOING':
-      return 'badge-blue'
-    case 'COMPLETED':
-      return 'badge-green'
-    case 'CLAIMED':
-      return 'badge-purple'
-    case 'ABANDONED':
-    case 'EXPIRED':
-      return 'badge-gray'
-    default:
-      return 'badge-gray'
-  }
+  return STATUS_STYLES[status]?.cls ?? 'badge-gray'
 }
 
 /** 目标类型显示名：优先用 schema 的显示名（含类型 id），否则退回类型 id。 */

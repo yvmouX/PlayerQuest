@@ -672,27 +672,6 @@ final class EditorApi {
         handler.accept(parsed);
     }
 
-    /**
-     * 取纯文本请求体（YAML 导入用）并交给处理器；空体回 400。
-     * <p>
-     * 与 {@link #withBody} 分开是刻意的：导入的是 YAML 文本而不是 JSON，
-     * 若复用同一个入口，一段语法错误的 YAML 会被报成「请求体不是合法的 JSON 对象」。
-     */
-    private static void withTextBody(Context ctx, Consumer<String> handler) {
-        String body = ctx.body();
-        if (body == null || body.isBlank()) {
-            badRequest(ctx, "请求体为空");
-            return;
-        }
-        handler.accept(body);
-    }
-
-    /** 把任意对象转成 Map，非对象返回 null（导入时跳过非法条目而不是整体失败）。 */
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object value) {
-        return value instanceof Map ? (Map<String, Object>) value : null;
-    }
-
     static String json(Object value) {
         String text = JsonCodec.writeAny(value);
         return text == null ? errorJson("序列化失败") : text;

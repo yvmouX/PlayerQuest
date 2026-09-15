@@ -7,10 +7,11 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 
 /**
@@ -156,7 +157,7 @@ public final class CustomContentHooks {
     }
 
     private List<String> allIds(java.util.function.Function<CustomContentHook, List<String>> lookup) {
-        Map<String, Boolean> ids = new LinkedHashMap<>();
+        Set<String> ids = new LinkedHashSet<>();
         for (CustomContentHook hook : hooks) {
             List<String> found;
             try {
@@ -169,11 +170,11 @@ public final class CustomContentHooks {
             }
             for (String id : found) {
                 if (id != null && !id.isBlank()) {
-                    ids.putIfAbsent(hook.prefix() + id, Boolean.TRUE);
+                    ids.add(hook.prefix() + id);
                 }
             }
         }
-        return List.copyOf(ids.keySet());
+        return List.copyOf(ids);
     }
 
     // ------------------------------------------------------------------

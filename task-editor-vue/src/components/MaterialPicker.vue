@@ -164,7 +164,6 @@ import {
   entrySubLabel,
   joinMaterialValue,
   loadCatalog,
-  normalizeCatalog,
   peekCatalog,
   resolveValueText,
   sourceLabel,
@@ -276,11 +275,10 @@ function onDocumentMouseDown(event: MouseEvent): void {
 }
 
 function onFocus(): void {
-  void ensureCatalog()
-  open.value = true
+  openPanel()
 }
 
-/** 展开浮层：目录可能还没预加载完，这里兜一次。 */
+/** 展开浮层：目录可能还没预加载完，这里兜一次，并把焦点交给输入框。 */
 function openPanel(): void {
   void ensureCatalog()
   open.value = true
@@ -305,7 +303,8 @@ async function ensureCatalog(): Promise<void> {
   const data = await loadCatalog()
   loading.value = false
   if (data) {
-    catalog.value = normalizeCatalog(data)
+    // loadCatalog 的缓存值已经过 normalizeCatalog，这里直接用
+    catalog.value = data
   } else {
     loadFailed.value = true
   }

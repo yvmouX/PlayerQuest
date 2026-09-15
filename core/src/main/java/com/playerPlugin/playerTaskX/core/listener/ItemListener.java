@@ -15,8 +15,6 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
-import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.ShapelessRecipe;
 
 import java.util.function.Consumer;
 
@@ -31,10 +29,6 @@ public final class ItemListener extends ProgressListener implements Listener {
 
     /** 自定义内容来源；空实现表示 ItemsAdder / CraftEngine 都没装。 */
     private final CustomContentHooks customContent;
-
-    public ItemListener(ProgressService progress, Consumer<ApplyResult> onProgress) {
-        this(progress, onProgress, CustomContentHooks.empty());
-    }
 
     public ItemListener(ProgressService progress, Consumer<ApplyResult> onProgress,
                         CustomContentHooks customContent) {
@@ -134,15 +128,7 @@ public final class ItemListener extends ProgressListener implements Listener {
 
     /** 从配方中取产物；不支持取产物的配方返回 null。 */
     private ItemStack resultOf(Recipe recipe) {
-        if (recipe == null) {
-            return null;
-        }
-        if (recipe instanceof ShapedRecipe shaped) {
-            return shaped.getResult();
-        }
-        if (recipe instanceof ShapelessRecipe shapeless) {
-            return shapeless.getResult();
-        }
-        return recipe.getResult();
+        // ShapedRecipe / ShapelessRecipe 都实现了 Recipe#getResult，因此不需要分派
+        return recipe == null ? null : recipe.getResult();
     }
 }

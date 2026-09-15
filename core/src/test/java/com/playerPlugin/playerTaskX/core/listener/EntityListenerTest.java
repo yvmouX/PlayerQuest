@@ -38,7 +38,7 @@ class EntityListenerTest {
     @DisplayName("未接入 MythicMobs：只推原版实体类型，不带别名")
     void withoutHookOnlyVanillaTarget() {
         ProgressService progress = collectingProgress();
-        EntityListener listener = new EntityListener(progress, null);
+        EntityListener listener = new EntityListener(progress, null, null);
 
         listener.onDeath(deathEvent());
 

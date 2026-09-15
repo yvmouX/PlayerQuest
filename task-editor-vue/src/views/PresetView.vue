@@ -311,7 +311,6 @@ import { loadCatalog } from '../utils/catalog'
 import {
   invalidatePresets,
   loadPresets,
-  normalizePresetMap,
   presetView,
   removePreset,
   upsertPreset
@@ -443,7 +442,8 @@ async function refresh(): Promise<void> {
     objectiveSchemas.value = schema.objectives ?? {}
     rewardSchemas.value = schema.rewards ?? {}
     if (list) {
-      presets.value = normalizePresetMap(list)
+      // list 就是 loadPresets 规范化后的结果，直接取用即可，不必再过一遍
+      presets.value = list
       loaded.value = true
       unauthorized.value = false
       // 正在编辑的那条可能已被删除或改名，这里以服务端结果为准刷新基准

@@ -7,13 +7,13 @@
 
 ---
 
-## 规模（本次统计：106 个类 / 14781 行）
+## 规模（本次统计：110 个类 / 14748 行）
 
 | 模块 | 类 / 行 | 说明 |
 |---|---|---|
-| `api` | 18 / 1075 | 模型与扩展点契约（给扩展作者看的公共 API） |
-| `core` | 88 / 13706 | 全部实现 |
-| 测试 | 33 / 6290 | `core/src/test`（另有 3 个测试替身） |
+| `api` | 19 / 956 | 模型与扩展点契约（给扩展作者看的公共 API） |
+| `core` | 91 / 13792 | 全部实现 |
+| 测试 | 34 / 6338 | `core/src/test`（另有 3 个测试替身） |
 
 行数是「含空行按文件行数累加」，会随提交变动；重新统计见文末。
 
@@ -24,30 +24,30 @@
 | 包 | 类 / 行 | 一句话职责 |
 |---|---|---|
 | （根） | 1 / 415 | 插件入口与装配根 |
-| `api/model` | 7 / 474 | 数据模型（任务、目标、奖励、预设、玩家记录） |
+| `api/model` | 8 / 490 | 数据模型（任务、目标、奖励、预设、玩家记录） |
 | `api/objective` | 3 / 190 | 目标扩展点与动作契约 |
 | `api/registry` | 3 / 115 | 三张注册表的接口 |
 | `api/reward` | 1 / 36 | 奖励扩展点 |
-| `api/schema` | 4 / 260 | 「类型自描述」：字段、控件、值域 |
+| `api/schema` | 4 / 248 | 「类型自描述」：字段、控件、值域 |
 | `core/command` | 2 / 788 | 玩家 / 管理员命令 |
 | `core/config` | 2 / 414 | `config.yml` 与周期配置 |
-| `core/engine` | 2 / 360 | 进度引擎（唯一改玩家进度的地方） |
+| `core/engine` | 2 / 348 | 进度引擎（唯一改玩家进度的地方） |
 | `core/gui` | 6 / 1202 | 箱子菜单框架与三个界面 |
-| `core/integration` | 11 / 1342 | 四个软依赖接入（MythicMobs / CustomFishing / ItemsAdder / CraftEngine） |
-| `core/listener` | 6 / 601 | Bukkit 事件 → `ProgressContext` |
+| `core/integration` | 12 / 1345 | 四个软依赖接入（MythicMobs / CustomFishing / ItemsAdder / CraftEngine） |
+| `core/listener` | 6 / 583 | Bukkit 事件 → `ProgressContext` |
 | `core/objective` | 4 / 312 | 目标类型的实现 |
 | `core/period` | 2 / 519 | 周期任务的抽取、过期与刷新 |
-| `core/placeholder` | 2 / 279 | PlaceholderAPI 变量 |
+| `core/placeholder` | 2 / 266 | PlaceholderAPI 变量 |
 | `core/progress` | 1 / 194 | 进度展示（actionbar / title） |
 | `core/quest` | 2 / 450 | 任务定义维护 + 预设引用展开 |
 | `core/registry` | 4 / 282 | 注册表实现与内置类型清单 |
 | `core/reward` | 5 / 658 | 奖励发放与刷新费用货币 |
 | `core/schema` | 1 / 282 | 值域的运行期判定 |
-| `core/storage` | 14 / 1093 | 存储契约与编解码 |
-| `core/storage/jdbc` | 6 / 1134 | JDBC 实现（SQLite / MySQL 共用） |
-| `core/storage/yaml` | 8 / 1244 | 只读 YAML 定义目录、示例、导出导入 |
+| `core/storage` | 14 / 1100 | 存储契约与编解码 |
+| `core/storage/jdbc` | 7 / 1170 | JDBC 实现（SQLite / MySQL 共用） |
+| `core/storage/yaml` | 9 / 1223 | 只读 YAML 定义目录、示例、导出导入 |
 | `core/text` | 2 / 185 | 文本装配与推送 |
-| `core/web` | 7 / 1952 | 网页编辑器（HTTP + 素材目录 + 译名） |
+| `core/web` | 7 / 1933 | 网页编辑器（HTTP + 素材目录 + 译名） |
 
 ---
 
@@ -57,11 +57,12 @@
 
 - `PlayerTaskX` (415) — 插件入口：只做装配与启停，业务逻辑都在下面各子系统
 
-### api/model（7）
+### api/model（8）
 
 - `Quest` (60) — 任务定义（静态数据，由配置文件或网页编辑器维护）
-- `QuestObjective` (89) — 任务目标：一份配置数据；引用预设时带 `properties`（生效值）与 `authored`（作者那份）
-- `QuestReward` (81) — 任务奖励：同上，发放行为由 `RewardType` 提供
+- `QuestObjective` (66) — 任务目标：一份配置数据；引用预设时带 `properties`（生效值）与 `authored`（作者那份）
+- `QuestReward` (58) — 任务奖励：同上，发放行为由 `RewardType` 提供
+- `ConfigMap` (62) — 目标与奖励共用的配置表读取（不可变拷贝、预设键、宽松取字符串 / 整数）
 - `PlayerQuest` (153) — 玩家进行中的任务（运行期状态）：进度按「目标下标 → 计数」存，附结构摘要
 - `Preset` (50) — 目标 / 奖励预设：一组「类型 + 属性」
 - `QuestType` (26) — 任务类型（NORMAL / DAILY / WEEKLY / MONTHLY / CUSTOM）
@@ -85,7 +86,7 @@
 
 ### api/schema（4）
 
-- `ConfigField` (149) — 单个字段描述（键 / 标签 / 控件 / 必填 / 默认值 / 说明 / **值域**）
+- `ConfigField` (137) — 单个字段描述（键 / 标签 / 控件 / 必填 / 默认值 / 说明 / **值域**）
 - `ConfigurableType` (23) — 「由配置驱动」的类型共有形状（`id` + 显示名 + 字段表）
 - `FieldType` (31) — 控件种类（文本 / 整数 / 小数 / 开关 / 选择器 / 下拉）——只被编辑器读
 - `ValueKind` (57) — 值域词汇表（方块 / 可放置 / 物品 / 食物 / 实体 / 活体 / 可繁殖 / 可驯服 / 可剪毛 / 鱼 / 附魔）
@@ -103,7 +104,7 @@
 ### core/engine（2）
 
 - `ProgressService` (329) — **进度引擎**：唯一修改玩家进度的入口（匹配、累加、完成、待领取）
-- `ApplyResult` (31) — 一次动作处理的结果（改了什么），表现层据此提示
+- `ApplyResult` (19) — 一次动作处理的结果（改了什么），表现层据此提示
 
 ### core/gui（6）
 
@@ -114,15 +115,16 @@
 - `PeriodicQuestMenu` (212) — 周期任务界面（四种周期切换、刷新按钮、剩余次数）
 - `AdminQuestMenu` (237) — 管理员任务管理：分页列表、启停、重载
 
-### core/integration（11）
+### core/integration（12）
 
 - `SoftDependency` (61) — 软依赖探测（插件是否加载、版本多少）
+- `Reflect` (52) — 接入软依赖用的反射小工具（按名字取类取方法，取不到一律 null）
 - `CustomContentHook` (50) — 一个自定义内容来源（ItemsAdder / CraftEngine）的契约
-- `CustomContentHooks` (254) — 全部已接入来源的汇总，以及围绕它们的查询与校验
-- `ItemsAdderHook` (181) — ItemsAdder 接入点（纯反射，不依赖其构件）
-- `CraftEngineHook` (206) — CraftEngine 接入点（纯反射）
+- `CustomContentHooks` (255) — 全部已接入来源的汇总，以及围绕它们的查询与校验
+- `ItemsAdderHook` (162) — ItemsAdder 接入点（纯反射，不依赖其构件）
+- `CraftEngineHook` (186) — CraftEngine 接入点（纯反射）
 - `MythicMobsHook` (139) — MythicMobs 接入点的契约（保留接口是为了能塞假身测试）
-- `MythicMobs5Hook` (173) — MythicMobs 5.x 的实现（懒解析 `MobManager`，处理 POSTWORLD 时序）
+- `MythicMobs5Hook` (162) — MythicMobs 5.x 的实现（懒解析 `MobManager`，处理 POSTWORLD 时序）
 - `CustomFishingHook` (116) — CustomFishing 接入点：注册钓获监听器
 - `CustomFishingListener` (74) — 把一次自定义钓获翻译成 `Trigger.CUSTOM_FISH`
 - `CustomFishingCatalog` (69) — 读 CustomFishing 的战利品清单，供编辑器选鱼 id
@@ -131,9 +133,9 @@
 ### core/listener（6）
 
 - `ProgressListener` (43, abstract) — 监听器基类：只做「事件 → 动作」的翻译与投递（判定逻辑禁止写在这里）
-- `BlockListener` (114) — 方块域：挖掘、放置、对方块交互
+- `BlockListener` (110) — 方块域：挖掘、放置、对方块交互
 - `EntityListener` (174) — 实体域：击杀、垂钓、剪切、繁殖、驯服、与实体交互
-- `ItemListener` (148) — 物品域：合成、消耗、附魔
+- `ItemListener` (134) — 物品域：合成、消耗、附魔
 - `TextListener` (66) — 文本域：发言、执行命令
 - `PlayerListener` (56) — 生命周期：进服载入索引 + 补发周期任务，退服释放内存
 
@@ -151,7 +153,7 @@
 
 ### core/placeholder（2）
 
-- `PlaceholderHook` (71) — PlaceholderAPI 反射接入点（把编译期依赖关在这一个类里）
+- `PlaceholderHook` (58) — PlaceholderAPI 反射接入点（把编译期依赖关在这一个类里）
 - `QuestPlaceholderExpansion` (208) — 变量扩展本体（`%playertaskx_daily_progress%` 之类）
 
 ### core/progress（1）
@@ -196,26 +198,28 @@
 - `JsonCodec` (265) — JSON 编解码；**读时绝不抛异常**（脏数据降级为空并记日志）
 - `QuestJson` (172) — 任务 ⇄ 文档映射（编辑器 JSON 与 `quests/*.yml` 共用一份字段定义）
 - `PresetJson` (78) — 预设 ⇄ 文档映射（同上）
-- `Hash` (49) — 目标结构指纹：目标列表算成短摘要存进玩家记录，顺序变化靠它识别
+- `Hash` (56) — 目标结构指纹：目标列表算成短摘要存进玩家记录，顺序变化靠它识别
 - `DefinitionReadOnlyException` (18) — 试图修改「文件里的定义」时抛出（编辑器回 409，命令打印原因）
 
-### core/storage/jdbc（6）
+### core/storage/jdbc（7）
 
 - `JdbcDatabase` (235) — JDBC 存储引擎：SQLite 单连接 + WAL、MySQL 走 HikariCP，执行逻辑只一份
 - `Schema` (118) — 建表语句的唯一来源（6 张表 + 2 个索引）
-- `Sql` (51) — JDBC 参数绑定小工具
-- `JdbcQuestRepository` (309) — 任务定义仓储实现（子表整表取出后在内存按 `quest_id` 分组）
+- `Sql` (61) — JDBC 参数绑定小工具
+- `EnumText` (52) — 枚举列的容错解析（缺失 / 非法退回默认值并告警，不抛异常）
+- `JdbcQuestRepository` (300) — 任务定义仓储实现（子表整表取出后在内存按 `quest_id` 分组）
 - `JdbcPresetRepository` (89) — 预设仓储实现
-- `JdbcPlayerQuestRepository` (332) — 玩家任务仓储实现（含 `period_state` 读写；脏行逐条跳过）
+- `JdbcPlayerQuestRepository` (315) — 玩家任务仓储实现（含 `period_state` 读写；脏行逐条跳过）
 
-### core/storage/yaml（8）
+### core/storage/yaml（9）
 
 - `DefinitionFolder` (239) — 一个 YAML 定义文件夹（`quests/` / `presets/`）：递归扫描、解析、只在空目录铺一次示例
-- `YamlSources` (119) — YAML 源读取与缓存（扫目录 → 解析 → 转模型 → 记 id 位置）
+- `YamlSources` (114) — YAML 源读取与缓存（扫目录 → 解析 → 转模型 → 记 id 位置）
 - `MergedSources` (92) — 合并规则：库优先 + 文件补充 + 冲突告警一次 + 只读判定
-- `MergedQuestRepository` (68) — 任务定义的对外仓储（库 + `quests/`）
-- `MergedPresetRepository` (63) — 预设的对外仓储（库 + `presets/`）
-- `YamlDefinitions` (204) — 任务 / 预设 ⇄ YAML 文档映射，以及导出 / 导入 / 只读来源的构造
+- `MergedDefinitionRepository` (75) — 合并仓储的通用实现（读取走合并、写入落库、只读 id 抛异常）
+- `MergedQuestRepository` (22) — 任务定义的对外仓储（库 + `quests/`，把类型绑到 `Quest`）
+- `MergedPresetRepository` (19) — 预设的对外仓储（库 + `presets/`，把类型绑到 `Preset`）
+- `YamlDefinitions` (203) — 任务 / 预设 ⇄ YAML 文档映射，以及导出 / 导入 / 只读来源的构造
 - `YamlText` (296) — YAML 文本 ⇄ 普通对象，自带 1.2-core 语义（防 `NO` 被当布尔、`1.20` 被当浮点）
 - `ExampleDefinitions` (163) — 出厂示例：从 jar 内资源铺到数据目录（只在空目录时）
 
@@ -227,22 +231,22 @@
 ### core/web（7）
 
 - `EditorServer` (242) — 编辑器服务本身：端口重试、令牌校验、静态资源托管
-- `EditorApi` (712) — 全部 `/api/*` 路由与请求 / 响应约定（当前最大的一个类）
+- `EditorApi` (691) — 全部 `/api/*` 路由与请求 / 响应约定（当前最大的一个类）
 - `EditorServices` (75) — `EditorApi` 需要的宿主能力（为了能脱离服务端做真 HTTP 测试）
-- `PluginEditorServices` (106) — 上面接口的插件侧实现：把主类持有的子系统转交过来
+- `PluginEditorServices` (109) — 上面接口的插件侧实现：把主类持有的子系统转交过来
 - `MaterialCatalog` (393) — 编辑器可选的材料 / 实体 / 附魔 / 鱼清单（含来源标签与值域）
-- `LangFileStore` (364) — 译名来源：读服务端 `en_us.json`、可选下载或读本地 `zh_cn.json`
+- `LangFileStore` (363) — 译名来源：读服务端 `en_us.json`、可选下载或读本地 `zh_cn.json`
 - `HttpText` (60) — 极简 HTTP 文本获取，只服务「下载语言文件」这一件事
 
 ---
 
-## 测试（33 个类 / 6290 行）
+## 测试（34 个类 / 6338 行）
 
 按「钉住什么」分组：
 
 | 组 | 类 |
 |---|---|
-| 存储 | `StorageIntegrationTest`（内存 SQLite 上跑真 SQL：方言、JSON 列、事务、脏数据） |
+| 存储 | `StorageIntegrationTest`（内存 SQLite 上跑真 SQL：方言、JSON 列、事务、脏数据）、`HashTest`（指纹格式，防止换哈希实现把进度全重置） |
 | YAML 定义 | `YamlTextTest`、`YamlDefinitionsTest`、`YamlDefinitionSourceTest`、`MergedDefinitionRepositoryTest`、`ExampleDefinitionsTest` |
 | 编辑器 | `EditorApiTest`（真起 Javalin 打 HTTP）、`MaterialCatalogTest`、`PluginEditorServicesTest` |
 | 任务维护 | `QuestAdminServiceTest`、`PresetRefsTest` |

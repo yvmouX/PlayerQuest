@@ -1,9 +1,9 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
+import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
+import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
-import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
-import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
-import com.playerPlugin.playerTaskX.core.registry.RewardRegistryImpl;
 import com.playerPlugin.playerTaskX.core.storage.PlayerQuestRepository;
 import com.playerPlugin.playerTaskX.core.storage.PresetRepository;
 import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
@@ -40,7 +40,7 @@ import com.playerPlugin.playerTaskX.core.storage.QuestRepository;
 public interface EditorServices {
 
     /** 任务注册表：列表、按 id 查询、分类与每日任务。 */
-    QuestRegistryImpl quests();
+    QuestRegistry quests();
 
     /**
      * 任务定义仓储（数据库 + 可选的 YAML 只读来源）。
@@ -65,10 +65,10 @@ public interface EditorServices {
     PlayerQuestRepository playerQuestRepository();
 
     /** 目标类型清单，{@code /api/schema} 据此生成动态表单。 */
-    ObjectiveRegistryImpl objectiveTypes();
+    ObjectiveRegistry objectiveTypes();
 
     /** 奖励类型清单；除字段结构外还要给出「当前是否可用」。 */
-    RewardRegistryImpl rewardTypes();
+    RewardRegistry rewardTypes();
 
     /** 存储描述，供 {@code /api/stats} 展示当前用的后端。 */
     String describeStorage();

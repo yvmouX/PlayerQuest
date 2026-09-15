@@ -54,32 +54,32 @@ final class CraftEngineHook implements CustomContentHook {
 
     @Nullable
     static CraftEngineHook create() {
-        Class<?> items = findClass("net.momirealms.craftengine.bukkit.api.CraftEngineItems");
-        Class<?> blocks = findClass("net.momirealms.craftengine.bukkit.api.CraftEngineBlocks");
+        Class<?> items = Reflect.findClass("net.momirealms.craftengine.bukkit.api.CraftEngineItems");
+        Class<?> blocks = Reflect.findClass("net.momirealms.craftengine.bukkit.api.CraftEngineBlocks");
         if (items == null || blocks == null) {
             return null;
         }
 
         // 物品 id：优先 getCustomItemId（直接返回 Key），退回 byItemStack + ItemDefinition.id()
-        Method itemIdLookup = method(items, "getCustomItemId", ItemStack.class);
-        Method itemByStack = method(items, "byItemStack", ItemStack.class);
+        Method itemIdLookup = Reflect.method(items, "getCustomItemId", ItemStack.class);
+        Method itemByStack = Reflect.method(items, "byItemStack", ItemStack.class);
         if (itemIdLookup == null && itemByStack == null) {
             return null;
         }
 
         // 方块 id：isCustomBlock 先挡一道，再 getCustomBlockState → owner().value().id()
-        Method blockIsCustom = method(blocks, "isCustomBlock", Block.class);
-        Method blockStateLookup = method(blocks, "getCustomBlockState", Block.class);
+        Method blockIsCustom = Reflect.method(blocks, "isCustomBlock", Block.class);
+        Method blockStateLookup = Reflect.method(blocks, "getCustomBlockState", Block.class);
         Method blockOwnerOfState = blockStateLookup == null
                 ? null
-                : method(blockStateLookup.getReturnType(), "owner");
+                : Reflect.method(blockStateLookup.getReturnType(), "owner");
         if (blockStateLookup == null || blockOwnerOfState == null) {
             // 取不到方块状态时仍然保留物品能力：能接多少接多少，别整家放弃
             blockStateLookup = null;
         }
 
         return new CraftEngineHook(itemIdLookup, itemByStack, blockIsCustom, blockStateLookup,
-                blockOwnerOfState, method(items, "loadedItems"), method(blocks, "loadedBlocks"));
+                blockOwnerOfState, Reflect.method(items, "loadedItems"), Reflect.method(blocks, "loadedBlocks"));
     }
 
     @Override
@@ -182,25 +182,5 @@ final class CraftEngineHook implements CustomContentHook {
             return List.of();
         }
         return List.of();
-    }
-
-    @Nullable
-    private static Class<?> findClass(String name) {
-        try {
-            return Class.forName(name);
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
-    @Nullable
-    private static Method method(Class<?> owner, String name, Class<?>... parameters) {
-        try {
-            Method method = owner.getMethod(name, parameters);
-            method.setAccessible(true);
-            return method;
-        } catch (Throwable e) {
-            return null;
-        }
     }
 }

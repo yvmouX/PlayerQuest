@@ -35,10 +35,6 @@ public final class BlockListener extends ProgressListener implements Listener {
     /** 自定义内容来源；空实现表示两家都没装（最常见的情况）。 */
     private final CustomContentHooks customContent;
 
-    public BlockListener(ProgressService progress, Consumer<ApplyResult> onProgress) {
-        this(progress, onProgress, CustomContentHooks.empty());
-    }
-
     public BlockListener(ProgressService progress, Consumer<ApplyResult> onProgress,
                          CustomContentHooks customContent) {
         super(progress, onProgress);

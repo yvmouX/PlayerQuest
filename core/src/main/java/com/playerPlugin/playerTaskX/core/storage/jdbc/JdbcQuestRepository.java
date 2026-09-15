@@ -15,7 +15,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -278,19 +277,11 @@ public final class JdbcQuestRepository implements QuestRepository {
 
     /** 容错解析任务类型：非法/缺失一律按 {@link QuestType#NORMAL} 处理，一条脏数据不该拖垮整个任务列表。 */
     private static QuestType parseType(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return QuestType.NORMAL;
-        }
-        try {
-            return QuestType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            warn("任务类型非法，已按 NORMAL 处理: " + raw);
-            return QuestType.NORMAL;
-        }
+        return EnumText.parse(QuestType.class, raw, QuestType.NORMAL, "任务类型");
     }
 
     private static void warn(String message) {
-        System.err.println("[PlayerTaskX] " + message);
+        EnumText.warn(message);
     }
 
     /** 从结果集读出一个子表元素；两种子表共用同一套分组逻辑。 */

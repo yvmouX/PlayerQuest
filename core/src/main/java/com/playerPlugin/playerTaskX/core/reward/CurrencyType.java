@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 
 /**
  * 刷新费用可用的货币。
@@ -42,11 +42,11 @@ public enum CurrencyType {
 
     private final String id;
     private final String displayName;
-    private final Supplier<Boolean> availability;
+    private final BooleanSupplier availability;
     private final BalanceReader balanceReader;
     private final Charger charger;
 
-    CurrencyType(String id, String displayName, Supplier<Boolean> availability,
+    CurrencyType(String id, String displayName, BooleanSupplier availability,
                  BalanceReader balanceReader, Charger charger) {
         this.id = id;
         this.displayName = displayName;
@@ -67,7 +67,7 @@ public enum CurrencyType {
 
     /** 该货币当前是否可用。 */
     public boolean available() {
-        return Boolean.TRUE.equals(availability.get());
+        return availability.getAsBoolean();
     }
 
     /** 玩家在该货币下的余额。 */

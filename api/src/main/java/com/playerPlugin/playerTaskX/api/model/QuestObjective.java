@@ -1,7 +1,5 @@
 package com.playerPlugin.playerTaskX.api.model;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -33,8 +31,8 @@ public record QuestObjective(String type, Map<String, Object> properties, Map<St
     public static final String PRESET_KEY = "preset";
 
     public QuestObjective {
-        properties = copy(properties);
-        authored = authored == null ? properties : copy(authored);
+        properties = ConfigMap.copy(properties);
+        authored = authored == null ? properties : ConfigMap.copy(authored);
     }
 
     /** 直接写配置（不引用预设）的目标。 */
@@ -48,42 +46,21 @@ public record QuestObjective(String type, Map<String, Object> properties, Map<St
 
     /** 引用了哪个预设；没引用返回 {@code null}。 */
     public String presetId() {
-        Object value = authored.get(PRESET_KEY);
-        if (value == null) {
-            return null;
-        }
-        String id = String.valueOf(value).trim();
-        return id.isEmpty() ? null : id;
+        return ConfigMap.presetId(authored);
     }
 
     /** 取字符串配置，缺失返回默认值。 */
     public String string(String key, String fallback) {
-        Object value = properties.get(key);
-        return value == null ? fallback : String.valueOf(value);
+        return ConfigMap.string(properties, key, fallback);
     }
 
     /** 取整数配置，缺失或非法返回默认值。 */
     public int integer(String key, int fallback) {
-        Object value = properties.get(key);
-        if (value instanceof Number number) return number.intValue();
-        if (value instanceof String text) {
-            try {
-                return Integer.parseInt(text.trim());
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
-        }
-        return fallback;
+        return ConfigMap.integer(properties, key, fallback);
     }
 
     /** 目标所需数量，统一约定 {@code amount} 键，默认 1。 */
     public int amount() {
         return Math.max(1, integer("amount", 1));
-    }
-
-    private static Map<String, Object> copy(Map<String, Object> source) {
-        return source == null
-                ? Collections.emptyMap()
-                : Collections.unmodifiableMap(new LinkedHashMap<>(source));
     }
 }

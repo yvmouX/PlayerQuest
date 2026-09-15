@@ -79,7 +79,6 @@ final class MythicMobs5Hook implements MythicMobsHook {
         Method mobType = Class.forName(ACTIVE_MOB_CLASS).getMethod("getMobType");
         return new MythicMobs5Hook(instance, mobManager, mobType);
     }
-
     /**
      * 怪物管理器；MythicMobs 尚未启用时返回 {@code null}，由各调用方降级。
      * <p>
@@ -101,16 +100,16 @@ final class MythicMobs5Hook implements MythicMobsHook {
             return null;
         }
         Class<?> managerType = resolved.getClass();
-        getMythicMobInstance = method(managerType, "getMythicMobInstance", Entity.class);
-        getMobNames = method(managerType, "getMobNames");
+        getMythicMobInstance = Reflect.method(managerType, "getMythicMobInstance", Entity.class);
+        getMobNames = Reflect.method(managerType, "getMobNames");
         if (getMythicMobInstance == null || getMobNames == null) {
             try {
                 Class<?> iface = Class.forName(MOB_MANAGER_CLASS);
                 if (getMythicMobInstance == null) {
-                    getMythicMobInstance = method(iface, "getMythicMobInstance", Entity.class);
+                    getMythicMobInstance = Reflect.method(iface, "getMythicMobInstance", Entity.class);
                 }
                 if (getMobNames == null) {
-                    getMobNames = method(iface, "getMobNames");
+                    getMobNames = Reflect.method(iface, "getMobNames");
                 }
             } catch (ClassNotFoundException ignored) {
                 // 没有这个接口时以运行时类的结果为准
@@ -118,16 +117,6 @@ final class MythicMobs5Hook implements MythicMobsHook {
         }
         mobManager = resolved;
         return resolved;
-    }
-
-    /** 取公开方法；不存在或签名不符时返回 {@code null}（调用方各自降级）。 */
-    @Nullable
-    private static Method method(Class<?> type, String name, Class<?>... parameters) {
-        try {
-            return type.getMethod(name, parameters);
-        } catch (NoSuchMethodException | RuntimeException e) {
-            return null;
-        }
     }
 
     @Override

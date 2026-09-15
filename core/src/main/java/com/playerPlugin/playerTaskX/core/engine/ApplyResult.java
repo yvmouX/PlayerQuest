@@ -16,16 +16,4 @@ import java.util.UUID;
 public record ApplyResult(UUID playerId, boolean changed, List<String> completedQuests) {
 
     public static final ApplyResult NONE = new ApplyResult(null, false, List.of());
-
-    public static ApplyResult changed(UUID playerId) {
-        return new ApplyResult(playerId, true, List.of());
-    }
-
-    public static ApplyResult none(UUID playerId) {
-        return new ApplyResult(playerId, false, List.of());
-    }
-
-    public boolean hasCompletion() {
-        return !completedQuests.isEmpty();
-    }
 }

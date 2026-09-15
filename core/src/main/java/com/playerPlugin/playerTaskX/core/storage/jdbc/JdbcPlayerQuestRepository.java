@@ -11,7 +11,6 @@ import com.playerPlugin.playerTaskX.api.model.QuestType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -296,15 +295,7 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
 
     /** 容错解析任务类型：非法/缺失按 NORMAL 处理。 */
     private static QuestType parseType(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return QuestType.NORMAL;
-        }
-        try {
-            return QuestType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            warn("玩家任务的 type 非法，已按 NORMAL 处理: " + raw);
-            return QuestType.NORMAL;
-        }
+        return EnumText.parse(QuestType.class, raw, QuestType.NORMAL, "玩家任务的 type");
     }
 
     /**
@@ -315,18 +306,10 @@ public final class JdbcPlayerQuestRepository implements PlayerQuestRepository {
      * 因此这里的兜底不会把脏数据混进活跃列表。
      */
     private static QuestStatus parseStatus(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return QuestStatus.IN_PROGRESS;
-        }
-        try {
-            return QuestStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            warn("玩家任务的状态非法，已按 IN_PROGRESS 处理: " + raw);
-            return QuestStatus.IN_PROGRESS;
-        }
+        return EnumText.parse(QuestStatus.class, raw, QuestStatus.IN_PROGRESS, "玩家任务的状态");
     }
 
     private static void warn(String message) {
-        System.err.println("[PlayerTaskX] " + message);
+        EnumText.warn(message);
     }
 }

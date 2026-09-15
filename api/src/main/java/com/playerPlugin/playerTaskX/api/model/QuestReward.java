@@ -1,7 +1,5 @@
 package com.playerPlugin.playerTaskX.api.model;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -19,8 +17,8 @@ import java.util.Map;
 public record QuestReward(String type, Map<String, Object> properties, Map<String, Object> authored) {
 
     public QuestReward {
-        properties = copy(properties);
-        authored = authored == null ? properties : copy(authored);
+        properties = ConfigMap.copy(properties);
+        authored = authored == null ? properties : ConfigMap.copy(authored);
     }
 
     /** 直接写配置（不引用预设）的奖励。 */
@@ -34,30 +32,15 @@ public record QuestReward(String type, Map<String, Object> properties, Map<Strin
 
     /** 引用了哪个预设；没引用返回 {@code null}。 */
     public String presetId() {
-        Object value = authored.get(QuestObjective.PRESET_KEY);
-        if (value == null) {
-            return null;
-        }
-        String id = String.valueOf(value).trim();
-        return id.isEmpty() ? null : id;
+        return ConfigMap.presetId(authored);
     }
 
     public String string(String key, String fallback) {
-        Object value = properties.get(key);
-        return value == null ? fallback : String.valueOf(value);
+        return ConfigMap.string(properties, key, fallback);
     }
 
     public int integer(String key, int fallback) {
-        Object value = properties.get(key);
-        if (value instanceof Number number) return number.intValue();
-        if (value instanceof String text) {
-            try {
-                return Integer.parseInt(text.trim());
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
-        }
-        return fallback;
+        return ConfigMap.integer(properties, key, fallback);
     }
 
     public double decimal(String key, double fallback) {
@@ -71,11 +54,5 @@ public record QuestReward(String type, Map<String, Object> properties, Map<Strin
             }
         }
         return fallback;
-    }
-
-    private static Map<String, Object> copy(Map<String, Object> source) {
-        return source == null
-                ? Collections.emptyMap()
-                : Collections.unmodifiableMap(new LinkedHashMap<>(source));
     }
 }

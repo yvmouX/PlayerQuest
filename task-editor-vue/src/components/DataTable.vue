@@ -62,28 +62,17 @@
 <script setup lang="ts" generic="T">
 import type { SortDirection, TableColumn } from '../types'
 
-const props = withDefaults(
-  defineProps<{
-    columns: TableColumn[]
-    rows: T[]
-    /** 行唯一键；不传则退化为下标 */
-    rowKey?: (row: T) => string
-    /** 行附加 class */
-    rowClass?: (row: T) => string
-    /** 当前排序列（用于显示箭头） */
-    sortKey?: string
-    sortDirection?: SortDirection
-  }>(),
-  {
-    rowKey: undefined,
-    rowClass: undefined,
-    sortKey: '',
-    sortDirection: 'asc'
-  }
-)
-// 模板里要用到 rowKey / rowClass，这里显式引用一次，避免打包器摇树时误判
-void props.rowKey
-void props.rowClass
+defineProps<{
+  columns: TableColumn[]
+  rows: T[]
+  /** 行唯一键；不传则退化为下标 */
+  rowKey?: (row: T) => string
+  /** 行附加 class */
+  rowClass?: (row: T) => string
+  /** 当前排序列（用于显示箭头） */
+  sortKey?: string
+  sortDirection?: SortDirection
+}>()
 
 const emit = defineEmits<{
   sort: [key: string]

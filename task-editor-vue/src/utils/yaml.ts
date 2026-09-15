@@ -20,6 +20,7 @@
 import { CORE_SCHEMA, dump, load } from 'js-yaml'
 import type { Preset, Properties, Quest } from '../types'
 import { normalizeImportedQuest } from '../services/api'
+import { normalizePreset } from './presets'
 
 /** 解析结果：值、错误、警告三者必有其一。失败时 {@code value} 为 null 且 {@code error} 非空。 */
 export interface YamlParseResult<T> {
@@ -139,23 +140,7 @@ export function presetFromYaml(text: string): YamlParseResult<Preset> {
   return parseDocument(text, PRESET_KEYS, normalizePreset, '预设缺少必需字段 type');
 }
 
-/** 预设的形状校验：只要求 {@code type} 非空（后端也是如此）。 */
-function normalizePreset(raw: Record<string, unknown>): Preset | null {
-  const type = typeof raw.type === 'string' ? raw.type.trim() : ''
-  if (!type) {
-    return null
-  }
-  const properties = raw.properties
-  return {
-    id: typeof raw.id === 'string' ? raw.id.trim() : '',
-    name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : type,
-    type,
-    description: typeof raw.description === 'string' ? raw.description : '',
-    properties: properties && typeof properties === 'object' && !Array.isArray(properties)
-      ? properties as Properties
-      : {}
-  }
-}
+/** 预设的形状校验复用 {@code utils/presets} 那一份：只要求 {@code type} 非空（后端也是如此）。 */
 
 // ---------------------------------------------------------------------------
 // 导入预检

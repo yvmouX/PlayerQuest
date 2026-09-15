@@ -1,6 +1,6 @@
 package com.playerPlugin.playerTaskX.core.placeholder;
 
-import org.bukkit.Bukkit;
+import com.playerPlugin.playerTaskX.core.integration.SoftDependency;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Method;
@@ -17,26 +17,12 @@ import java.lang.reflect.Method;
  */
 public final class PlaceholderHook {
 
+    private static final String PLUGIN = "PlaceholderAPI";
+
     private static final String EXPANSION_CLASS =
             "com.playerPlugin.playerTaskX.core.placeholder.QuestPlaceholderExpansion";
 
     private PlaceholderHook() {
-    }
-
-    /**
-     * 探测 PlaceholderAPI 是否已加载。
-     * <p>
-     * 包住 Throwable 而不是直接调用：{@code Bukkit.getPluginManager()} 在服务端尚未初始化时
-     * 返回 null（单元测试、引导阶段），直接解引用会抛 NPE。
-     * 软依赖检测失败只应表示「不可用」，不该让插件启动失败。
-     */
-    private static boolean isPlaceholderApiPresent() {
-        try {
-            return Bukkit.getPluginManager() != null
-                    && Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
-        } catch (Throwable ignored) {
-            return false;
-        }
     }
 
     /**
@@ -45,7 +31,8 @@ public final class PlaceholderHook {
      * @return 是否注册成功（未安装 PlaceholderAPI 时返回 false，属正常情况）
      */
     public static boolean register(Plugin plugin) {
-        if (!isPlaceholderApiPresent()) {
+        // 探测统一走 SoftDependency：它已经把「PluginManager 还没起来」这类引导期异常兜住了
+        if (!SoftDependency.isPresent(PLUGIN)) {
             return false;
         }
         try {

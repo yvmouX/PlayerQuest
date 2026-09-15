@@ -68,11 +68,6 @@ public final class YamlSources<T> {
         return location(id).isPresent();
     }
 
-    /** 已解析的条目数（用缓存，不重新读盘）。 */
-    public int size() {
-        return current().items().size();
-    }
-
     /** 目录名（{@code quests} / {@code presets}），用于提示「去哪个目录改」。 */
     public String directoryLabel() {
         return folder.label();

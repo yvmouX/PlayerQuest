@@ -1,5 +1,8 @@
 package com.playerPlugin.playerTaskX.core.web;
 
+import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
+import com.playerPlugin.playerTaskX.api.registry.QuestRegistry;
+import com.playerPlugin.playerTaskX.api.registry.RewardRegistry;
 import com.playerPlugin.playerTaskX.core.quest.QuestAdminService;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;
 import com.playerPlugin.playerTaskX.core.registry.QuestRegistryImpl;
@@ -63,7 +66,7 @@ public final class PluginEditorServices implements EditorServices {
     }
 
     @Override
-    public QuestRegistryImpl quests() {
+    public QuestRegistry quests() {
         return quests;
     }
 
@@ -88,12 +91,12 @@ public final class PluginEditorServices implements EditorServices {
     }
 
     @Override
-    public ObjectiveRegistryImpl objectiveTypes() {
+    public ObjectiveRegistry objectiveTypes() {
         return objectiveTypes;
     }
 
     @Override
-    public RewardRegistryImpl rewardTypes() {
+    public RewardRegistry rewardTypes() {
         return rewardTypes;
     }
 

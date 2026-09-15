@@ -48,30 +48,30 @@ final class ItemsAdderHook implements CustomContentHook {
 
     @Nullable
     static ItemsAdderHook create() {
-        Class<?> customStack = findClass("dev.lone.itemsadder.api.CustomStack");
-        Class<?> customBlock = findClass("dev.lone.itemsadder.api.CustomBlock");
-        Class<?> legacy = findClass("dev.lone.itemsadder.api.ItemsAdder");
+        Class<?> customStack = Reflect.findClass("dev.lone.itemsadder.api.CustomStack");
+        Class<?> customBlock = Reflect.findClass("dev.lone.itemsadder.api.CustomBlock");
+        Class<?> legacy = Reflect.findClass("dev.lone.itemsadder.api.ItemsAdder");
 
         Method itemLookup = null;
         Method itemIdGetter = null;
         Method itemRegistry = null;
         if (customStack != null) {
-            itemLookup = method(customStack, "byItemStack", ItemStack.class);
-            itemIdGetter = method(customStack, "getNamespacedID");
-            itemRegistry = method(customStack, "getNamespacedIdsInRegistry");
+            itemLookup = Reflect.method(customStack, "byItemStack", ItemStack.class);
+            itemIdGetter = Reflect.method(customStack, "getNamespacedID");
+            itemRegistry = Reflect.method(customStack, "getNamespacedIdsInRegistry");
         }
         if (itemIdGetter == null && legacy != null) {
             // 旧静态 API：直接给「配置里的名字」（不含命名空间），取名字这一条就够
-            itemLookup = method(legacy, "getCustomItemName", ItemStack.class);
+            itemLookup = Reflect.method(legacy, "getCustomItemName", ItemStack.class);
         }
 
         Method blockLookup = null;
         Method blockIdGetter = null;
         Method blockRegistry = null;
         if (customBlock != null) {
-            blockLookup = method(customBlock, "byAlreadyPlaced", Block.class);
-            blockIdGetter = method(customBlock, "getNamespacedID");
-            blockRegistry = method(customBlock, "getNamespacedIdsInRegistry");
+            blockLookup = Reflect.method(customBlock, "byAlreadyPlaced", Block.class);
+            blockIdGetter = Reflect.method(customBlock, "getNamespacedID");
+            blockRegistry = Reflect.method(customBlock, "getNamespacedIdsInRegistry");
         }
 
         if (itemLookup == null && blockLookup == null) {
@@ -159,23 +159,4 @@ final class ItemsAdderHook implements CustomContentHook {
         return List.of();
     }
 
-    @Nullable
-    private static Class<?> findClass(String name) {
-        try {
-            return Class.forName(name);
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
-    @Nullable
-    private static Method method(Class<?> owner, String name, Class<?>... parameters) {
-        try {
-            Method method = owner.getMethod(name, parameters);
-            method.setAccessible(true);
-            return method;
-        } catch (Throwable e) {
-            return null;
-        }
-    }
 }

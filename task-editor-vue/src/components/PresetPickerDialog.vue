@@ -107,7 +107,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
-import type { Preset, PresetKind, TypeSchema } from '../types'
+import type { Preset, PresetKind, PresetMap, TypeSchema } from '../types'
 import { loadPresets, normalizePresetMap, peekPresets, presetView } from '../utils/presets'
 import type { PresetView } from '../utils/presets'
 
@@ -133,13 +133,19 @@ const toast = useToast()
 
 const loading = ref(false)
 const loadError = ref('')
-const presets = ref(peekPresets())
+/**
+ * 预设表；未加载时给一份空表而不是 null。
+ *
+ * <p>缓存里的值本来就经过 {@link normalizePresetMap}，这里只在「还没读过」时补一份同形状的
+ * 空表——渲染路径因此不必再为 null 分支，也不必每次 computed 重算时重复规范化。
+ */
+const presets = ref<PresetMap>(peekPresets() ?? normalizePresetMap(null))
 const filter = ref('')
 
 const title = computed(() => (props.kind === 'objectives' ? '添加目标' : '添加奖励'))
 const views = computed(() => {
-  const map = normalizePresetMap(presets.value)
-  const list = props.kind === 'objectives' ? map.objectives : map.rewards
+  // presets 里的值已经过 normalizePresetMap（见 loadPresets），这里只按类别取一份
+  const list = props.kind === 'objectives' ? presets.value.objectives : presets.value.rewards
   return list.map(preset => presetView(preset, props.schemas))
 })
 

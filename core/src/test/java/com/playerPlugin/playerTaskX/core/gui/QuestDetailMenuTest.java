@@ -1,8 +1,6 @@
 package com.playerPlugin.playerTaskX.core.gui;
 
 import com.playerPlugin.playerTaskX.api.model.QuestObjective;
-import com.playerPlugin.playerTaskX.api.registry.ObjectiveRegistry;
-import com.playerPlugin.playerTaskX.api.reward.RewardType;
 import com.playerPlugin.playerTaskX.core.objective.InteractObjective;
 import com.playerPlugin.playerTaskX.core.registry.BuiltIns;
 import com.playerPlugin.playerTaskX.core.registry.ObjectiveRegistryImpl;

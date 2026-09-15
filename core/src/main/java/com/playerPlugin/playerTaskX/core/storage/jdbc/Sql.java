@@ -12,6 +12,20 @@ final class Sql {
     private Sql() {
     }
 
+    /**
+     * 绑定参数。
+     * <p>
+     * 数值与字符串交给 {@link PreparedStatement#setObject} 自己按运行时类型映射
+     * （JDBC 规范会转成对应的 {@code java.sql.Types}），省掉一份会随调用点增长而失配的
+     * 逐类型分派表。
+     * <p>
+     * 三处刻意<b>不</b>走 {@code setObject}：
+     * <ul>
+     *   <li>{@code null}：部分驱动报「无法推断类型」，写明 {@link Types#NULL} 才稳定；</li>
+     *   <li>{@code Boolean}：驱动对它的支持参差（本项目也从不传布尔——列都是 SMALLINT）；</li>
+     *   <li>其它类型：与旧实现一致地按字符串写入，避免驱动各自发挥。</li>
+     * </ul>
+     */
     static void bind(PreparedStatement statement, Object... params) throws SQLException {
         if (params == null) return;
         for (int i = 0; i < params.length; i++) {
@@ -19,14 +33,10 @@ final class Sql {
             int index = i + 1;
             if (value == null) {
                 statement.setNull(index, Types.NULL);
-            } else if (value instanceof Integer number) {
-                statement.setInt(index, number);
-            } else if (value instanceof Long number) {
-                statement.setLong(index, number);
-            } else if (value instanceof Double number) {
-                statement.setDouble(index, number);
-            } else if (value instanceof Float number) {
-                statement.setFloat(index, number);
+            } else if (value instanceof Integer || value instanceof Long
+                    || value instanceof Double || value instanceof Float
+                    || value instanceof String) {
+                statement.setObject(index, value);
             } else if (value instanceof Boolean bool) {
                 statement.setBoolean(index, bool);
             } else {
