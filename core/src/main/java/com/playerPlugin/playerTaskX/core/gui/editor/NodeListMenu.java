@@ -1,10 +1,9 @@
 package com.playerPlugin.playerTaskX.core.gui.editor;
 
-import cn.yvmou.ylib.message.MessageService;
-import com.playerPlugin.playerTaskX.PlayerTaskX;
-import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
-import cn.yvmou.ylib.gui.Menu;
 import cn.yvmou.ylib.gui.MenuItem;
+import cn.yvmou.ylib.gui.PagedMenu;
+import cn.yvmou.ylib.message.MessageService;
+import com.playerPlugin.playerTaskX.api.schema.ConfigurableType;
 import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -17,27 +16,23 @@ import java.util.Map;
 /**
  * 一个任务的目标（或奖励）列表：左键进字段编辑，右键删，Shift+左/右键上下移动，底部新增与返回。
  * 顺序就是它们在任务里的顺序（奖励按顺序发放与展示），因此移动是真实调整列表，不是只改显示。
+ * 翻页与页码由 {@link PagedMenu} 管，这里只管节点卡片与「返回 / 新增」两个额外按钮。
  */
-public final class NodeListMenu extends Menu {
+public final class NodeListMenu extends PagedMenu<QuestDraft.Node> {
 
-    private static final int SIZE = 54;
-    /** 每页 45 个：前 5 行是节点列表（列表区仍用数字下标，见 {@code Menu#layout}），最后一行是按钮。 */
-    private static final int PAGE_SIZE = 45;
-
-    /** 界面布局（见 {@code SlotLayout}）：一个字符一格，空格是空位；节点列表区是翻页的，用数字下标摆。 */
+    /** 界面布局：前 5 行是节点区（每页 45 个），最后一行是按钮。 */
     private static final String[] SHAPE = {
-            "    `note`",
-            "",
-            "",
-            "",
-            "",
-            "`prev` `back` `add` `info` `next`",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "`prev` `back` `add` `pages` `next`",
     };
 
     private final QuestDraft draft;
     private final boolean reward;
     private final Runnable onBack;
-    private final int page;
 
     public NodeListMenu(Player viewer, MessageService messages, QuestDraft draft, boolean reward, Runnable onBack) {
         this(viewer, messages, draft, reward, 0, onBack);
@@ -46,37 +41,40 @@ public final class NodeListMenu extends Menu {
     /** @param page 页码（0 基）；增删后由调用方传回原来那一页 */
     public NodeListMenu(Player viewer, MessageService messages, QuestDraft draft, boolean reward,
                         int page, Runnable onBack) {
-        super(viewer, messages, SIZE, reward ? "gui.editor-rewards" : "gui.editor-objectives");
+        super(viewer, messages, 54, reward ? "gui.editor-rewards" : "gui.editor-objectives");
         this.draft = draft;
         this.reward = reward;
-        this.page = Math.max(0, page);
         this.onBack = onBack;
+        page(page);
     }
 
     @Override
-    protected void build() {
-        List<QuestDraft.Node> nodes = draft.nodes(reward);
-        int totalPages = Math.max(1, (nodes.size() + PAGE_SIZE - 1) / PAGE_SIZE);
-        int current = Math.min(page, totalPages - 1);
-        int from = current * PAGE_SIZE;
-        layout(SHAPE);
+    protected String[] shape() {
+        return SHAPE;
+    }
 
-        for (int offset = 0; offset < PAGE_SIZE && from + offset < nodes.size(); offset++) {
-            set(offset, nodeItem(nodes.get(from + offset), from + offset, nodes.size()));
-        }
-        if (nodes.isEmpty()) {
-            set("note", MenuItem.display(Material.PAPER, "&7还没有" + label(),
-                    List.of("&7点下面的 &f新增" + label() + " &7开始配")));
-        }
+    @Override
+    protected List<QuestDraft.Node> items() {
+        return draft.nodes(reward);
+    }
 
-        buildPager(nodes.size(), current, totalPages);
+    @Override
+    protected MenuItem whenEmpty() {
+        return MenuItem.display(Material.PAPER, "&7还没有" + label(),
+                List.of("&7点下面的 &f新增" + label() + " &7开始配"));
+    }
+
+    /** 返回 / 新增：翻页那三个按钮由基类摆。 */
+    @Override
+    protected void decorate() {
         set("add", MenuItem.of(Material.LIME_DYE, "&a新增" + label(),
                 List.of("&7从一个类型开始配"), context -> add()));
         set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
-        fill(MenuItem.filler());
     }
 
-    private MenuItem nodeItem(QuestDraft.Node node, int index, int total) {
+    /** 节点卡片；{@code index} 是它在整个列表里的位置（上下移动与删除都按它算）。 */
+    @Override
+    protected MenuItem render(QuestDraft.Node node, int index) {
         ConfigurableType type = EditorLookup.type(reward, node.type());
         List<String> lore = new ArrayList<>();
         lore.add("&8" + node.type());
@@ -89,7 +87,7 @@ public final class NodeListMenu extends Menu {
         if (preset != null) {
             lore.add("&7引用预设: &f" + preset);
         }
-        lore.add("&7第 &f" + (index + 1) + "&7/&f" + total + " &7个");
+        lore.add("&7第 &f" + (index + 1) + "&7/&f" + items().size() + " &7个");
         lore.add("&7左键: &f编辑字段");
         lore.add("&7右键: &f删除");
         lore.add("&7Shift+左键: &f上移　&7Shift+右键: &f下移");
@@ -115,24 +113,6 @@ public final class NodeListMenu extends Menu {
         }
     }
 
-    private void buildPager(int total, int current, int totalPages) {
-        if (current > 0) {
-            set("prev", MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
-                    context -> reopen(current - 1)));
-        } else {
-            // 首页与末页把按钮摆成灰色不可点而不是不显示：位置固定，翻页时按钮不会跳来跳去
-            set("prev", MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
-        }
-        if (current < totalPages - 1) {
-            set("next", MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
-                    context -> reopen(current + 1)));
-        } else {
-            set("next", MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
-        }
-        set("info", MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
-                List.of("&7共 &f" + total + " &7个" + label())));
-    }
-
     // ---------- 动作 ----------
 
     /** 新增：先选类型，建好空节点后直接进字段编辑（不然新增完还得再点一次）。 */
@@ -147,12 +127,9 @@ public final class NodeListMenu extends Menu {
         new NodeEditMenu(viewer(), messages(), draft, reward, index, this::reopen).open();
     }
 
+    /** 原样重开（带上当前页码：基类记着它）。 */
     private void reopen() {
-        reopen(page);
-    }
-
-    private void reopen(int page) {
-        new NodeListMenu(viewer(), messages(), draft, reward, page, onBack).open();
+        new NodeListMenu(viewer(), messages(), draft, reward, page(), onBack).open();
     }
 
     // ---------- 类型信息 ----------

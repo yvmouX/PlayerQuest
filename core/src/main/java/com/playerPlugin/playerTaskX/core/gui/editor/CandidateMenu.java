@@ -1,38 +1,36 @@
 package com.playerPlugin.playerTaskX.core.gui.editor;
 
-import cn.yvmou.ylib.message.MessageService;
-import cn.yvmou.ylib.gui.Menu;
 import cn.yvmou.ylib.gui.MenuItem;
+import cn.yvmou.ylib.gui.PagedMenu;
+import cn.yvmou.ylib.message.MessageService;
+import cn.yvmou.ylib.text.TextRenderer;
 import com.playerPlugin.playerTaskX.core.gui.editor.CandidateCatalog.Candidate;
-import com.playerPlugin.playerTaskX.core.text.Texts;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * 候选值选择器：把调用方算好的候选清单摆成分页箱子界面，点一下把值回传。
+ * 翻页与页码由 {@link PagedMenu} 管（{@code #} 是条目区、{@code prev}/{@code pages}/{@code next} 是翻页），
+ * 这里只管「一条候选长什么样」与「返回 / 手动输入 / 当前值」三个额外按钮。
  * 文案中文直写——编辑器只给管理员用，与 {@code /ptxa list}、{@code /ptxa info} 保持同一套措辞。
  */
-public final class CandidateMenu extends Menu {
+public final class CandidateMenu extends PagedMenu<Candidate> {
 
-    private static final int SIZE = 54;
-
-    /** 每页 45 个：最后一行留返回、手动输入、翻页与当前值（列表区用数字下标，见 {@code Menu#layout}）。 */
-    private static final int PAGE_SIZE = 45;
-
-    /** 界面布局（见 {@code SlotLayout}）：候选区是 0~44（用数字下标），底部一排按钮按名字摆。 */
+    /** 界面布局：上 4 行是候选区（每页 36 条），下 2 行是按钮。 */
     private static final String[] SHAPE = {
-            "",
-            "",
-            "    `empty`",
-            "",
-            "",
-            "`back` `manual` `prev` `current` `next`",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "`back` `manual` `value`",
+            "`prev` `pages` `next`",
     };
 
     private final List<Candidate> candidates;
@@ -40,9 +38,6 @@ public final class CandidateMenu extends Menu {
     private final Consumer<String> onPick;
     private final Runnable onManual;
     private final Runnable onBack;
-
-    /** 当前页码（0 基）：翻页就地改它再 refresh()，不必重建整个菜单。 */
-    private int page;
 
     /**
      * @param titleKey   标题语言键
@@ -56,8 +51,8 @@ public final class CandidateMenu extends Menu {
     public CandidateMenu(Player viewer, MessageService messages, String titleKey, Object titleArg,
                          List<Candidate> candidates, String current,
                          Consumer<String> onPick, Runnable onManual, Runnable onBack) {
-        super(viewer, messages, SIZE, titleKey, titleArg);
-        this.candidates = candidates == null ? List.of() : List.copyOf(candidates);
+        super(viewer, messages, 54, titleKey, titleArg);
+        this.candidates = candidates == null ? Collections.<Candidate>emptyList() : candidates;
         this.current = current;
         this.onPick = onPick == null ? value -> {
         } : onPick;
@@ -66,48 +61,43 @@ public final class CandidateMenu extends Menu {
     }
 
     @Override
-    protected void build() {
-        int totalPages = Math.max(1, (candidates.size() + PAGE_SIZE - 1) / PAGE_SIZE);
-        // 清单换了之后页码可能越界：夹回合法范围，而不是展示一页空白
-        page = Math.min(Math.max(page, 0), totalPages - 1);
-        layout(SHAPE);
-
-        if (candidates.isEmpty()) {
-            set("empty", MenuItem.display(Material.BARRIER, "&c没有可选项",
-                    List.of("&7现成的清单取不到，请用手动输入")));
-        } else {
-            int from = page * PAGE_SIZE;
-            for (int offset = 0; offset < PAGE_SIZE && from + offset < candidates.size(); offset++) {
-                set(offset, candidateItem(candidates.get(from + offset)));
-            }
-        }
-
-        buildFooter(totalPages);
-        fill(MenuItem.filler());
+    protected String[] shape() {
+        return SHAPE;
     }
 
-    // ---------- 候选项 ----------
+    @Override
+    protected List<Candidate> items() {
+        return candidates;
+    }
 
     /** 候选物品：图标与备注来自清单（备注已写进 lore），这里只补一行操作提示。 */
-    private MenuItem candidateItem(Candidate candidate) {
+    @Override
+    protected MenuItem render(Candidate candidate, int index) {
         ItemStack stack = candidate.icon() == null ? new ItemStack(Material.PAPER) : candidate.icon().clone();
         try {
             ItemMeta meta = stack.getItemMeta();
             if (meta != null) {
-                List<String> lore = meta.getLore() == null ? new ArrayList<>() : new ArrayList<>(meta.getLore());
-                lore.add(Texts.render("&7左键选择"));
+                List<String> lore = meta.getLore() == null
+                        ? new ArrayList<String>() : new ArrayList<String>(meta.getLore());
+                lore.add(TextRenderer.render("&7左键选择"));
                 meta.setLore(lore);
                 stack.setItemMeta(meta);
             }
         } catch (Throwable ignored) {
-            // 补不上提示行只损失一行字，候选本身照常可选（本类不在无服务端环境里构建）
+            // 补不上提示行只损失一行字，候选本身照常可选
         }
         return new MenuItem(stack, context -> onPick.accept(candidate.value()));
     }
 
-    // ---------- 底部一行 ----------
+    @Override
+    protected MenuItem whenEmpty() {
+        return MenuItem.display(Material.BARRIER, "&c没有可选项",
+                List.of("&7现成的清单取不到，请用手动输入"));
+    }
 
-    private void buildFooter(int totalPages) {
+    /** 返回 / 手动输入 / 当前值：翻页那三个按钮由基类摆。 */
+    @Override
+    protected void decorate() {
         set("back", MenuItem.of(Material.ARROW, "返回", List.of("&7回到上一层"),
                 context -> run(onBack)));
 
@@ -120,31 +110,13 @@ public final class CandidateMenu extends Menu {
                     List.of("&7左键在聊天栏里打（别家插件的自定义 id 走这里）"), context -> run(onManual)));
         }
 
-        set("current", MenuItem.display(Material.NAME_TAG, "当前值: " + shownValue(),
+        set("value", MenuItem.display(Material.NAME_TAG, "当前值: " + shownValue(),
                 List.of("&7留空 / &f* &7表示任意")));
-
-        if (page > 0) {
-            set("prev", MenuItem.of(Material.ARROW, "上一页", List.of(), context -> {
-                page--;
-                refresh();
-            }));
-        } else {
-            set("prev", MenuItem.display(Material.GRAY_DYE, "上一页", List.of()));
-        }
-
-        if (page < totalPages - 1) {
-            set("next", MenuItem.of(Material.ARROW, "下一页", List.of(), context -> {
-                page++;
-                refresh();
-            }));
-        } else {
-            set("next", MenuItem.display(Material.GRAY_DYE, "下一页", List.of()));
-        }
     }
 
     /** 当前值的展示形态：空值说「未设置」，别让人以为界面没刷新。 */
     private String shownValue() {
-        return current == null || current.isBlank() ? "未设置" : current;
+        return current == null || current.trim().isEmpty() ? "未设置" : current;
     }
 
     /** 回调允许缺省：缺省时点下去什么都不做，而不是在事件里抛 NPE。 */

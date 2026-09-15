@@ -844,13 +844,14 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 46 | **任务顺序改由注册表担保**：`QuestRegistry#all()` 返回按 id 升序的 `List`（实现换成 `TreeMap`），翻页界面与 `/ptxa list` 不再各自排序；另加 `all(Comparator)` 让调用方自己定顺序，编辑器列表据此有了排序开关（id / 名称 / 类型 / 启用） | ✅ 完成（新增 `QuestRegistryImplTest` 6 项；排序稳定，同分保持 id 序） |
 | 47 | **布局表就是界面本身**：`SlotLayout` 改成「一个字符一格」的文本图（`` `名字` `` 让多字符名字也只占一格、空格是留空），一个名字可以占多格 —— **静态槽位** `set(名字, 物品)` 整组同一物品、**动态槽位** `fill(名字, 一串物品)` 按序填（玩家任务列表就这么填任务）。先前那版把布局放进 `config.yml` 的尝试已撤掉：布局是代码的事，服务器不该为此维护一张图 | ✅ 完成（见 7.1；`SlotLayoutTest` 8 项钉住分组 / 阅读顺序 / `take` 配对 / 写错必炸） |
 | 48 | **菜单框架移入 YLib**（`cn.yvmou.ylib.gui`）：从插件搬到通用设施，并借这次搬家补齐库该有的东西——降级到 Java 8（YLib core 的编译级别）、`open()` 首次构建（去掉「构造最后一行必须 refresh」这个陷阱）、`MenuListener.init(plugin)` 自我注册、纯文本标题与 `text()` 的直出回退、`close()` / `ClickContext.isLeft/isRight/isShift/isShiftRight` / `MenuItem.filler(Material)` / `MenuItem.glow()` | ✅ 完成（见 §1 与 7.1、`YLib/文档/菜单.md`；YLib `SlotLayoutTest` 9 项，插件侧只改 import） |
+| 49 | **分页基类 `PagedMenu<T>`**：布局图里 `#` 那片格子就是「这一页」（每页条数 = 格子数，不必另配常量）、`prev`/`next`/`pages` 是翻页控件，条目切片与页码夹紧由纯函数 `Paging` 算并单测钉住。插件里两个菜单（候选选择器、目标/奖励列表）改用它，删掉各自手写的翻页 | ✅ 完成（YLib 侧 `PagingTest` 4 项；`CandidateMenu` / `NodeListMenu` 已迁移，编辑器任务列表仍是手写翻页） |
 
 > 阶段 8 / 9 / 14 / 15 / 16 / 20 / 23 / 26 / 27 / 28 / 33 / 35 / 36 做的都是**已被删除的网页编辑器**
 > （阶段 40），本表保留它们作为历史记录——其中的 `/api/*`、`EditorServices`、
 > 前端构建自检与「编辑器目录」测试都不再存在，读到时请以第 7 节与 4.6 的现状为准。
 
 **测试总量：234 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
-（另有 YLib 侧 24 项——文本渲染 15 + 布局表 9）。
+（另有 YLib 侧 28 项——文本渲染 15 + 布局表 9 + 分页算术 4）。
 存储 16（`StorageIntegrationTest`）+ 结构指纹格式 4（`StructureFingerprintFormatTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`YamlTextTest`）+
 合并仓储 5（`MergedDefinitionRepositoryTest`）+ 预设引用 9（`PresetRefsTest`）+
@@ -869,10 +870,10 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
 逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 10795 行
-＝ **11583 行 / 113 个 java 文件**；测试 `core/src/test` **4856 行 / 33 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 10732 行
+＝ **11520 行 / 113 个 java 文件**；测试 `core/src/test` **4856 行 / 33 个文件**
 （31 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
-箱子菜单框架（4 个类 / 483 行）与它的 9 项测试已移入 YLib，因此不计在这两个数里。
+箱子菜单框架（6 个类 / 约 700 行）与它的 13 项测试已移入 YLib，因此不计在这两个数里。
 删掉网页编辑器后，`core/web/`（7 个类 / 1933 行）与 `task-editor-vue/src`（31 个文件 / 8299 行）
 及其全部测试都不在统计里。
 

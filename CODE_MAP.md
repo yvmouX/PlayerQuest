@@ -16,17 +16,17 @@
 
 ---
 
-## 规模（本次统计：113 个主代码类 / 11583 行）
+## 规模（本次统计：113 个主代码类 / 11520 行）
 
 | 模块 | 类 / 行 | 说明 |
 |---|---|---|
 | `api` | 18 / 788 | 模型与扩展点契约（给扩展作者看的公共 API） |
-| `core` | 95 / 10795 | 全部实现（箱子菜单框架不在这里，见下） |
+| `core` | 95 / 10732 | 全部实现（箱子菜单框架不在这里，见下） |
 | 测试 | 33 / 4856 | `core/src/test`（其中 31 个测试类 + 2 个测试替身，234 项测试） |
 
-> **箱子菜单框架在 YLib**（`cn.yvmou.ylib.gui`：`Menu` / `MenuItem` / `MenuListener` / `SlotLayout`，
-> 约 480 行 + 9 项测试）。它是通用界面设施（不认识「任务」），本插件的 `core/gui/` 下只剩自己的界面。
-> 用法见 `YLib/文档/菜单.md`。
+> **箱子菜单框架在 YLib**（`cn.yvmou.ylib.gui`：`Menu` / `PagedMenu` / `MenuItem` / `MenuListener` /
+> `SlotLayout` / `Paging`，约 700 行 + 13 项测试）。它是通用界面设施（不认识「任务」），
+> 本插件的 `core/gui/` 下只剩自己的界面。用法见 `YLib/文档/菜单.md`。
 
 行数是「含空行按文件行数累加」，会随提交变动；重新统计见文末。
 
@@ -125,11 +125,13 @@
 - `StructureFingerprint` (45) — 目标结构指纹：目标列表算成短摘要存进玩家记录，顺序变化靠它识别
 - `ApplyResult` (10) — 一次动作处理的结果（改了什么），表现层据此提示
 
-### YLib（`cn.yvmou.ylib.gui`，箱子菜单框架，约 480 行）
+### YLib（`cn.yvmou.ylib.gui`，箱子菜单框架，约 700 行）
 
-- `Menu` (200, abstract) — 菜单基类：建容器、登记槽位、刷新、标记归属；`layout(...)` 声明文本图，`set(名字, 物品)` 静态槽位、`fill(名字, 一串物品)` 动态槽位；`open()` 首次构建
+- `Menu` (214, abstract) — 菜单基类：建容器、登记槽位、刷新、标记归属；`layout(...)` 声明文本图，`set(名字, 物品)` 静态槽位、`fill(名字, 一串物品)` 动态槽位；`open()` 首次构建
+- `PagedMenu` (~170, abstract) — 分页基类：`#` 是这一页的条目区（格子数就是每页条数）、`prev`/`next`/`pages` 是翻页控件；子类回答 `shape` / `items` / `render`
+- `Paging` (~55) — 分页算术：总页数 / 页码夹紧 / 切片范围（纯函数，单测钉住）
 - `SlotLayout` (97) — 布局表：一个字符一格、`` `名字` `` 成组、空格留空；一个名字可占多格（`slots` / `take`），写错当场抛
-- `MenuItem` (97) — 菜单项：图标 + 点击动作；`ClickContext` / `filler` / `withAmount` / `glow`
+- `MenuItem` (~120) — 菜单项：图标 + 点击动作；`ClickContext` / `filler(Material)` / `withAmount` / `glow`
 - `MenuListener` (89) — 把「容器点击」翻译成菜单项的 action；`init(plugin)` 自我注册
 
 ### core/gui/menu（2）
