@@ -24,19 +24,16 @@ import java.util.function.Consumer;
 public final class QuestEditMenu extends Menu {
 
     private static final int SIZE = 54;
-    private static final int ID_SLOT = 0;
-    private static final int NAME_SLOT = 1;
-    private static final int DESCRIPTION_SLOT = 2;
-    private static final int ICON_SLOT = 3;
-    private static final int CATEGORY_SLOT = 4;
-    private static final int TYPE_SLOT = 5;
-    private static final int REFRESH_COST_SLOT = 6;
-    private static final int ENABLED_SLOT = 7;
-    private static final int PROBLEM_SLOT = 13;
-    private static final int OBJECTIVES_SLOT = 18;
-    private static final int REWARDS_SLOT = 20;
-    private static final int SAVE_SLOT = 47;
-    private static final int BACK_SLOT = 51;
+
+    /** 界面布局（见 {@code SlotLayout}）：文本图里那一格就是它的位置，改布局不用再心算数字。 */
+    private static final String[] SHAPE = {
+            "id    name  desc  icon  cate  type  cost  on    .",
+            ".     .     .     .     verify .    .     .     .",
+            "obj   .     rew   .     .     .    .     .     .",
+            ".     .     .     .     .     .    .     .     .",
+            ".     .     .     .     .     .    .     .     .",
+            ".     .     save  .     back  .    .     .     .",
+    };
 
     private static final ConfigField ID_FIELD = ConfigField.text("id", "任务 id",
             "唯一标识，同时是数据库主键；别和现有任务重名");
@@ -70,11 +67,12 @@ public final class QuestEditMenu extends Menu {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         Quest quest = draft.toQuest();
         boolean readOnly = !creating && plugin.questDefinitions().isReadOnly(quest.id());
+        layout(SHAPE);
 
-        set(ID_SLOT, idItem(readOnly));
-        set(NAME_SLOT, textItem(Material.NAME_TAG, NAME_FIELD, draft.name(), draft::name));
-        set(DESCRIPTION_SLOT, descriptionItem());
-        set(ICON_SLOT, MenuItem.of(MenuItem.material(draft.icon()), "&f" + ICON_FIELD.label(),
+        set("id", idItem(readOnly));
+        set("name", textItem(Material.NAME_TAG, NAME_FIELD, draft.name(), draft::name));
+        set("desc", descriptionItem());
+        set("icon", MenuItem.of(MenuItem.material(draft.icon()), "&f" + ICON_FIELD.label(),
                 fieldLore(ICON_FIELD, draft.icon()), context -> {
                     if (context.clickType().isRightClick()) {
                         draft.icon("PAPER");
@@ -83,12 +81,12 @@ public final class QuestEditMenu extends Menu {
                         editField(ICON_FIELD, draft.icon(), draft::icon);
                     }
                 }));
-        set(CATEGORY_SLOT, textItem(Material.BOOKSHELF, CATEGORY_FIELD, draft.category(), draft::category));
-        set(TYPE_SLOT, typeItem());
-        set(REFRESH_COST_SLOT, textItem(Material.GOLD_INGOT, REFRESH_COST_FIELD,
+        set("cate", textItem(Material.BOOKSHELF, CATEGORY_FIELD, draft.category(), draft::category));
+        set("type", typeItem());
+        set("cost", textItem(Material.GOLD_INGOT, REFRESH_COST_FIELD,
                 Texts.number(draft.refreshCost()),
                 value -> draft.refreshCost(value.isEmpty() ? 0 : Double.parseDouble(value))));
-        set(ENABLED_SLOT, MenuItem.of(draft.enabled() ? Material.LIME_DYE : Material.GRAY_DYE,
+        set("on", MenuItem.of(draft.enabled() ? Material.LIME_DYE : Material.GRAY_DYE,
                 "&f启用: " + (draft.enabled() ? "&a是" : "&c否"),
                 List.of("&7禁用后玩家不会被抽到这个任务", "&7左键: &f切换"),
                 context -> {
@@ -96,11 +94,11 @@ public final class QuestEditMenu extends Menu {
                     refresh();
                 }));
 
-        set(PROBLEM_SLOT, problemItem(plugin, quest));
-        set(OBJECTIVES_SLOT, nodeEntry(false));
-        set(REWARDS_SLOT, nodeEntry(true));
-        set(SAVE_SLOT, readOnly ? readOnlyItem() : saveItem(quest));
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, "&7返回列表",
+        set("verify", problemItem(plugin, quest));
+        set("obj", nodeEntry(false));
+        set("rew", nodeEntry(true));
+        set("save", readOnly ? readOnlyItem() : saveItem(quest));
+        set("back", MenuItem.of(Material.ARROW, "&7返回列表",
                 List.of("&7未保存的改动会丢掉"), context -> onBack.run()));
         fill(MenuItem.filler());
     }

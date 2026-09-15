@@ -681,6 +681,17 @@ Paper 自带，relocate 后不与服务端原生类冲突）。
 混在一起时「这个按钮扣哪份钱」根本说不清。
 （任务**分类**目前只作为任务的一个字段用于筛选与展示，没有按分类分页浏览的界面。）
 
+**槽位按布局表写**（`SlotLayout`）：菜单在 `build()` 开头用 `layout("文本图")` 声明界面，
+之后 `set("名字", 物品)` —— 代码里那张图就是界面本身，不必心算「47 是第几行第几格」。
+两条边界是刻意的：
+
+- **翻页列表区不进布局表**：45 个格子写成文本图没有可读性，那里继续用数字下标；
+  布局表只管头部、底部按钮这些**锚点**。
+- **错误必须当场炸**：重名（两个功能抢同一个槽位，原先靠常量看运气）、一行超过 9 格、
+  超出容器行数、名字没声明过，全部抛异常并指出是哪一格/有哪些可选名字。
+  框架里 `set(int, ...)` 对越界是**静默忽略**（配置里的脏数据不该打断界面），
+  但「名字写错」是代码 bug，两种错误刻意区别对待。
+
 ### 7.2 游戏内任务编辑器
 
 `/ptxa menu` 打开编辑器（`core/gui/editor`），一层界面管一件事：
@@ -814,12 +825,13 @@ PlaceholderAPI 支持、MiniMessage / Adventure、反射工具、计分板/BossB
 | 42 | **按「一个包 = 一个角色」重排包**：`integration` 按插件拆成根包（探测 / 反射）+ `customcontent` / `mythicmobs` / `customfishing`；`storage` 拆出 `codec`；`reward` 只留三个 `RewardType` 实现（`RewardService`→`engine`、`CurrencyType`→`period`）；`gui` 拆出 `gui/menu`；`PresetRefs`→`preset`；`Hash`→`engine` 并改名 `StructureFingerprint` | ✅ 完成（见 §1 的包约定；顺带把 `Reflect` 提为 `public`，测试与它测的类同包） |
 | 43 | 两处收尾：`core/progress`→`core/display`（原名与 `engine/ProgressService` 互相错位）；`BuiltIns` 拆成 `ObjectiveBuiltIns` / `RewardBuiltIns` 各自回域包（`registry` 因此只剩三张注册表的实现） | ✅ 完成（见 §1 的包约定；`reward` 不再 import 目标类） |
 | 44 | **游戏内任务编辑器**：新包 `core/gui/editor`（任务列表 / 面板 / 草稿 / 目标奖励列表 / 字段编辑 / 候选选择器 / 聊天栏输入）；`ConfigField` 补回控件形状 `Shape`（编辑器据此决定弹清单还是聊天输入）；`ValueKind` 值域仍只做校验，图标与候选清单由编辑器推 | ✅ 完成（见 7.2；新增 `QuestDraftTest` / `FieldValueTest` / `CandidateCatalogTest`，删掉被取代的 `AdminQuestMenu`） |
+| 45 | **槽位按布局表写**：`core/gui/SlotLayout` + `Menu#layout/slot/set(String, …)`，7 个菜单的 `XXX_SLOT` 常量换成文本图里的名字；重名/越界/未知名字当场抛 | ✅ 完成（见 7.1；新增 `SlotLayoutTest` 6 项，列表区仍用数字下标） |
 
 > 阶段 8 / 9 / 14 / 15 / 16 / 20 / 23 / 26 / 27 / 28 / 33 / 35 / 36 做的都是**已被删除的网页编辑器**
 > （阶段 40），本表保留它们作为历史记录——其中的 `/api/*`、`EditorServices`、
 > 前端构建自检与「编辑器目录」测试都不再存在，读到时请以第 7 节与 4.6 的现状为准。
 
-**测试总量：228 项全部通过**（30 个测试类，全部 failures=0 / errors=0）：
+**测试总量：234 项全部通过**（31 个测试类，全部 failures=0 / errors=0）：
 存储 16（`StorageIntegrationTest`）+ 结构指纹格式 4（`StructureFingerprintFormatTest`）+
 YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`YamlTextTest`）+
 合并仓储 5（`MergedDefinitionRepositoryTest`）+ 预设引用 9（`PresetRefsTest`）+
@@ -831,16 +843,16 @@ YAML 定义来源 14（`YamlDefinitionSourceTest`）+ YAML 类型语义 5（`Yam
 结构指纹 8（`StructureFingerprintTest`）+ 字段值域 11（`ObjectiveFieldDomainTest`）+
 奖励领取 4（`RewardServiceTest`）+ 监听器 6（`ItemListenerCraftAmountTest`）+
 编辑器 25（`FieldValueTest` 13 + `QuestDraftTest` 9 + `CandidateCatalogTest` 3）+
-GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
+界面框架 6（`SlotLayoutTest`）+ GUI 图标 6（`QuestDetailMenuTest`）+ 别名匹配 6（`TargetMatchAliasTest`）+
 进度渲染 5（`ProgressDisplayRenderTest`）+
 CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`MythicMobsHookTest`）+
 击杀监听 5（`EntityListenerTest`）+ 语言文件 3（`LanguageFileTest`）。
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
-逐套件累加（30 个 XML），不是靠日志里的汇总行。
+逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 773 行 + `core/src/main` 11043 行
-＝ **11816 行 / 115 个 java 文件**；测试 `core/src/test` **4743 行 / 32 个文件**
-（30 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 773 行 + `core/src/main` 11181 行
+＝ **11954 行 / 116 个 java 文件**；测试 `core/src/test` **4829 行 / 33 个文件**
+（31 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
 删掉网页编辑器后，`core/web/`（7 个类 / 1933 行）与 `task-editor-vue/src`（31 个文件 / 8299 行）
 及其全部测试都不在统计里。
 

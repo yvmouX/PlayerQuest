@@ -10,15 +10,19 @@
 （`storage/jdbc`、`storage/yaml`、`integration/customcontent`、`integration/mythicmobs`、`integration/customfishing`）。
 因此看到包名就知道里面是「契约 / 某一家的实现 / 某一层的服务」，不必先点开文件。
 
+**界面按布局表写**：菜单在 `build()` 开头用 `layout(...)` 声明一张文本图（见 `SlotLayout`），
+之后 `set("名字", 物品)` 按名字摆位——槽位就是那张图里的格子，不用心算数字；
+翻页列表那种整片区域仍用数字下标（45 个格子写成文本图没有可读性）。
+
 ---
 
-## 规模（本次统计：115 个主代码类 / 11816 行）
+## 规模（本次统计：116 个主代码类 / 11954 行）
 
 | 模块 | 类 / 行 | 说明 |
 |---|---|---|
 | `api` | 18 / 773 | 模型与扩展点契约（给扩展作者看的公共 API） |
-| `core` | 97 / 11043 | 全部实现 |
-| 测试 | 32 / 4743 | `core/src/test`（其中 30 个测试类 + 2 个测试替身，228 项测试） |
+| `core` | 98 / 11181 | 全部实现 |
+| 测试 | 33 / 4829 | `core/src/test`（其中 31 个测试类 + 2 个测试替身，234 项测试） |
 
 行数是「含空行按文件行数累加」，会随提交变动；重新统计见文末。
 
@@ -38,9 +42,9 @@
 | `core/config` | 2 / 360 | `config.yml` 与周期配置 |
 | `core/display` | 1 / 174 | 进度展示（actionbar / title） |
 | `core/engine` | 4 / 478 | 进度引擎、奖励发放与结构指纹 |
-| `core/gui` | 3 / 342 | 箱子菜单框架 |
-| `core/gui/editor` | 13 / 1909 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
-| `core/gui/menu` | 2 / 443 | 两个玩家侧菜单（任务详情 / 周期） |
+| `core/gui` | 4 / 437 | 箱子菜单框架（含布局表 `SlotLayout`：按文本图摆槽位） |
+| `core/gui/editor` | 13 / 1939 | **游戏内任务编辑器**（列表 / 面板 / 草稿 / 字段编辑 / 聊天输入 / 候选清单） |
+| `core/gui/menu` | 2 / 456 | 两个玩家侧菜单（任务详情 / 周期） |
 | `core/integration` | 2 / 83 | 软依赖接入的公共设施（探测插件、反射小工具） |
 | `core/integration/customcontent` | 4 / 461 | 自定义内容契约 + 汇总 + 两家实现（ItemsAdder / CraftEngine） |
 | `core/integration/customfishing` | 4 / 233 | CustomFishing 接入（Hook / 监听器 / 清单 / 战利品） |
@@ -118,11 +122,12 @@
 - `StructureFingerprint` (45) — 目标结构指纹：目标列表算成短摘要存进玩家记录，顺序变化靠它识别
 - `ApplyResult` (10) — 一次动作处理的结果（改了什么），表现层据此提示
 
-### core/gui（3）
+### core/gui（4）
 
-- `Menu` (166, abstract) — 箱子菜单框架：建容器、登记槽位、刷新、标记归属
-- `MenuItem` (107) — 菜单项：图标 + 点击动作
-- `MenuListener` (102) — 把「容器点击」翻译成菜单项的 action
+- `Menu` (179, abstract) — 箱子菜单框架：建容器、登记槽位、刷新、标记归属；`layout(...)` + `set("名字", 物品)` 按布局表摆位
+- `SlotLayout` (72) — 界面布局表：文本图里的格子 → 槽位下标；重名 / 越界 / 未知名字当场抛
+- `MenuItem` (97) — 菜单项：图标 + 点击动作
+- `MenuListener` (89) — 把「容器点击」翻译成菜单项的 action
 
 ### core/gui/menu（2）
 
@@ -287,7 +292,7 @@
 | 奖励与货币 | `MoneyRewardTest`、`CurrencyTypeTest` |
 | 周期 | `PeriodsTest` |
 | schema / 值域 | `ValueKindsTest`、`ObjectiveFieldDomainTest`（每个字段必须声明值域，且没有无人声明的值域） |
-| 界面 | `QuestDetailMenuTest`、`ProgressDisplayRenderTest` |
+| 界面 | `QuestDetailMenuTest`、`ProgressDisplayRenderTest`、`SlotLayoutTest`（布局表：下标映射、重名/越界/未知名字必须炸） |
 | 编辑器 | `QuestDraftTest`（草稿读写语义：预设引用原样保住、节点增删移）、`FieldValueTest`（聊天输入 ↔ 字段值）、`CandidateCatalogTest`（按值域列候选） |
 | 目标与联动 | `TargetMatchAliasTest`、`CustomFishObjectiveTest`、`CustomContentHooksTest`、`MythicMobsHookTest`、`CustomFishingListenerTest` |
 | 监听器 | `EntityListenerTest`、`ItemListenerCraftAmountTest` |

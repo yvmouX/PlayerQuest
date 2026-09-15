@@ -37,6 +37,9 @@ public abstract class Menu {
     /** {@link #refresh()} 的重入保护。 */
     private boolean rebuilding;
 
+    /** 由 {@link #layout(String...)} 声明的布局；没声明时为 {@code null}（那时只能按数字下标摆位）。 */
+    private SlotLayout layout;
+
     /** 容器大小会被夹到 9~54 并按 9 向下取整，标题走语言键与占位符参数。 */
     protected Menu(Player viewer, MessageService messages, int size, String titleKey, Object... titleArgs) {
         this.viewer = Objects.requireNonNull(viewer, "viewer");
@@ -89,6 +92,29 @@ public abstract class Menu {
         }
         items.put(slot, item);
         inventory.setItem(slot, item.icon());
+    }
+
+    /**
+     * 声明界面布局：在 {@link #build()} 开头写一张文本图（见 {@link SlotLayout}），之后就能用
+     * {@link #set(String, MenuItem)} 按名字摆位。
+     * <p>
+     * 翻页列表那种整片区域仍用数字下标——45 个格子写成文本图没有可读性，布局表只管锚点与按钮区。
+     */
+    protected final void layout(String... rows) {
+        this.layout = SlotLayout.parse(size, rows);
+    }
+
+    /** 布局里的槽位名 → 下标；没声明布局、或名字不在表里都抛（名字写错必须当场炸）。 */
+    protected final int slot(String name) {
+        if (layout == null) {
+            throw new IllegalStateException("还没声明布局就按名字取槽位「" + name + "」：先在 build() 里调用 layout(...)");
+        }
+        return layout.slot(name);
+    }
+
+    /** 按布局里的槽位名摆一个菜单项。 */
+    protected final void set(String name, MenuItem item) {
+        set(slot(name), item);
     }
 
     /** 用同一个菜单项填满尚未占用的空位（背景板、禁用态按钮的铺底）。 */

@@ -23,9 +23,18 @@ import java.util.function.Consumer;
 public final class TypePickMenu extends Menu {
 
     private static final int SIZE = 54;
-    /** 类型区：第 1~4 行；第 5 行放返回。 */
+    /** 类型区：第 1~4 行（列表区用数字下标）；第 5 行是返回按钮。 */
     private static final int LIMIT = 44;
-    private static final int BACK_SLOT = 49;
+
+    /** 界面布局（见 {@code SlotLayout}）。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    more",
+            ".    .    .    .    back .    .    .    .",
+    };
 
     private final boolean reward;
     private final Consumer<String> onPick;
@@ -45,15 +54,16 @@ public final class TypePickMenu extends Menu {
     protected void build() {
         List<ConfigurableType> types = types();
         int shown = Math.min(types.size(), LIMIT);
+        layout(SHAPE);
         for (int slot = 0; slot < shown; slot++) {
             set(slot, typeItem(types.get(slot)));
         }
         // 类型多到放不下（别的插件注册了一堆）时明说剩下多少，而不是悄悄截断
         if (types.size() > LIMIT) {
-            set(LIMIT, MenuItem.display(Material.BARRIER, "&7还有 " + (types.size() - LIMIT) + " 个类型未显示",
+            set("more", MenuItem.display(Material.BARRIER, "&7还有 " + (types.size() - LIMIT) + " 个类型未显示",
                     List.of("&7这里只放得下 " + LIMIT + " 个")));
         }
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
+        set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
         fill(MenuItem.filler());
     }
 

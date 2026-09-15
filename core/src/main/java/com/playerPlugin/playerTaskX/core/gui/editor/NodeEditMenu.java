@@ -25,12 +25,18 @@ import java.util.Map;
 public final class NodeEditMenu extends Menu {
 
     private static final int SIZE = 54;
-    /** 字段区：前 3 行（内置类型最多 3 个字段）。 */
+    /** 字段区：前 3 行（内置类型最多 3 个字段）；字段是逐个往下排的，因此仍用数字下标。 */
     private static final int FIELD_LIMIT = 27;
-    private static final int PRESET_SLOT = 29;
-    private static final int PRESET_ACTION_SLOT = 31;
-    private static final int PRESET_SWAP_SLOT = 33;
-    private static final int BACK_SLOT = 49;
+
+    /** 界面布局（见 {@code SlotLayout}）：字段区之外的两个按键位置一眼可见。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    hint .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    preset .   action .  swap .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    back .    .    .",
+    };
 
     private final QuestDraft draft;
     private final boolean reward;
@@ -49,12 +55,13 @@ public final class NodeEditMenu extends Menu {
 
     @Override
     protected void build() {
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
+        layout(SHAPE);
+        set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
 
         List<QuestDraft.Node> nodes = draft.nodes(reward);
         if (index < 0 || index >= nodes.size()) {
             // 节点在别处被删了：说清楚而不是开出一个空界面
-            set(4, MenuItem.display(Material.BARRIER, "&c这个" + label() + "已经不在了",
+            set("hint", MenuItem.display(Material.BARRIER, "&c这个" + label() + "已经不在了",
                     List.of("&7可能在列表里被删掉了，返回即可")));
             fill(MenuItem.filler());
             return;
@@ -69,12 +76,12 @@ public final class NodeEditMenu extends Menu {
 
         ConfigurableType type = EditorLookup.type(reward, node.type());
         if (type == null) {
-            set(4, MenuItem.display(Material.BARRIER, "&c类型 " + node.type() + " 没有注册",
+            set("hint", MenuItem.display(Material.BARRIER, "&c类型 " + node.type() + " 没有注册",
                     List.of("&7插件被移除或 id 写错时会出现这种情况", "&7请回列表删掉这个" + label() + "或改配置文件")));
         } else {
             buildFields(type, node);
         }
-        set(PRESET_SLOT, MenuItem.of(Material.BOOK, "&e引用预设",
+        set("preset", MenuItem.of(Material.BOOK, "&e引用预设",
                 List.of("&7把字段交给一份预设来提供", "&7引用后本" + label() + "就不能再单独写字段",
                         "&8注意：当前已填的字段会被预设替换"),
                 context -> pickPreset()));
@@ -131,13 +138,13 @@ public final class NodeEditMenu extends Menu {
             lore.add("&7类型: &f" + EditorLookup.typeName(messages(), viewer(), reward, preset.type()));
             lore.add("&7配置: &f" + Texts.properties(preset.properties()));
         }
-        set(PRESET_SLOT, MenuItem.display(Material.BOOK, "&e引用的预设", lore));
+        set("preset", MenuItem.display(Material.BOOK, "&e引用的预设", lore));
 
         if (preset == null) {
-            set(PRESET_ACTION_SLOT, MenuItem.display(Material.BARRIER, "&8展开为独立配置",
+            set("action", MenuItem.display(Material.BARRIER, "&8展开为独立配置",
                     List.of("&7预设不存在，展开不出字段")));
         } else {
-            set(PRESET_ACTION_SLOT, MenuItem.of(Material.CRAFTING_TABLE, "&e展开为独立配置",
+            set("action", MenuItem.of(Material.CRAFTING_TABLE, "&e展开为独立配置",
                     List.of("&7把预设的字段抄成本" + label() + "自己的配置",
                             "&7之后就可以单独调值（不再跟着预设变）"),
                     context -> {
@@ -145,7 +152,7 @@ public final class NodeEditMenu extends Menu {
                         reopen();
                     }));
         }
-        set(PRESET_SWAP_SLOT, MenuItem.of(Material.BOOK, "&e更换预设",
+        set("swap", MenuItem.of(Material.BOOK, "&e更换预设",
                 List.of("&7另选一份预设来引用"), context -> pickPreset()));
     }
 

@@ -22,17 +22,18 @@ public final class CandidateMenu extends Menu {
 
     private static final int SIZE = 54;
 
-    /** 每页 45 个：最后一行留给返回、手动输入、翻页与当前值。 */
+    /** 每页 45 个：最后一行留返回、手动输入、翻页与当前值（列表区用数字下标，见 {@code Menu#layout}）。 */
     private static final int PAGE_SIZE = 45;
 
-    private static final int BACK_SLOT = 45;
-    private static final int MANUAL_SLOT = 47;
-    private static final int PREVIOUS_SLOT = 48;
-    private static final int CURRENT_SLOT = 49;
-    private static final int NEXT_SLOT = 50;
-
-    /** 候选为空时提示物的位置（正中间）。 */
-    private static final int EMPTY_SLOT = 22;
+    /** 界面布局（见 {@code SlotLayout}）：底部一排按钮的位置一眼可见。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    empty .   .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            "back .    manual .    prev .    current .    next",
+    };
 
     private final List<Candidate> candidates;
     private final String current;
@@ -71,9 +72,10 @@ public final class CandidateMenu extends Menu {
         int totalPages = Math.max(1, (candidates.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         // 清单换了之后页码可能越界：夹回合法范围，而不是展示一页空白
         page = Math.min(Math.max(page, 0), totalPages - 1);
+        layout(SHAPE);
 
         if (candidates.isEmpty()) {
-            set(EMPTY_SLOT, MenuItem.display(Material.BARRIER, "&c没有可选项",
+            set("empty", MenuItem.display(Material.BARRIER, "&c没有可选项",
                     List.of("&7现成的清单取不到，请用手动输入")));
         } else {
             int from = page * PAGE_SIZE;
@@ -108,37 +110,37 @@ public final class CandidateMenu extends Menu {
     // ---------- 底部一行 ----------
 
     private void buildFooter(int totalPages) {
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, "返回", List.of("&7回到上一层"),
+        set("back", MenuItem.of(Material.ARROW, "返回", List.of("&7回到上一层"),
                 context -> run(onBack)));
 
         if (onManual == null) {
             // 不支持手打的字段把按钮摆成灰色而不是不显示：位置固定，管理员才不会以为界面坏了
-            set(MANUAL_SLOT, MenuItem.display(Material.GRAY_DYE, "手动输入",
+            set("manual", MenuItem.display(Material.GRAY_DYE, "手动输入",
                     List.of("&7这个字段只能从清单里挑")));
         } else {
-            set(MANUAL_SLOT, MenuItem.of(Material.WRITABLE_BOOK, "手动输入",
+            set("manual", MenuItem.of(Material.WRITABLE_BOOK, "手动输入",
                     List.of("&7左键在聊天栏里打（别家插件的自定义 id 走这里）"), context -> run(onManual)));
         }
 
-        set(CURRENT_SLOT, MenuItem.display(Material.NAME_TAG, "当前值: " + shownValue(),
+        set("current", MenuItem.display(Material.NAME_TAG, "当前值: " + shownValue(),
                 List.of("&7留空 / &f* &7表示任意")));
 
         if (page > 0) {
-            set(PREVIOUS_SLOT, MenuItem.of(Material.ARROW, "上一页", List.of(), context -> {
+            set("prev", MenuItem.of(Material.ARROW, "上一页", List.of(), context -> {
                 page--;
                 refresh();
             }));
         } else {
-            set(PREVIOUS_SLOT, MenuItem.display(Material.GRAY_DYE, "上一页", List.of()));
+            set("prev", MenuItem.display(Material.GRAY_DYE, "上一页", List.of()));
         }
 
         if (page < totalPages - 1) {
-            set(NEXT_SLOT, MenuItem.of(Material.ARROW, "下一页", List.of(), context -> {
+            set("next", MenuItem.of(Material.ARROW, "下一页", List.of(), context -> {
                 page++;
                 refresh();
             }));
         } else {
-            set(NEXT_SLOT, MenuItem.display(Material.GRAY_DYE, "下一页", List.of()));
+            set("next", MenuItem.display(Material.GRAY_DYE, "下一页", List.of()));
         }
     }
 

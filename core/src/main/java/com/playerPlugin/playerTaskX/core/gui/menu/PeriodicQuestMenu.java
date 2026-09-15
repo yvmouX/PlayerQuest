@@ -24,14 +24,20 @@ public final class PeriodicQuestMenu extends Menu {
 
     private static final int SIZE = 54;
 
-    /** 任务区：前 5 行（0~44），最后一行留给按钮与周期切换。 */
+    /** 任务区：前 5 行（0~44），最后一行留给按钮与周期切换（列表区用数字下标，见 {@code Menu#layout}）。 */
     private static final int LIST_LIMIT = SIZE - 9;
-    /** 没有任何任务时的提示位（正中）。 */
-    private static final int EMPTY_SLOT = 22;
-    /** 底部：周期切换占 45..48，刷新与关闭固定在最右两个位置。 */
+    /** 底部：周期切换占 45..48，刷新与关闭固定位置。 */
     private static final int TYPE_SLOT_START = 45;
-    private static final int REFRESH_SLOT = 49;
-    private static final int CLOSE_SLOT = 53;
+
+    /** 界面布局（见 {@code SlotLayout}）。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    .       .    .    .    .",
+            ".    .    .    .    .       .    .    .    .",
+            ".    .    .    .    empty   .    .    .    .",
+            ".    .    .    .    .       .    .    .    .",
+            ".    .    .    .    .       .    .    .    .",
+            ".    .    .    .    refresh .    .    .    close",
+    };
 
     /** 当前正在看哪种周期；切换后整页重建。 */
     private QuestType selected;
@@ -56,9 +62,10 @@ public final class PeriodicQuestMenu extends Menu {
         Player player = viewer();
 
         List<PlayerQuest> quests = plugin.periodicService().currentQuests(player.getUniqueId(), selected);
+        layout(SHAPE);
         if (quests.isEmpty()) {
             // 任务池为空或这种周期被关掉：给一句明确说明，而不是丢一个空界面给玩家猜
-            set(EMPTY_SLOT, MenuItem.display(Material.BARRIER, text("periodic.none"), List.of()));
+            set("empty", MenuItem.display(Material.BARRIER, text("periodic.none"), List.of()));
         } else {
             int slot = 0;
             for (PlayerQuest playerQuest : quests) {
@@ -143,7 +150,7 @@ public final class PeriodicQuestMenu extends Menu {
     private void buildTypeButtons(PlayerTaskX plugin, Player player) {
         int slot = TYPE_SLOT_START;
         for (QuestType type : plugin.periodicService().enabledTypes()) {
-            if (slot >= REFRESH_SLOT) {
+            if (slot >= slot("refresh")) {
                 break;   // 最多四种周期，位置够；真超了也不挤掉刷新按钮
             }
             boolean active = type == selected;
@@ -160,9 +167,9 @@ public final class PeriodicQuestMenu extends Menu {
 
     private void buildButtons(PlayerTaskX plugin, Player player) {
         if (plugin.periodicService().remainingRefreshes(player.getUniqueId(), selected) > 0) {
-            set(REFRESH_SLOT, refreshButton(plugin, player));
+            set("refresh", refreshButton(plugin, player));
         }
-        set(CLOSE_SLOT, MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
+        set("close", MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
                 context -> player.closeInventory()));
     }
 

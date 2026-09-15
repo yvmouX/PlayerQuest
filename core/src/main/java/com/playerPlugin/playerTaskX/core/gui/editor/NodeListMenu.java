@@ -21,12 +21,18 @@ import java.util.Map;
 public final class NodeListMenu extends Menu {
 
     private static final int SIZE = 54;
+    /** 每页 45 个：前 5 行是节点列表（列表区仍用数字下标，见 {@code Menu#layout}），最后一行是按钮。 */
     private static final int PAGE_SIZE = 45;
-    private static final int PREVIOUS_SLOT = 45;
-    private static final int BACK_SLOT = 47;
-    private static final int ADD_SLOT = 49;
-    private static final int INFO_SLOT = 51;
-    private static final int NEXT_SLOT = 53;
+
+    /** 界面布局（见 {@code SlotLayout}）：最后一行的按钮位置一眼可见；列表区（前 5 行）仍用数字下标。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    note .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            "prev .    back .    add  .    info .    next",
+    };
 
     private final QuestDraft draft;
     private final boolean reward;
@@ -54,19 +60,20 @@ public final class NodeListMenu extends Menu {
         int totalPages = Math.max(1, (nodes.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(page, totalPages - 1);
         int from = current * PAGE_SIZE;
+        layout(SHAPE);
 
         for (int offset = 0; offset < PAGE_SIZE && from + offset < nodes.size(); offset++) {
             set(offset, nodeItem(nodes.get(from + offset), from + offset, nodes.size()));
         }
         if (nodes.isEmpty()) {
-            set(4, MenuItem.display(Material.PAPER, "&7还没有" + label(),
+            set("note", MenuItem.display(Material.PAPER, "&7还没有" + label(),
                     List.of("&7点下面的 &f新增" + label() + " &7开始配")));
         }
 
         buildPager(nodes.size(), current, totalPages);
-        set(ADD_SLOT, MenuItem.of(Material.LIME_DYE, "&a新增" + label(),
+        set("add", MenuItem.of(Material.LIME_DYE, "&a新增" + label(),
                 List.of("&7从一个类型开始配"), context -> add()));
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
+        set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
         fill(MenuItem.filler());
     }
 
@@ -111,19 +118,19 @@ public final class NodeListMenu extends Menu {
 
     private void buildPager(int total, int current, int totalPages) {
         if (current > 0) {
-            set(PREVIOUS_SLOT, MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
+            set("prev", MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
                     context -> reopen(current - 1)));
         } else {
             // 首页与末页把按钮摆成灰色不可点而不是不显示：位置固定，翻页时按钮不会跳来跳去
-            set(PREVIOUS_SLOT, MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
+            set("prev", MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
         }
         if (current < totalPages - 1) {
-            set(NEXT_SLOT, MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
+            set("next", MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
                     context -> reopen(current + 1)));
         } else {
-            set(NEXT_SLOT, MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
+            set("next", MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
         }
-        set(INFO_SLOT, MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
+        set("info", MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
                 List.of("&7共 &f" + total + " &7个" + label())));
     }
 

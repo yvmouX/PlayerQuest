@@ -31,17 +31,22 @@ public final class QuestDetailMenu extends Menu {
 
     private static final int SIZE = 54;
 
-    /** 头部：任务图标 + 名称 + 描述。 */
-    private static final int HEADER_SLOT = 4;
-    /** 目标区：第 2、3 行。 */
+    /** 目标区：第 2、3 行（列表区用数字下标，见 {@code Menu#layout}）。 */
     private static final int OBJECTIVE_START = 9;
     private static final int OBJECTIVE_LIMIT = 18;
     /** 奖励区：第 4、5 行。 */
     private static final int REWARD_START = 27;
     private static final int REWARD_LIMIT = 18;
-    /** 底部操作行。 */
-    private static final int BACK_SLOT = 49;
-    private static final int CLOSE_SLOT = 53;
+
+    /** 界面布局（见 {@code SlotLayout}）：头部与底部操作行的位置一眼可见。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    header .    .    .    .",
+            ".    .    .    .    .      .    .    .    .",
+            ".    .    .    .    .      .    .    .    .",
+            ".    .    .    .    .      .    .    .    .",
+            ".    .    .    .    .      .    .    .    .",
+            ".    .    .    .    back   .    .    .    close",
+    };
 
     private final Quest quest;
     /** 玩家进度；{@code null} 表示只看定义（管理员预览）。 */
@@ -71,14 +76,15 @@ public final class QuestDetailMenu extends Menu {
     protected void build() {
         PlayerTaskX plugin = PlayerTaskX.getInstance();
         Player player = viewer();
+        layout(SHAPE);
 
-        set(HEADER_SLOT, headerItem(quest));
+        set("header", headerItem(quest));
         buildObjectives(plugin.objectiveTypes(), player);
         buildRewards(plugin.rewardTypes(), player);
 
-        set(BACK_SLOT, MenuItem.of(Material.ARROW, text("gui.back"), List.of(),
+        set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(),
                 context -> back.run()));
-        set(CLOSE_SLOT, MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
+        set("close", MenuItem.of(Material.BARRIER, text("gui.close"), List.of(),
                 context -> player.closeInventory()));
         // 空位铺背景板：目标区与奖励区之间的分隔行靠它体现，否则是一片空洞
         fill(MenuItem.filler());

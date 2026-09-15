@@ -25,13 +25,18 @@ import java.util.List;
 public final class QuestBrowserMenu extends Menu {
 
     private static final int SIZE = 54;
-    /** 每页 45 个：前 5 行放任务，最后一行留分页与新建。 */
+    /** 每页 45 个：前 5 行放任务（列表区用数字下标，见 {@code Menu#layout}），最后一行留分页与新建。 */
     private static final int PAGE_SIZE = 45;
-    private static final int PREVIOUS_SLOT = 45;
-    private static final int NEW_SLOT = 47;
-    private static final int RELOAD_SLOT = 49;
-    private static final int INFO_SLOT = 51;
-    private static final int NEXT_SLOT = 53;
+
+    /** 界面布局（见 {@code SlotLayout}）：底部一排按钮的位置一眼可见。 */
+    private static final String[] SHAPE = {
+            ".    .    .    .    note .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            ".    .    .    .    .    .    .    .    .",
+            "prev .    new  .    reload .  info .    next",
+    };
 
     private final int page;
     /** 已被要求删除、等着再确认一次的任务 id；换页或刷新后作废，免得隔了很久误删。 */
@@ -58,11 +63,12 @@ public final class QuestBrowserMenu extends Menu {
         int totalPages = Math.max(1, (quests.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(page, totalPages - 1);
         int from = current * PAGE_SIZE;
+        layout(SHAPE);
         for (int offset = 0; offset < PAGE_SIZE && from + offset < quests.size(); offset++) {
             set(offset, questItem(plugin, quests.get(from + offset), current));
         }
         if (quests.isEmpty()) {
-            set(4, MenuItem.display(Material.PAPER, "&7还没有任何任务",
+            set("note", MenuItem.display(Material.PAPER, "&7还没有任何任务",
                     List.of("&7点下面的 &f新建任务 &7开始")));
         }
 
@@ -181,25 +187,25 @@ public final class QuestBrowserMenu extends Menu {
 
     private void buildPager(PlayerTaskX plugin, int current, int totalPages, int total) {
         if (current > 0) {
-            set(PREVIOUS_SLOT, MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
+            set("prev", MenuItem.of(Material.ARROW, text("gui.previous"), List.of(),
                     context -> new QuestBrowserMenu(viewer(), messages(), current - 1).open()));
         } else {
             // 首页把「上一页」摆成灰色不可点而不是干脆不显示：位置固定，翻页时按钮不会跳来跳去
-            set(PREVIOUS_SLOT, MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
+            set("prev", MenuItem.display(Material.GRAY_DYE, text("gui.previous"), List.of()));
         }
         if (current < totalPages - 1) {
-            set(NEXT_SLOT, MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
+            set("next", MenuItem.of(Material.ARROW, text("gui.next"), List.of(),
                     context -> new QuestBrowserMenu(viewer(), messages(), current + 1).open()));
         } else {
-            set(NEXT_SLOT, MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
+            set("next", MenuItem.display(Material.GRAY_DYE, text("gui.next"), List.of()));
         }
-        set(INFO_SLOT, MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
+        set("info", MenuItem.display(Material.PAPER, text("gui.page-info", current + 1, totalPages),
                 List.of("&7任务总数: &f" + total)));
-        set(NEW_SLOT, MenuItem.of(Material.LIME_DYE, "&a新建任务",
+        set("new", MenuItem.of(Material.LIME_DYE, "&a新建任务",
                 List.of("&7新建的任务默认启用、类型为 NORMAL", "&7id 与至少一个目标是必填"),
                 context -> new QuestEditMenu(viewer(), messages(), QuestDraft.creating(), true,
                         () -> new QuestBrowserMenu(viewer(), messages(), current).open()).open()));
-        set(RELOAD_SLOT, MenuItem.of(Material.REDSTONE, text("command.reloaded", total),
+        set("reload", MenuItem.of(Material.REDSTONE, text("command.reloaded", total),
                 List.of("&7从存储重新载入任务定义"), context -> reload(plugin)));
     }
 
