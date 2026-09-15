@@ -41,7 +41,7 @@ public final class NodeListMenu extends PagedMenu<QuestDraft.Node> {
     /** @param page 页码（0 基）；增删后由调用方传回原来那一页 */
     public NodeListMenu(Player viewer, MessageService messages, QuestDraft draft, boolean reward,
                         int page, Runnable onBack) {
-        super(viewer, messages, 54, reward ? "gui.editor-rewards" : "gui.editor-objectives");
+        super(viewer, messages, SHAPE.length * 9, reward ? "gui.editor-rewards" : "gui.editor-objectives");
         this.draft = draft;
         this.reward = reward;
         this.onBack = onBack;

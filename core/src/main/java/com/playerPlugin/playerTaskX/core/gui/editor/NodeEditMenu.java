@@ -24,14 +24,10 @@ import java.util.Map;
  */
 public final class NodeEditMenu extends Menu {
 
-    private static final int SIZE = 54;
-    /** 字段区：前 3 行（内置类型最多 3 个字段）；字段是逐个往下排的，因此仍用数字下标。 */
-    private static final int FIELD_LIMIT = 27;
-
-    /** 界面布局（见 {@code SlotLayout}）：字段区是往下排的（用数字下标），预设与返回按名字摆。 */
+    /** 界面布局（见 {@code SlotLayout}）：{@code field} 的三格按顺序放字段（内置类型最多 3 个），其余按名字摆。 */
     private static final String[] SHAPE = {
+            "`field``field``field`",
             "    `hint`",
-            "",
             "",
             "  `preset` `action` `swap`",
             "",
@@ -45,7 +41,7 @@ public final class NodeEditMenu extends Menu {
 
     public NodeEditMenu(Player viewer, MessageService messages, QuestDraft draft, boolean reward,
                         int index, Runnable onBack) {
-        super(viewer, messages, SIZE, "gui.editor-fields");
+        super(viewer, messages, SHAPE.length * 9, "gui.editor-fields");
         this.draft = draft;
         this.reward = reward;
         this.index = index;
@@ -91,11 +87,8 @@ public final class NodeEditMenu extends Menu {
     private void buildFields(ConfigurableType type, QuestDraft.Node node) {
         List<ConfigField> schema = type.schema();
         List<String> fishLoot = FieldLore.fishLoot(schema);
-        int slot = 0;
+        List<MenuItem> icons = new ArrayList<>(schema.size());
         for (ConfigField field : schema) {
-            if (slot >= FIELD_LIMIT) {
-                break;
-            }
             Object value = node.authored().get(field.key());
             String current = FieldValue.display(value);
             List<String> lore = new ArrayList<>();
@@ -114,15 +107,16 @@ public final class NodeEditMenu extends Menu {
             if (value != null) {
                 lore.add("&7右键: &f清除（留空 = 任意）");
             }
-            set(slot++, MenuItem.of(iconOf(field), "&f" + field.label(), lore,
-                    context -> {
-                        if (context.clickType().isRightClick()) {
-                            setValue(field, null);
-                        } else {
-                            edit(field, current);
-                        }
-                    }));
+            icons.add(MenuItem.of(iconOf(field), "&f" + field.label(), lore, context -> {
+                if (context.clickType().isRightClick()) {
+                    setValue(field, null);
+                } else {
+                    edit(field, current);
+                }
+            }));
         }
+        // 字段区就是布局图里那三格：字段多了没位置（内置类型最多 3 个）
+        fill("field", icons);
     }
 
     /** 引用了预设：展示预设内容，只留「展开」与「更换」两个动作。 */

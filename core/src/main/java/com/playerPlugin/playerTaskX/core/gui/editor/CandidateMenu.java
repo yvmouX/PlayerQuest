@@ -51,7 +51,7 @@ public final class CandidateMenu extends PagedMenu<Candidate> {
     public CandidateMenu(Player viewer, MessageService messages, String titleKey, Object titleArg,
                          List<Candidate> candidates, String current,
                          Consumer<String> onPick, Runnable onManual, Runnable onBack) {
-        super(viewer, messages, 54, titleKey, titleArg);
+        super(viewer, messages, SHAPE.length * 9, titleKey, titleArg);
         this.candidates = candidates == null ? Collections.<Candidate>emptyList() : candidates;
         this.current = current;
         this.onPick = onPick == null ? value -> {
@@ -116,7 +116,7 @@ public final class CandidateMenu extends PagedMenu<Candidate> {
 
     /** 当前值的展示形态：空值说「未设置」，别让人以为界面没刷新。 */
     private String shownValue() {
-        return current == null || current.trim().isEmpty() ? "未设置" : current;
+        return current == null || current.isBlank() ? "未设置" : current;
     }
 
     /** 回调允许缺省：缺省时点下去什么都不做，而不是在事件里抛 NPE。 */

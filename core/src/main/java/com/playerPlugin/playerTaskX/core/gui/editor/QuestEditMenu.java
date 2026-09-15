@@ -23,8 +23,6 @@ import java.util.function.Consumer;
  */
 public final class QuestEditMenu extends Menu {
 
-    private static final int SIZE = 54;
-
     /** 界面布局（见 {@code SlotLayout}）：一个字符一格，`` `名字` `` 让长名字也只占一格，空格是空位。 */
     private static final String[] SHAPE = {
             "`id``name``desc``icon``cate``type``cost``on`",
@@ -55,7 +53,7 @@ public final class QuestEditMenu extends Menu {
 
     public QuestEditMenu(Player viewer, MessageService messages, QuestDraft draft, boolean creating,
                          Runnable onBack) {
-        super(viewer, messages, SIZE, "gui.editor-quest");
+        super(viewer, messages, SHAPE.length * 9, "gui.editor-quest");
         this.draft = draft;
         this.creating = creating;
         this.onBack = onBack;

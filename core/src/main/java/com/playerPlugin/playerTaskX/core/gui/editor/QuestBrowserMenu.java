@@ -70,7 +70,7 @@ public final class QuestBrowserMenu extends PagedMenu<Quest> {
 
     /** @param order 从列表进来时带上的排序方式，翻页 / 返回都要原样带回去 */
     public QuestBrowserMenu(Player viewer, MessageService messages, int page, Order order) {
-        super(viewer, messages, 54, "gui.editor-title");
+        super(viewer, messages, SHAPE.length * 9, "gui.editor-title");
         this.order = order == null ? Order.ID : order;
         page(page);
     }
@@ -129,7 +129,7 @@ public final class QuestBrowserMenu extends PagedMenu<Quest> {
         lore.add("&8" + quest.id());
         lore.add("&7类型: &f" + quest.type());
         String category = quest.category();
-        lore.add("&7分类: &f" + (category == null || category.trim().isEmpty() ? text("common.none") : category));
+        lore.add("&7分类: &f" + (category == null || category.isBlank() ? text("common.none") : category));
         lore.add("&7目标: &f" + describeObjectives(player, quest.objectives()));
         lore.add("&7奖励: &f" + describeRewards(player, quest.rewards()));
         lore.add("&7启用: &f" + text(quest.enabled() ? "common.yes" : "common.no"));

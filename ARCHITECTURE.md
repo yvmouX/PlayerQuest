@@ -870,8 +870,8 @@ CustomFishing 监听 5（`CustomFishingListenerTest`）+ MythicMobs 目标 5（`
 统计口径：`.\gradlew.bat :core:test --rerun` 之后读 `core/build/test-results/test/*.xml`
 逐套件累加（31 个 XML），不是靠日志里的汇总行。
 
-**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 10712 行
-＝ **11500 行 / 113 个 java 文件**；测试 `core/src/test` **4856 行 / 33 个文件**
+**代码规模**（含空行，按文件行数累加）：后端主代码 `api/src/main` 788 行 + `core/src/main` 10693 行
+＝ **11481 行 / 113 个 java 文件**；测试 `core/src/test` **4856 行 / 33 个文件**
 （31 个测试类 + 2 个测试替身；`api/src/test` 为空，api 只放模型与接口，行为测试都在 core）。
 箱子菜单框架（6 个类 / 约 700 行）与它的 13 项测试已移入 YLib，因此不计在这两个数里。
 删掉网页编辑器后，`core/web/`（7 个类 / 1933 行）与 `task-editor-vue/src`（31 个文件 / 8299 行）

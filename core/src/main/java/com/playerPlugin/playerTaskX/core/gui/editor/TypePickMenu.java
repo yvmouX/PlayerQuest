@@ -18,21 +18,17 @@ import java.util.function.Consumer;
 
 /**
  * 新增目标/奖励时选类型：每行一个类型，带它的字段摘要与不可用原因；选中后由调用方建节点并进字段编辑。
- * 类型图标按目标字段的值域推（见 {@link #iconOfType}），因此与节点列表里的图标是同一套。
+ * 类型图标按目标字段的值域推（见 {@link EditorLookup#icon}），因此与节点列表里的图标是同一套。
  */
 public final class TypePickMenu extends Menu {
 
-    private static final int SIZE = 54;
-    /** 类型区：第 1~4 行（列表区用数字下标）；第 5 行是返回按钮。 */
-    private static final int LIMIT = 44;
-
-    /** 界面布局（见 {@code SlotLayout}）：类型区是 0~43（用数字下标），角落两个标记按名字摆。 */
+    /** 界面布局（见 {@code SlotLayout}）：{@code #} 那 44 格是类型区，摆不下的类型不显示；角落两个标记按名字摆。 */
     private static final String[] SHAPE = {
-            "",
-            "",
-            "",
-            "",
-            "        `more`",
+            "#########",
+            "#########",
+            "#########",
+            "#########",
+            "########`more`",
             "    `back`",
     };
 
@@ -43,7 +39,8 @@ public final class TypePickMenu extends Menu {
     /** @param onPick 选中类型的 id（由调用方建节点、开字段编辑） */
     public TypePickMenu(Player viewer, MessageService messages, boolean reward,
                         Consumer<String> onPick, Runnable onBack) {
-        super(viewer, messages, SIZE, reward ? "gui.editor-rewards-type" : "gui.editor-objectives-type");
+        super(viewer, messages, SHAPE.length * 9,
+                reward ? "gui.editor-rewards-type" : "gui.editor-objectives-type");
         this.reward = reward;
         this.onPick = onPick;
         this.onBack = onBack;
@@ -52,15 +49,13 @@ public final class TypePickMenu extends Menu {
     @Override
     protected void build() {
         List<ConfigurableType> types = types();
-        int shown = Math.min(types.size(), LIMIT);
         layout(SHAPE);
-        for (int slot = 0; slot < shown; slot++) {
-            set(slot, typeItem(types.get(slot)));
-        }
+        fill("#", types.stream().map(this::typeItem).toList());
         // 类型多到放不下（别的插件注册了一堆）时明说剩下多少，而不是悄悄截断
-        if (types.size() > LIMIT) {
-            set("more", MenuItem.display(Material.BARRIER, "&7还有 " + (types.size() - LIMIT) + " 个类型未显示",
-                    List.of("&7这里只放得下 " + LIMIT + " 个")));
+        int limit = slots("#").size();
+        if (types.size() > limit) {
+            set("more", MenuItem.display(Material.BARRIER, "&7还有 " + (types.size() - limit) + " 个类型未显示",
+                    List.of("&7这里只放得下 " + limit + " 个")));
         }
         set("back", MenuItem.of(Material.ARROW, text("gui.back"), List.of(), context -> onBack.run()));
         fill(MenuItem.filler());

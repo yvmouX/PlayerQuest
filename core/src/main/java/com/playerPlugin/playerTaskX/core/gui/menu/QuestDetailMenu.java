@@ -29,22 +29,13 @@ import cn.yvmou.ylib.gui.MenuItem;
  */
 public final class QuestDetailMenu extends Menu {
 
-    private static final int SIZE = 54;
-
-    /** 目标区：第 2、3 行（列表区用数字下标，见 {@code Menu#layout}）。 */
-    private static final int OBJECTIVE_START = 9;
-    private static final int OBJECTIVE_LIMIT = 18;
-    /** 奖励区：第 4、5 行。 */
-    private static final int REWARD_START = 27;
-    private static final int REWARD_LIMIT = 18;
-
-    /** 界面布局（见 {@code SlotLayout}）：目标区（第 2、3 行）与奖励区（第 4、5 行）是数字下标摆的。 */
+    /** 界面布局（见 {@code SlotLayout}）：目标区与奖励区各 18 格（两行），超出部分没有位置（不显示）。 */
     private static final String[] SHAPE = {
             "    `header`",
-            "",
-            "",
-            "",
-            "",
+            "`obj``obj``obj``obj``obj``obj``obj``obj``obj`",
+            "`obj``obj``obj``obj``obj``obj``obj``obj``obj`",
+            "`rew``rew``rew``rew``rew``rew``rew``rew``rew`",
+            "`rew``rew``rew``rew``rew``rew``rew``rew``rew`",
             "    `back`   `close`",
     };
 
@@ -63,7 +54,7 @@ public final class QuestDetailMenu extends Menu {
     /** {@code playerQuest} 可为 {@code null}（管理员预览只看任务定义，进度按 0），{@code back} 是「返回」按钮的动作。 */
     public QuestDetailMenu(Player viewer, MessageService messages, Quest quest, PlayerQuest playerQuest,
                            Runnable back) {
-        super(viewer, messages, SIZE, "gui.quest-detail-title", quest == null ? "" : quest.name());
+        super(viewer, messages, SHAPE.length * 9, "gui.quest-detail-title", quest == null ? "" : quest.name());
         // 标题已经用掉了 quest，这里的 requireNonNull 只是把「传了 null」变成一句明确的报错
         this.quest = Objects.requireNonNull(quest, "quest");
         this.playerQuest = playerQuest;
@@ -89,24 +80,27 @@ public final class QuestDetailMenu extends Menu {
     }
 
     private void buildObjectives(ObjectiveRegistry objectiveTypes, Player player) {
+        List<MenuItem> icons = new ArrayList<>();
         List<QuestObjective> objectives = quest.objectives();
-        int slot = OBJECTIVE_START;
-        for (int index = 0; index < objectives.size() && index < OBJECTIVE_LIMIT; index++) {
-            set(slot++, objectiveItem(messages(), player, objectiveTypes, objectives.get(index), index, playerQuest));
+        for (int index = 0; index < objectives.size(); index++) {
+            icons.add(objectiveItem(messages(), player, objectiveTypes, objectives.get(index), index, playerQuest));
         }
+        // 目标区就是布局图里那 18 格：多的目标没位置（不显示）
+        fill("obj", icons);
     }
 
     private void buildRewards(RewardRegistry rewardTypes, Player player) {
         List<QuestReward> rewards = quest.rewards();
         if (rewards.isEmpty()) {
             // 没有奖励时给一个占位说明，否则奖励区只剩背景板，玩家会以为界面出了问题
-            set(REWARD_START, MenuItem.display(Material.CHEST, text("common.none"), List.of()));
+            set(slots("rew").get(0), MenuItem.display(Material.CHEST, text("common.none"), List.of()));
             return;
         }
-        int slot = REWARD_START;
-        for (int index = 0; index < rewards.size() && index < REWARD_LIMIT; index++) {
-            set(slot++, rewardItem(messages(), player, rewardTypes, rewards.get(index)));
+        List<MenuItem> icons = new ArrayList<>(rewards.size());
+        for (QuestReward reward : rewards) {
+            icons.add(rewardItem(messages(), player, rewardTypes, reward));
         }
+        fill("rew", icons);
     }
 
     // ---------- 物品构造 ----------

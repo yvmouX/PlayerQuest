@@ -49,7 +49,7 @@ public final class PeriodicQuestMenu extends Menu {
      * @param initial 初始显示的周期；{@code null} 表示取第一个已启用的周期（通常就是每日）
      */
     public PeriodicQuestMenu(Player viewer, MessageService messages, QuestType initial) {
-        super(viewer, messages, 54, "gui.periodic-title");
+        super(viewer, messages, SHAPE.length * 9, "gui.periodic-title");
         List<QuestType> types = PlayerTaskX.getInstance().periodicService().enabledTypes();
         this.selected = initial != null ? initial : (types.isEmpty() ? QuestType.DAILY : types.get(0));
     }
